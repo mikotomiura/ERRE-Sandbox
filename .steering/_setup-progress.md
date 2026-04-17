@@ -39,9 +39,17 @@
     - .steering/_template/ × 5 ファイル (requirement, design, tasklist, blockers, decisions)
   - .gitignore 更新: なし (.steering/ は git 追跡対象)
   - Grill me: 実施済み — 全チェック項目 OK
-- [ ] **Phase 3: /setup-skills** — Skill 群
-  - 完了日時: -
-  - 作成 Skill: -
+- [x] **Phase 3: /setup-skills** — Skill 群
+  - 完了日時: 2026-04-17
+  - 作成 Skill:
+    - python-standards (SKILL.md, patterns.md) — Python 3.11 / asyncio / Pydantic v2 / ruff 規約
+    - test-standards (SKILL.md, examples.md) — pytest-asyncio / conftest / 埋め込みプレフィックステスト
+    - git-workflow (SKILL.md, checklist.md) — Conventional Commits / Refs: / リリースタグ
+    - error-handling (SKILL.md, examples.md) — SGLang→Ollama フォールバック / 再接続 / gather
+    - architecture-rules (SKILL.md, decision-tree.md) — レイヤー依存 / GPL禁止 / API禁止
+    - implementation-workflow (SKILL.md, anti-patterns.md) — 調査→設計→実装→テスト→レビュー骨格
+    - project-status (SKILL.md) — 動的 Shell Preprocessing Skill
+  - 動的 Skill 数: 1 (project-status)
 - [ ] **Phase 4: /setup-agents** — サブエージェント群
   - 完了日時: -
   - 作成エージェント: -
@@ -57,7 +65,7 @@
 
 ## 次に実行すべきコマンド
 
-`/setup-skills`
+`/setup-agents`
 
 ## 各コマンド実行前のチェックリスト
 
@@ -71,6 +79,15 @@
 ## 構築物の相互参照マップ
 
 このセクションは各 setup-* コマンドが完了するたびに更新される。
+
+### Skill リスト
+- python-standards
+- test-standards
+- git-workflow
+- error-handling
+- architecture-rules
+- implementation-workflow
+- project-status (動的)
 
 ### Skill → Agent 参照
 （/setup-agents 完了時に記入）
