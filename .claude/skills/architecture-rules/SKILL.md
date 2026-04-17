@@ -146,3 +146,7 @@ if TYPE_CHECKING:
 
 - `python-standards` — インポート順序・相対 vs 絶対インポートのルール
 - `implementation-workflow` — Step B (既存パターン調査) でこの Skill を参照
+- `llm-inference` — inference/ 内のモデル設定と VRAM 管理
+- `persona-erre` — ペルソナ YAML 設計と ERRE モード定義
+- `godot-gdscript` — Godot シーン・GDScript のコーディング規約と WebSocket 通信
+- `blender-pipeline` — Blender アセットパイプラインの GPL 分離の具体的手順

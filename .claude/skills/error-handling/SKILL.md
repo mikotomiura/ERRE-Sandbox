@@ -197,3 +197,6 @@ logger.critical("DB write failed for all agents, stopping simulation")
 
 - `python-standards` — asyncio の基本ルール
 - `architecture-rules` — inference/ → schemas.py のみ依存の制約
+- `llm-inference` — サーバー構成・VRAM 管理
+- `persona-erre` — サンプリングオーバーライド表・ペルソナ YAML
+- `godot-gdscript` — Godot 側の WebSocket 再接続パターン

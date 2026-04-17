@@ -50,22 +50,55 @@
     - implementation-workflow (SKILL.md, anti-patterns.md) — 調査→設計→実装→テスト→レビュー骨格
     - project-status (SKILL.md) — 動的 Shell Preprocessing Skill
   - 動的 Skill 数: 1 (project-status)
-- [ ] **Phase 4: /setup-agents** — サブエージェント群
-  - 完了日時: -
-  - 作成エージェント: -
-- [ ] **Phase 5: /setup-commands** — ワークフローコマンド群
-  - 完了日時: -
-  - 作成コマンド: -
-- [ ] **Phase 6: /setup-hooks** — Hook 群
-  - 完了日時: -
-  - 作成 Hook: -
-- [ ] **Phase 7: /verify-setup** — 整合性検証
-  - 完了日時: -
-  - 検証結果: -
+- [x] **Phase 4: /setup-agents** — サブエージェント群
+  - 完了日時: 2026-04-18
+  - 作成エージェント:
+    - file-finder (sonnet) — ファイル検索・分類専門
+    - dependency-checker (sonnet) — 依存関係調査専門
+    - impact-analyzer (sonnet) — 変更影響範囲分析専門
+    - code-reviewer (opus) — コード品質・可読性レビュー専門
+    - test-analyzer (sonnet) — テスト失敗原因分析専門
+    - security-checker (opus) — セキュリティリスク監査専門
+    - test-runner (haiku) — テスト実行・結果要約専門
+    - build-executor (haiku) — ビルド実行・結果要約専門
+    - log-analyzer (sonnet) — ログ分析・異常パターン検出専門
+- [x] **Phase 5: /setup-commands** — ワークフローコマンド群
+  - 完了日時: 2026-04-18
+  - 作成コマンド:
+    - /start-task
+    - /add-feature
+    - /fix-bug
+    - /refactor
+    - /reimagine
+    - /review-changes
+    - /smart-compact
+    - /finish-task
+- [x] **Phase 6: /setup-hooks** — Hook 群（3 層構成: Preflight / Guard / Report）
+  - 完了日時: 2026-04-18
+  - 作成 Hook:
+    - SessionStart: .claude/hooks/session-start.sh（動的情報表示）
+    - UserPromptSubmit: Preflight 層 / preflight.sh（毎ターン .steering/ 状態・git 状態・reimagine 状態を動的表示、BLOCK せず）
+    - PreToolUse: Guard 層 / pre-edit-steering.sh + pre-edit-banned.sh（違反ブロック + パス時 `[guard] PASS` 出力）
+    - PostToolUse: Report 層 / post-fmt.sh（Edit/Write 後に ruff format、変更時のみ `[fmt] ruff format applied`）
+    - Stop: Report 層 / stop-check.sh（ruff check + mypy、問題時のみ WARN）
+  - 出力プレフィックス統一: [preflight] / [guard] / [fmt] / [stop]
+  - settings.json: 新規作成（全 hook を `"type": "command"` に統一）
+  - 外部スクリプト:
+    - .claude/hooks/session-start.sh
+    - .claude/hooks/preflight.sh
+    - .claude/hooks/pre-edit-steering.sh
+    - .claude/hooks/pre-edit-banned.sh
+    - .claude/hooks/post-fmt.sh
+    - .claude/hooks/stop-check.sh
+- [x] **Phase 7: /verify-setup** — 整合性検証
+  - 完了日時: 2026-04-18
+  - 検証結果: HEALTHY
+  - 修正が必要な項目: 3 件 (すべて LOW、運用上問題なし)
+  - レポート: .steering/_verify-report-20260418.md
 
 ## 次に実行すべきコマンド
 
-`/setup-agents`
+`/start-task` で最初の実装タスクを開始
 
 ## 各コマンド実行前のチェックリスト
 
@@ -88,12 +121,41 @@
 - architecture-rules
 - implementation-workflow
 - project-status (動的)
+- llm-inference (動的)
+- persona-erre
+- godot-gdscript
+- blender-pipeline
 
 ### Skill → Agent 参照
-（/setup-agents 完了時に記入）
+- test-standards → code-reviewer, test-analyzer
+- python-standards → code-reviewer
+- error-handling → code-reviewer, security-checker, log-analyzer
+- architecture-rules → impact-analyzer, code-reviewer, security-checker
+- git-workflow → dependency-checker
+- llm-inference → code-reviewer, log-analyzer, security-checker
+- persona-erre → code-reviewer, impact-analyzer
+- godot-gdscript → code-reviewer, impact-analyzer
+- blender-pipeline → security-checker, code-reviewer
+
+### Skill → Command 参照
+- implementation-workflow → /add-feature, /fix-bug, /refactor（共通骨格）
+- test-standards → /add-feature, /fix-bug, /refactor（Step F/tasklist 参照）
+- llm-inference → /add-feature, /fix-bug（inference/ 関連タスク時）
+- persona-erre → /add-feature（personas/ や schemas.py の ERREMode 関連タスク時）
+- godot-gdscript → /add-feature（godot_project/ 関連タスク時）
 
 ### Agent → Command 参照
-（/setup-commands 完了時に記入）
+- file-finder → implementation-workflow 経由で /add-feature, /fix-bug, /refactor
+- impact-analyzer → implementation-workflow 経由で /add-feature, /fix-bug, /refactor
+- code-reviewer → implementation-workflow 経由で全実装系 + /review-changes, /finish-task
+- security-checker → /add-feature (Step H), /review-changes
+- test-runner → implementation-workflow 経由で全実装系 + /refactor 交互実行 + /finish-task
+- test-analyzer → implementation-workflow 経由で /add-feature, /fix-bug
+- log-analyzer → /fix-bug (Step 2b)
 
 ### Hook → Command 参照
-（/setup-hooks 完了時に記入）
+- SessionStart Hook → 全コマンドのセッション開始時に動作
+- UserPromptSubmit Hook (Preflight 層) → 全ターンで動作。編集を伴わないターン（調査・質問・計画）でもプロジェクト状態を可視化
+- PreToolUse Hook (Guard 層) → /add-feature, /fix-bug, /refactor の実装ステップで動作。パス時は `[guard] PASS` で可視化
+- PostToolUse Hook (Report 層) → /add-feature, /fix-bug, /refactor 等の実装系で動作、変更時のみ報告
+- Stop Hook (Report 層) → 全コマンドのターン終了時に動作、問題時のみ WARN

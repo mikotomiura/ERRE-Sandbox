@@ -191,3 +191,4 @@ score = importance * recency * relevance
 - `test-standards` — テストコードでも同じ規約が適用される
 - `error-handling` — asyncio のエラーハンドリングパターン
 - `architecture-rules` — インポート依存方向の制約
+- `godot-gdscript` — godot_project/ 内の GDScript 規約 (Python とは別体系)
