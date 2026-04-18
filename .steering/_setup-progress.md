@@ -225,7 +225,14 @@
   - 各 dir に README.md (`.gitkeep` ではない) で GPL 分離ルール等の文脈を即時提供
   - `tests/test_godot_project.py` で必須ファイル存在 / Python 混入ゼロ / Godot headless boot を機械検証
   - 記録: `.steering/20260418-godot-project-init/`
-- [ ] T09 model-pull-g-gear (G-GEAR 側 / バックグラウンド)
+- [x] **T09 model-pull-g-gear** (G-GEAR, 実作業 2026-04-18)
+  - 推論 LLM: `qwen3:8b` (500a1f067a9f, **5.2 GB**, pull 24 分) — MASTER-PLAN §6.3 の `qwen3:8b-q5_K_M` / `qwen2.5:7b-instruct-q5_K_M` は registry 未登録のため fallback 採用 (decisions D1)
+  - 埋め込みモデル: `nomic-embed-text` (0a109f422b47, **274 MB, 768 次元**, pull 7 分) — `multilingual-e5-small` も未登録のため fallback 採用 (decisions D2)
+  - Ollama 再起動: tray 起動が失敗したため `ollama.exe serve` を env vars 明示 export + `nohup &` で直接起動 (decisions D3)
+  - 実測: ollama load 後 VRAM delta 6.2 GB (未 load 1307 MiB → load 後 7493 MiB、総使用 ~46%)、`qwen3:8b` 日本語挨拶 `こんにちは` で応答確認 (cold start 35s, keep-alive 5 min)
+  - 記録: `.steering/20260418-model-pull-g-gear/` (requirement / design / tasklist / decisions D1-D4 + 実測補足)
+  - 関連 T10 影響: embedding 768 次元と `nomic-embed-text-v1.5` のプレフィックス規約が T10 design の `DEFAULT_DIM` / D5 に反映済み
+  - 設計判断 4 件: D1 (LLM fallback) / D2 (embedding fallback) / D3 (tray 迂回して ollama serve 直接) / D4 (2 段階 commit 戦略)
 - [ ] T10-T14 は G-GEAR 側 Phase P (MASTER-PLAN.md §4.2 参照)
 - [x] **T16 godot-ws-client** (MacBook, 2026-04-18, PR #12)
   - 3 スクリプト完全分離: `WebSocketClient.gd` (auto-reconnect + MAX_FRAME_BYTES)

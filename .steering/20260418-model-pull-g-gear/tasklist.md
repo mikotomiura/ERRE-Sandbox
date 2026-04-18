@@ -13,30 +13,31 @@
 - [x] server.log で `OLLAMA_NUM_PARALLEL:4` / `OLLAMA_FLASH_ATTENTION:true` / `OLLAMA_KV_CACHE_TYPE:q8_0` を確認
 
 ## 推論 LLM の pull
-- [x] ~~`ollama pull qwen3:8b-q5_K_M`~~ → manifest 404、**fallback `qwen3:8b` (5.2 GB) を採用 (decisions.md D1)**
-- [ ] ⏳ BG pull 進行中 (~4 MB/s, 残 ~20 分予想)
-- [ ] `ollama list` に `qwen3:8b` が現れる
-- [ ] `ollama run qwen3:8b "こんにちは、一言で挨拶を返してください"` が 15 秒以内に応答
+- [x] ~~`ollama pull qwen3:8b-q5_K_M`~~ → manifest 404、**fallback `qwen3:8b` (5.2 GB, ID 500a1f067a9f) を採用 (decisions.md D1)**
+- [x] BG pull 完了 (実測 ~24 分、平均 ~3.5 MB/s、中断なし)
+- [x] `ollama list` に `qwen3:8b  500a1f067a9f  5.2 GB` が現れる
+- [x] `ollama run qwen3:8b "こんにちは、..."` → 応答 `こんにちは` (35.2s wall time, cold start 含む; 2 回目以降は model keep-alive 5 min で高速)
 
 ## 埋め込みモデルの pull
-- [x] ~~`ollama pull multilingual-e5-small`~~ → manifest 404、**fallback `nomic-embed-text` (274 MB, 768 次元) を採用 (decisions.md D2)**
-- [ ] ⏳ BG pull 進行中 (`nomic-embed-text`, 274 MB)
-- [ ] `curl http://localhost:11434/api/embed -d '{"model":"nomic-embed-text","input":"test"}'` で埋め込み取得、次元 768 を確認
+- [x] ~~`ollama pull multilingual-e5-small`~~ → manifest 404、**fallback `nomic-embed-text` (274 MB, 768 次元, ID 0a109f422b47) を採用 (decisions.md D2)**
+- [x] BG pull 完了 (~7 分、平均 ~500 KB/s、qwen3 との帯域共有)
+- [x] `curl /api/embed -d '{"model":"nomic-embed-text","input":"search_query: 偉人の認知習慣"}'` → 768 次元の float 列を返す (first5 = [-0.003, 0.008, -0.176, -0.003, 0.063])
 
 ## VRAM / ディスク実測
-- [ ] `nvidia-smi --query-gpu=memory.used --format=csv` で LLM 未 load 時と load 後の差分を記録
-- [ ] `%USERPROFILE%\.ollama\models\` のディスク使用量を記録
-- [ ] `decisions.md` に採用モデル / 実測値を記録
+- [x] `nvidia-smi`: 未 load 時 1307 MiB → qwen3:8b load 後 7493 MiB (**VRAM delta 6.2 GB**, 総使用 ~46%, 残 8.5 GB)
+- [x] `ollama ps`: `qwen3:8b  6.7 GB  100% GPU  context 4096  4 min` (KV 込み 6.7 GB、Skill 予算 13 GB に対して余裕)
+- [x] `%USERPROFILE%\.ollama\models\`: 5.2 GB (LLM blob + embed blob + manifests)
+- [x] `decisions.md` に D1 / D2 / D3 / D4 を既に記録済み (WIP 段階で先行記録、実測値で更新)
 
 ## 回帰テスト
-- [ ] `uv run pytest` が依然 96 passed / 16 skipped を返すこと
+- [x] `uv run pytest` で 96 passed / 16 skipped を維持 (LLM/embedding は test スコープ外のため未変更)
 
 ## ドキュメント
-- [ ] `.steering/_setup-progress.md` の T09 を `[x]` に更新、採用モデル ID / サイズ / 所要時間を記載
-- [ ] `decisions.md` 記入
-- [ ] (必要なら) `blockers.md` 記入
+- [x] `.steering/_setup-progress.md` の Phase 8 に T09 を `[x]` で追記 (採用モデル ID / サイズ / pull 時間 / VRAM delta)
+- [x] `decisions.md` の D1/D2 に pull 後の実測値を補足
+- [ ] `blockers.md` は不要 (manifest 404 の fallback は decisions で解決済み)
 
 ## 完了処理
-- [ ] `git add .steering/` → `git commit -m "chore(models): T09 model-pull-g-gear — <LLM> + <embed> (T09)"`
-- [ ] `git push -u origin feature/model-pull-g-gear`
-- [ ] PR 作成 (GitHub Web UI)
+- [x] `git add .steering/` → WIP commit 06cf007 に続き finalize commit を追加 (2 段階 commit 戦略 D4)
+- [ ] ~~`git push -u origin feature/model-pull-g-gear`~~ (本セッションでは push 保留、ユーザー指示により local のみ)
+- [ ] PR 作成は push 実施後に延期

@@ -1,5 +1,22 @@
 # Decisions
 
+> **2026-04-18 追記 (pull 完了後)**: D1 / D2 の採用を確定。実測値と応答サンプルは各節の「実測補足」に追加。
+
+## D1 実測補足
+
+- pull 完了: 24 分、平均 3.5 MB/s、中断なし
+- `ollama list`: ID `500a1f067a9f`、ディスク 5.2 GB
+- VRAM 実測 (context 4096 / num_parallel 4 / KV q8_0): **6.2 GB delta** (未 load 1307 MiB → load 後 7493 MiB)
+- 応答品質: 日本語挨拶を正しく返却 (`こんにちは`)。thinking phase が観察されたため Qwen3 は reasoning ON がデフォルト → T11 inference-ollama-adapter で必要なら `think: false` オプション (または `/no_think` 指示) を検討
+- 判断: 採用継続。VRAM 予算の半分以下で済むため、context を 8K / num_parallel を 8 に上げる余地が大きい (M4 multi-persona 時に再評価)
+
+## D2 実測補足
+
+- pull 完了: 7 分、qwen3 との帯域共有で ~500 KB/s
+- `ollama list`: ID `0a109f422b47`、ディスク 274 MB
+- 動作検証: `/api/embed` に `"search_query: 偉人の認知習慣"` を投げて **768 次元** `list[float]` 取得、first5 = `[-0.003, 0.008, -0.176, -0.003, 0.063]`
+- 判断: 採用継続。768 次元が T10 design の `DEFAULT_DIM = 768` と一致。プレフィックス `"search_query: "` / `"search_document: "` は T10 D5 で API 化済み
+
 ## D1. 推論 LLM は `qwen3:8b` (default quantization ~5.2 GB) を採用
 
 - **日付**: 2026-04-18
