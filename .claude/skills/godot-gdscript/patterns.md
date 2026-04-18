@@ -78,7 +78,7 @@ func _consume_packets() -> void:
             push_warning("[WS] Malformed message (not JSON dict): %s" % raw.left(200))
 ```
 
-**なぜ**: `_process()` で毎フレーム poll する設計は Godot 4.4 ��推奨パターン。
+**なぜ**: `_process()` で毎フレーム poll する設計は Godot 4.4-4.6 の推奨パターン。
 再接続ロジックを `_should_reconnect` フラグで管理することで、
 タイマーノードを追加せずに処理できる。
 

@@ -1,0 +1,25 @@
+; Godot 4.x project file (T15 godot-project-init).
+;
+; Declared for Godot 4.4 compatibility so that 4.4-4.6 editors can open it.
+; Renderer is GL Compatibility for Apple Silicon stability; switch to
+; Forward+ later (M4+) if advanced lighting is needed.
+
+config_version=5
+
+[application]
+
+config/name="ERRE-Sandbox"
+config/description="Autonomous 3D Society from the Cognitive Habits of Great Thinkers"
+run/main_scene="res://scenes/MainScene.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

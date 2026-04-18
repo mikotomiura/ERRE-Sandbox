@@ -29,3 +29,9 @@ htmlcov/
 *.p12
 credentials*
 secrets/
+
+# Godot cache / generated (T15 godot-project-init で追加)
+godot_project/.godot/
+godot_project/.import/
+godot_project/*.import
+godot_project/export_presets.cfg

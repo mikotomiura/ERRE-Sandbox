@@ -15,6 +15,13 @@ package distributions for details.
 When running the optional `ui` extras, the product additionally loads
 Streamlit, which retains its Apache-2.0 license.
 
+--- Godot runtime (not bundled, user-installed) ---
+
+The `godot_project/` directory contains GDScript and scenes for use with
+Godot Engine 4.x, an MIT-licensed open source game engine
+(https://godotengine.org). Godot itself is not bundled with this
+repository; users install it independently.
+
 --- Prior-work references (design-only, no bundled code) ---
 
 This project's data contract (notably the Physical, Cognitive, and

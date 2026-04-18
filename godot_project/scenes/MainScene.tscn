@@ -1,0 +1,43 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/WorldManager.gd" id="1_worldmgr"]
+
+[sub_resource type="Environment" id="1_env"]
+background_mode = 1
+background_color = Color(0.1, 0.12, 0.16, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.65, 0.75, 1)
+ambient_light_energy = 0.3
+
+[node name="MainScene" type="Node3D"]
+script = ExtResource("1_worldmgr")
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("1_env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Environment"]
+transform = Transform3D(1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071, 0, 10, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 20)
+current = true
+
+[node name="ZoneManager" type="Node3D" parent="."]
+
+[node name="AgentManager" type="Node3D" parent="."]
+
+[node name="WebSocketClient" type="Node" parent="."]
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="SpeechBubbleContainer" type="Control" parent="UILayer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="DebugOverlay" type="Label" parent="UILayer"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 600.0
+offset_bottom = 40.0
+text = "ERRE-Sandbox -- T15 init"
