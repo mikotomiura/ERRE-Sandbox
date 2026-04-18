@@ -1,16 +1,17 @@
-# AgentManager — T16 godot-ws-client
+# AgentManager — T17 godot-peripatos-scene (upgraded from T16 log stubs)
 #
-# Subscribes to EnvelopeRouter signals that concern a specific agent and
-# reacts to them. In T16 every handler is a log stub: the scope is limited
-# to proving the signal wiring works end to end via fixtures. T17
-# ``godot-peripatos-scene`` replaces these stubs with real avatar
-# instantiation + movement + animation, reusing the same signal surface.
+# Connects to EnvelopeRouter's four agent-scoped signals (T16 contract) and
+# drives avatar lifecycle + behaviour. Key properties:
 #
-# NOTE: Router is resolved as a plain ``Node`` rather than through the
-# ``EnvelopeRouter`` class_name. Godot's global class registry is populated
-# after an editor pass, but headless boots without a pre-warmed ``.godot/``
-# cache fail to resolve the class_name during parse. ``has_signal`` gates
-# each connection so a wrong node fails loudly instead of crashing.
+#   * AVATAR_SCENE is referenced via ``preload`` so MainScene.tscn does not
+#     need an ``agent_avatar_scene`` export — T17 v2 design deliberately
+#     avoids touching MainScene.tscn (closes T16 L5: manual-edit accumulation).
+#   * Router is resolved as a plain ``Node`` and guarded by ``has_signal``
+#     (T16 judgement 4: class_name cross-refs break the first headless boot
+#     before .godot/ cache is populated).
+#   * Each signal handler goes through ``_get_or_create_avatar`` so fixture
+#     replays that start mid-stream (e.g. ``speech`` before ``agent_update``)
+#     still work; the avatar is spawned lazily on first touch.
 class_name AgentManager
 extends Node3D
 
@@ -22,6 +23,10 @@ const _REQUIRED_SIGNALS: PackedStringArray = [
 	"move_issued",
 	"animation_changed",
 ]
+
+const AVATAR_SCENE: PackedScene = preload("res://scenes/agents/AgentAvatar.tscn")
+
+var _avatars: Dictionary = {}  # agent_id (String) -> avatar Node
 
 
 func _ready() -> void:
@@ -47,27 +52,49 @@ func _resolve_router() -> Node:
 	return get_tree().root.find_child("EnvelopeRouter", true, false)
 
 
+func _get_or_create_avatar(agent_id: String) -> Node:
+	if agent_id == "":
+		push_warning("[AgentManager] missing agent_id; ignoring envelope")
+		return null
+	if _avatars.has(agent_id):
+		return _avatars[agent_id]
+	var avatar := AVATAR_SCENE.instantiate()
+	# Duck-typed contract: AVATAR_SCENE root is expected to expose ``set_agent_id``.
+	if avatar.has_method("set_agent_id"):
+		avatar.set_agent_id(agent_id)
+	else:
+		push_error("[AgentManager] avatar missing set_agent_id method; check scene attach")
+		avatar.queue_free()
+		return null
+	add_child(avatar)
+	_avatars[agent_id] = avatar
+	print("[AgentManager] avatar spawned agent_id=%s" % agent_id)
+	return avatar
+
+
 func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
-	var tick: int = int(agent_state.get("tick", -1))
-	print("[AgentManager] agent_updated agent_id=%s tick=%d" % [agent_id, tick])
+	var avatar := _get_or_create_avatar(agent_id)
+	if avatar == null:
+		return
+	avatar.update_position_from_state(agent_state)
 
 
 func _on_speech_delivered(agent_id: String, utterance: String, zone: String) -> void:
-	print(
-		"[AgentManager] speech_delivered agent_id=%s zone=%s utterance=%s"
-		% [agent_id, zone, utterance]
-	)
+	var avatar := _get_or_create_avatar(agent_id)
+	if avatar == null:
+		return
+	avatar.show_speech(utterance, zone)
 
 
 func _on_move_issued(agent_id: String, target: Dictionary, speed: float) -> void:
-	print(
-		"[AgentManager] move_issued agent_id=%s target_zone=%s speed=%.2f"
-		% [agent_id, String(target.get("zone", "")), speed]
-	)
+	var avatar := _get_or_create_avatar(agent_id)
+	if avatar == null:
+		return
+	avatar.set_move_target(target, speed)
 
 
-func _on_animation_changed(agent_id: String, animation_name: String, loop: bool) -> void:
-	print(
-		"[AgentManager] animation_changed agent_id=%s name=%s loop=%s"
-		% [agent_id, animation_name, str(loop)]
-	)
+func _on_animation_changed(agent_id: String, animation_name: String, _loop: bool) -> void:
+	var avatar := _get_or_create_avatar(agent_id)
+	if avatar == null:
+		return
+	avatar.set_animation(animation_name)

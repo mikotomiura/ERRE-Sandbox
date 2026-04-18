@@ -258,5 +258,30 @@
   - 追加判断 4 件: decay ハイパラ λ=0.1 / β=0.2 (D2)、Procedural / Relational は最小 DDL のみ (D3)、本セッションは設計のみ (D4)、埋め込みプレフィックス強制 (D5 `embed_query` / `embed_document` API + `test_embedding_prefix.py` CI 必須)
   - 次セッション作業: `src/erre_sandbox/memory/{store,embedding,retrieval}.py` 実装 (推定 600-700 行) + `tests/test_memory/` 5 ファイル追加、目標 `pytest` 106 passed
   - 依存: T09 完了済 (nomic-embed-text 768 次元が `DEFAULT_DIM` と一致) / T08 schemas.MemoryEntry (Contract 凍結済)
-- [ ] T17 godot-peripatos-scene (次タスク) — MacBook 側 Phase P 3 件目
-- [ ] T18-T20 は MASTER-PLAN.md §4.2 参照
+- [x] **T17 godot-peripatos-scene** (MacBook, 2026-04-19)
+  - Phase P MacBook 側ラインの 3 件目、T16 Router signal contract を 3D 表現に接続
+  - `scenes/zones/Peripatos.tscn` — 40×4m PlaneMesh + 非対称 post 6 本
+    (北 4 / 南 2、Königsberg 散歩道メタファー) + Start/End marker + OmniLight3D
+  - `scenes/agents/AgentAvatar.tscn` — Node3D + CapsuleMesh Body + 前方指示
+    BoxMesh + Label3D SpeechBubble (patterns.md §3 からは CharacterBody3D →
+    Node3D / AnimationPlayer 除去で逸脱、理由は decisions.md 判断 2/3)
+  - `scripts/AgentController.gd` (約 120 行) — Tween 駆動移動、envelope の
+    `speed` を duration 計算に使用 (Contract-First)、`is_finite()` /
+    `MAX_TWEEN_DURATION=30s` / 水平 `look_at` ガード
+  - `scripts/AgentManager.gd` 書き換え — T16 print stub を avatar 実操作に置換、
+    `preload()` 直接参照で **MainScene.tscn 変更 0 行** (L5 完全解消)
+  - `scripts/WorldManager.gd` — ZONE_MAP + `_spawn_initial_zones()` で起動時に
+    peripatos を ZoneManager 配下へ add_child
+  - `tests/test_godot_peripatos.py` — module-scoped fixture で subprocess 共有、
+    6 assertion (zone spawn / avatar spawn / speech / move speed=1.30 /
+    animation / no errors)
+  - 設計フロー: v1 素直案 (patterns.md 直コピー、V1-W1〜W8 弱点) → `/reimagine`
+    で v2 再生成 → v2 フル採用 (V1-W1/W2/W3/W4 を構造で解消)
+  - code-reviewer HIGH 1 + MEDIUM 5、security-checker MEDIUM 2 対応
+  - 全テスト 106 passed / 15 skipped (T16 100 から +6)、ruff / format / mypy 緑
+  - 記録: `.steering/20260419-godot-peripatos-scene/`
+    (requirement / design / design-v1 / design-comparison / decisions /
+    blockers / tasklist)
+- [ ] T18 ui-dashboard-minimal (optional、MacBook)
+- [ ] T19 m2-integration-e2e (両機)
+- [ ] T20 m2-acceptance (両機)
