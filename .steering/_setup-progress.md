@@ -173,7 +173,11 @@
   - 記録: `.steering/20260418-setup-macbook/`
   - 設計判断 3 件: Godot 4.6 採用 / code symlink を user ディレクトリ / Python 併存
 - [ ] T01 setup-g-gear (G-GEAR 側)
-- [ ] T03 pdf-extract-baseline (MacBook)
+- [x] **T03 pdf-extract-baseline** (MacBook, 2026-04-18)
+  - `docs/_pdf_derived/erre-sandbox-v0.2.txt` を生成 (939 行 / 73 KB)
+  - `.gitignore` に `docs/_pdf_derived/` 追加、派生物は Git 管理外
+  - 想定キーワード (ERRE-Sandbox / peripatos / chashitsu / 守破離) 48 件ヒット
+  - 記録: `.steering/20260418-pdf-extract-baseline/`
 - [ ] T04 pyproject-scaffold (MacBook)
 - [ ] T05 schemas-freeze ★ Contract 凍結の核
 - [ ] T06-T20 は MASTER-PLAN.md §4.2 参照

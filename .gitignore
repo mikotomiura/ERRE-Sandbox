@@ -1,2 +1,5 @@
 ERRE-Sandbox_v0.2.pdf
 .claude/commands/commands_setup
+
+# PDF から pdftotext で生成した派生物 (T03 pdf-extract-baseline で生成)
+docs/_pdf_derived/
