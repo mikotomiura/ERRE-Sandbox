@@ -32,7 +32,7 @@
 
 #### MacBook 側
 - [x] T15 `godot-project-init` (MacBook, 0.5d)
-- [ ] T16 `godot-ws-client` (MacBook, 1d)
+- [x] T16 `godot-ws-client` (MacBook, 1d) — WebSocket + Router (7 専用 signal) + Fixture 境界分離 + schema 同期ガード
 - [ ] T17 `godot-peripatos-scene` (MacBook, 1d)
 - [ ] T18 `ui-dashboard-minimal` (MacBook, 0.5d) — optional
 
