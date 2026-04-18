@@ -16,7 +16,7 @@
 - [x] T05 `schemas-freeze` (MacBook, 1d) ★ Contract の核 — **CSDG 参照**: `csdg/schemas.py` の HumanCondition / CharacterState / DailyEvent 構造 (MASTER-PLAN.md §B.2)
 - [x] T06 `persona-kant-yaml` (MacBook, 0.5d) — **CSDG 参照**: `prompts/System_Persona.md` のペルソナ項目階層
 - [x] T07 `control-envelope-fixtures` (MacBook, 0.5d) — Godot と Python 両方から読む JSON
-- [ ] T08 `test-schemas` (MacBook, 0.5d) ★ Contract 凍結の境界
+- [x] T08 `test-schemas` (MacBook, 0.5d) ★ Contract 凍結の境界
 
 ### Phase BG: モデル pull (G-GEAR バックグラウンド)
 - [ ] T09 `model-pull-g-gear` (G-GEAR, 実時間 2-4h, 作業時間 0.5d)
