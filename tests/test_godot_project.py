@@ -32,6 +32,10 @@ def test_required_project_files_exist() -> None:
     # T16 developer fixture harness
     assert (GODOT_PROJECT / "scripts" / "dev" / "FixturePlayer.gd").is_file()
     assert (GODOT_PROJECT / "scenes" / "dev" / "FixtureHarness.tscn").is_file()
+    # T17 peripatos scene + avatar prefab + controller
+    assert (GODOT_PROJECT / "scenes" / "zones" / "Peripatos.tscn").is_file()
+    assert (GODOT_PROJECT / "scenes" / "agents" / "AgentAvatar.tscn").is_file()
+    assert (GODOT_PROJECT / "scripts" / "AgentController.gd").is_file()
 
 
 def test_godot_project_contains_no_python() -> None:

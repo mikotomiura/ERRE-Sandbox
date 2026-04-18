@@ -33,7 +33,7 @@
 #### MacBook 側
 - [x] T15 `godot-project-init` (MacBook, 0.5d)
 - [x] T16 `godot-ws-client` (MacBook, 1d, PR #12) — WebSocket + Router (7 専用 signal) + Fixture 境界分離 + schema 同期ガード
-- [ ] T17 `godot-peripatos-scene` (MacBook, 1d)
+- [x] T17 `godot-peripatos-scene` (MacBook, 1d) — Peripatos 3D (非対称 post / PlaneMesh 40×4m) + AgentAvatar + Tween 駆動移動 (Contract speed 利用) + ZONE_MAP + 106 tests pass
 - [ ] T18 `ui-dashboard-minimal` (MacBook, 0.5d) — optional
 
 ### Phase I: Integration
