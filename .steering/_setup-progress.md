@@ -159,3 +159,21 @@
 - PreToolUse Hook (Guard 層) → /add-feature, /fix-bug, /refactor の実装ステップで動作。パス時は `[guard] PASS` で可視化
 - PostToolUse Hook (Report 層) → /add-feature, /fix-bug, /refactor 等の実装系で動作、変更時のみ報告
 - Stop Hook (Report 層) → 全コマンドのターン終了時に動作、問題時のみ WARN
+
+---
+
+## Phase 8: MVP 実装フェーズ (2026-04-18〜)
+
+実装プランは `.steering/20260418-implementation-plan/MASTER-PLAN.md` を参照。
+
+- [x] **T02 setup-macbook** (MacBook, 実作業 2026-04-18)
+  - Homebrew 5.1.6 / gh 2.90.0 / jq 1.8.1 / poppler 26.04.0 / Godot 4.6.2 / uv Python 3.11.15
+  - VS Code 拡張 ruff + godot-tools 追加
+  - `~/.zprofile` に brew shellenv を追加、`code` CLI は `~/.local/bin/code` に symlink
+  - 記録: `.steering/20260418-setup-macbook/`
+  - 設計判断 3 件: Godot 4.6 採用 / code symlink を user ディレクトリ / Python 併存
+- [ ] T01 setup-g-gear (G-GEAR 側)
+- [ ] T03 pdf-extract-baseline (MacBook)
+- [ ] T04 pyproject-scaffold (MacBook)
+- [ ] T05 schemas-freeze ★ Contract 凍結の核
+- [ ] T06-T20 は MASTER-PLAN.md §4.2 参照
