@@ -227,7 +227,7 @@
   - 記録: `.steering/20260418-godot-project-init/`
 - [ ] T09 model-pull-g-gear (G-GEAR 側 / バックグラウンド)
 - [ ] T10-T14 は G-GEAR 側 Phase P (MASTER-PLAN.md §4.2 参照)
-- [x] **T16 godot-ws-client** (MacBook, 2026-04-18)
+- [x] **T16 godot-ws-client** (MacBook, 2026-04-18, PR #12)
   - 3 スクリプト完全分離: `WebSocketClient.gd` (auto-reconnect + MAX_FRAME_BYTES)
     / `EnvelopeRouter.gd` (7 専用 signal emit) /
     `AgentManager.gd` (`has_signal` duck typing でログスタブ)
