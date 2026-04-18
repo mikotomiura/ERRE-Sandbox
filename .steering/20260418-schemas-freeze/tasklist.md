@@ -41,6 +41,6 @@
 
 ## 完了処理
 - [x] design.md の最終化 (実装との差分を追記)
-- [ ] Conventional Commits で `feat(schemas): T05 schemas-freeze — Contract (AgentState / Observation / ControlEnvelope) を Pydantic v2 で凍結` 相当のコミット
-- [ ] `feature/schemas-freeze` を push し、main への PR を作成 (ユーザー承認後)
-- [ ] `.steering/20260418-implementation-plan/tasklist.md` の T05 チェックを入れる
+- [x] Conventional Commits でコミット (c81b5fb)
+- [x] `feature/schemas-freeze` を push し、main への PR #5 を作成
+- [x] `.steering/20260418-implementation-plan/tasklist.md` の T05 チェックを入れる
