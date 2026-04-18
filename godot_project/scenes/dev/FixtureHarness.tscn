@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/MainScene.tscn" id="1_mainscene"]
+[ext_resource type="Script" path="res://scripts/dev/FixturePlayer.gd" id="2_fixtureplayer"]
+
+[node name="FixtureHarness" type="Node"]
+
+[node name="MainScene" parent="." instance=ExtResource("1_mainscene")]
+
+[node name="FixturePlayer" type="Node" parent="."]
+script = ExtResource("2_fixtureplayer")
+router_path = NodePath("../MainScene/EnvelopeRouter")
+websocket_client_path = NodePath("../MainScene/WebSocketClient")

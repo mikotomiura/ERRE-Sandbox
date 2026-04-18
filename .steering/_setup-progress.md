@@ -219,5 +219,23 @@
   - 記録: `.steering/20260418-godot-project-init/`
 - [ ] T09 model-pull-g-gear (G-GEAR 側 / バックグラウンド)
 - [ ] T10-T14 は G-GEAR 側 Phase P (MASTER-PLAN.md §4.2 参照)
-- [ ] **T16 godot-ws-client** (MacBook, 次タスク) — Phase P MacBook 側ラインの 2 件目
-- [ ] T17-T20 は MASTER-PLAN.md §4.2 参照
+- [x] **T16 godot-ws-client** (MacBook, 2026-04-18)
+  - 3 スクリプト完全分離: `WebSocketClient.gd` (auto-reconnect + MAX_FRAME_BYTES)
+    / `EnvelopeRouter.gd` (7 専用 signal emit) /
+    `AgentManager.gd` (`has_signal` duck typing でログスタブ)
+  - Fixture 境界分離: `scripts/dev/FixturePlayer.gd` + `scenes/dev/FixtureHarness.tscn`
+    で production path に dev コード不混入
+  - Contract ガード新設: `tests/test_envelope_kind_sync.py` で schemas.py §7 ↔
+    EnvelopeRouter.gd の kind 集合一致を CI で自動検出
+  - Godot headless 回帰: `tests/test_godot_ws_client.py` で 7 kind 順序再生を検証
+  - `tests/_godot_helpers.py` に `resolve_godot` 抽出 (test_godot_project.py と共有)
+  - MainScene.tscn: 3 script attach + EnvelopeRouter ノード追加 + signal 配線
+    (`load_steps=6`, 手動編集 — 次セッションでエディタ canonical 化予定 L5)
+  - 設計フロー: v1 素直案 → `/reimagine` で v2 再生成 → 比較 → v2 フル採用
+    (V1-W1/W2/W4/W5/W6 を構造で解消、design-comparison.md に比較表)
+  - code-reviewer HIGH 1 + MEDIUM 3、security-checker HIGH 1 + MEDIUM 1 対応
+  - 全テスト 100 pass / 15 skip、ruff / format / mypy 全緑
+  - 記録: `.steering/20260418-godot-ws-client/`
+    (requirement / design / design-v1 / design-comparison / decisions / blockers / tasklist)
+- [ ] T17 godot-peripatos-scene (次タスク) — MacBook 側 Phase P 3 件目
+- [ ] T18-T20 は MASTER-PLAN.md §4.2 参照

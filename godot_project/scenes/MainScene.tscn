@@ -1,6 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/WorldManager.gd" id="1_worldmgr"]
+[ext_resource type="Script" path="res://scripts/WebSocketClient.gd" id="2_wsclient"]
+[ext_resource type="Script" path="res://scripts/EnvelopeRouter.gd" id="3_envrouter"]
+[ext_resource type="Script" path="res://scripts/AgentManager.gd" id="4_agentmgr"]
 
 [sub_resource type="Environment" id="1_env"]
 background_mode = 1
@@ -25,9 +28,15 @@ current = true
 
 [node name="ZoneManager" type="Node3D" parent="."]
 
+[node name="EnvelopeRouter" type="Node" parent="."]
+script = ExtResource("3_envrouter")
+
 [node name="AgentManager" type="Node3D" parent="."]
+script = ExtResource("4_agentmgr")
+router_path = NodePath("../EnvelopeRouter")
 
 [node name="WebSocketClient" type="Node" parent="."]
+script = ExtResource("2_wsclient")
 
 [node name="UILayer" type="CanvasLayer" parent="."]
 
@@ -40,4 +49,6 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = 600.0
 offset_bottom = 40.0
-text = "ERRE-Sandbox -- T15 init"
+text = "ERRE-Sandbox -- T16 wired"
+
+[connection signal="envelope_received" from="WebSocketClient" to="EnvelopeRouter" method="on_envelope_received"]
