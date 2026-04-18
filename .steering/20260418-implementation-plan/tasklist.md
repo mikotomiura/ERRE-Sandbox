@@ -24,7 +24,7 @@
 ### Phase P: Parallel Build (両機並列)
 
 #### G-GEAR 側
-- [ ] T10 `memory-store` (G-GEAR, 1.5d) — **CSDG 参照**: `csdg/engine/memory.py` + `ShortTermMemory` / `LongTermMemory` の 2 層構造 (MASTER-PLAN.md §B.2)
+- [x] T10 `memory-store` (G-GEAR, 1.5d, 設計 PR #15 + 実装 PR #16) — 4 kind テーブル + 共有 vec0 + embed prefix 強制、+38 テスト / **CSDG 参照**: `csdg/engine/memory.py` の 2 層構造 (MASTER-PLAN.md §B.2)
 - [ ] T11 `inference-ollama-adapter` (G-GEAR, 1d) — **CSDG 参照**: `csdg/llm_client.py` のプロバイダー抽象化パターンのみ (API は書き直し)
 - [ ] T12 `cognition-cycle-minimal` (G-GEAR, 1.5d) — **CSDG 参照**: `csdg/engine/state_transition.py` の半数式と HumanCondition 自動導出の 4 要素ロジックを流用 (MASTER-PLAN.md §B.3)
 - [ ] T13 `world-tick-zones` (G-GEAR, 1d)
@@ -33,7 +33,7 @@
 #### MacBook 側
 - [x] T15 `godot-project-init` (MacBook, 0.5d)
 - [x] T16 `godot-ws-client` (MacBook, 1d, PR #12) — WebSocket + Router (7 専用 signal) + Fixture 境界分離 + schema 同期ガード
-- [x] T17 `godot-peripatos-scene` (MacBook, 1d) — Peripatos 3D (非対称 post / PlaneMesh 40×4m) + AgentAvatar + Tween 駆動移動 (Contract speed 利用) + ZONE_MAP + 106 tests pass
+- [x] T17 `godot-peripatos-scene` (MacBook, 1d, PR #17) — Peripatos 3D (非対称 post / PlaneMesh 40×4m) + AgentAvatar + Tween 駆動移動 (Contract speed 利用) + ZONE_MAP + 140 tests pass (main 合流後)
 - [ ] T18 `ui-dashboard-minimal` (MacBook, 0.5d) — optional
 
 ### Phase I: Integration
