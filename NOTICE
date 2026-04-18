@@ -1,0 +1,16 @@
+ERRE-Sandbox
+Copyright 2026 mikotomiura
+
+This product is licensed under the terms of the Apache License, Version 2.0
+(see LICENSE) or the MIT License (see LICENSE-MIT), at your option. The
+user may choose either license when redistributing or integrating this work.
+
+--- Third-party acknowledgments (Python runtime dependencies) ---
+
+This product includes software developed by the Pydantic, FastAPI, uvicorn,
+websockets, httpx, sqlite-vec, PyYAML, and NumPy projects. Each component
+retains its original license and copyright notice; see the individual
+package distributions for details.
+
+When running the optional `ui` extras, the product additionally loads
+Streamlit, which retains its Apache-2.0 license.

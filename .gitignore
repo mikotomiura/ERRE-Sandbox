@@ -3,3 +3,29 @@ ERRE-Sandbox_v0.2.pdf
 
 # PDF から pdftotext で生成した派生物 (T03 pdf-extract-baseline で生成)
 docs/_pdf_derived/
+
+# Python / uv / ツールキャッシュ (T04 pyproject-scaffold で追加)
+# 注: uv.lock は意図的にコミットする (decisions.md 判断 6 参照)
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets / credentials (T04 security-review で追加)
+# python-dotenv が推移依存として入るため .env の誤コミット対策
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+credentials*
+secrets/

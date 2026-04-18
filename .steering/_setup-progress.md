@@ -178,6 +178,14 @@
   - `.gitignore` に `docs/_pdf_derived/` 追加、派生物は Git 管理外
   - 想定キーワード (ERRE-Sandbox / peripatos / chashitsu / 守破離) 48 件ヒット
   - 記録: `.steering/20260418-pdf-extract-baseline/`
-- [ ] T04 pyproject-scaffold (MacBook)
+- [x] **T04 pyproject-scaffold** (MacBook, 2026-04-18)
+  - `pyproject.toml` (uv_build + PEP 735 `[dependency-groups]` + ruff ALL + hybrid strict mypy + pytest-asyncio mode=auto)
+  - `.python-version` = 3.11 / `src/erre_sandbox/{schemas.py,inference,memory,cognition,world,ui,erre}` レイヤー骨格
+  - `tests/test_smoke.py` で 7 レイヤー import 検証 (2 件 pass)
+  - `LICENSE` / `LICENSE-MIT` / `NOTICE` 正式テキスト配置、`README.md` 最小版 (EN/JA)
+  - `uv sync` / `ruff check` / `ruff format --check` / `mypy src` / `pytest` の 5 コマンドすべて緑
+  - 記録: `.steering/20260418-pyproject-scaffold/` (requirement/design/design-v1/design-comparison/decisions/tasklist)
+  - /reimagine 適用: v2 + ハイブリッド調整 3 点を採用
+  - 設計判断 8 件: uv_build 採用 / PEP 735 / ruff ALL / hybrid strict mypy / line-length 88 / uv.lock コミット / LICENSE 正式配置 / schemas.py docstring-only
 - [ ] T05 schemas-freeze ★ Contract 凍結の核
 - [ ] T06-T20 は MASTER-PLAN.md §4.2 参照

@@ -1,0 +1,167 @@
+[build-system]
+requires = ["uv_build>=0.4,<2.0"]
+build-backend = "uv_build"
+
+[project]
+name = "erre-sandbox"
+version = "0.0.1"
+description = "Autonomous 3D Society Emerging from the Cognitive Habits of Great Thinkers"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = "Apache-2.0 OR MIT"
+license-files = ["LICENSE", "LICENSE-MIT", "NOTICE"]
+authors = [
+    { name = "mikotomiura", email = "mmiura.network@gmail.com" },
+]
+keywords = ["llm", "agent", "cognitive-architecture", "godot", "research"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.7,<3",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "websockets>=13,<15",
+    "httpx>=0.27,<1",
+    "sqlite-vec>=0.1,<1",
+    "pyyaml>=6,<7",
+    "numpy>=2,<3",
+]
+
+[project.optional-dependencies]
+ui = [
+    "streamlit>=1.39,<2",
+]
+
+[project.urls]
+Homepage = "https://github.com/mikotomiura/erre-sandbox"
+Repository = "https://github.com/mikotomiura/erre-sandbox"
+Issues = "https://github.com/mikotomiura/erre-sandbox/issues"
+
+[dependency-groups]
+lint = [
+    "ruff>=0.6,<1.0",
+]
+typecheck = [
+    "mypy>=1.11,<2",
+    "types-pyyaml>=6,<7",
+]
+test = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
+]
+dev = [
+    { include-group = "lint" },
+    { include-group = "typecheck" },
+    { include-group = "test" },
+]
+
+[tool.uv.build-backend]
+module-name = "erre_sandbox"
+module-root = "src"
+
+# =============================================================================
+# ruff
+# =============================================================================
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = [".venv", "docs/_pdf_derived", "godot_project"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # docstring: 公開 API のみ require。全関数には要求しない
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D203", "D213",
+    # mypy と責務重複するアノテーション系
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "ANN205", "ANN206", "ANN401",
+    # ruff format と衝突
+    "COM812", "ISC001",
+    # 日本語全角文字を許容する
+    "RUF001", "RUF002", "RUF003",
+    # pytest で assert を使うため
+    "S101",
+    # 例外文字列の形式規定はプロジェクト文化に合わない
+    "EM101", "EM102", "TRY003", "TRY300", "TRY301",
+    # Pydantic BaseModel 初期化は多引数が自然
+    "PLR0913",
+    # src レイアウトで誤検知しやすい
+    "INP001",
+    # コミット済み TODO / FIXME は許容
+    "TD002", "TD003", "FIX002",
+    # 日本語 docstring / コメント混在の環境で noisy
+    "DOC201", "DOC202", "DOC501",
+    # copyright header を全ファイルに強制しない
+    "CPY001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# S101 は global ignore 済みだが、将来 global から外して tests のみ許容に
+# 切り替える時のセーフティネットとして残している。
+"tests/**" = ["S101", "PLR2004", "D", "ANN", "SLF001"]
+"**/__init__.py" = ["F401", "D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["erre_sandbox"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# =============================================================================
+# mypy — src は strict、tests は寛容
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_return_any = false  # T05 完了後に true に昇格 (decisions.md 参照)
+plugins = ["pydantic.mypy"]
+exclude = ["^\\.venv/", "^build/", "^dist/"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["sqlite_vec.*", "streamlit.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# =============================================================================
+# pytest
+# =============================================================================
+[tool.pytest.ini_options]
+minversion = "8.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:websockets.*",
+    # T10 着手時に uvicorn.* / httpx.* / anyio.* の DeprecationWarning ignore を
+    # 必要に応じて追加する。過剰に厳しい場合は error を default に戻す判断もあり。
+]
