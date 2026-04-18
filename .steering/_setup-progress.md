@@ -252,13 +252,18 @@
   - 全テスト 100 pass / 15 skip、ruff / format / mypy 全緑
   - 記録: `.steering/20260418-godot-ws-client/`
     (requirement / design / design-v1 / design-comparison / decisions / blockers / tasklist)
-- [ ] **T10 memory-store** (G-GEAR, 設計ロック 2026-04-18 / 実装は次セッション)
-  - 設計のみ確定: `.steering/20260418-memory-store/` (requirement / design / tasklist / decisions D1-D5)
+- [x] **T10 memory-store** (G-GEAR, 設計 PR #15 + 実装 PR #16, 2026-04-18〜19)
+  - 設計: `.steering/20260418-memory-store/` (requirement / design / tasklist / decisions D1-D5)
   - /reimagine 適用: v1 (単一テーブル + embedding BLOB + strength カラム) を破棄、**v2 (kind 別テーブル + 共有 `vec0` + 関数 decay)** を採用 (D1)
-  - 追加判断 4 件: decay ハイパラ λ=0.1 / β=0.2 (D2)、Procedural / Relational は最小 DDL のみ (D3)、本セッションは設計のみ (D4)、埋め込みプレフィックス強制 (D5 `embed_query` / `embed_document` API + `test_embedding_prefix.py` CI 必須)
-  - 次セッション作業: `src/erre_sandbox/memory/{store,embedding,retrieval}.py` 実装 (推定 600-700 行) + `tests/test_memory/` 5 ファイル追加、目標 `pytest` 106 passed
+  - 設計判断 5 件: kind 別テーブル + 共有 vec0 (D1) / decay ハイパラ λ=0.1, β=0.2 (D2) / Procedural / Relational は最小 DDL (D3) / 設計ロック分離 (D4) / 埋め込みプレフィックス強制 (D5)
+  - **実装 (PR #16)**:
+    - `src/erre_sandbox/memory/store.py` — 4 kind テーブル (episodic / semantic / procedural / relational) + 共有 `vec_embeddings` vec0 virtual table (embed_dim=768)、async API は `asyncio.to_thread` で sqlite3 wrap (`check_same_thread=False`)、`knn_ids` / `evict_episodic_before` / `list_world_scope` 補助 API 公開
+    - `src/erre_sandbox/memory/embedding.py` — `QUERY_PREFIX` / `DOC_PREFIX` 定数 + `embed_query` / `embed_document` / 低レベル `embed` の 3 段 API (D5 強制)、httpx.AsyncClient、失敗を `EmbeddingUnavailableError` に正規化
+    - `src/erre_sandbox/memory/retrieval.py` — 純粋関数 `score(importance, age, recall, cos)` + `Retriever` クラス、per-agent (k_agent=8) + world-scope (k_world=3) を合成、`mark_recalled` 副作用 (決定論的 now 注入可)
+    - `src/erre_sandbox/memory/__init__.py` — public API 14 件 re-export
+  - テスト追加 (+38 件、計 134 passed / 16 skipped): test_store.py (14) / test_embedding.py (7) / test_retrieval.py (12) / test_embedding_prefix.py (3, CI 必須・削除禁止) + conftest.py
   - 依存: T09 完了済 (nomic-embed-text 768 次元が `DEFAULT_DIM` と一致) / T08 schemas.MemoryEntry (Contract 凍結済)
-- [x] **T17 godot-peripatos-scene** (MacBook, 2026-04-19)
+- [x] **T17 godot-peripatos-scene** (MacBook, 2026-04-19, PR #17)
   - Phase P MacBook 側ラインの 3 件目、T16 Router signal contract を 3D 表現に接続
   - `scenes/zones/Peripatos.tscn` — 40×4m PlaneMesh + 非対称 post 6 本
     (北 4 / 南 2、Königsberg 散歩道メタファー) + Start/End marker + OmniLight3D
