@@ -172,7 +172,15 @@
   - `~/.zprofile` に brew shellenv を追加、`code` CLI は `~/.local/bin/code` に symlink
   - 記録: `.steering/20260418-setup-macbook/`
   - 設計判断 3 件: Godot 4.6 採用 / code symlink を user ディレクトリ / Python 併存
-- [ ] T01 setup-g-gear (G-GEAR 側)
+- [x] **T01 setup-g-gear** (G-GEAR, 実作業 2026-04-18)
+  - OS: Windows 11 Home (native, WSL2 不採用) — /reimagine で WSL2 初回案を破棄し素 Windows 案を採用
+  - uv 0.11.7 (pip 経由 user install) / CPython 3.11.15 (uv 管理) / Ollama 0.21.0 (winget)
+  - User PATH 追加: `%APPDATA%\Python\Python311\Scripts`, `%USERPROFILE%\.local\bin`, Ollama は winget が自動追加
+  - User env vars: `OLLAMA_NUM_PARALLEL=4` / `OLLAMA_FLASH_ATTENTION=1` / `OLLAMA_KV_CACHE_TYPE=q8_0`
+  - GPU: RTX 5060 Ti 16GB を `nvidia-smi -L` で確認、CUDA は Ollama 同梱ランタイムで利用
+  - 検証: `uv sync` 成功、`ruff check` / `ruff format --check` / `mypy src` グリーン、`pytest` 96 passed / 16 skipped
+  - 記録: `.steering/20260418-setup-g-gear/` (requirement / design / tasklist / decisions)
+  - 設計判断 2 件: 素 Windows 採用 (D1) / OLLAMA_* を User scope (D2)
 - [x] **T03 pdf-extract-baseline** (MacBook, 2026-04-18)
   - `docs/_pdf_derived/erre-sandbox-v0.2.txt` を生成 (939 行 / 73 KB)
   - `.gitignore` に `docs/_pdf_derived/` 追加、派生物は Git 管理外
