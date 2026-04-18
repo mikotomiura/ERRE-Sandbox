@@ -13,7 +13,7 @@
 
 ### Phase C: Contract Freeze (MacBook 単独)
 - [ ] T04 `pyproject-scaffold` (MacBook, 0.5d)
-- [ ] T05 `schemas-freeze` (MacBook, 1d) ★ Contract の核 — **CSDG 参照**: `csdg/schemas.py` の HumanCondition / CharacterState / DailyEvent 構造 (MASTER-PLAN.md §B.2)
+- [x] T05 `schemas-freeze` (MacBook, 1d) ★ Contract の核 — **CSDG 参照**: `csdg/schemas.py` の HumanCondition / CharacterState / DailyEvent 構造 (MASTER-PLAN.md §B.2)
 - [ ] T06 `persona-kant-yaml` (MacBook, 0.5d) — **CSDG 参照**: `prompts/System_Persona.md` のペルソナ項目階層
 - [ ] T07 `control-envelope-fixtures` (MacBook, 0.5d) — Godot と Python 両方から読む JSON
 - [ ] T08 `test-schemas` (MacBook, 0.5d) ★ Contract 凍結の境界
