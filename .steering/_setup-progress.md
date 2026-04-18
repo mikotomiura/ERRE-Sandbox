@@ -187,5 +187,37 @@
   - 記録: `.steering/20260418-pyproject-scaffold/` (requirement/design/design-v1/design-comparison/decisions/tasklist)
   - /reimagine 適用: v2 + ハイブリッド調整 3 点を採用
   - 設計判断 8 件: uv_build 採用 / PEP 735 / ruff ALL / hybrid strict mypy / line-length 88 / uv.lock コミット / LICENSE 正式配置 / schemas.py docstring-only
-- [ ] T05 schemas-freeze ★ Contract 凍結の核
-- [ ] T06-T20 は MASTER-PLAN.md §4.2 参照
+- [x] **T05 schemas-freeze** ★ Contract 凍結の核 (MacBook, 2026-04-18, PR #5/#6)
+  - Pydantic v2 で `AgentState` / `Observation` / `ControlEnvelope` を凍結
+  - `ControlEnvelope` / `Observation` に discriminated union (Annotated + Field(discriminator="kind")) を採用
+  - 静的 `PersonaSpec` と動的 `AgentState` を完全分離 (橋渡しは `persona_id` のみ)
+  - `MemoryEntry` に embedding を持たせず、T10 で `StoredMemory` を別定義する方針
+  - 記録: `.steering/20260418-schemas-freeze/`
+- [x] **T06 persona-kant-yaml** (MacBook, 2026-04-18, PR #7)
+  - `personas/kant.yaml` を operational orientation (trigger→behavior→mechanism→consequence) で定義
+  - epistemic 3-tier (fact / legend / speculative) 完備、`primary_corpus_refs` は lean (orphan ゼロ)
+  - `default_sampling = (temperature=0.60, top_p=0.85, repeat_penalty=1.12)` = 後続ペルソナ温度帯見取り図の基準
+  - 記録: `.steering/20260418-persona-kant-yaml/`
+- [x] **T07 control-envelope-fixtures** (MacBook, 2026-04-18, PR #8)
+  - `fixtures/control_envelope/` を top-level 配置 (Godot developer が Python 依存なしで読める)
+  - tick=42 の coherent scenario で 7 fixture (Kant が peripatos で歩行) を束ねる
+  - `peripatetic` モード sampling_overrides = (+0.3, +0.05, -0.1) を persona-erre Skill と同期
+  - Kant speech は *Kritik der praktischen Vernunft* Beschluss 冒頭の後半句を採用
+  - 記録: `.steering/20260418-control-envelope-fixtures/`
+- [x] **T08 test-schemas** ★ Contract 凍結の境界 (MacBook, 2026-04-18, PR #9)
+  - 3 層契約ガード: Layer 1 (boundary 検証) / Layer 2 (meta-invariant: `extra="forbid"` + `schema_version`) / Layer 3 (JSON Schema golden drift 検知)
+  - `tests/schema_golden/` に golden を配置 (fixtures/ と意味を分離)
+  - `conftest.py` に callable factory `make_agent_state` / `make_envelope` + convenience fixture の二層構成
+  - ルックアップテーブル方式で `make_envelope` をディスパッチ (未消費 overrides は ValueError)
+  - 記録: `.steering/20260418-test-schemas/`
+- [x] **T15 godot-project-init** (MacBook, 2026-04-18, PR #10)
+  - Phase P MacBook 側ラインの scaffold (v2: Scaffolded Handoff を採用、v1 最小ブートを破棄)
+  - `godot_project/` に Godot 4.4 互換 + 4.6.2 実機、GL Compatibility renderer
+  - MainScene 階層を patterns.md §2 に完全準拠 (ZoneManager / AgentManager / WebSocketClient / UILayer)
+  - 各 dir に README.md (`.gitkeep` ではない) で GPL 分離ルール等の文脈を即時提供
+  - `tests/test_godot_project.py` で必須ファイル存在 / Python 混入ゼロ / Godot headless boot を機械検証
+  - 記録: `.steering/20260418-godot-project-init/`
+- [ ] T09 model-pull-g-gear (G-GEAR 側 / バックグラウンド)
+- [ ] T10-T14 は G-GEAR 側 Phase P (MASTER-PLAN.md §4.2 参照)
+- [ ] **T16 godot-ws-client** (MacBook, 次タスク) — Phase P MacBook 側ラインの 2 件目
+- [ ] T17-T20 は MASTER-PLAN.md §4.2 参照
