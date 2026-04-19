@@ -37,7 +37,7 @@
 - [ ] T18 `ui-dashboard-minimal` (MacBook, 0.5d) — optional
 
 ### Phase I: Integration
-- [ ] T19 `m2-integration-e2e` (両機, 1d)
+- [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ完了 (PR TBD)**: 試験契約モジュール `integration/` + skeleton tests + Markdown ナラティブ 4 枚 + T20 checklist。実行フェーズは T14 完成後
 - [ ] T20 `m2-acceptance` (両機, 0.5d) — `v0.1.0-m2` タグ付与
 
 ## 本番構築版 (M4 → M10-11)
