@@ -485,3 +485,57 @@
   - **M2 closeout 宣言**: Contract layer (WS/Handshake/Session FSM/Schema) 完全動作、
     GAP-1 (WorldRuntime↔Gateway 配線) のみ M4 に繰越。次マイルストーンは **M4
     `gateway-multi-agent-stream`** で full-stack orchestrator 実装
+
+- [x] **T21 m2-functional-closure** (両機, 2026-04-20, tag `v0.1.1-m2` 付与)
+  - MVP M2 の **機能的完了**。T20 契約層 closeout 後に残っていた GAP-1
+    (WorldRuntime↔Gateway 配線欠落) を解消し、MASTER-PLAN §4.4 の 4 検収項目のうち
+    **#1-#3 を実機 evidence 付きで PASS**、#4 Godot 30Hz 歩行は Mac 側録画で視覚確認
+  - 両機フロー: Mac 側で composition root を設計・実装 → G-GEAR 側で live 検証 →
+    検証中に bug を発見・修正 → 実機 evidence 取得 → 相互に records を push
+  - Mac 側成果 (PR #36):
+    - `src/erre_sandbox/bootstrap.py` (`BootConfig` + `_load_kant_persona` +
+      `_build_kant_initial_state` + `bootstrap` + `_supervise` with `AsyncExitStack` +
+      `asyncio.wait(FIRST_COMPLETED)` + SIGINT/SIGTERM handler)
+    - `src/erre_sandbox/__main__.py` (argparse CLI shell)
+    - `src/erre_sandbox/inference/ollama_adapter.py` に `health_check()` 追加
+    - `pyproject.toml` の `[project.scripts]` に `erre-sandbox` entry point
+    - `docs/architecture.md` §Gateway / §Inference 文言更新
+    - `tests/test_bootstrap.py` 11 件 PASS
+    - 設計フロー: v1 (素直な単一 `__main__`) と v2 (Composition Root + Lifecycle-First)
+      を `/reimagine` で比較し **ハイブリッド採択**
+  - G-GEAR 側成果 (PR #37、live 検証で発覚した 2 件の bug を修正):
+    - **fix #1** (`src/erre_sandbox/bootstrap.py`): `MemoryStore(...)` 作成直後に
+      `create_schema()` を呼ぶ処理が欠けており、初回 cognition tick で
+      `sqlite3.OperationalError: no such table: episodic_memory` が発生していた。
+      `memory.create_schema()` を追加 (idempotent な `CREATE TABLE IF NOT EXISTS`)
+    - **fix #2** (`src/erre_sandbox/world/tick.py`): `cognition/cycle._build_envelopes`
+      が MoveMsg の `target` に「現在 x/y/z + zone フィールド差し替え」で作成していたが、
+      `step_kinematics` は `locate_zone(dest.x, dest.y, dest.z)` で現在 zone を
+      再計算するため、zone 跨ぎが発生せず observation が pending に積まれなかった。
+      `_consume_result` で `locate_zone(tgt) ≠ tgt.zone` を検知したら
+      `default_spawn(tgt.zone)` に resolve (yaw/pitch 保持、layer 越境を避け
+      world 側で完結)
+  - 実機 evidence (`.steering/20260419-m2-functional-closure/evidence/`):
+    - `gateway-health-20260420-002242.json` — schema 0.1.0-m2 / status ok / active_sessions=2
+    - `ollama-tags-20260420-002242.json` — qwen3:8b + nomic-embed-text:latest
+    - `listen-ports-20260420-002242.txt` — port 8000 (gateway) + 11434 (ollama) LISTEN
+    - `cognition-ticks-20260420-002242.log` — `api/chat` + `api/embed` の ~10s cadence 40 行
+    - `episodic-memory-summary-20260420-002242.txt` — **COUNT=20 / MAX(recall_count)=23**
+    - `episodic-memory-sample-20260420-002242.txt` — 10 件サンプル (peripatos↔study 10 往復)
+  - 記録: `.steering/20260419-m2-functional-closure/` (requirement / design / design-v1 /
+    design-comparison / tasklist / handoff-to-g-gear / acceptance-evidence + evidence/)
+  - commits:
+    - `ac9c16f docs(steering): T21 m2-functional-closure の要件/設計/比較/タスクリストを作成`
+    - `19b5e50 feat(orchestrator): introduce bootstrap.py + __main__ for 1-Kant walker`
+    - `0dcaf53 docs(steering): T21 G-GEAR 側引き継ぎ手順を追加 — live 検証 4 検収項目 + v0.1.1-m2 tag 運用`
+    - `8a2c657 fix(orchestrator): bootstrap schema init + world zone resolution — unlocks MVP §4.4 #3`
+    - `8027df2 docs(steering): T21 MVP §4.4 3/4 検収項目 evidence + MASTER-PLAN [x] + known-gaps GAP-1 解消`
+  - PR 系譜:
+    - PR #36 (Mac): composition root (`bootstrap.py` + `__main__.py` + `erre-sandbox` CLI)
+    - PR #37 (G-GEAR): bug fix 2 件 + 実機 evidence + docs 整合、merge 後に `v0.1.1-m2` tag 付与
+  - 残: MVP §4.4 #4 Godot 30Hz 歩行の録画 (`evidence/godot-walking-*.mp4`) を
+    Mac 側 follow-up commit で追加予定 (tag への影響なし)
+  - **MVP 機能的完了宣言**: Contract layer (`v0.1.0-m2`) + functional closure (`v0.1.1-m2`)
+    で M2 完了。GAP-1 は T21 で解消、残 GAP (GAP-2 live 自動 E2E / GAP-4 Godot 4.6 diff)
+    は後続マイルストンに配置。次マイルストンは **M4 `gateway-multi-agent-stream`**
+    (3-agent 拡張 + reflection + semantic memory layer)
