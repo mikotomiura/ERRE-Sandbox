@@ -30,6 +30,7 @@ is explicitly called out when it lands.
 """
 
 from erre_sandbox.integration.acceptance import ACCEPTANCE_CHECKLIST, AcceptanceItem
+from erre_sandbox.integration.gateway import Registry, make_app
 from erre_sandbox.integration.metrics import M2_THRESHOLDS, Thresholds
 from erre_sandbox.integration.protocol import (
     HANDSHAKE_TIMEOUT_S,
@@ -61,8 +62,10 @@ __all__ = [
     "SCENARIO_WALKING",
     "SCHEMA_VERSION_HEADER",
     "AcceptanceItem",
+    "Registry",
     "Scenario",
     "ScenarioStep",
     "SessionPhase",
     "Thresholds",
+    "make_app",
 ]

@@ -387,7 +387,38 @@
     ruff / format / mypy --strict 全緑
   - 記録: `.steering/20260419-world-tick-zones/`
     (requirement / design / design-v1 / design-comparison / decisions / tasklist)
-- [ ] T14 gateway-fastapi-ws (G-GEAR)
+- [x] **T14 gateway-fastapi-ws** (G-GEAR, 2026-04-19, feature branch)
+  - FastAPI + Starlette WebSocket ゲートウェイ。T13 `WorldRuntime._envelopes` を唯一の
+    consumer として複数 Godot peer に fan-out
+  - 設計: 関数 = 状態機械 (Session クラス不在)、`asyncio.timeout(HANDSHAKE_TIMEOUT_S/
+    IDLE_DISCONNECT_S)` ネストで watchdog タスク排除、単一 `_broadcaster` タスクから
+    `Registry.fan_out` で全 per-session bounded queue (256) に push、満杯時 oldest 2 件
+    drop + `ErrorMsg(backlog_overflow)` warning + 新 env の 3 step
+  - `src/erre_sandbox/integration/gateway.py` — Registry / `ws_observe` / `_recv_loop` /
+    `_send_loop` / `_broadcaster` / `_lifespan` / `_health` / `_NullRuntime` / `make_app` /
+    `__main__` エントリポイント (`uvicorn.run(..., factory=True)`)
+  - `integration/__init__.py` — `Registry` / `make_app` を 2 シンボル追加 re-export
+  - 既存 Mac PR #23 の `integration/protocol.py` (SessionPhase, HANDSHAKE_TIMEOUT_S,
+    IDLE_DISCONNECT_S, MAX_ENVELOPE_BACKLOG, SCHEMA_VERSION_HEADER) を完全消費
+  - `tests/test_integration/conftest.py` — `MockRuntime` / `app` / `client` /
+    `fast_timeouts` fixture 追加 (既存 T19 scenario fixture は保持)
+  - `tests/test_integration/test_gateway.py` 新規 20 件:
+    Layer A 純粋関数 (Registry fan_out 4 件、_parse_envelope 4 件、_make_* 2 件) +
+    Layer B TestClient 統合 (/health / handshake success / forward envelope /
+    handshake_timeout / schema_mismatch / invalid first frame / invalid during active /
+    idle_disconnect / 2-client fan-out / NullRuntime blocks forever)
+  - 設計フロー: v1 (Session クラス + TaskGroup + session.py 分離 + watchdog task)
+    → `/reimagine` → v2 (関数即セッション + `asyncio.timeout` ネスト + 単一
+    gateway.py + Registry 薄ラッパ) フル採用
+  - code-reviewer HIGH 2 + MEDIUM 4: 全対応 (internal_error 情報漏洩防止 +
+    `maxsize=0` ガード + `_send_loop` の OSError/RuntimeError 包含 +
+    `_parse_envelope` の `len(raw)` 前段チェック + conftest docstring 更新)
+  - security-checker HIGH 1 + MEDIUM 2: 全対応 (ErrorMsg.detail 固定化 +
+    encode コスト削減)、CRITICAL ゼロ
+  - 全テスト 294 passed / 34 skipped (274 baseline から +20)、
+    ruff / format / mypy --strict 全緑
+  - 記録: `.steering/20260419-gateway-fastapi-ws/`
+    (requirement / design / design-v1 / design-comparison / decisions / tasklist)
 - [ ] T18 ui-dashboard-minimal (optional、MacBook)
 - [ ] T19 m2-integration-e2e (両機)
 - [ ] T20 m2-acceptance (両機)
