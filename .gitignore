@@ -2,6 +2,10 @@ ERRE-Sandbox_v0.2.pdf
 MEMO
 .claude/commands/commands_setup
 
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
 # PDF から pdftotext で生成した派生物 (T03 pdf-extract-baseline で生成)
 docs/_pdf_derived/
 
