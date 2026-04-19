@@ -28,16 +28,16 @@
 - [x] T11 `inference-ollama-adapter` (G-GEAR, 1d, PR #19) — Ollama `/api/chat` + ERRE サンプリング合成 / **CSDG 参照**: `csdg/llm_client.py` のプロバイダー抽象化パターンのみ (API は書き直し)
 - [x] T12 `cognition-cycle-minimal` (G-GEAR, 1.5d, PR #20) — 1-tick CoALA/ERRE パイプライン / **CSDG 参照**: `csdg/engine/state_transition.py` の半数式と HumanCondition 自動導出の 4 要素ロジックを流用 (MASTER-PLAN.md §B.3)
 - [x] T13 `world-tick-zones` (G-GEAR, 1d, PR #21) — single-coroutine heapq scheduler + Voronoi zones
-- [ ] T14 `gateway-fastapi-ws` (G-GEAR, 1d)
+- [x] T14 `gateway-fastapi-ws` (G-GEAR, 1d, PR #24) — FastAPI `/ws/observe` WebSocket gateway + Registry fan-out (per-session bounded queue, 256 backlog, oldest-drop + ErrorMsg 警告) + session FSM (AWAITING/ACTIVE/CLOSING を try/except で表現、watchdog なし) + 20 tests PASS
 
 #### MacBook 側
 - [x] T15 `godot-project-init` (MacBook, 0.5d)
 - [x] T16 `godot-ws-client` (MacBook, 1d, PR #12) — WebSocket + Router (7 専用 signal) + Fixture 境界分離 + schema 同期ガード
 - [x] T17 `godot-peripatos-scene` (MacBook, 1d, PR #17) — Peripatos 3D (非対称 post / PlaneMesh 40×4m) + AgentAvatar + Tween 駆動移動 (Contract speed 利用) + ZONE_MAP + 140 tests pass (main 合流後)
-- [x] T18 `ui-dashboard-minimal` (MacBook, 0.5d, PR TBD) — FastAPI mini app + Web Component ダッシュボード (SnapshotMsg/DeltaMsg/AlertMsg の 3-kind union) + 決定論的 stub generator、24 tests PASS
+- [x] T18 `ui-dashboard-minimal` (MacBook, 0.5d, PR #25) — FastAPI mini app + Web Component ダッシュボード (SnapshotMsg/DeltaMsg/AlertMsg の 3-kind union) + 決定論的 stub generator、24 tests PASS
 
 ### Phase I: Integration
-- [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ完了 (PR TBD)**: 試験契約モジュール `integration/` + skeleton tests + Markdown ナラティブ 4 枚 + T20 checklist。実行フェーズは T14 完成後
+- [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ完了 (PR #23)**: 試験契約モジュール `integration/` (protocol/scenarios/metrics/acceptance) + 23 tests contract snapshot + 11 skeleton skip + Markdown ナラティブ 4 枚 + T20 checklist。**実行フェーズ** (skeleton の skip を外す) は T14 完成後、G-GEAR セッションで着手予定
 - [ ] T20 `m2-acceptance` (両機, 0.5d) — `v0.1.0-m2` タグ付与
 
 ## 本番構築版 (M4 → M10-11)
