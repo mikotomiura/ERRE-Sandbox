@@ -26,8 +26,9 @@ extends Node
 ## gateway's :data:`erre_sandbox.schemas.SCHEMA_VERSION` or the gateway closes with
 ## ``ErrorMsg code="schema_mismatch"``.
 const CLIENT_SCHEMA_VERSION: String = "0.1.0-m2"
-## Reconnect delay in seconds (godot-gdscript patterns.md §1).
-const RECONNECT_DELAY: float = 5.0
+## Reconnect delay in seconds. Set to 2.0s to satisfy MVP M2 acceptance criterion
+## "WS 切断で 3 秒以内自動再接続" (MASTER-PLAN §4.4). See godot-gdscript patterns.md §1.
+const RECONNECT_DELAY: float = 2.0
 ## Upper bound for a single incoming WebSocket frame. Anything larger is dropped
 ## with a warning — defends the headless Godot process against a misbehaving
 ## gateway that emits oversize JSON (see security review HIGH #1 for context).

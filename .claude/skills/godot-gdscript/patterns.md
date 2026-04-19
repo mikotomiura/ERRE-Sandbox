@@ -11,8 +11,9 @@ extends Node
 
 ## WebSocket URL for G-GEAR gateway
 const WS_URL: String = "ws://g-gear.local:8000/stream"
-## Reconnect delay in seconds
-const RECONNECT_DELAY: float = 5.0
+## Reconnect delay in seconds. 2.0s satisfies MVP M2 "3 秒以内自動再接続"
+## (MASTER-PLAN §4.4). Keep under 3.0s for any MVP-stage project.
+const RECONNECT_DELAY: float = 2.0
 
 var _ws: WebSocketPeer = WebSocketPeer.new()
 var _connected: bool = false
