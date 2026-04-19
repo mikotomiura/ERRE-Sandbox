@@ -22,10 +22,12 @@ G-GEAR 側で **"両機" タスクの実機部分** を完遂することで T20
 - [ ] `8167076 docs(steering): T20 M2 acceptance closeout ...` が取り込まれていることを確認
 - [ ] `.steering/20260419-m2-acceptance/` ディレクトリが存在することを確認
 
-### 2. ACC-SESSION-COUNTER 実測 (optional evidence 強化)
+### 2. ACC-SESSION-COUNTER 実測 (optional evidence 強化) — ✅ MacBook 側で実施済 (2026-04-19 20:53 JST)
 
-本タスク実施で acceptance-checklist.md の ACC-SESSION-COUNTER が
-「runbook 策定のみ」→「runbook + 実測」に格上げされる。
+本タスクは MacBook 側で既に実施済。acceptance-checklist.md の ACC-SESSION-COUNTER は
+「runbook + 実測」に格上げ完了。evidence は `.steering/20260419-m2-acceptance/evidence/`
+配下 (特に `session-counter-settled-20260419-205304.log` が定着 90s ログ)。
+以下 2a-2d の手順は G-GEAR 側でも独立再現する場合の参考として残す。
 
 #### 2a. G-GEAR 側で gateway 起動
 

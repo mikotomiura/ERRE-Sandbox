@@ -1,0 +1,10 @@
+=== ACC-SESSION-COUNTER — post-disconnect sample ===
+godot stopped by user
+capture start: 2026-04-19 20:36:52 JST
+--- 5 samples (1Hz) after Godot stop ---
+20:36:52 {"schema_version":"0.1.0-m2","status":"ok","active_sessions":1}
+20:36:53 {"schema_version":"0.1.0-m2","status":"ok","active_sessions":1}
+20:36:54 {"schema_version":"0.1.0-m2","status":"ok","active_sessions":1}
+20:36:55 {"schema_version":"0.1.0-m2","status":"ok","active_sessions":1}
+20:36:56 {"schema_version":"0.1.0-m2","status":"ok","active_sessions":1}
+capture end: 2026-04-19 20:36:57 JST

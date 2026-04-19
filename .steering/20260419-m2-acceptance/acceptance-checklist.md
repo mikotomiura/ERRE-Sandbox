@@ -19,7 +19,7 @@ formalize し、T19 で発覚した GAP-3 / GAP-5 を本 T20 で解消する。
 | ACC ID | 項目 | 結果 | Evidence | 備考 |
 |---|---|---|---|---|
 | ACC-SCENARIO-WALKING | MacBook Godot で Peripatos シーン live 接続 | ✅ PASS (layer scoped) | `.steering/20260419-m2-integration-e2e-execution/macbook-verification.md` §観察結果 | WS / Handshake / Session レイヤーは成立。Avatar 視覚移動は GAP-1 (`_NullRuntime`) のため range-out、M4 で解消予定 |
-| ACC-SESSION-COUNTER | `/health` の `active_sessions` probe 運用 (runbook 策定) | ✅ PASS | `session-counter-runbook.md` | GAP-3 対応。**T20 の PASS 条件は "runbook 策定" まで**。T19 `macbook-verification.md` §Gateway 側 では `active_sessions=1` は "推定 (未計測)"。実測による counter 遷移 (0→1→0) の取得は M4 full-stack 完成時に ACC-SCENARIO-WALKING と併せて再実施 |
+| ACC-SESSION-COUNTER | `/health` の `active_sessions` probe 運用 (runbook + 実測 evidence) | ✅ PASS (強化) | `session-counter-runbook.md` + `evidence/README.md` + `evidence/session-counter-settled-20260419-205304.log` (90s 全 `sessions=0` 定着) + `evidence/session-counter-connected-20260419-203430.log` (5s 全 `sessions=1` 成立) | GAP-3 対応。T20 では当初「runbook 策定」までを PASS 条件としていたが、**2026-04-19 20:53 JST に MacBook 上で 0→1→0 遷移と 90s 定着を実測完了** (Godot PID 85003/87766 を SIGTERM で graceful 停止後 90s 連続 `sessions=0`)。`evidence/` 配下に全ログ保管 |
 | ACC-DOCS-UPDATED | `docs/architecture.md` に `_NullRuntime` 注意書き追加 | ✅ PASS | `docs/architecture.md` §Gateway (G-GEAR) | GAP-5 対応。M4 orchestrator への参照と session-counter runbook への link を追加 |
 | ACC-HANDSHAKE | 4-step handshake の確立を視認 | ✅ PASS | `macbook-verification.md` L82-88 (Godot Output) | `[WS] connecting` → `[WS] connected` → `[WS] client HandshakeMsg sent` が gateway 側 `session ACTIVE` まで遷移 (gateway 側未 close を成功とみなす) |
 | ACC-SCHEMA-COMPAT | Pydantic schemas.py と GDScript parser の field 互換性 | ✅ PASS | `src/erre_sandbox/schemas.py` + `godot_project/scripts/WebSocketClient.gd` | `schema_version=0.1.0-m2` で両端一致。ControlEnvelope / HandshakeMsg / WorldTickMsg / MoveMsg / AgentUpdateMsg の kind 判別動作 |
@@ -42,7 +42,7 @@ formalize し、T19 で発覚した GAP-3 / GAP-5 を本 T20 で解消する。
 |---|---|---|
 | GAP-1 WorldRuntime↔Gateway 配線 | ⏳ 未解消 | M4 最優先 (`full-stack-orchestrator`) |
 | GAP-2 live 自動化なし | ⏳ 未解消 | M7 検討 |
-| GAP-3 session counter 監視 | ✅ 解消 (T20) | `session-counter-runbook.md` |
+| GAP-3 session counter 監視 | ✅ 解消 (T20) | `session-counter-runbook.md` + `evidence/` (実測 0→1→0 + 90s 定着) |
 | GAP-4 Godot 4.6 diff | 🟡 記録のみ | 対応しない |
 | GAP-5 `_NullRuntime` docs 未反映 | ✅ 解消 (T20) | `docs/architecture.md` §Gateway |
 
