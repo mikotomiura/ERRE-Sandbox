@@ -1,0 +1,10 @@
+=== ACC-SESSION-COUNTER — connected sample ===
+godot log: [WS] connected to ws://g-gear.local:8000/ws/observe + client HandshakeMsg sent
+capture start: 2026-04-19 20:34:05 JST
+--- 5 samples (1Hz) while Godot connected ---
+20:34:05 
+20:34:08 
+20:34:11 
+20:34:14 
+20:34:17 
+capture end: 2026-04-19 20:34:20 JST
