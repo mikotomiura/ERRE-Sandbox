@@ -7,27 +7,27 @@
 ## MVP (M2) — 20 タスク
 
 ### Phase S: セットアップ (両機並列)
-- [ ] T01 `setup-g-gear` (G-GEAR, 1d)
-- [ ] T02 `setup-macbook` (MacBook, 0.5d)
-- [ ] T03 `pdf-extract-baseline` (MacBook, 0.5d) — pdftotext 化 + _pdf_derived/ 配置
+- [x] T01 `setup-g-gear` (G-GEAR, 1d, PR #11) — native Windows toolchain (uv 0.11.7 + Ollama 0.21.0)
+- [x] T02 `setup-macbook` (MacBook, 0.5d, PR #2) — Homebrew/gh/Godot/uv python 導入
+- [x] T03 `pdf-extract-baseline` (MacBook, 0.5d, PR #3) — pdftotext 化 + _pdf_derived/ 配置
 
 ### Phase C: Contract Freeze (MacBook 単独)
-- [ ] T04 `pyproject-scaffold` (MacBook, 0.5d)
+- [x] T04 `pyproject-scaffold` (MacBook, 0.5d, PR #4) — uv_build + PEP 735 + ruff ALL + hybrid strict mypy
 - [x] T05 `schemas-freeze` (MacBook, 1d) ★ Contract の核 — **CSDG 参照**: `csdg/schemas.py` の HumanCondition / CharacterState / DailyEvent 構造 (MASTER-PLAN.md §B.2)
 - [x] T06 `persona-kant-yaml` (MacBook, 0.5d) — **CSDG 参照**: `prompts/System_Persona.md` のペルソナ項目階層
 - [x] T07 `control-envelope-fixtures` (MacBook, 0.5d) — Godot と Python 両方から読む JSON
 - [x] T08 `test-schemas` (MacBook, 0.5d) ★ Contract 凍結の境界
 
 ### Phase BG: モデル pull (G-GEAR バックグラウンド)
-- [ ] T09 `model-pull-g-gear` (G-GEAR, 実時間 2-4h, 作業時間 0.5d)
+- [x] T09 `model-pull-g-gear` (G-GEAR, 実時間 2-4h, 作業時間 0.5d, PR #14) — qwen3:8b + nomic-embed-text (VRAM delta 6.2 GB)
 
 ### Phase P: Parallel Build (両機並列)
 
 #### G-GEAR 側
 - [x] T10 `memory-store` (G-GEAR, 1.5d, 設計 PR #15 + 実装 PR #16) — 4 kind テーブル + 共有 vec0 + embed prefix 強制、+38 テスト / **CSDG 参照**: `csdg/engine/memory.py` の 2 層構造 (MASTER-PLAN.md §B.2)
-- [ ] T11 `inference-ollama-adapter` (G-GEAR, 1d) — **CSDG 参照**: `csdg/llm_client.py` のプロバイダー抽象化パターンのみ (API は書き直し)
-- [ ] T12 `cognition-cycle-minimal` (G-GEAR, 1.5d) — **CSDG 参照**: `csdg/engine/state_transition.py` の半数式と HumanCondition 自動導出の 4 要素ロジックを流用 (MASTER-PLAN.md §B.3)
-- [ ] T13 `world-tick-zones` (G-GEAR, 1d)
+- [x] T11 `inference-ollama-adapter` (G-GEAR, 1d, PR #19) — Ollama `/api/chat` + ERRE サンプリング合成 / **CSDG 参照**: `csdg/llm_client.py` のプロバイダー抽象化パターンのみ (API は書き直し)
+- [x] T12 `cognition-cycle-minimal` (G-GEAR, 1.5d, PR #20) — 1-tick CoALA/ERRE パイプライン / **CSDG 参照**: `csdg/engine/state_transition.py` の半数式と HumanCondition 自動導出の 4 要素ロジックを流用 (MASTER-PLAN.md §B.3)
+- [x] T13 `world-tick-zones` (G-GEAR, 1d, PR #21) — single-coroutine heapq scheduler + Voronoi zones
 - [ ] T14 `gateway-fastapi-ws` (G-GEAR, 1d)
 
 #### MacBook 側
