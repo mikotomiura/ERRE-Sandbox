@@ -34,7 +34,7 @@
 - [x] T15 `godot-project-init` (MacBook, 0.5d)
 - [x] T16 `godot-ws-client` (MacBook, 1d, PR #12) — WebSocket + Router (7 専用 signal) + Fixture 境界分離 + schema 同期ガード
 - [x] T17 `godot-peripatos-scene` (MacBook, 1d, PR #17) — Peripatos 3D (非対称 post / PlaneMesh 40×4m) + AgentAvatar + Tween 駆動移動 (Contract speed 利用) + ZONE_MAP + 140 tests pass (main 合流後)
-- [ ] T18 `ui-dashboard-minimal` (MacBook, 0.5d) — optional
+- [x] T18 `ui-dashboard-minimal` (MacBook, 0.5d, PR TBD) — FastAPI mini app + Web Component ダッシュボード (SnapshotMsg/DeltaMsg/AlertMsg の 3-kind union) + 決定論的 stub generator、24 tests PASS
 
 ### Phase I: Integration
 - [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ完了 (PR TBD)**: 試験契約モジュール `integration/` + skeleton tests + Markdown ナラティブ 4 枚 + T20 checklist。実行フェーズは T14 完成後
