@@ -126,7 +126,7 @@ T02 ───┴─ T03
 - [ ] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される  *(GAP-1 → M4 待ち)*
 - [ ] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く  *(GAP-1 → M4 待ち)*
 - [ ] `uv run pytest` が schemas / memory / cognition で全グリーン
-- [ ] WS 切断で 3 秒以内自動再接続、LLM タイムアウトで「継続行動」フォールバック
+- [x] WS 切断で 3 秒以内自動再接続 *(T20 §3 で実測 PASS, reconnect ≤ 1s @ `RECONNECT_DELAY=2.0` / commit `d52ee8c`, evidence: `.steering/20260419-m2-acceptance/evidence/gateway-kill-probe-v2-20260419-2140.log`)*; [ ] LLM タイムアウトで「継続行動」フォールバック
 - [x] `.steering/YYYYMMDD-m2-acceptance/` に検収結果と再現手順を記録  *(T20 完了: `.steering/20260419-m2-acceptance/acceptance-checklist.md`)*
 - [ ] 作業ブランチ経由で main に merge 後、`v0.1.0-m2` タグを付与  *(T20 後の運用判断)*
 

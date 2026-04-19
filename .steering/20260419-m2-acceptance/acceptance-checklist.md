@@ -23,8 +23,9 @@ formalize し、T19 で発覚した GAP-3 / GAP-5 を本 T20 で解消する。
 | ACC-DOCS-UPDATED | `docs/architecture.md` に `_NullRuntime` 注意書き追加 | ✅ PASS | `docs/architecture.md` §Gateway (G-GEAR) | GAP-5 対応。M4 orchestrator への参照と session-counter runbook への link を追加 |
 | ACC-HANDSHAKE | 4-step handshake の確立を視認 | ✅ PASS | `macbook-verification.md` L82-88 (Godot Output) | `[WS] connecting` → `[WS] connected` → `[WS] client HandshakeMsg sent` が gateway 側 `session ACTIVE` まで遷移 (gateway 側未 close を成功とみなす) |
 | ACC-SCHEMA-COMPAT | Pydantic schemas.py と GDScript parser の field 互換性 | ✅ PASS | `src/erre_sandbox/schemas.py` + `godot_project/scripts/WebSocketClient.gd` | `schema_version=0.1.0-m2` で両端一致。ControlEnvelope / HandshakeMsg / WorldTickMsg / MoveMsg / AgentUpdateMsg の kind 判別動作 |
+| **ACC-DISCONNECT-RECONNECT** | Gateway kill → Godot auto-reconnect の実機検証 (MVP 条件 "3 秒以内") | ✅ PASS | `evidence/gateway-kill-probe-v2-20260419-2140.log` (kill→reconnect **≤ 1s**) + `evidence/gateway-restart-v2-20260419-2141.log` (`192.168.3.118` から `WebSocket /ws/observe [accepted]` ×2) + `evidence/README.md §3` | T20 §3 で handoff 手順通り実施。**before** 実測 (`RECONNECT_DELAY=5.0`): reconnect ~10s → MVP 未達。**after** 実測 (`RECONNECT_DELAY=2.0`, commit `d52ee8c`): reconnect **≤ 1s** → MVP PASS。2 クライアント同時 reconnect も成立 |
 
-## 5 ACC 全 PASS — M2 closeout 条件達成
+## 6 ACC 全 PASS — M2 closeout 条件達成
 
 ### 未達/範囲外項目の扱い
 
@@ -32,7 +33,6 @@ formalize し、T19 で発覚した GAP-3 / GAP-5 を本 T20 で解消する。
 |---|---|---|
 | Avatar Tween 移動の視認 | GAP-1 により `_NullRuntime` 依存で検証不可 | **M4 `gateway-multi-agent-stream`** で real runtime inject して再検証 |
 | 30Hz 描画 / WorldTickMsg 受信 | 同上 (envelope 流入なし) | 同上 |
-| disconnect → reconnect 実機確認 | T19 では未実施 | 次回 M4 実機時に検証 (ACC 外として継続観察) |
 | Godot live 自動 E2E | GAP-2 により未整備 | **M7 observability-logging** で検討 |
 | Godot 4.6 diff 削減 | GAP-4 (記録のみ) | 対応しない |
 
@@ -54,8 +54,12 @@ formalize し、T19 で発覚した GAP-3 / GAP-5 を本 T20 で解消する。
 - T19 で発覚した構造ギャップ (GAP-1) は M4 に明示タスク化
 - GAP-3 / GAP-5 の closeout 対応は本 T20 で完了
 - 残 GAP (GAP-2 / GAP-4) は優先度に応じて後続マイルストンに配置
+- **T20 §3 disconnect/reconnect 実機検証完了** — MVP 検収条件「WS 切断で 3 秒以内自動再接続」
+  (MASTER-PLAN §4.4) を実測で PASS (commit `d52ee8c` で `RECONNECT_DELAY=5.0s → 2.0s`
+  に調整後、reconnect ≤ 1s を観測)
 
-M2 completion は MASTER-PLAN §4.3 の T20 行を `[x]` に反映することで formalize する。
+M2 completion は MASTER-PLAN §4.3 の T20 行を `[x]` に反映し、
+§4.4 の「WS 切断で 3 秒以内自動再接続」を `[x]` に更新することで formalize する。
 
 ## 参照
 

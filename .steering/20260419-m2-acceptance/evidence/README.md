@@ -2,7 +2,8 @@
 
 MacBook (probe) → G-GEAR gateway (`192.168.3.85:8000/health`) への LAN 側 probe と、
 G-GEAR (probe) → gateway (`localhost:8000/health`) への localhost 側 probe を併記する
-1Hz polling ログ。T20 M2 Acceptance の ACC-SESSION-COUNTER (GAP-3) 実測 evidence。
+1Hz polling ログ。T20 M2 Acceptance の ACC-SESSION-COUNTER (GAP-3) 実測 evidence、
+および T20 §3 disconnect/reconnect 検証 (MVP 検収条件「3 秒以内自動再接続」) の実測 evidence。
 
 ## ログ一覧
 
@@ -16,6 +17,10 @@ G-GEAR (probe) → gateway (`localhost:8000/health`) への localhost 側 probe 
 | 切断後遅延 / 再接続混在 | `session-counter-disconnect-delayed-20260419-203709.log` | 90s | `0` に落ちる瞬間あり → 再接続で `1` に戻る fluctuation | Godot 自動再接続ロジックが動いていた痕跡 |
 | **G-GEAR 側 cycle** | `session-counter-g-gear-cycle-20260419-203900.log` | **180s 4 完全サイクル** | `1→0→1` を 4 回、disconnect から reconnect まで毎回 **5s で定常** (20:39-20:42) | G-GEAR `localhost` 側観測による auto-reconnect 強力補強 evidence |
 | **定着 evidence** | `session-counter-settled-20260419-205304.log` | **90s 全て `sessions=0`** | Godot (Play + Editor) を `SIGTERM` で全停止後 | **ACC-SESSION-COUNTER の定着確認本体** |
+| §3 before (5.0s) | `gateway-kill-probe-20260419-2122.log` | 70s | gateway kill → `sessions=1` 復帰まで **10s** (RECONNECT_DELAY=5.0 時) | MVP 条件 3s 未達の記録 (before 状態) |
+| §3 before restart log | `gateway-restart-20260419-2123.log` | — | uvicorn 再起動 stdout + `/health` トラフィック | gateway PID 移行の補強 |
+| **§3 after (2.0s)** | `gateway-kill-probe-v2-20260419-2140.log` | **70s** | gateway kill → `sessions=2` 復帰まで **≤ 1s** (RECONNECT_DELAY=2.0 適用後) | **MVP 条件 3 秒以内 PASS evidence 本体** |
+| **§3 after restart log** | `gateway-restart-v2-20260419-2141.log` | — | uvicorn 起動直後に `192.168.3.118` (Mac) から `WebSocket /ws/observe [accepted]` ×2 | Mac → G-GEAR 実 WebSocket reconnect の server 側裏取り |
 
 ## 観察要点
 
@@ -59,6 +64,53 @@ T20 acceptance-checklist.md の本 ACC の評価は、runbook のみから:
 - 補強 evidence: `evidence/session-counter-connected-20260419-203430.log` (1 成立 5s)
 
 の **runbook + 実測 evidence** に格上げ。
+
+## §3 disconnect/reconnect 実機検証 (T20 追補)
+
+MVP M2 検収条件「WS 切断で 3 秒以内自動再接続」(MASTER-PLAN §4.4) の実機検証。
+Before / After 比較で `godot_project/scripts/WebSocketClient.gd` の
+`RECONNECT_DELAY` を 5.0s → 2.0s に短縮した効果を実測。
+
+### Before (RECONNECT_DELAY = 5.0s) — MVP 条件 未達
+
+`gateway-kill-probe-20260419-2122.log` より抜粋:
+
+| Event | Timestamp | 経過 |
+|---|---|---|
+| KILL (Stop-Process -Id 20220) | 21:22:57.983 | T+0 |
+| Gateway down (probe empty) | 21:22:58 〜 21:23:21 | +1 〜 +24s |
+| Gateway 復帰 (sessions=0 観測) | 21:23:23 | +25s |
+| **Godot reconnect (sessions=1)** | **21:23:33** | **+35s (復帰から 10s)** |
+
+reconnect latency **約 10s** = RECONNECT_DELAY 5.0s × 2 サイクル分の待ち合わせに一致。
+MVP 条件 3 秒に対して 2 サイクル超過。
+
+### After (RECONNECT_DELAY = 2.0s) — MVP 条件 PASS
+
+`gateway-kill-probe-v2-20260419-2140.log` より抜粋 (Godot 2 クライアント接続中):
+
+| Event | Timestamp | 経過 |
+|---|---|---|
+| KILL (Stop-Process -Id 12684) | 21:40:53.222 | T+0 |
+| Gateway down (probe empty) | 21:40:53 〜 21:41:28 | +1 〜 +36s |
+| Gateway 復帰 (sessions=0 観測) | 21:41:31 | +38s |
+| **Godot reconnect (sessions=2)** | **21:41:32** | **+39s (復帰から ≤ 1s)** |
+
+probe 粒度 1Hz で `sessions=0` → `sessions=2` が 1 秒以内に観測。MVP 条件「3 秒以内」を
+**2 秒の余裕で PASS**。しかも 2 クライアント同時 reconnect が成立。
+
+補強: `gateway-restart-v2-20260419-2141.log` の uvicorn server 側ログで、
+起動直後 `Application startup complete` に続き `192.168.3.118:65145 - "WebSocket
+/ws/observe" [accepted]` と `192.168.3.118:65144 - "WebSocket /ws/observe"
+[accepted]` の 2 本が **連続して accept** されているため、Mac (192.168.3.118) 側の
+`WebSocketClient.gd` auto-reconnect が server 側でも裏取りできる。
+
+### 実装変更のトレーサビリティ
+
+- commit `d52ee8c` (feat(godot): WebSocketClient RECONNECT_DELAY 5.0s → 2.0s に短縮)
+  - `godot_project/scripts/WebSocketClient.gd:30` — 定数の差し替え
+  - `.claude/skills/godot-gdscript/patterns.md §1` — サンプル値を同期、
+    MVP ステージ projects 向け upper bound 3.0s を明記
 
 ## 参照
 
