@@ -17,6 +17,10 @@ G-GEAR (probe) → gateway (`localhost:8000/health`) への localhost 側 probe 
 | **G-GEAR 側 cycle** | `session-counter-g-gear-cycle-20260419-203900.log` | **180s 4 完全サイクル** | `1→0→1` を 4 回、disconnect から reconnect まで毎回 **5s で定常** (20:39-20:42) | G-GEAR `localhost` 側観測による auto-reconnect 強力補強 evidence |
 | **定着 evidence** | `session-counter-settled-20260419-205304.log` | **90s 全て `sessions=0`** | Godot (Play + Editor) を `SIGTERM` で全停止後 | **ACC-SESSION-COUNTER の定着確認本体** |
 | **disconnect/reconnect 実機** | `session-counter-disconnect-reconnect-20260419-212132.log` | **205s** (probe 180s + 末尾観測 25s) | G-GEAR gateway を `Stop-Process -Force` で停止 → 約 26s 後 restart。MacBook 側 Godot は `RECONNECT_DELAY=2.0` (commit `d52ee8c`) を反映 | **MVP 検収条件「WS 切断で 3 秒以内自動再接続」の実機 evidence** (gateway-up 状態の 3 disconnect-reconnect cycle が全て 2.1s で復帰) |
+| G-GEAR 側 kill/before (5.0s) | `gateway-kill-probe-20260419-2122.log` | 70s | G-GEAR `localhost` 1Hz probe。gateway kill 21:22:57 → Godot reconnect 21:23:33 = **~10s** (RECONNECT_DELAY=5.0 時の 2 サイクル待ち合わせ) | RECONNECT_DELAY 変更前の **補強観測**。MVP 未達状態の before-state を localhost 粒度で記録 |
+| G-GEAR 側 kill/before restart | `gateway-restart-20260419-2123.log` | — | 上記 kill 後の uvicorn 再起動 stdout + `/health` トラフィック | PID 20220 → 12684 移行の補強 |
+| **G-GEAR 側 kill/after (2.0s)** | `gateway-kill-probe-v2-20260419-2140.log` | 70s | G-GEAR `localhost` 1Hz probe。gateway kill 21:40:53 → sessions=2 復帰 21:41:32 = **≤ 1s 粒度で観測** (復帰時点で既に 2 client 同時 reconnect 成立) | commit `d52ee8c` 適用後の **補強観測**。MacBook 側 ms 粒度 evidence (2.1s) と整合、かつ **2 client 同時 reconnect** を裏取り |
+| **G-GEAR 側 kill/after restart** | `gateway-restart-v2-20260419-2141.log` | — | uvicorn `Application startup complete` 直後に `192.168.3.118:65145 - "WebSocket /ws/observe" [accepted]` + `192.168.3.118:65144 - "WebSocket /ws/observe" [accepted]` の 2 本 | **server 側での accept 観測**。Mac → G-GEAR reconnect を gateway 側から裏取り |
 
 ## 観察要点
 
@@ -56,6 +60,21 @@ G-GEAR (probe) → gateway (`localhost:8000/health`) への localhost 側 probe 
   RECONNECT_DELAY を 5.0 → 2.0 に短縮 (commit `d52ee8c`) した効果が
   実測でも確認され、**MVP 検収条件「WS 切断で 3 秒以内自動再接続」(MASTER-PLAN §4.4) を満たす**。
   G-GEAR cycle ログ (5s 定常) との比較で **2.9s 短縮** を達成
+
+- **G-GEAR 側 localhost probe 補強観測** (`gateway-kill-probe-20260419-2122.log` / `gateway-kill-probe-v2-20260419-2140.log`):
+  G-GEAR `localhost:8000/health` からの 1Hz probe により、MacBook 側 ms 粒度 evidence を
+  gateway の直接観測側 (LAN 経路非依存) から裏取り。Before / After 比較:
+
+  | Phase | RECONNECT_DELAY | kill 時刻 | reconnect 観測 | 評価 |
+  |---|---|---|---|---|
+  | Before | 5.0s | 21:22:57.983 | sessions=1 復帰 21:23:33 (復帰 +10s) | MVP 未達 |
+  | **After** | **2.0s** | 21:40:53.222 | **sessions=2 復帰 21:41:32 (復帰 +≤1s 粒度)** | **MVP PASS** |
+
+  After 観測では probe 粒度 1Hz 内で `sessions=0 → sessions=2` が 1 秒以内に揃うため、
+  MacBook 側 ms 計測値 **2.1s** と整合 (粒度の差で本 probe では `≤1s` として丸められている)。
+  さらに 2 client 同時 reconnect を同時に成立させた点と、補強 `gateway-restart-v2-20260419-2141.log`
+  の uvicorn server 側で **Mac IP `192.168.3.118` から `WebSocket /ws/observe [accepted]` が 2 本**
+  記録されている点により、実際の socket accept が server 側から裏取りできる
 
 ### 今回の定着手順 (再現可)
 
