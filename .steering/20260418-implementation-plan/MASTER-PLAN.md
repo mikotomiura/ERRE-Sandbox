@@ -117,14 +117,18 @@ T02 ───┴─ T03
 
 ### 4.4 MVP 検収条件
 
-- [ ] G-GEAR で `ollama serve` 起動、`uv run python -m erre_sandbox.inference.server` が ws://g-gear.local:8000/stream を listen
-- [ ] Kant エージェントが peripatos ゾーンを周回移動、認知サイクルが 10 秒ごと 1 回 LLM 応答を返す
-- [ ] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される
-- [ ] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く
+> **T20 closeout (2026-04-19)**: Contract layer (WS/Handshake/Session/Schema) は T19 で達成。
+> Full-stack 配線 (GAP-1) は `_NullRuntime` 依存のため **M4 `gateway-multi-agent-stream`** に繰越。
+> GAP-3/5 は本 T20 で解消 (`.steering/20260419-m2-acceptance/acceptance-checklist.md`)。
+
+- [ ] G-GEAR で `ollama serve` 起動、`uv run python -m erre_sandbox.inference.server` が ws://g-gear.local:8000/stream を listen  *(M4 orchestrator で再検証)*
+- [ ] Kant エージェントが peripatos ゾーンを周回移動、認知サイクルが 10 秒ごと 1 回 LLM 応答を返す  *(GAP-1 → M4 待ち)*
+- [ ] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される  *(GAP-1 → M4 待ち)*
+- [ ] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く  *(GAP-1 → M4 待ち)*
 - [ ] `uv run pytest` が schemas / memory / cognition で全グリーン
 - [ ] WS 切断で 3 秒以内自動再接続、LLM タイムアウトで「継続行動」フォールバック
-- [ ] `.steering/YYYYMMDD-m2-acceptance/` に検収結果と再現手順を記録
-- [ ] 作業ブランチ経由で main に merge 後、`v0.1.0-m2` タグを付与
+- [x] `.steering/YYYYMMDD-m2-acceptance/` に検収結果と再現手順を記録  *(T20 完了: `.steering/20260419-m2-acceptance/acceptance-checklist.md`)*
+- [ ] 作業ブランチ経由で main に merge 後、`v0.1.0-m2` タグを付与  *(T20 後の運用判断)*
 
 ---
 

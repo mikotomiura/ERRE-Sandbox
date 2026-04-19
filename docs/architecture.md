@@ -99,6 +99,15 @@
   - FastAPI + uvicorn + websockets (BSD-3)
   - ControlEnvelope スキーマ + kind フィールドでメッセージ多重化
   - Pydantic v2 によるスキーマ検証
+- **起動方式と `_NullRuntime` 注意**:
+  - `python -m erre_sandbox.integration.gateway` 単体起動は **debug-only default**。
+    内部で `_NullRuntime` (class in `src/erre_sandbox/integration/gateway.py`) が注入され、
+    `recv_envelope()` は永久に sleep するため Avatar / WorldTick 等の envelope は **ゼロ件** 配信される
+  - **Production 起動は `make_app(runtime=world_runtime)` で real `WorldRuntime` を inject 必須**
+  - 1 コマンドで persona loading → CognitionCycle → WorldRuntime → Gateway を連鎖起動する
+    full-stack orchestrator は M4 `gateway-multi-agent-stream` タスクで整備予定
+  - `/health` の `active_sessions` counter は MacBook 側から 1Hz で probe して Godot 接続の silent failure を検出する
+    (runbook: `.steering/20260419-m2-acceptance/session-counter-runbook.md`)
 
 ### Orchestrator (MacBook Air M4)
 - **責務**: シミュレーション制御、ERRE DSL 解釈
