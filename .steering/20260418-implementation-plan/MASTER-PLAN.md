@@ -120,11 +120,15 @@ T02 ───┴─ T03
 > **T20 closeout (2026-04-19)**: Contract layer (WS/Handshake/Session/Schema) は T19 で達成。
 > Full-stack 配線 (GAP-1) は `_NullRuntime` 依存のため **M4 `gateway-multi-agent-stream`** に繰越。
 > GAP-3/5 は本 T20 で解消 (`.steering/20260419-m2-acceptance/acceptance-checklist.md`)。
+>
+> **T21 closeout (2026-04-20)**: PR #36 (`bootstrap.py` + `__main__.py` 導入、`erre-sandbox` CLI entry point) と live 検証中に発見・修正した bug 2 件 (`bootstrap.create_schema()` + `world/tick.py` の MoveMsg zone resolve) により **GAP-1 解消**。
+> 本 §4.4 の 4 検収項目のうち #1-#3 を実機 evidence 付きで PASS、#4 は Mac 側 Godot 録画で視覚確認。
+> Evidence 一式: `.steering/20260419-m2-functional-closure/acceptance-evidence.md` + `evidence/`。
 
-- [ ] G-GEAR で `ollama serve` 起動、`uv run python -m erre_sandbox.inference.server` が ws://g-gear.local:8000/stream を listen  *(M4 orchestrator で再検証)*
-- [ ] Kant エージェントが peripatos ゾーンを周回移動、認知サイクルが 10 秒ごと 1 回 LLM 応答を返す  *(GAP-1 → M4 待ち)*
-- [ ] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される  *(GAP-1 → M4 待ち)*
-- [ ] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く  *(GAP-1 → M4 待ち)*
+- [x] G-GEAR で `ollama serve` 起動、`uv run erre-sandbox` が ws://g-gear.local:8000/ws/observe を listen  *(T21 完了, evidence: `gateway-health-*.json` + `listen-ports-*.txt`)*
+- [x] Kant エージェントが peripatos ゾーンを周回移動、認知サイクルが 10 秒ごと 1 回 LLM 応答を返す  *(T21 完了, evidence: `cognition-ticks-*.log` + `episodic-memory-sample-*.txt` の 10 往復 zone_transition)*
+- [x] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される  *(T21 完了, evidence: `episodic-memory-summary-*.txt` **COUNT=20 / MAX(recall_count)=23**)*
+- [x] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く  *(T21 完了, evidence: `godot-walking-*.mp4` [Mac 側録画])*
 - [ ] `uv run pytest` が schemas / memory / cognition で全グリーン
 - [ ] WS 切断で 3 秒以内自動再接続、LLM タイムアウトで「継続行動」フォールバック
 - [x] `.steering/YYYYMMDD-m2-acceptance/` に検収結果と再現手順を記録  *(T20 完了: `.steering/20260419-m2-acceptance/acceptance-checklist.md`)*

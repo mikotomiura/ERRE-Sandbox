@@ -1,0 +1,10 @@
+Where-Object : 用語 'http://127.0.0.1:11434/api/tags.LocalPort' は、コマンドレット、関数、スクリプト ファイル、または操作可
+能なプログラムの名前として認識されません。名前が正しく記述されていることを確認し、パスが含まれている場合はそのパスが正し
+いことを確認してから、再試行してください。
+発生場所 行:1 文字:38
++ ... te Listen | Where-Object { http://127.0.0.1:11434/api/tags.LocalPort  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (http://127.0.0..../tags.LocalPort:String) [Where-Object], CommandNotFou 
+   ndException
+    + FullyQualifiedErrorId : CommandNotFoundException,Microsoft.PowerShell.Commands.WhereObjectCommand
+ 

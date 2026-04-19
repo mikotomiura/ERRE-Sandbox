@@ -1,0 +1,30 @@
+06e19a7a-4733-4c76-83b1-01cc69360dbf  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:23:21.975547+00:00
+  content: [zone_transition] study -> peripatos
+
+e4325c15-59ce-4306-9a09-db85a7bd87d8  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:23:12.091425+00:00
+  content: [zone_transition] peripatos -> study
+
+017595de-4f8b-41ab-969a-6edda9d7665f  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:23:01.953815+00:00
+  content: [zone_transition] study -> peripatos
+
+a12cfb4d-6a38-4e1d-b381-57be0d848453  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:51.960489+00:00
+  content: [zone_transition] peripatos -> study
+
+77a2306a-dadb-4d7a-9234-9826dda0072e  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:41.967277+00:00
+  content: [zone_transition] study -> peripatos
+
+f858eb40-62b5-4521-ab6e-5a2407ce7a91  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:31.949122+00:00
+  content: [zone_transition] peripatos -> study
+
+dbaa9d0a-a1d6-4f91-b6e1-074f3ec63aa5  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:21.961317+00:00
+  content: [zone_transition] study -> peripatos
+
+f2a3e63d-32ac-415c-af14-187b55d8a5c2  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:11.940444+00:00
+  content: [zone_transition] peripatos -> study
+
+283b9d53-3a4f-4a25-aca1-2ab6d71a9ca4  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:22:03.187603+00:00
+  content: [zone_transition] study -> peripatos
+
+4cbdf835-882c-4d72-bb8a-7f1c9d37db19  agent=a_kant_001  imp=0.50  rc=0  ct=2026-04-19T15:21:58.101167+00:00
+  content: [zone_transition] peripatos -> study
+

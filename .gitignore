@@ -40,3 +40,7 @@ godot_project/export_presets.cfg
 # M2 acceptance / smoke run logs (T19 実行フェーズで追加)
 # env var M2_LOG_PATH を設定時のみ生成される jsonl / txt ログ
 logs/
+
+# T21 runtime artifacts
+var/
+.claude/scheduled_tasks.lock
