@@ -358,7 +358,35 @@
   - 記録: `.steering/20260419-cognition-cycle-minimal/`
     (requirement / design / design-v1 / design-comparison / decisions /
     blockers / tasklist)
-- [ ] T13 world-tick-zones (G-GEAR)
+- [x] **T13 world-tick-zones** (G-GEAR, 2026-04-19, feature branch)
+  - M2 の Simulation Layer ドライバ: 30Hz 物理 / 0.1Hz 認知 / 1Hz heartbeat を
+    単一コルーチン + heapq 絶対時刻スケジューラで駆動 (v1 の TaskGroup 3 タスク案を
+    `/reimagine` で破棄して v2 採用)
+  - `src/erre_sandbox/world/zones.py` — Voronoi 最近傍ゾーン判定
+    (`ZONE_CENTERS` / `ADJACENCY` / `locate_zone` / `default_spawn` /
+    `adjacent_zones`)。矩形 AABB + `ZoneNotFoundError` を排し、全座標が
+    5 ゾーンに一意分割される (壁・境界ケースの分岐ゼロ)
+  - `src/erre_sandbox/world/physics.py` — `Kinematics` (world 内部型、
+    schemas.Position を汚さない) + `step_kinematics` 等速直線移動 +
+    `apply_move_command`。snap 時も `locate_zone` で zone 再計算 (stale zone 対策)
+  - `src/erre_sandbox/world/tick.py` — `Clock` ABC + `RealClock` /
+    `ManualClock(advance(dt) で決定論)` + `ScheduledEvent(order=True, seq tie-break)` +
+    `AgentRuntime` + `WorldRuntime`。anti-drift 絶対時刻再スケジュール
+    (`due_at += period`)、`asyncio.gather(return_exceptions=True)` で N 認知並列、
+    unbounded envelope queue + `recv_envelope()` / `drain_envelopes()` 2 面 API
+  - `world/__init__.py` — 14 シンボル top-level re-export
+  - `tests/test_world/` 新規 45 件: zones 21 / physics 9 / tick 15
+    (ManualClock FIFO / stop lifecycle / N エージェント gather / 例外隔離 /
+    `llm_fell_back` 継続 / MoveMsg → 物理補間 / ゾーン跨ぎで
+    `ZoneTransitionEvent.from_zone=prev` 保証 / heartbeat 周期 / drain FIFO)
+  - 設計フロー: v1 (TaskGroup + AABB + Protocol + bounded Queue) → `/reimagine` →
+    v2 (単一コルーチン heapq + Voronoi + Clock ABC + unbounded Queue) フル採用
+  - code-reviewer HIGH 2 + MEDIUM 2: 即対応完了 (from_zone バグ修正 +
+    gather 二重 catch 削除 + snap 時 zone 再計算 + register_agent docstring)
+  - 全テスト 248 passed / 23 skipped (203 baseline から +45)、
+    ruff / format / mypy --strict 全緑
+  - 記録: `.steering/20260419-world-tick-zones/`
+    (requirement / design / design-v1 / design-comparison / decisions / tasklist)
 - [ ] T14 gateway-fastapi-ws (G-GEAR)
 - [ ] T18 ui-dashboard-minimal (optional、MacBook)
 - [ ] T19 m2-integration-e2e (両機)
