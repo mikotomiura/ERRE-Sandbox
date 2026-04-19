@@ -40,6 +40,9 @@ ui = [
     "streamlit>=1.39,<2",
 ]
 
+[project.scripts]
+erre-sandbox = "erre_sandbox.__main__:cli"
+
 [project.urls]
 Homepage = "https://github.com/mikotomiura/erre-sandbox"
 Repository = "https://github.com/mikotomiura/erre-sandbox"

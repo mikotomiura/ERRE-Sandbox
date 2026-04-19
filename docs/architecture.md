@@ -99,15 +99,21 @@
   - FastAPI + uvicorn + websockets (BSD-3)
   - ControlEnvelope スキーマ + kind フィールドでメッセージ多重化
   - Pydantic v2 によるスキーマ検証
-- **起動方式と `_NullRuntime` 注意**:
-  - `python -m erre_sandbox.integration.gateway` 単体起動は **debug-only default**。
-    内部で `_NullRuntime` (class in `src/erre_sandbox/integration/gateway.py`) が注入され、
-    `recv_envelope()` は永久に sleep するため Avatar / WorldTick 等の envelope は **ゼロ件** 配信される
-  - **Production 起動は `make_app(runtime=world_runtime)` で real `WorldRuntime` を inject 必須**
-  - 1 コマンドで persona loading → CognitionCycle → WorldRuntime → Gateway を連鎖起動する
-    full-stack orchestrator は M4 `gateway-multi-agent-stream` タスクで整備予定
+- **起動方式**:
+  - **Production (MVP 以降)**: `python -m erre_sandbox` (または `erre-sandbox` コマンド)。
+    `src/erre_sandbox/bootstrap.py::bootstrap()` が `MemoryStore` + `EmbeddingClient` +
+    `OllamaChatClient` + `CognitionCycle` + `WorldRuntime` を構築し、
+    `make_app(runtime=world_runtime)` で gateway を inject して uvicorn と対等 supervise する
+  - **Debug-only**: `python -m erre_sandbox.integration.gateway` 単体起動は uvicorn factory
+    mode で `_NullRuntime` を注入する。`recv_envelope()` は永久 sleep するため envelope は
+    **ゼロ件** 配信 — `/health` / WS コネクション契約の検証用途のみ。production では使わない
   - `/health` の `active_sessions` counter は MacBook 側から 1Hz で probe して Godot 接続の silent failure を検出する
     (runbook: `.steering/20260419-m2-acceptance/session-counter-runbook.md`)
+- **Inference エンドポイント解釈 (MVP 段階)**:
+  - MVP M2 では独立した `inference/server.py` を立てず、**gateway 8000 番を通じて
+    cognition 結果が WS envelope 経由で配信される** pragmatic 運用
+  - MASTER-PLAN §4.4 #1「inference server listen」はこの gateway 配信を指す
+  - M7 `inference-sglang-migration` で推論 (SGLang) と gateway を分離する設計へ移行予定
 
 ### Orchestrator (MacBook Air M4)
 - **責務**: シミュレーション制御、ERRE DSL 解釈

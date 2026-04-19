@@ -242,6 +242,29 @@ class OllamaChatClient:
             "options": merged_options,
         }
 
+    async def health_check(self) -> None:
+        """Verify Ollama is reachable. Raise ``OllamaUnavailableError`` if not.
+
+        Probes ``GET /api/tags`` which is a cheap listing endpoint that does
+        not load a model. Used by the orchestrator at startup (fail-fast so
+        the operator notices immediately instead of hitting the first
+        cognition tick 10s later).
+        """
+        try:
+            response = await self._client.get("/api/tags")
+        except httpx.TimeoutException as exc:
+            raise OllamaUnavailableError(
+                f"Ollama /api/tags timeout after {self._timeout}s: {exc!r}",
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise OllamaUnavailableError(
+                f"Ollama /api/tags unreachable at {self.endpoint}: {exc!r}",
+            ) from exc
+        if response.status_code != httpx.codes.OK:
+            raise OllamaUnavailableError(
+                f"Ollama /api/tags returned HTTP {response.status_code}",
+            )
+
     async def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             response = await self._client.post(self.CHAT_PATH, json=body)
