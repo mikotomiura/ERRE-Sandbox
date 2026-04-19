@@ -1,9 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://jsvumt4nsmvn"]
 
-[ext_resource type="Script" path="res://scripts/WorldManager.gd" id="1_worldmgr"]
-[ext_resource type="Script" path="res://scripts/WebSocketClient.gd" id="2_wsclient"]
-[ext_resource type="Script" path="res://scripts/EnvelopeRouter.gd" id="3_envrouter"]
-[ext_resource type="Script" path="res://scripts/AgentManager.gd" id="4_agentmgr"]
+[ext_resource type="Script" uid="uid://bllf0fjwbikp7" path="res://scripts/WorldManager.gd" id="1_worldmgr"]
+[ext_resource type="Script" uid="uid://dpheq7xqjwu3e" path="res://scripts/WebSocketClient.gd" id="2_wsclient"]
+[ext_resource type="Script" uid="uid://dsf5wl0i3oxte" path="res://scripts/EnvelopeRouter.gd" id="3_envrouter"]
+[ext_resource type="Script" uid="uid://cva8rjrmmattq" path="res://scripts/AgentManager.gd" id="4_agentmgr"]
 
 [sub_resource type="Environment" id="1_env"]
 background_mode = 1
@@ -12,39 +12,41 @@ ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.65, 0.75, 1)
 ambient_light_energy = 0.3
 
-[node name="MainScene" type="Node3D"]
+[node name="MainScene" type="Node3D" unique_id=1404513804]
 script = ExtResource("1_worldmgr")
 
-[node name="Environment" type="WorldEnvironment" parent="."]
+[node name="Environment" type="WorldEnvironment" parent="." unique_id=189341109]
 environment = SubResource("1_env")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Environment"]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Environment" unique_id=368995508]
 transform = Transform3D(1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071, 0, 10, 0)
 shadow_enabled = true
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1867495374]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 20)
 current = true
 
-[node name="ZoneManager" type="Node3D" parent="."]
+[node name="ZoneManager" type="Node3D" parent="." unique_id=981836740]
 
-[node name="EnvelopeRouter" type="Node" parent="."]
+[node name="EnvelopeRouter" type="Node" parent="." unique_id=1792355104]
 script = ExtResource("3_envrouter")
 
-[node name="AgentManager" type="Node3D" parent="."]
+[node name="AgentManager" type="Node3D" parent="." unique_id=75119993]
 script = ExtResource("4_agentmgr")
 router_path = NodePath("../EnvelopeRouter")
 
-[node name="WebSocketClient" type="Node" parent="."]
+[node name="WebSocketClient" type="Node" parent="." unique_id=449818480]
 script = ExtResource("2_wsclient")
 
-[node name="UILayer" type="CanvasLayer" parent="."]
+[node name="UILayer" type="CanvasLayer" parent="." unique_id=920137691]
 
-[node name="SpeechBubbleContainer" type="Control" parent="UILayer"]
+[node name="SpeechBubbleContainer" type="Control" parent="UILayer" unique_id=1787971483]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="DebugOverlay" type="Label" parent="UILayer"]
+[node name="DebugOverlay" type="Label" parent="UILayer" unique_id=1203039555]
 offset_left = 10.0
 offset_top = 10.0
 offset_right = 600.0
