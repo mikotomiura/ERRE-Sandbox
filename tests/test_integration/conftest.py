@@ -1,23 +1,33 @@
 """Shared fixtures for ``tests/test_integration``.
 
-This conftest serves two audiences:
+This conftest serves three audiences:
 
 * **T14 gateway tests** (``test_gateway.py``) — the ``MockRuntime``,
   ``app``, ``client``, and ``fast_timeouts`` fixtures below provide a
   lightweight harness for exercising the WebSocket gateway without pulling
   in the whole world-runtime stack.
-* **T19 E2E skeleton tests** (``test_scenario_*.py``) — currently marked
-  ``@pytest.mark.skip`` pending the T19 execution phase; the frozen
-  :class:`Scenario` / :class:`Thresholds` fixtures are kept here as their
-  one-line entry points.
+* **T19 execution-phase scenario tests** (``test_scenario_*.py``) — now
+  live (skip removed); the frozen :class:`Scenario` / :class:`Thresholds`
+  fixtures are their one-line entry points, plus :class:`FakeEmbedder` and
+  :func:`memory_store_with_fake_embedder` for the memory-write Layer B2
+  path.
+* **T20 acceptance observability** — :func:`m2_logger` writes structured
+  jsonl records when env var ``M2_LOG_PATH`` is set (no-op otherwise,
+  keeping CI output clean).
 """
 
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+import hashlib
+import json
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Final
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 
 from erre_sandbox.integration import (
@@ -30,9 +40,15 @@ from erre_sandbox.integration import (
     make_app,
     protocol,
 )
+from erre_sandbox.memory import (
+    DEFAULT_EMBED_DIM,
+    DOC_PREFIX,
+    QUERY_PREFIX,
+    MemoryStore,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import AsyncIterator, Iterator
 
     from fastapi import FastAPI
 
@@ -114,3 +130,113 @@ def fast_timeouts(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(protocol, "HANDSHAKE_TIMEOUT_S", 0.3)
     monkeypatch.setattr(protocol, "IDLE_DISCONNECT_S", 0.5)
     monkeypatch.setattr(protocol, "MAX_ENVELOPE_BACKLOG", 4)
+
+
+# =============================================================================
+# T19 execution-phase fixtures (Layer B2 memory + observability)
+# =============================================================================
+
+
+class FakeEmbedder:
+    """Deterministic embedder used by Layer B2 memory tests.
+
+    Mirrors :class:`erre_sandbox.memory.EmbeddingClient` duck-typed methods
+    (``embed_document`` / ``embed_query``) but produces stable 768-d vectors
+    from a SHA-256 digest of the prefixed text. The exposed ``last_docs`` /
+    ``last_queries`` lists let tests assert that the correct prefix was
+    applied at the call site — the T10 D5 contract.
+
+    Intentionally kept in ``tests/`` so the test-only fake never leaks into
+    the production dependency graph (decisions.md D1).
+    """
+
+    def __init__(self) -> None:
+        self.last_docs: list[str] = []
+        self.last_queries: list[str] = []
+
+    async def embed_document(self, text: str) -> list[float]:
+        prefixed = f"{DOC_PREFIX}{text}"
+        self.last_docs.append(prefixed)
+        return self._vec(prefixed)
+
+    async def embed_query(self, text: str) -> list[float]:
+        prefixed = f"{QUERY_PREFIX}{text}"
+        self.last_queries.append(prefixed)
+        return self._vec(prefixed)
+
+    @staticmethod
+    def _vec(seed: str) -> list[float]:
+        digest = hashlib.sha256(seed.encode("utf-8")).digest()
+        # 768 floats in [-1.0, 1.0], cycling the 32-byte digest deterministically.
+        return [
+            (digest[i % len(digest)] / 127.5) - 1.0 for i in range(DEFAULT_EMBED_DIM)
+        ]
+
+
+@pytest.fixture
+def fake_embedder() -> FakeEmbedder:
+    """Return a fresh :class:`FakeEmbedder` per test."""
+    return FakeEmbedder()
+
+
+@pytest_asyncio.fixture
+async def memory_store_with_fake_embedder(
+    fake_embedder: FakeEmbedder,
+) -> AsyncIterator[tuple[MemoryStore, FakeEmbedder]]:
+    """In-memory :class:`MemoryStore` paired with :class:`FakeEmbedder`.
+
+    Schema is created eagerly; the store is closed on teardown to keep each
+    test isolated (no cross-test sqlite state leak).
+    """
+    store = MemoryStore(":memory:")
+    store.create_schema()
+    try:
+        yield store, fake_embedder
+    finally:
+        await store.close()
+
+
+_PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
+_ALLOWED_LOG_ROOT: Final[Path] = (_PROJECT_ROOT / "logs").resolve()
+
+
+class M2LogPathError(ValueError):
+    """Raised when ``M2_LOG_PATH`` resolves outside ``<project>/logs/``."""
+
+
+class M2Logger:
+    """Opt-in jsonl logger for T20 acceptance runs.
+
+    When ``M2_LOG_PATH`` is unset, :meth:`log` is a no-op so CI stays clean.
+    When set, the path must resolve inside ``<project>/logs/`` — any other
+    location (absolute or traversal via ``..``) raises
+    :class:`M2LogPathError` so an accidental or hostile env var cannot
+    write to arbitrary filesystem locations.
+    """
+
+    def __init__(self, path: str | None) -> None:
+        if not path:
+            self._path: Path | None = None
+            return
+        resolved = Path(path).resolve()
+        try:
+            resolved.relative_to(_ALLOWED_LOG_ROOT)
+        except ValueError as exc:  # relative_to raises ValueError on mismatch
+            raise M2LogPathError(
+                f"M2_LOG_PATH must be inside {_ALLOWED_LOG_ROOT}; got {resolved}",
+            ) from exc
+        self._path = resolved
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log(self, **fields: Any) -> None:
+        if self._path is None:
+            return
+        record = {"ts": datetime.now(tz=UTC).isoformat(), **fields}
+        with self._path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+@pytest.fixture
+def m2_logger() -> M2Logger:
+    """Return an :class:`M2Logger` honouring the ``M2_LOG_PATH`` env var."""
+    return M2Logger(os.environ.get("M2_LOG_PATH"))

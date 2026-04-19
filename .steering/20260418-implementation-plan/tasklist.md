@@ -37,7 +37,7 @@
 - [x] T18 `ui-dashboard-minimal` (MacBook, 0.5d, PR #25) — FastAPI mini app + Web Component ダッシュボード (SnapshotMsg/DeltaMsg/AlertMsg の 3-kind union) + 決定論的 stub generator、24 tests PASS
 
 ### Phase I: Integration
-- [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ完了 (PR #23)**: 試験契約モジュール `integration/` (protocol/scenarios/metrics/acceptance) + 23 tests contract snapshot + 11 skeleton skip + Markdown ナラティブ 4 枚 + T20 checklist。**実行フェーズ** (skeleton の skip を外す) は T14 完成後、G-GEAR セッションで着手予定
+- [ ] T19 `m2-integration-e2e` (両機, 1d) — **設計フェーズ (PR #23)** 完了、**G-GEAR 側実行フェーズ (PR #27)** 完了: skeleton 11 件の `@pytest.mark.skip` を外し Layer B1/B2 実装で全 PASS、`FakeEmbedder` / `M2Logger` / `_ws_helpers.py` 追加、Layer C smoke run (Ollama + gateway `/health`) 1 回成功、329 passed / 23 skipped。**MacBook 側実行フェーズは未完** (Godot 実機 30Hz 描画検証 + `ws://g-gear.local:8000/ws/observe` ライブ接続確認)。`handoff-to-macbook.md` に引き継ぎ、MacBook セッション合流時に再開して T19 全体を closeout してから T20 へ
 - [ ] T20 `m2-acceptance` (両機, 0.5d) — `v0.1.0-m2` タグ付与
 
 ## 本番構築版 (M4 → M10-11)
