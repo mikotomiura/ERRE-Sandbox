@@ -1,6 +1,7 @@
 # ACC-SESSION-COUNTER — Evidence 集
 
-MacBook (probe) → G-GEAR gateway (`192.168.3.85:8000/health`) への
+MacBook (probe) → G-GEAR gateway (`192.168.3.85:8000/health`) への LAN 側 probe と、
+G-GEAR (probe) → gateway (`localhost:8000/health`) への localhost 側 probe を併記する
 1Hz polling ログ。T20 M2 Acceptance の ACC-SESSION-COUNTER (GAP-3) 実測 evidence。
 
 ## ログ一覧
@@ -13,6 +14,7 @@ MacBook (probe) → G-GEAR gateway (`192.168.3.85:8000/health`) への
 | 接続 | `session-counter-connected-20260419-203430.log` | 5s | `sessions=1` 連続 (Godot Play 中) | 0→1 遷移の成立確認 |
 | 切断直後 (graceful なし) | `session-counter-disconnected-20260419-203652.log` | 5s | `sessions=1` 継続 (Godot 停止直後) | gateway 側 close 検知遅延の観察 (ghost session) |
 | 切断後遅延 / 再接続混在 | `session-counter-disconnect-delayed-20260419-203709.log` | 90s | `0` に落ちる瞬間あり → 再接続で `1` に戻る fluctuation | Godot 自動再接続ロジックが動いていた痕跡 |
+| **G-GEAR 側 cycle** | `session-counter-g-gear-cycle-20260419-203900.log` | **180s 4 完全サイクル** | `1→0→1` を 4 回、disconnect から reconnect まで毎回 **5s で定常** (20:39-20:42) | G-GEAR `localhost` 側観測による auto-reconnect 強力補強 evidence |
 | **定着 evidence** | `session-counter-settled-20260419-205304.log` | **90s 全て `sessions=0`** | Godot (Play + Editor) を `SIGTERM` で全停止後 | **ACC-SESSION-COUNTER の定着確認本体** |
 
 ## 観察要点
@@ -31,6 +33,12 @@ MacBook (probe) → G-GEAR gateway (`192.168.3.85:8000/health`) への
   Godot の Play プロセスが裏で走ったまま (PID 85003) だと `WebSocketClient.gd` の
   auto-reconnect が gateway を継続ノック → counter が揺れる。
   「完全停止」の判定には **`ps aux | grep godot` で Godot/Play プロセスの不在確認** が必要
+- **G-GEAR 側 localhost cycle 観測** (`session-counter-g-gear-cycle-20260419-203900.log`):
+  20:39-20:42 の 180s で `1→0→1` 遷移を **4 完全サイクル** 観測。`1→0` 発生後
+  常に **5 秒後** に `0→1` に戻り、再接続タイミングが極めて一定。
+  ログ分布は 180 サンプル中 `sessions=1` が 164 (91.1%) / `sessions=0` が 16 (8.9%) で、
+  auto-reconnect の定常性を裏付ける。本 probe は G-GEAR 側 `localhost` 観測のため
+  LAN 経路や Firewall の影響を排除しており、**MacBook 側 probe と観測側相補** となる
 
 ### 今回の定着手順 (再現可)
 
