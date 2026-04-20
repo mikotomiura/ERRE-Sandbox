@@ -148,6 +148,65 @@ T02 ───┴─ T03
 
 **段階的負債解消**: 認証追加 (v1.0 前後)、MkDocs JA/EN (M10)、Zenodo DOI 発行 (v1.0)。
 
+### 5.1 M4 詳細計画 (2026-04-20 planning 時点、`.steering/20260420-m4-planning/` より)
+
+M4 を **3 軸 (Multiplicity / Temporality / Sociality)** に分解し、Contract-First で
+foundation を先に凍結してから並列実装する。詳細は `.steering/20260420-m4-planning/design.md`。
+
+#### M4 サブタスク (6 本)
+
+| # | タスク | 役割 | 依存 | 並列可 |
+|---|---|---|---|---|
+| 1 | `m4-contracts-freeze` | Foundation: schemas 拡張 + fixture + `schema_version=0.2.0-m4` | なし | — |
+| 2 | `m4-personas-nietzsche-rikyu-yaml` | Axis A content: 2 ペルソナ YAML | #1 | ✅ (#3/#4 と並列) |
+| 3 | `m4-memory-semantic-layer` | Axis B infra: `semantic_memory` + CRUD | #1 | ✅ (#2/#4 と並列) |
+| 4 | `m4-gateway-multi-agent-stream` | Axis A+C infra: per-agent routing + Dialog*Msg 配線 | #1 | ✅ (#2/#3 と並列) |
+| 5 | `m4-cognition-reflection` | Axis B logic: reflection step | #1, #3 | ❌ (#3 後の直列) |
+| 6 | `m4-multi-agent-orchestrator` | Integration: bootstrap N-agent + DialogScheduler + live 検証 | #1-#5 すべて | ❌ (最後) |
+
+#### 依存グラフ
+
+```
+                  [#1 m4-contracts-freeze]
+                        │
+     ┌──────────┬───────┴───────┬──────────────┐
+     ↓          ↓               ↓              ↓
+  #2 personas #3 memory-     #4 gateway-    (3 本並列実行可)
+              semantic-      multi-agent-
+              layer          stream
+                │
+                ↓
+           #5 cognition-
+           reflection      (直列、#3 merge 後)
+                │
+                └──→ [#6 m4-multi-agent-orchestrator] ←── 全 5 本 merged
+                           │
+                           ↓
+                   [M4 acceptance live 検証]
+```
+
+**Critical Path**: #1 → #3 → #5 → #6 ≈ 4-7 日。#2/#4 は並列で critical path を後押ししない。
+
+#### Contract 凍結対象 (foundation = `m4-contracts-freeze`)
+
+- `AgentSpec` (persona_id + initial_zone)
+- `BootConfig.agents: list[AgentSpec]` (既存 struct 拡張)
+- `ReflectionEvent`, `SemanticMemoryRecord`
+- `DialogInitiateMsg` / `DialogTurnMsg` / `DialogCloseMsg` (ControlEnvelope variant)
+- `DialogScheduler` (**Protocol interface only**, 実装は #6 で)
+
+凍結しないもの (個別タスクで決定): reflection 発火条件、sqlite schema 詳細、turn-taking policy、routing 方式。
+
+#### M4 acceptance 条件 (MVP §4.4 形式)
+
+1. `uv run erre-sandbox --personas kant,nietzsche,rikyu` で 3 agent 起動、
+   `/health` で `schema_version=0.2.0-m4`, `active_sessions` counter が正しい
+2. 3 avatar が peripatos で同時に歩き、10s 周期で各 agent の cognition tick が回る
+3. 各 agent で N tick (default 10) ごとに reflection が発火、`semantic_memory` に要約
+   レコードが追加され、後続 tick で recall される
+4. DialogInitiateMsg が発火して他 agent が DialogTurnMsg を 1 往復以上返す
+5. MacBook Godot で 3 avatar が描画され 60s 以上 30Hz を維持
+
 ---
 
 ## 6. G-GEAR 側アクション一覧
