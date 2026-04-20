@@ -129,10 +129,10 @@ T02 ───┴─ T03
 - [x] Kant エージェントが peripatos ゾーンを周回移動、認知サイクルが 10 秒ごと 1 回 LLM 応答を返す  *(T21 完了, evidence: `cognition-ticks-*.log` + `episodic-memory-sample-*.txt` の 10 往復 zone_transition)*
 - [x] `sqlite-vec` に `episodic_memory` レコードが追加され、`recall_count>0` で再検索される  *(T21 完了, evidence: `episodic-memory-summary-*.txt` **COUNT=20 / MAX(recall_count)=23**)*
 - [x] MacBook 側 Godot でアバターが peripatos シーンを 30Hz 更新で歩く  *(T21 完了, evidence: `godot-walking-*.mp4` [Mac 側録画])*
-- [ ] `uv run pytest` が schemas / memory / cognition で全グリーン
-- [ ] WS 切断で 3 秒以内自動再接続、LLM タイムアウトで「継続行動」フォールバック
+- [x] `uv run pytest` が schemas / memory / cognition で全グリーン  *(T21 formalization 2026-04-20: 346 PASS / 17 skip / 0 fail)*
+- [x] WS 切断で 3 秒以内自動再接続、LLM タイムアウトで「継続行動」フォールバック  *(GDScript `WebSocketClient.gd:31` `RECONNECT_DELAY=2.0` < 3s + `src/erre_sandbox/cognition/cycle.py:_fallback` 実装確認)*
 - [x] `.steering/YYYYMMDD-m2-acceptance/` に検収結果と再現手順を記録  *(T20 完了: `.steering/20260419-m2-acceptance/acceptance-checklist.md`)*
-- [ ] 作業ブランチ経由で main に merge 後、`v0.1.0-m2` タグを付与  *(T20 後の運用判断)*
+- [x] 作業ブランチ経由で main に merge 後、`v0.1.1-m2` タグを付与  *(T21 closeout, 計画時の `v0.1.0-m2` から T20→T21 間の GAP-1 解消 + composition root 追加の意味差分を反映して minor bump、`git tag -a v0.1.1-m2` で付与済)*
 
 ---
 
