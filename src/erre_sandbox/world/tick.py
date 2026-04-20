@@ -32,7 +32,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 from erre_sandbox.schemas import (
     AgentState,
+    AgentView,
     ControlEnvelope,
+    DialogScheduler,
     MoveMsg,
     Observation,
     PersonaSpec,
@@ -43,7 +45,7 @@ from erre_sandbox.world.physics import Kinematics, apply_move_command, step_kine
 from erre_sandbox.world.zones import default_spawn, locate_zone
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Sequence
 
     from erre_sandbox.cognition import CognitionCycle, CycleResult
 
@@ -211,6 +213,7 @@ class WorldRuntime:
         # switch to ``maxsize=10_000`` and add an oldest-drop / back-pressure
         # policy so a stalled client cannot grow memory without bound.
         self._envelopes: asyncio.Queue[ControlEnvelope] = asyncio.Queue()
+        self._dialog_scheduler: DialogScheduler | None = None
         self._running: bool = False
         self._seq: int = 0
 
@@ -260,6 +263,24 @@ class WorldRuntime:
         while not self._envelopes.empty():
             out.append(self._envelopes.get_nowait())
         return out
+
+    def inject_envelope(self, envelope: ControlEnvelope) -> None:
+        """Append ``envelope`` to the fan-out queue from non-runtime code.
+
+        Exposed for the dialog scheduler's envelope sink so it can interleave
+        ``dialog_*`` messages with the cognition-generated stream without a
+        second delivery path. Raw queue access stays private.
+        """
+        self._envelopes.put_nowait(envelope)
+
+    def attach_dialog_scheduler(self, scheduler: DialogScheduler) -> None:
+        """Install the scheduler consulted at the end of each cognition tick.
+
+        Separated from ``__init__`` because the scheduler's envelope sink
+        normally wants to call :meth:`inject_envelope` on this same runtime,
+        which is awkward to arrange before the runtime exists.
+        """
+        self._dialog_scheduler = scheduler
 
     # ----- Lifecycle -----
 
@@ -352,6 +373,47 @@ class WorldRuntime:
         )
         for rt, res in zip(runtimes, results, strict=True):
             self._consume_result(rt, res)
+        self._run_dialog_tick()
+
+    def _run_dialog_tick(self) -> None:
+        """Evaluate the dialog scheduler after all per-agent cognition ran.
+
+        The scheduler consumes a narrow projection (:class:`AgentView`) of
+        each runtime so it cannot reach into kinematics or the pending
+        observation buffer. Dialog envelopes are delivered through the
+        scheduler's injected sink, which :func:`bootstrap` wires back to
+        :meth:`inject_envelope`.
+        """
+        if self._dialog_scheduler is None:
+            return
+        views = self._agent_views()
+        # The scheduler type is a Protocol frozen in schemas.py §7.5 —
+        # ``tick`` is the concrete extension exposed by the default
+        # :class:`InMemoryDialogScheduler`. Callers supplying a custom
+        # scheduler should either subclass that class or accept that the
+        # proximity auto-fire logic is skipped.
+        tick_fn = getattr(self._dialog_scheduler, "tick", None)
+        if tick_fn is None:
+            return
+        current_world_tick = max(
+            (rt.state.tick for rt in self._agents.values()),
+            default=0,
+        )
+        try:
+            tick_fn(current_world_tick, views)
+        except Exception:
+            # A misbehaving scheduler must not crash the cognition loop.
+            logger.exception("dialog scheduler tick raised")
+
+    def _agent_views(self) -> Sequence[AgentView]:
+        return [
+            AgentView(
+                agent_id=rt.agent_id,
+                zone=rt.state.position.zone,
+                tick=rt.state.tick,
+            )
+            for rt in self._agents.values()
+        ]
 
     async def _on_heartbeat_tick(self) -> None:
         current_tick = max(
