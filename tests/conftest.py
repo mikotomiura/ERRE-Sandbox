@@ -227,6 +227,7 @@ def _build_dialog_turn(tick: int, overrides: dict[str, Any]) -> DialogTurnMsg:
         speaker_id=overrides.pop("speaker_id", "a_kant_001"),
         addressee_id=overrides.pop("addressee_id", "a_nietzsche_001"),
         utterance=overrides.pop("utterance", "..."),
+        turn_index=overrides.pop("turn_index", 0),
     )
 
 

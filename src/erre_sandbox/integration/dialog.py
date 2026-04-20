@@ -182,7 +182,7 @@ class InMemoryDialogScheduler:
     def close_dialog(
         self,
         dialog_id: str,
-        reason: Literal["completed", "interrupted", "timeout"],
+        reason: Literal["completed", "interrupted", "timeout", "exhausted"],
     ) -> DialogCloseMsg:
         """Close ``dialog_id`` and emit the envelope via the sink.
 

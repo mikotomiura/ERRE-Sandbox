@@ -27,6 +27,13 @@
           "title": "Curiosity",
           "type": "number"
         },
+        "dialog_turn_budget": {
+          "default": 6,
+          "description": "Remaining dialog turns before the agent auto-closes its current dialog with ``DialogCloseMsg.reason='exhausted'``. Default 6 was validated empirically in the M5 LLM spike (.steering/20260420-m5-llm-spike/decisions.md judgement 4). 0 means 'no more turns permitted'.",
+          "minimum": 0,
+          "title": "Dialog Turn Budget",
+          "type": "integer"
+        },
         "dmn_activation": {
           "default": 0.3,
           "description": "Default Mode Network activation proxy.",
@@ -383,7 +390,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "0.2.0-m4",
+      "default": "0.3.0-m5",
       "title": "Schema Version",
       "type": "string"
     },

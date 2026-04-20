@@ -1,6 +1,6 @@
 {
   "_comment": "M4 foundation example: 3-agent BootConfig.agents payload. persona_id values must exist once m4-personas-nietzsche-rikyu-yaml lands.",
-  "schema_version": "0.2.0-m4",
+  "schema_version": "0.3.0-m5",
   "agents": [
     {
       "persona_id": "kant",

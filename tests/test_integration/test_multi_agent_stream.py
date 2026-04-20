@@ -171,6 +171,7 @@ class TestEnvelopeTargetAgents:
             speaker_id="kant",
             addressee_id="rikyu",
             utterance="...",
+            turn_index=0,
         )
         assert _envelope_target_agents(env) == frozenset({"kant", "rikyu"})
 
@@ -288,6 +289,7 @@ class TestRegistrySubscriptionFilter:
                 speaker_id="kant",
                 addressee_id="nietzsche",
                 utterance="",
+                turn_index=0,
             ),
         )
         assert q_kant.qsize() == 1
@@ -472,6 +474,7 @@ class TestSubscribeIntegration:
                     speaker_id="kant",
                     addressee_id="nietzsche",
                     utterance="Guten Tag",
+                    turn_index=0,
                 ),
             )
             # Global WorldTickMsg sentinel so every subscriber has something

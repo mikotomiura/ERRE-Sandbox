@@ -12,7 +12,7 @@
 #
 # Design rationale recorded in .steering/20260418-persona-kant-yaml/design.md
 
-schema_version: "0.2.0-m4"
+schema_version: "0.3.0-m5"
 persona_id: kant
 display_name: "Immanuel Kant"
 era: "1724-1804"

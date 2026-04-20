@@ -12,18 +12,23 @@ Sections
 * §4 AgentState (dynamic, per-tick)
 * §5 Observation (event, discriminated by ``event_type``)
 * §6 Memory — incl. ``ReflectionEvent`` / ``SemanticMemoryRecord`` (M4)
-* §7 ControlEnvelope (message, discriminated by ``kind``) — incl. ``Dialog*`` variants (M4)
-* §7.5 DialogScheduler (Protocol, M4 foundation — interface only)
+* §7 ControlEnvelope (message, discriminated by ``kind``) — incl. ``Dialog*`` (M4)
+* §7.5 Protocols — DialogScheduler (M4) / ERREModeTransitionPolicy (M5)
+  / DialogTurnGenerator (M5), interface-only
 * §8 Public surface (``__all__``)
 
 Design choices are recorded in ``.steering/20260418-schemas-freeze/decisions.md``
-(M2) and ``.steering/20260420-m4-contracts-freeze/decisions.md`` (M4 foundation).
+(M2), ``.steering/20260420-m4-contracts-freeze/decisions.md`` (M4 foundation),
+and ``.steering/20260420-m5-contracts-freeze/decisions.md`` (M5 FSM + dialog_turn).
 This module MUST NOT import any other ``erre_sandbox.*`` module
 (see ``docs/repository-structure.md`` §4 and the ``architecture-rules`` skill).
 """
 
 from __future__ import annotations
 
+from collections.abc import (
+    Sequence,  # noqa: TC003 — resolved at runtime by get_type_hints in tests
+)
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Final, Literal, NamedTuple, Protocol, TypeAlias
@@ -34,7 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.2.0-m4"
+SCHEMA_VERSION: Final[str] = "0.3.0-m5"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
@@ -45,6 +50,29 @@ M4 bump (0.1.0-m2 → 0.2.0-m4): adds the AgentSpec / ReflectionEvent /
 SemanticMemoryRecord primitives and the dialog_initiate / dialog_turn /
 dialog_close ControlEnvelope variants required by the 3-agent milestone.
 See ``.steering/20260420-m4-contracts-freeze/`` for the rationale.
+
+M5 bump (0.2.0-m4 → 0.3.0-m5): adds the dialog_turn budget / ordering fields
+(:attr:`Cognitive.dialog_turn_budget`, :attr:`DialogTurnMsg.turn_index`) and
+the ``"exhausted"`` close reason required by the ERRE-mode FSM + dialog_turn
+LLM-generation milestone. Two new Protocols (:class:`ERREModeTransitionPolicy`,
+:class:`DialogTurnGenerator`) are frozen as interfaces so the four parallel
+sub-tasks can type-hint against them.
+
+Compatibility with M4 payloads:
+
+* Additive and wire-compatible: ``Cognitive.dialog_turn_budget`` (defaulted)
+  and the new ``"exhausted"`` literal on ``DialogCloseMsg.reason``.
+* **Breaking for dialog_turn producers**: :attr:`DialogTurnMsg.turn_index`
+  is required (``Field(...)``) with no default, so any M4 sender that emits
+  a ``dialog_turn`` envelope without ``turn_index`` will fail validation at
+  0.3.0-m5. This is deliberate — spike judgement 4 in
+  ``.steering/20260420-m5-llm-spike/decisions.md`` made per-turn ordering
+  load-bearing for the exhaustion close-out. The sole M4 producer
+  (``InMemoryDialogScheduler``) is upgraded in this same bump, and the
+  ``fixtures/control_envelope/dialog_turn.json`` fixture has been regenerated
+  to include ``turn_index=0``.
+
+See ``.steering/20260420-m5-contracts-freeze/`` for the rationale.
 """
 
 
@@ -303,6 +331,17 @@ class Cognitive(BaseModel):
         description=(
             "Free-form short goal strings; promoted to a structured Goal type "
             "in M4 (this is a planned breaking change)."
+        ),
+    )
+    dialog_turn_budget: int = Field(
+        default=6,
+        ge=0,
+        description=(
+            "Remaining dialog turns before the agent auto-closes its current "
+            "dialog with ``DialogCloseMsg.reason='exhausted'``. Default 6 was "
+            "validated empirically in the M5 LLM spike "
+            "(.steering/20260420-m5-llm-spike/decisions.md judgement 4). "
+            "0 means 'no more turns permitted'."
         ),
     )
 
@@ -601,6 +640,12 @@ class DialogTurnMsg(_EnvelopeBase):
     ``speaker_id`` and ``addressee_id`` are both carried so Godot can drive
     the correct animations (speech bubble / head-turn) without re-deriving
     orientation from world state.
+
+    ``turn_index`` was added in M5 (0.3.0-m5) so consumers can (a) detect
+    out-of-order delivery over WebSocket and (b) correlate with
+    :attr:`Cognitive.dialog_turn_budget` for exhaustion close-out. The first
+    turn of a dialog is ``turn_index=0`` and the value increases by 1 per
+    emitted :class:`DialogTurnMsg`.
     """
 
     kind: Literal["dialog_turn"] = "dialog_turn"
@@ -608,6 +653,15 @@ class DialogTurnMsg(_EnvelopeBase):
     speaker_id: str
     addressee_id: str
     utterance: str
+    turn_index: int = Field(
+        ...,
+        ge=0,
+        description=(
+            "Monotonic 0-based index within the dialog. Increments by 1 per "
+            "emitted turn across both speakers. Paired with "
+            "``Cognitive.dialog_turn_budget`` to drive the exhaustion close."
+        ),
+    )
 
 
 class DialogCloseMsg(_EnvelopeBase):
@@ -615,11 +669,15 @@ class DialogCloseMsg(_EnvelopeBase):
 
     ``reason`` is a closed literal set so the gateway and the scheduler can
     dispatch on it without string matching.
+
+    M5 adds ``"exhausted"`` to signal that the agent hit its
+    :attr:`Cognitive.dialog_turn_budget` cap (distinct from the
+    scheduler's ``"timeout"``, which is driven by wall-clock).
     """
 
     kind: Literal["dialog_close"] = "dialog_close"
     dialog_id: str
-    reason: Literal["completed", "interrupted", "timeout"]
+    reason: Literal["completed", "interrupted", "timeout", "exhausted"]
 
 
 ControlEnvelope: TypeAlias = Annotated[
@@ -677,9 +735,71 @@ class DialogScheduler(Protocol):
     def close_dialog(
         self,
         dialog_id: str,
-        reason: Literal["completed", "interrupted", "timeout"],
+        reason: Literal["completed", "interrupted", "timeout", "exhausted"],
     ) -> DialogCloseMsg:
         """Close an open dialog and emit the close envelope."""
+        ...
+
+
+class ERREModeTransitionPolicy(Protocol):
+    """Interface for the ERRE-mode finite-state machine (M5 foundation).
+
+    Contract-only: the concrete transition table (zone entry, fatigue, shuhari
+    promotion, manual override, …) is the responsibility of
+    ``m5-erre-mode-fsm``. This Protocol is frozen here so ``cognition`` and
+    ``world`` can type-hint against it in parallel sub-tasks without waiting
+    for the implementation.
+
+    Implementations decide at each world tick whether the agent should leave
+    its current :class:`ERREMode`. Returning ``None`` means "no change";
+    returning a mode value means the caller must emit
+    :class:`ERREModeShiftEvent` and update :attr:`AgentState.erre`.
+    """
+
+    def next_mode(
+        self,
+        *,
+        current: ERREModeName,
+        zone: Zone,
+        observations: Sequence[Observation],
+        tick: int,
+    ) -> ERREModeName | None:
+        """Decide whether to transition the agent's ERRE mode this tick.
+
+        ``None`` = keep ``current``. A non-``None`` value is the new mode and
+        must differ from ``current`` (callers should skip emitting a shift
+        event when the values match).
+        """
+        ...
+
+
+class DialogTurnGenerator(Protocol):
+    """Interface for LLM-driven dialog turn generation (M5 foundation).
+
+    Contract-only: the concrete LLM call, prompt builder, sampling overrides,
+    and exhausted-close handling live in ``m5-dialog-turn-generator`` per the
+    empirical findings in ``.steering/20260420-m5-llm-spike/decisions.md``.
+    Freezing this Protocol in the schemas module lets the M5 orchestrator
+    wire arbitrary implementations (Ollama adapter, mocked generator) without
+    depending on the inference layer.
+
+    Returning ``None`` signals that the implementation declined to produce a
+    turn (for instance, the LLM returned an empty string after sanitisation).
+    The caller is expected to treat that as a soft close and fall back to
+    :class:`DialogCloseMsg`.
+    """
+
+    async def generate_turn(
+        self,
+        *,
+        dialog_id: str,
+        speaker_state: AgentState,
+        speaker_persona: PersonaSpec,
+        addressee_state: AgentState,
+        transcript: Sequence[DialogTurnMsg],
+        world_tick: int,
+    ) -> DialogTurnMsg | None:
+        """Produce the next turn for ``speaker_state`` or ``None`` to decline."""
         ...
 
 
@@ -700,10 +820,12 @@ __all__ = [
     "DialogCloseMsg",
     "DialogInitiateMsg",
     "DialogScheduler",
+    "DialogTurnGenerator",
     "DialogTurnMsg",
     "ERREMode",
     "ERREModeName",
     "ERREModeShiftEvent",
+    "ERREModeTransitionPolicy",
     "ErrorMsg",
     "HabitFlag",
     "HandshakeMsg",

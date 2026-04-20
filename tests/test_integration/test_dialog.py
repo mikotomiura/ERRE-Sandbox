@@ -166,6 +166,7 @@ def test_record_turn_appends_to_transcript() -> None:
         speaker_id="a",
         addressee_id="b",
         utterance="hi",
+        turn_index=0,
     )
     scheduler.record_turn(turn)
     assert scheduler.transcript_of(dialog_id) == [turn]
@@ -180,6 +181,7 @@ def test_record_turn_raises_for_unknown_dialog() -> None:
         speaker_id="a",
         addressee_id="b",
         utterance="!",
+        turn_index=0,
     )
     with pytest.raises(KeyError, match="unknown dialog_id"):
         scheduler.record_turn(bogus)

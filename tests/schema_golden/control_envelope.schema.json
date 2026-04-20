@@ -32,7 +32,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -71,7 +71,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -117,7 +117,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -166,6 +166,13 @@
           "minimum": 0.0,
           "title": "Curiosity",
           "type": "number"
+        },
+        "dialog_turn_budget": {
+          "default": 6,
+          "description": "Remaining dialog turns before the agent auto-closes its current dialog with ``DialogCloseMsg.reason='exhausted'``. Default 6 was validated empirically in the M5 LLM spike (.steering/20260420-m5-llm-spike/decisions.md judgement 4). 0 means 'no more turns permitted'.",
+          "minimum": 0,
+          "title": "Dialog Turn Budget",
+          "type": "integer"
         },
         "dmn_activation": {
           "default": 0.3,
@@ -217,7 +224,7 @@
     },
     "DialogCloseMsg": {
       "additionalProperties": false,
-      "description": "A dialog has ended (M4 foundation).\n\n``reason`` is a closed literal set so the gateway and the scheduler can\ndispatch on it without string matching.",
+      "description": "A dialog has ended (M4 foundation).\n\n``reason`` is a closed literal set so the gateway and the scheduler can\ndispatch on it without string matching.\n\nM5 adds ``\"exhausted\"`` to signal that the agent hit its\n:attr:`Cognitive.dialog_turn_budget` cap (distinct from the\nscheduler's ``\"timeout\"``, which is driven by wall-clock).",
       "properties": {
         "dialog_id": {
           "title": "Dialog Id",
@@ -233,13 +240,14 @@
           "enum": [
             "completed",
             "interrupted",
-            "timeout"
+            "timeout",
+            "exhausted"
           ],
           "title": "Reason",
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -277,7 +285,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -310,7 +318,7 @@
     },
     "DialogTurnMsg": {
       "additionalProperties": false,
-      "description": "A single turn inside an ongoing dialog (M4 foundation).\n\n``speaker_id`` and ``addressee_id`` are both carried so Godot can drive\nthe correct animations (speech bubble / head-turn) without re-deriving\norientation from world state.",
+      "description": "A single turn inside an ongoing dialog (M4 foundation).\n\n``speaker_id`` and ``addressee_id`` are both carried so Godot can drive\nthe correct animations (speech bubble / head-turn) without re-deriving\norientation from world state.\n\n``turn_index`` was added in M5 (0.3.0-m5) so consumers can (a) detect\nout-of-order delivery over WebSocket and (b) correlate with\n:attr:`Cognitive.dialog_turn_budget` for exhaustion close-out. The first\nturn of a dialog is ``turn_index=0`` and the value increases by 1 per\nemitted :class:`DialogTurnMsg`.",
       "properties": {
         "addressee_id": {
           "title": "Addressee Id",
@@ -327,7 +335,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -345,6 +353,12 @@
           "title": "Tick",
           "type": "integer"
         },
+        "turn_index": {
+          "description": "Monotonic 0-based index within the dialog. Increments by 1 per emitted turn across both speakers. Paired with ``Cognitive.dialog_turn_budget`` to drive the exhaustion close.",
+          "minimum": 0,
+          "title": "Turn Index",
+          "type": "integer"
+        },
         "utterance": {
           "title": "Utterance",
           "type": "string"
@@ -355,7 +369,8 @@
         "dialog_id",
         "speaker_id",
         "addressee_id",
-        "utterance"
+        "utterance",
+        "turn_index"
       ],
       "title": "DialogTurnMsg",
       "type": "object"
@@ -435,7 +450,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -485,7 +500,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -522,7 +537,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -789,7 +804,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },
@@ -836,7 +851,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.2.0-m4",
+          "default": "0.3.0-m5",
           "title": "Schema Version",
           "type": "string"
         },

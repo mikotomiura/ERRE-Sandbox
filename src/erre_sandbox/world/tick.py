@@ -474,7 +474,7 @@ class WorldRuntime:
                     resolved = default_spawn(tgt.zone).model_copy(
                         update={"yaw": tgt.yaw, "pitch": tgt.pitch},
                     )
-                    env = env.model_copy(update={"target": resolved})
+                    env = env.model_copy(update={"target": resolved})  # noqa: PLW2901 — intentional re-bind to propagate the zone-resolved target to both apply_move_command and the downstream queue
                 apply_move_command(rt.kinematics, env)
             self._envelopes.put_nowait(env)
 

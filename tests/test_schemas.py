@@ -369,9 +369,13 @@ def test_conftest_factory_matches_inline_helper(agent_state_kant: AgentState) ->
 # =========================================================================
 
 
-def test_schema_version_is_m4() -> None:
-    """Top-level SCHEMA_VERSION has been bumped for the M4 foundation freeze."""
-    assert SCHEMA_VERSION == "0.2.0-m4"
+def test_schema_version_is_current_milestone() -> None:
+    """Top-level ``SCHEMA_VERSION`` is kept in sync with the active milestone.
+
+    Pin is intentionally reusable: each milestone bump updates this literal
+    together with the ``schema_version`` check in ``test_schemas_m{N}.py``.
+    """
+    assert SCHEMA_VERSION == "0.3.0-m5"
 
 
 def test_agent_spec_validates_minimal_shape() -> None:
@@ -454,6 +458,7 @@ def _dialog_envelope_cases() -> list[tuple[str, dict[str, object], type[BaseMode
                 "speaker_id": "a_kant_001",
                 "addressee_id": "a_nietzsche_001",
                 "utterance": "Guten Tag.",
+                "turn_index": 0,
             },
             DialogTurnMsg,
         ),
