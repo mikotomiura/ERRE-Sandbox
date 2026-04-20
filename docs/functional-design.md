@@ -151,7 +151,12 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
     - Composition Root multi-agent bootstrap (`BootConfig.__post_init__` default、`--personas kant,nietzsche,rikyu` CLI)
     - `InMemoryDialogScheduler` (admission + cooldown + timeout + proximity auto-fire、envelope_sink 一元化)
   - **live 検証** (G-GEAR 必須、別タスク): 3-agent walking 30Hz / reflection persistence / dialog 1 往復 / Godot 描画
-- ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5)
+- ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5、計画 merged 2026-04-20 PR #53)
+  - **M5 予定項目** (`schema_version=0.3.0-m5`、ドラフト):
+    - 静的 `_ZONE_TO_DEFAULT_ERRE_MODE` を event-driven `ERREModeTransitionPolicy` に置換、zone change / fatigue / shuhari を hook
+    - `DialogTurnGenerator` で `dialog_initiate` 後の N ターンを LLM 生成、`dialog_turn_budget` で自動 close (`reason="exhausted"`)
+    - Chashitsu / Zazen zone 最小シーン + ERRE mode tint + Label3D dialog bubble を Godot に追加
+    - Contract-First + LLM Spike の hybrid (design: `.steering/20260420-m5-planning/design.md`)
 - 5-8体が12時間シミュレーションを破綻なく実行 (M7)
 - 4層評価フレームワークの実装と統計レポート出力 (M10-M11)
 
