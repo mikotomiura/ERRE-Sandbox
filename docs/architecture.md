@@ -132,7 +132,7 @@
 - **責務**: N-agent オーケストレータ構築。M4 #6 `m4-multi-agent-orchestrator` で multi-agent 化
 - **主要コンポーネント**:
   - `BootConfig.__post_init__`: `agents` 空時に `(AgentSpec(kant, peripatos),)` の 1 本道 default を詰め、`bootstrap()` 本体から分岐を追放
-  - `_load_persona_yaml(dir, persona_id)` + `_build_initial_state(spec, persona)` で persona YAML → AgentState を生成。zone → ERREMode の default マップは `_ZONE_TO_DEFAULT_ERRE_MODE`
+  - `_load_persona_yaml(dir, persona_id)` + `_build_initial_state(spec, persona)` で persona YAML → AgentState を生成。zone → ERREMode の default マップは `erre_sandbox.erre.ZONE_TO_DEFAULT_ERRE_MODE` (M5 `m5-erre-mode-fsm` で `erre/` パッケージへ移動)。runtime 遷移は `DefaultERREModePolicy` (同 package、後続の `m5-world-zone-triggers` で wire)
   - `CLI --personas kant,nietzsche,rikyu`: 各 persona の `preferred_zones[0]` を initial_zone に採用
   - `InMemoryDialogScheduler` (integration 層) を構築、`envelope_sink=runtime.inject_envelope` で配線
   - `WorldRuntime.attach_dialog_scheduler(scheduler)` で scheduler を runtime に bind

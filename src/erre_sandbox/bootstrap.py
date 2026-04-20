@@ -25,6 +25,7 @@ import uvicorn
 import yaml
 
 from erre_sandbox.cognition import CognitionCycle
+from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE
 from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.integration.dialog import InMemoryDialogScheduler
 from erre_sandbox.integration.gateway import make_app
@@ -118,21 +119,6 @@ def _load_persona_yaml(personas_dir: Path, persona_id: str) -> PersonaSpec:
     return PersonaSpec.model_validate(data)
 
 
-_ZONE_TO_DEFAULT_ERRE_MODE: Final[dict[Zone, ERREModeName]] = {
-    Zone.PERIPATOS: ERREModeName.PERIPATETIC,
-    Zone.CHASHITSU: ERREModeName.CHASHITSU,
-    Zone.STUDY: ERREModeName.DEEP_WORK,
-    Zone.AGORA: ERREModeName.SHALLOW,
-    Zone.GARDEN: ERREModeName.PERIPATETIC,
-}
-"""Initial ERRE mode per spawn zone.
-
-Matches the persona-erre skill's zone→mode convention. ``garden`` falls
-back to PERIPATETIC because it shares the "walk and muse" semantics of
-the peripatos in the current world model.
-"""
-
-
 def _build_initial_state(spec: AgentSpec, persona: PersonaSpec) -> AgentState:
     """Expand an :class:`AgentSpec` into the initial :class:`AgentState`.
 
@@ -144,10 +130,15 @@ def _build_initial_state(spec: AgentSpec, persona: PersonaSpec) -> AgentState:
     then the avatar stands still. This is acceptable for MVP — MASTER-PLAN
     §4.4 #4 requires 30Hz rendering, and WorldTickMsg heartbeats emit at 1Hz
     while physics ticks update ``position`` at 30Hz once the agent has a plan.
+
+    ``ZONE_TO_DEFAULT_ERRE_MODE`` is owned by :mod:`erre_sandbox.erre` as of
+    M5; this composition root only picks the spawn-time default. Subsequent
+    transitions are driven by :class:`~erre_sandbox.erre.DefaultERREModePolicy`
+    once the world-zone trigger sub-task wires it into the tick loop.
     """
     _ = persona  # future hook: persona-specific spawn biases
     agent_id = f"a_{spec.persona_id}_001"
-    erre_name = _ZONE_TO_DEFAULT_ERRE_MODE.get(
+    erre_name = ZONE_TO_DEFAULT_ERRE_MODE.get(
         spec.initial_zone,
         ERREModeName.DEEP_WORK,
     )
