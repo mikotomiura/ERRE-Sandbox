@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, Final
 
 import sqlite_vec
 
-from erre_sandbox.schemas import MemoryEntry, MemoryKind
+from erre_sandbox.schemas import MemoryEntry, MemoryKind, SemanticMemoryRecord
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -111,6 +111,10 @@ class MemoryStore:
                 """,
             )
             # Semantic: beliefs / themes (distilled by reflection in M4).
+            # ``origin_reflection_id`` (added in m4-memory-semantic-layer) links a
+            # row back to the ``ReflectionEvent`` that produced it, enabling
+            # audit queries and future reflection-deduplication logic. Existing
+            # DBs get the column via the ``_migrate_semantic_schema`` call below.
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS semantic_memory (
@@ -121,10 +125,12 @@ class MemoryStore:
                     created_at TEXT NOT NULL,
                     last_recalled_at TEXT,
                     recall_count INTEGER NOT NULL DEFAULT 0,
-                    tags TEXT NOT NULL DEFAULT '[]'
+                    tags TEXT NOT NULL DEFAULT '[]',
+                    origin_reflection_id TEXT
                 )
                 """,
             )
+            self._migrate_semantic_schema(conn)
             # Procedural: zone/ritual-keyed skills (rich logic deferred to M5).
             conn.execute(
                 """
@@ -168,6 +174,24 @@ class MemoryStore:
                     embedding float[{self._embed_dim}]
                 )
                 """,
+            )
+
+    @staticmethod
+    def _migrate_semantic_schema(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure ``semantic_memory.origin_reflection_id`` exists.
+
+        Added by m4-memory-semantic-layer. New DBs receive the column via
+        ``CREATE TABLE``; existing DBs (e.g. a ``var/kant.db`` carried over
+        from the M2 milestone) reach here without the column, so we apply
+        ``ALTER TABLE`` on demand. Idempotent: re-running ``create_schema()``
+        is a no-op once the column is present.
+        """
+        existing = {
+            row["name"] for row in conn.execute("PRAGMA table_info(semantic_memory)")
+        }
+        if "origin_reflection_id" not in existing:
+            conn.execute(
+                "ALTER TABLE semantic_memory ADD COLUMN origin_reflection_id TEXT",
             )
 
     async def close(self) -> None:
@@ -222,6 +246,12 @@ class MemoryStore:
                     ),
                 )
             elif entry.kind is MemoryKind.SEMANTIC:
+                # Legacy MemoryEntry path: ``origin_reflection_id`` is NULL
+                # by default. The M4 reflection cycle writes via the dedicated
+                # ``upsert_semantic`` method so this path stays around for
+                # non-reflection SEMANTIC writes (e.g. manual seed data in
+                # tests). Rows inserted here coexist safely with reflection
+                # rows — ``_semantic_row_to_record`` maps NULL → None.
                 conn.execute(
                     "INSERT INTO semantic_memory("
                     "id, agent_id, content, importance, created_at, "
@@ -493,6 +523,149 @@ class MemoryStore:
             ).fetchall()
         return [(r["memory_id"], float(r["distance"])) for r in rows]
 
+    # ------------------------------------------------------------------
+    # Semantic-layer API (m4-memory-semantic-layer)
+    # ------------------------------------------------------------------
+
+    async def upsert_semantic(self, record: SemanticMemoryRecord) -> str:
+        """Insert or replace a :class:`SemanticMemoryRecord`.
+
+        The row's ``origin_reflection_id`` is preserved in the dedicated
+        column. ``embedding`` is inserted into ``vec_embeddings`` only when
+        non-empty — empty embeddings are permitted by the M4 foundation
+        contract (e.g. fixture payloads, pre-embedding records) and simply
+        make the row unrecallable via semantic search.
+
+        Upsert semantics: same ``id`` replaces the prior row in both
+        ``semantic_memory`` and ``vec_embeddings``. Internal bookkeeping
+        fields (``importance`` / ``recall_count`` / ``tags``) that do not
+        exist on the wire type receive defensible defaults on write; they
+        are hidden on read.
+        """
+        if record.embedding and len(record.embedding) != self._embed_dim:
+            raise ValueError(
+                f"Embedding dim {len(record.embedding)} != store dim {self._embed_dim}",
+            )
+        return await asyncio.to_thread(self._upsert_semantic_sync, record)
+
+    def _upsert_semantic_sync(self, record: SemanticMemoryRecord) -> str:
+        conn = self._ensure_conn()
+        with conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO semantic_memory("
+                "id, agent_id, content, importance, created_at, "
+                "last_recalled_at, recall_count, tags, origin_reflection_id"
+                ") VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    record.id,
+                    record.agent_id,
+                    record.summary,
+                    1.0,
+                    _dt_to_text(record.created_at),
+                    None,
+                    0,
+                    "[]",
+                    record.origin_reflection_id,
+                ),
+            )
+            # The ``vec0`` virtual table does not support INSERT OR REPLACE
+            # on its PRIMARY KEY (UNIQUE constraint fires before the replace
+            # branch is taken), so we always clear the prior row for this
+            # id before inserting the new embedding. Wrapping both statements
+            # in the outer ``with conn:`` block keeps the upsert atomic.
+            conn.execute(
+                f"DELETE FROM {self.VEC_TABLE} WHERE memory_id = ?",  # noqa: S608
+                (record.id,),
+            )
+            if record.embedding:
+                conn.execute(
+                    f"INSERT INTO {self.VEC_TABLE}(memory_id, embedding) VALUES (?, ?)",  # noqa: S608
+                    (record.id, json.dumps(record.embedding)),
+                )
+        return record.id
+
+    async def recall_semantic(
+        self,
+        agent_id: str,
+        query_embedding: list[float],
+        *,
+        k: int,
+    ) -> list[tuple[SemanticMemoryRecord, float]]:
+        """Return the agent's top-k semantic memories by vector distance.
+
+        Returns a list of ``(record, distance)`` pairs sorted by ascending
+        distance (``vec_distance_l2``; lower = more similar). Rows without
+        a stored embedding are invisible to this query by construction
+        (``upsert_semantic`` skips the vec table when ``embedding`` is
+        empty). The result length is ``min(k, #rows-with-embedding)``.
+        """
+        if len(query_embedding) != self._embed_dim:
+            raise ValueError(
+                f"Query dim {len(query_embedding)} != store dim {self._embed_dim}",
+            )
+        return await asyncio.to_thread(
+            self._recall_semantic_sync,
+            agent_id,
+            query_embedding,
+            k,
+        )
+
+    def _recall_semantic_sync(
+        self,
+        agent_id: str,
+        query_embedding: list[float],
+        k: int,
+    ) -> list[tuple[SemanticMemoryRecord, float]]:
+        conn = self._ensure_conn()
+        candidate_rows = conn.execute(
+            "SELECT id FROM semantic_memory WHERE agent_id = ?",
+            (agent_id,),
+        ).fetchall()
+        candidate_ids = [r["id"] for r in candidate_rows]
+        if not candidate_ids:
+            return []
+        q_json = json.dumps(query_embedding)
+        placeholders = ",".join("?" * len(candidate_ids))
+        hit_rows = conn.execute(
+            f"SELECT memory_id, distance FROM {self.VEC_TABLE} "  # noqa: S608
+            f"WHERE embedding MATCH ? AND k = ? AND memory_id IN ({placeholders}) "
+            "ORDER BY distance",
+            (q_json, k, *candidate_ids),
+        ).fetchall()
+        if not hit_rows:
+            return []
+
+        # Single batch fetch of the semantic rows keyed by memory_id. The
+        # embedding is looked up per hit below because ``vec_distance_l2``
+        # does not return the stored vector; ``k`` is small (≤ a few dozen)
+        # so the per-hit lookup is acceptable. Rewrite to a single JOIN if k
+        # ever grows to hundreds.
+        hit_ids = [r["memory_id"] for r in hit_rows]
+        id_placeholders = ",".join("?" * len(hit_ids))
+        row_by_id = {
+            r["id"]: r
+            for r in conn.execute(
+                f"SELECT * FROM semantic_memory WHERE id IN ({id_placeholders})",  # noqa: S608
+                hit_ids,
+            ).fetchall()
+        }
+        results: list[tuple[SemanticMemoryRecord, float]] = []
+        for hit in hit_rows:
+            mid = hit["memory_id"]
+            row = row_by_id.get(mid)
+            if row is None:
+                # Defensive: the row was deleted between the candidate_ids
+                # query and the knn join. Skip rather than raise.
+                continue
+            embedding = self._get_embedding_sync(mid) or []
+            results.append(
+                (
+                    _semantic_row_to_record(row, embedding),
+                    float(hit["distance"]),
+                ),
+            )
+        return results
+
 
 # =============================================================================
 # Row → MemoryEntry helpers
@@ -513,6 +686,27 @@ def _row_to_memory_entry(row: sqlite3.Row, kind: MemoryKind) -> MemoryEntry:
             row["source_observation_id"] if kind is MemoryKind.EPISODIC else None
         ),
         tags=json.loads(row["tags"]) if row["tags"] else [],
+    )
+
+
+def _semantic_row_to_record(
+    row: sqlite3.Row,
+    embedding: list[float],
+) -> SemanticMemoryRecord:
+    """Reconstruct a :class:`SemanticMemoryRecord` from a storage row.
+
+    Internal bookkeeping columns (``importance`` / ``recall_count`` /
+    ``tags`` / ``last_recalled_at``) are intentionally not projected onto
+    the wire type — they live only in storage so that future retention
+    policies can tune them without breaking ``schemas.py``.
+    """
+    return SemanticMemoryRecord(
+        id=row["id"],
+        agent_id=row["agent_id"],
+        embedding=embedding,
+        summary=row["content"],
+        origin_reflection_id=row["origin_reflection_id"],
+        created_at=_text_to_dt(row["created_at"]),
     )
 
 

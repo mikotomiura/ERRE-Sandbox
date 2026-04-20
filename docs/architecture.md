@@ -140,6 +140,11 @@
 - **依存先**: sqlite-vec, 埋め込みモデル
 - **インターフェース**: `add(observation, importance)`, `retrieve(query, k)`, `reflect(threshold)`
 - **ERRE 拡張**: peripatos/chashitsu 入室時に閾値未満でも自由連想型内省を発火
+- **M4 semantic layer** (`schema_version=0.2.0-m4`):
+  - `semantic_memory` テーブルに `origin_reflection_id TEXT` 列を追加 (nullable)、起動時に `MemoryStore.create_schema()` が既存 DB へ idempotent に `ALTER TABLE ADD COLUMN` を適用
+  - `MemoryStore.upsert_semantic(record: SemanticMemoryRecord)` — 同 id で idempotent 置換。embedding 空許容 (vec0 には書かない、recall 不可にする)
+  - `MemoryStore.recall_semantic(agent_id, query_embedding, *, k) -> list[(SemanticMemoryRecord, distance)]` — agent スコープ KNN、L2 距離昇順
+  - reflection → semantic 経路: cognition cycle が `ReflectionEvent` から `SemanticMemoryRecord` を組み立て `upsert_semantic` を呼ぶ (本体は `m4-cognition-reflection` タスクで実装)
 
 ### ControlEnvelope
 - **責務**: G-GEAR ↔ MacBook 間の通信プロトコル
