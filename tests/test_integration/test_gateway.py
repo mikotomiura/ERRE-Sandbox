@@ -57,7 +57,8 @@ class TestMakeServerHandshake:
         assert hs.schema_version == SCHEMA_VERSION
         assert "handshake" in hs.capabilities
         assert "agent_update" in hs.capabilities
-        # The full 7-kind set mirrors ControlEnvelope discriminators.
+        # The full 10-kind set mirrors ControlEnvelope discriminators
+        # (M4 foundation added dialog_initiate / dialog_turn / dialog_close).
         assert set(hs.capabilities) == {
             "handshake",
             "agent_update",
@@ -66,6 +67,9 @@ class TestMakeServerHandshake:
             "animation",
             "world_tick",
             "error",
+            "dialog_initiate",
+            "dialog_turn",
+            "dialog_close",
         }
 
 

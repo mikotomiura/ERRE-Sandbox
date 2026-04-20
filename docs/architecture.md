@@ -99,6 +99,12 @@
   - FastAPI + uvicorn + websockets (BSD-3)
   - ControlEnvelope スキーマ + kind フィールドでメッセージ多重化
   - Pydantic v2 によるスキーマ検証
+- **M4 multi-agent routing** (`schema_version=0.2.0-m4`):
+  - `_SERVER_CAPABILITIES` は 10 kinds (M2 7 種 + `dialog_initiate` / `dialog_turn` / `dialog_close`)
+  - 接続時に `/ws/observe?subscribe=<agents>` でクライアントが購読対象を申告できる。未指定 / 空 / `*` は broadcast = 既存 M2 挙動。カンマ区切りで `persona_id` 複数指定可能、スキーマは無変更 (URL レイヤーで表現)
+  - `Registry` は session ごとに `frozenset[str] | None` を保持し、`_envelope_target_agents(env)` で算出した envelope の routing 対象と突合してフィルタ。グローバル envelope (`world_tick` / `error` / `dialog_close` / server `handshake`) は購読に関係なく全 session 配信
+  - routing マトリクス: agent_update / speech / move / animation → 単一 agent_id / dialog_initiate → (initiator, target) / dialog_turn → (speaker, addressee) / dialog_close → broadcast (participants を gateway で追跡しない設計判断、UI cleanup 用)
+  - DoS 対策: `MAX_SUBSCRIBE_RAW_LENGTH` / `MAX_SUBSCRIBE_ITEMS=32` / `MAX_SUBSCRIBE_ID_LENGTH=64` / slug 正規表現 (`[A-Za-z0-9_-]+`) により制御文字・ログインジェクション・パス区切りを拒否
 - **起動方式**:
   - **Production (MVP 以降)**: `python -m erre_sandbox` (または `erre-sandbox` コマンド)。
     `src/erre_sandbox/bootstrap.py::bootstrap()` が `MemoryStore` + `EmbeddingClient` +
