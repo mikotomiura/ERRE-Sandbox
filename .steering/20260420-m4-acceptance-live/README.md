@@ -23,8 +23,10 @@ Item #5 (the Godot recording) is the MacBook-side acceptance evidence —
 it had to be captured on the machine running the 3D viewer. Items #1-#4
 are produced on the G-GEAR box that runs `erre-sandbox` itself
 (Ollama + cognition + memory + gateway), and were collected by the
-G-GEAR Claude Code session following the handoff at
-`.steering/_handoff-g-gear-m4-live-validation.md`.
+G-GEAR Claude Code session following a MacBook ↔ G-GEAR handoff note
+(the note itself was removed after M4 completion; its contents are
+consolidated into this task's `requirement.md` / `design.md` /
+`acceptance.md`).
 
 Commit history:
 

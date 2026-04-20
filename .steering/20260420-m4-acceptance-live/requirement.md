@@ -9,7 +9,8 @@ main HEAD = `1b7be32` (#49 handoff merge 含む、実コード HEAD は `51b282a
 sqlite-vec) での live 動作と acceptance 5 項目の evidence 収集は未実施**。
 M4 を正式クローズし `v0.2.0-m4` タグを打つ前提として、live 検証が必要。
 
-handoff: `.steering/_handoff-g-gear-m4-live-validation.md`
+handoff (MacBook ↔ G-GEAR の一時的な作業引き渡し文書) は M4 完了後に削除。
+手順・期待値は本 requirement / design / tasklist に吸収済。
 
 ## ゴール
 
@@ -51,7 +52,6 @@ M4 acceptance 5 項目すべてについて evidence (JSON / log / dump / 録画
 
 ## 関連ドキュメント
 
-- `.steering/_handoff-g-gear-m4-live-validation.md` (本タスク全手順)
 - `.steering/20260420-m4-multi-agent-orchestrator/live-checklist.md` (#1-#5 詳細)
 - `.steering/20260420-m4-planning/design.md` §M4 全体の検収条件
 - `docs/architecture.md` §Composition Root (CLI + bootstrap の新フロー)

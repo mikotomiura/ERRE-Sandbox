@@ -2,10 +2,10 @@
 
 ## 実装アプローチ
 
-本タスクはコード変更を伴わない **evidence 収集タスク**。handoff
-(`.steering/_handoff-g-gear-m4-live-validation.md`) の Step 0–8 を忠実に実行し、
-各項目の evidence を `evidence/` 配下に保存、最終的に `acceptance.md` で
-PASS/FAIL 判定をまとめる。
+本タスクはコード変更を伴わない **evidence 収集タスク**。元々の handoff 文書
+(MacBook ↔ G-GEAR 間の一時的な引き渡し指示、M4 完了後に削除) の Step 0–8 を
+忠実に実行し、各項目の evidence を `evidence/` 配下に保存、最終的に
+`acceptance.md` で PASS/FAIL 判定をまとめる。
 
 FAIL が見つかった場合でも本タスク内では修正しない (handoff 最終注記)。
 修正 PR は MacBook 側の別タスクに切り出す。

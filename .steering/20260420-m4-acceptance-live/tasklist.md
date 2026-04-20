@@ -1,7 +1,7 @@
 # タスクリスト — M4 Live Validation
 
 ## 準備 (完了)
-- [x] handoff `.steering/_handoff-g-gear-m4-live-validation.md` を読む
+- [x] handoff を読む (M4 完了後に削除: 内容は本タスクの requirement / design / acceptance に吸収済)
 - [x] live-checklist `.steering/20260420-m4-multi-agent-orchestrator/live-checklist.md` の 5 項目を把握
 
 ## Step 0: Git 同期 (完了)
