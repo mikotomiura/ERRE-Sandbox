@@ -11,12 +11,11 @@ Scope boundary (see
 ``.steering/20260419-cognition-cycle-minimal/design.md`` §2.5):
 
 * **In**: one agent, one tick, write observations as Episodic memory,
-  CSDG Physical update, retrieve memories, call LLM, parse the plan,
-  compose Cognitive update, emit ``AgentUpdate`` / ``Move`` / ``Speech`` /
-  ``Animation`` envelopes.
-* **Out**: PIANO parallelism (M4+), reflection execution (M4+), ERRE mode
-  FSM transitions (M5+), multi-agent ``asyncio.gather`` (T13), 30Hz tick
-  loop (T13), WebSocket transport (T14).
+  CSDG Physical update, **ERRE mode FSM transition (M5)**, retrieve
+  memories, call LLM, parse the plan, compose Cognitive update, emit
+  ``AgentUpdate`` / ``Move`` / ``Speech`` / ``Animation`` envelopes.
+* **Out**: PIANO parallelism (M4+), multi-agent ``asyncio.gather`` (T13),
+  30Hz tick loop (T13), WebSocket transport (T14).
 """
 
 from __future__ import annotations
@@ -50,6 +49,8 @@ from erre_sandbox.schemas import (
     AgentUpdateMsg,
     AnimationMsg,
     ControlEnvelope,
+    ERREMode,
+    ERREModeTransitionPolicy,
     MemoryEntry,
     MemoryKind,
     MoveMsg,
@@ -132,6 +133,7 @@ class CognitionCycle:
         rng: Random | None = None,
         update_config: StateUpdateConfig | None = None,
         reflector: Reflector | None = None,
+        erre_policy: ERREModeTransitionPolicy | None = None,
     ) -> None:
         self._retriever = retriever
         self._store = store
@@ -148,6 +150,12 @@ class CognitionCycle:
             embedding=embedding,
             llm=llm,
         )
+        # Optional ERRE mode FSM (M5 `m5-world-zone-triggers`). When None
+        # (default) the cycle preserves pre-M5 behaviour: ``agent_state.erre``
+        # is only set at boot and never changes thereafter. Wiring the
+        # concrete :class:`~erre_sandbox.erre.DefaultERREModePolicy` is the
+        # responsibility of ``m5-orchestrator-integration``.
+        self._erre_policy = erre_policy
 
     async def step(
         self,
@@ -179,6 +187,13 @@ class CognitionCycle:
             config=self._update_config,
             rng=self._rng,
         )
+
+        # Step 2.5 (M5): ERRE mode FSM transition.
+        #
+        # Runs BEFORE retrieve / LLM so the sampling at Step 5 reflects the
+        # newly-selected mode (zero-tick latency). When no policy is wired the
+        # call is a no-op, preserving pre-M5 behaviour.
+        agent_state = self._maybe_apply_erre_fsm(agent_state, observations)
 
         # Step 3: reflection trigger detection (execution is M4+).
         importance_sum = sum(estimate_importance(o) for o in observations)
@@ -312,6 +327,62 @@ class CognitionCycle:
             mid = await self._store.add(entry, vec)
             new_ids.append(mid)
         return new_ids
+
+    def _maybe_apply_erre_fsm(
+        self,
+        agent_state: AgentState,
+        observations: Sequence[Observation],
+    ) -> AgentState:
+        """Apply the optional ERRE mode FSM; return the (possibly) updated state.
+
+        A ``None`` return from the policy signals "no transition this tick"
+        and is the common case once an agent has settled into a mode; it
+        keeps ``agent_state`` byte-identical. A concrete
+        :class:`~erre_sandbox.schemas.ERREModeName` forces a fresh
+        :class:`~erre_sandbox.schemas.ERREMode` with ``entered_at_tick``
+        set to the tick the FSM observed, which downstream consumers
+        (e.g. sampling override) use to detect a mode change.
+
+        The FSM is consulted at Step 2.5, **before** ``new_physical`` is
+        folded into ``agent_state``. Today ``advance_physical`` never
+        changes ``position.zone`` (it only nudges CSDG half-step fields)
+        so the FSM observes the correct zone; if a future milestone lets
+        physical update change the zone, move this call after Step 9's
+        ``agent_state.model_copy`` or refactor the physical update to
+        happen before FSM.
+
+        If the policy violates its Protocol contract and returns a value
+        equal to ``current``, we still treat it as a no-op: emitting a
+        fresh :class:`~erre_sandbox.schemas.ERREMode` with a new
+        ``entered_at_tick`` in that case would falsely mark a transition
+        and confuse downstream dwell-time logic.
+
+        The :class:`~erre_sandbox.schemas.ERREModeShiftEvent` is not
+        emitted here: ``AgentUpdateMsg`` (Step 9) carries the new mode via
+        ``agent_state.erre`` so Godot and memory can observe the change
+        without a second event stream. If a future milestone requires an
+        explicit shift event (e.g. for reflection scoring), emit it from
+        here into either ``observations`` or the returned envelope list.
+        """
+        if self._erre_policy is None:
+            return agent_state
+        candidate = self._erre_policy.next_mode(
+            current=agent_state.erre.name,
+            zone=agent_state.position.zone,
+            observations=observations,
+            tick=agent_state.tick,
+        )
+        if candidate is None or candidate == agent_state.erre.name:
+            return agent_state
+        new_erre = ERREMode(name=candidate, entered_at_tick=agent_state.tick)
+        logger.debug(
+            "ERRE mode transition for agent %s: %s → %s (tick=%d)",
+            agent_state.agent_id,
+            agent_state.erre.name,
+            candidate,
+            agent_state.tick,
+        )
+        return agent_state.model_copy(update={"erre": new_erre})
 
     async def _retrieve_safely(
         self,

@@ -184,13 +184,14 @@
 
 ### フロー 1: 通常の認知サイクル (10秒ごと)
 1. Simulation Layer がエージェントの現在位置・環境を観察データとして生成
-2. Memory Layer から関連記憶を検索 (per-agent top-8 + world top-3)
-3. Working Memory (LLM context) に system prompt + AgentState + 記憶 + 観察を注入
-4. Inference Layer が LLM 推論を実行 (ERRE モードに応じたサンプリングパラメータ)
-5. 推論結果から行動・発話を抽出、AgentState を更新
-6. Memory Layer に新しい観察・重要度スコアを書き込み
-7. Gateway 経由で WebSocket にエージェント状態を送信
-8. MacBook 側の Godot が 3D シーンを更新
+2. **ERRE mode FSM** (M5 `m5-world-zone-triggers`): `CognitionCycle` に注入された `ERREModeTransitionPolicy` が観察列を評価し、必要なら `AgentState.erre` を更新 (同 tick 内の sampling に反映)
+3. Memory Layer から関連記憶を検索 (per-agent top-8 + world top-3)
+4. Working Memory (LLM context) に system prompt + AgentState + 記憶 + 観察を注入
+5. Inference Layer が LLM 推論を実行 (更新後の ERRE モードに応じたサンプリング)
+6. 推論結果から行動・発話を抽出、AgentState を更新
+7. Memory Layer に新しい観察・重要度スコアを書き込み
+8. Gateway 経由で WebSocket にエージェント状態を送信
+9. MacBook 側の Godot が 3D シーンを更新
 
 ### フロー 2: 反省 (Reflection)
 1. importance 合計 > 150、または peripatos/chashitsu 入室がトリガー
