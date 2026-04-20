@@ -8,14 +8,16 @@ Sections
 --------
 * §1 Protocol constants
 * §2 Enums
-* §3 Persona (static, YAML-loaded)
+* §3 Persona (static, YAML-loaded) — incl. ``AgentSpec`` (M4)
 * §4 AgentState (dynamic, per-tick)
 * §5 Observation (event, discriminated by ``event_type``)
-* §6 Memory
-* §7 ControlEnvelope (message, discriminated by ``kind``)
+* §6 Memory — incl. ``ReflectionEvent`` / ``SemanticMemoryRecord`` (M4)
+* §7 ControlEnvelope (message, discriminated by ``kind``) — incl. ``Dialog*`` variants (M4)
+* §7.5 DialogScheduler (Protocol, M4 foundation — interface only)
 * §8 Public surface (``__all__``)
 
-Design choices are recorded in ``.steering/20260418-schemas-freeze/decisions.md``.
+Design choices are recorded in ``.steering/20260418-schemas-freeze/decisions.md``
+(M2) and ``.steering/20260420-m4-contracts-freeze/decisions.md`` (M4 foundation).
 This module MUST NOT import any other ``erre_sandbox.*`` module
 (see ``docs/repository-structure.md`` §4 and the ``architecture-rules`` skill).
 """
@@ -481,6 +483,9 @@ class SemanticMemoryRecord(BaseModel):
             "fixture payloads so contract tests do not pin a particular dim."
         ),
     )
+    # TODO(m4-memory-semantic-layer): pin embedding dimensionality once the
+    # sqlite-vec index schema chooses between multilingual-e5-small (384) and
+    # ruri-v3-30m (256); add field_validator to reject wrong-length vectors.
     summary: str
     origin_reflection_id: str | None = Field(
         default=None,
