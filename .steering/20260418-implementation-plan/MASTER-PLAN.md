@@ -205,7 +205,12 @@ foundation を先に凍結してから並列実装する。詳細は `.steering/
 3. 各 agent で N tick (default 10) ごとに reflection が発火、`semantic_memory` に要約
    レコードが追加され、後続 tick で recall される
 4. DialogInitiateMsg が発火して他 agent が DialogTurnMsg を 1 往復以上返す
+   (※ M4 は initiate + timeout close のみ、turn は M5 で LLM 接続時に実装)
 5. MacBook Godot で 3 avatar が描画され 60s 以上 30Hz を維持
+
+> ✅ **2026-04-20 完了 (G-GEAR 実機)**: 5 項目すべて PASS。
+> evidence + 判定: `.steering/20260420-m4-acceptance-live/acceptance.md`
+> PR: #50 (MacBook #5 Godot 録画) + #51 (G-GEAR #1-#4 + 全 PASS 確定)
 
 ---
 

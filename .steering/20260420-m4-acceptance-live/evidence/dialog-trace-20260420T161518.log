@@ -1,0 +1,5 @@
+{"schema_version": "0.2.0-m4", "tick": 2, "sent_at": "2026-04-20T06:54:30.463364Z", "kind": "dialog_close", "dialog_id": "d_dfa87954", "reason": "timeout"}
+{"schema_version": "0.2.0-m4", "tick": 2, "sent_at": "2026-04-20T06:54:30.463364Z", "kind": "dialog_close", "dialog_id": "d_088893a3", "reason": "timeout"}
+{"schema_version": "0.2.0-m4", "tick": 30, "sent_at": "2026-04-20T07:10:18.606312Z", "kind": "dialog_initiate", "initiator_agent_id": "a_nietzsche_001", "target_agent_id": "a_rikyu_001", "zone": "peripatos"}
+{"schema_version": "0.2.0-m4", "tick": 25, "sent_at": "2026-04-20T07:10:33.983480Z", "kind": "dialog_close", "dialog_id": "d_17a6e161", "reason": "timeout"}
+{"schema_version": "0.2.0-m4", "tick": 30, "sent_at": "2026-04-20T07:11:31.572569Z", "kind": "dialog_close", "dialog_id": "d_94e6079a", "reason": "timeout"}

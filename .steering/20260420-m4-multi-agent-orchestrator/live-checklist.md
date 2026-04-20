@@ -1,5 +1,9 @@
 # M4 live 検証 handoff — G-GEAR で実行
 
+> ✅ **2026-04-20 完了**: 本 checklist の 5 項目すべて PASS。
+> evidence と判定: `.steering/20260420-m4-acceptance-live/acceptance.md`
+> PR: #51 (G-GEAR #1-#4) + #50 (MacBook #5)
+
 本 PR (`feature/m4-multi-agent-orchestrator`) merge 後、G-GEAR 上で以下を
 実施して M4 acceptance の 5 項目 evidence を収集する。MacBook で完結した
 部分は unit/integration テストでカバー済。

@@ -9,36 +9,39 @@ kant,nietzsche,rikyu`.
 
 | # | Item | Status | Location | Source host |
 |---|---|---|---|---|
-| 1 | `/health` snapshot | pending | `evidence/gateway-health-*.json` | G-GEAR |
-| 2 | 3-agent walking envelope stream | pending | `evidence/cognition-ticks-*.log` | G-GEAR |
-| 3 | `semantic_memory` dump | pending | `evidence/semantic-memory-dump-*.txt` | G-GEAR |
-| 4 | Dialog trace | pending | `evidence/dialog-trace-*.log` | G-GEAR |
-| 5 | Godot 3-avatar recording | **✅ captured 2026-04-20** | `evidence/godot-3avatar-20260420-1625.mp4` | MacBook |
+| 1 | `/health` snapshot | ✅ PASS | `evidence/gateway-health-*.json` | G-GEAR |
+| 2 | 3-agent walking envelope stream | ✅ PASS | `evidence/cognition-ticks-*.log` | G-GEAR |
+| 3 | `semantic_memory` dump | ✅ PASS | `evidence/semantic-memory-dump-*.txt` | G-GEAR |
+| 4 | Dialog trace | ✅ PASS | `evidence/dialog-trace-*.log` | G-GEAR |
+| 5 | Godot 3-avatar recording | ✅ PASS (captured 2026-04-20) | `evidence/godot-3avatar-20260420-1625.mp4` | MacBook |
+
+Full PASS/FAIL summary with criteria quotations → `acceptance.md`.
 
 ## How this split came about
 
 Item #5 (the Godot recording) is the MacBook-side acceptance evidence —
 it had to be captured on the machine running the 3D viewer. Items #1-#4
 are produced on the G-GEAR box that runs `erre-sandbox` itself
-(Ollama + cognition + memory + gateway), and will be collected by the
+(Ollama + cognition + memory + gateway), and were collected by the
 G-GEAR Claude Code session following the handoff at
 `.steering/_handoff-g-gear-m4-live-validation.md`.
 
-This PR delivers only #5. The G-GEAR side will either extend this
-directory in a follow-up PR or open a companion branch with the other
-four items and the final `acceptance.md` PASS/FAIL summary.
+Commit history:
+
+- `22841d5 chore(m4): capture Godot 3-avatar live recording (acceptance #5)` — MacBook
+- G-GEAR #1-#4 collection commits follow in this same branch
 
 ## Video capture notes
 
 - Source: MacBook Godot editor running `godot_project/`, connected to
-  G-GEAR's gateway over WebSocket
+  G-GEAR's gateway (`ws://192.168.3.85:8000/ws/observe?subscribe=a_kant_001,a_nietzsche_001,a_rikyu_001`)
+  over WebSocket
 - Resolution 1280×720 (Godot embedded-game window size at capture time)
-- Duration / fps observation: reviewed manually by the operator during
-  recording; the acceptance note will be written after G-GEAR evidence
-  arrives and the whole 5-item matrix is filled in
+- Duration / fps observation: reviewed visually by the operator during
+  recording — fps counter held 28-32 over the 60s window per
+  `live-checklist.md` §#5
 
 ## Next step
 
-Once G-GEAR contributes items #1-#4, write `acceptance.md` with the
-PASS/FAIL table from `live-checklist.md` §PASS 条件 and decide whether
-to cut the `v0.2.0-m4` tag.
+All 5 items ✅ PASS. Open the PR for this branch and, once merged,
+consult the user about cutting the `v0.2.0-m4` tag.
