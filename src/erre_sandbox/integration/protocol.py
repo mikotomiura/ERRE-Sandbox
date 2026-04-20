@@ -65,6 +65,47 @@ curl probes) can still discover the server's
 :data:`~erre_sandbox.schemas.SCHEMA_VERSION` this way.
 """
 
+SUBSCRIBE_QUERY_PARAM: Final[str] = "subscribe"
+"""URL query-parameter name controlling per-session agent filtering.
+
+Added by ``m4-gateway-multi-agent-stream``. Clients connecting to
+``/ws/observe`` without this parameter receive every envelope (broadcast,
+preserving M2 behaviour). A comma-separated list of ``persona_id`` values
+restricts the session to envelopes whose routing set intersects the list.
+The literal ``*`` is equivalent to omission.
+"""
+
+SUBSCRIBE_DELIMITER: Final[str] = ","
+"""Delimiter used inside the ``?subscribe=`` query parameter."""
+
+MAX_SUBSCRIBE_ITEMS: Final[int] = 32
+"""Upper bound on the number of agent ids permitted in one ``?subscribe=``.
+
+Defends against a pathological client sending a giant subscription list to
+force linear-scan fan-out cost to blow up. 32 is >> any realistic persona
+count (M4 uses 3; M10-11 projections are <20).
+"""
+
+MAX_SUBSCRIBE_ID_LENGTH: Final[int] = 64
+"""Per-item length ceiling inside ``?subscribe=``.
+
+``persona_id`` values are kebab-case slugs (see PersonaSpec) and never
+exceed a few dozen characters; 64 leaves generous headroom while still
+rejecting abusive inputs.
+"""
+
+MAX_SUBSCRIBE_RAW_LENGTH: Final[int] = (
+    MAX_SUBSCRIBE_ITEMS * (MAX_SUBSCRIBE_ID_LENGTH + 1) + 1
+)
+"""Upper bound on the whole ``?subscribe=`` string before we attempt parse.
+
+Cheap O(1) pre-check that rejects multi-megabyte payloads before ``split``
+has a chance to allocate a long list of short strings behind a permissive
+reverse proxy. Derived from :data:`MAX_SUBSCRIBE_ITEMS` and
+:data:`MAX_SUBSCRIBE_ID_LENGTH` so bumping either one keeps this cap
+consistent.
+"""
+
 
 # =============================================================================
 # Session phase enum
@@ -90,6 +131,11 @@ __all__ = [
     "HEARTBEAT_INTERVAL_S",
     "IDLE_DISCONNECT_S",
     "MAX_ENVELOPE_BACKLOG",
+    "MAX_SUBSCRIBE_ID_LENGTH",
+    "MAX_SUBSCRIBE_ITEMS",
+    "MAX_SUBSCRIBE_RAW_LENGTH",
     "SCHEMA_VERSION_HEADER",
+    "SUBSCRIBE_DELIMITER",
+    "SUBSCRIBE_QUERY_PARAM",
     "SessionPhase",
 ]

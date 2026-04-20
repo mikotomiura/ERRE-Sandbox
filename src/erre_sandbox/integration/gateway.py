@@ -27,6 +27,7 @@ import argparse
 import asyncio
 import contextlib
 import logging
+import re
 import secrets
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, ClassVar, Final, Protocol
@@ -38,9 +39,15 @@ from pydantic import TypeAdapter, ValidationError
 from erre_sandbox.integration import protocol
 from erre_sandbox.schemas import (
     SCHEMA_VERSION,
+    AgentUpdateMsg,
+    AnimationMsg,
     ControlEnvelope,
+    DialogInitiateMsg,
+    DialogTurnMsg,
     ErrorMsg,
     HandshakeMsg,
+    MoveMsg,
+    SpeechMsg,
     WorldTickMsg,
 )
 
@@ -76,6 +83,11 @@ _SERVER_CAPABILITIES: Final[tuple[str, ...]] = (
     "animation",
     "world_tick",
     "error",
+    # M4 foundation dialog variants — advertised so clients that opted into
+    # 0.2.0-m4 can subscribe without a capability mismatch round-trip.
+    "dialog_initiate",
+    "dialog_turn",
+    "dialog_close",
 )
 
 
@@ -99,6 +111,36 @@ class _RuntimeLike(Protocol):
     async def recv_envelope(self) -> ControlEnvelope: ...
 
 
+def _envelope_target_agents(env: ControlEnvelope) -> frozenset[str] | None:
+    """Extract the set of ``agent_id`` values an envelope is scoped to.
+
+    Added by ``m4-gateway-multi-agent-stream`` to drive per-session
+    subscription filtering. Returns ``None`` when the envelope is global
+    (must reach every subscriber regardless of filter).
+
+    Routing rules:
+
+    * ``agent_update`` / ``speech`` / ``move`` / ``animation`` — the single
+      ``agent_id`` field the envelope carries.
+    * ``dialog_initiate`` — both the initiator and target.
+    * ``dialog_turn`` — both the speaker and addressee.
+    * ``handshake`` / ``world_tick`` / ``error`` / ``dialog_close`` —
+      global: handshake is server-originated, world_tick and error are
+      session-wide utilities, dialog_close is metadata-only (no
+      participant fields on the wire type) so every subscriber needs it
+      for UI cleanup.
+    """
+    if isinstance(env, AgentUpdateMsg):
+        return frozenset({env.agent_state.agent_id})
+    if isinstance(env, (SpeechMsg, MoveMsg, AnimationMsg)):
+        return frozenset({env.agent_id})
+    if isinstance(env, DialogInitiateMsg):
+        return frozenset({env.initiator_agent_id, env.target_agent_id})
+    if isinstance(env, DialogTurnMsg):
+        return frozenset({env.speaker_id, env.addressee_id})
+    return None
+
+
 # =============================================================================
 # Registry
 # =============================================================================
@@ -111,29 +153,61 @@ class Registry:
     :func:`ws_observe`. The registry exists only so that
     :func:`_broadcaster` can find every active outbound queue and
     ``/health`` can report ``active_sessions``.
+
+    Per-session agent subscription (added by
+    ``m4-gateway-multi-agent-stream``) is carried alongside the queue.
+    A ``None`` subscription means the session receives every envelope
+    (the M2 broadcast default); a frozenset restricts delivery to
+    envelopes whose ``_envelope_target_agents`` intersects the set.
+    Global envelopes (``world_tick`` / ``error`` / ``dialog_close`` /
+    server handshake) bypass the filter unconditionally.
     """
 
     def __init__(self) -> None:
         self._queues: dict[str, asyncio.Queue[ControlEnvelope]] = {}
+        self._subscriptions: dict[str, frozenset[str] | None] = {}
 
     def __len__(self) -> int:
         return len(self._queues)
 
-    def add(self, session_id: str, queue: asyncio.Queue[ControlEnvelope]) -> None:
+    def add(
+        self,
+        session_id: str,
+        queue: asyncio.Queue[ControlEnvelope],
+        *,
+        subscribed_agents: frozenset[str] | None = None,
+    ) -> None:
         self._queues[session_id] = queue
+        self._subscriptions[session_id] = subscribed_agents
 
     def remove(self, session_id: str) -> None:
         self._queues.pop(session_id, None)
+        self._subscriptions.pop(session_id, None)
 
     def fan_out(self, env: ControlEnvelope) -> None:
-        """Push ``env`` to every registered queue.
+        """Push ``env`` to every registered queue whose subscription matches.
 
         If a queue is full we drop the **oldest** item, push a single
         :class:`ErrorMsg` ``backlog_overflow`` warning, then push ``env``.
         This preserves the "latest-wins" behaviour described in the
         integration-contract while keeping memory bounded.
+
+        Subscription filtering: a session whose ``subscribed_agents`` is
+        ``None`` receives every envelope. A non-None subscription receives
+        an envelope only when ``_envelope_target_agents(env)`` is ``None``
+        (global) or intersects the subscription.
         """
+        targets = _envelope_target_agents(env)
         for session_id, queue in list(self._queues.items()):
+            subscription = self._subscriptions.get(session_id)
+            if (
+                subscription is not None
+                and targets is not None
+                and subscription.isdisjoint(targets)
+            ):
+                # Session is subscribed to a specific agent set and this
+                # envelope is scoped to a disjoint agent set — skip.
+                continue
             # Guard against an unbounded (maxsize=0) queue: ``queue.full()``
             # returns False in that case, but the qsize() > maxsize - 2 loop
             # below would drain every queued item if we ever reached it.
@@ -191,6 +265,71 @@ def _make_server_handshake() -> HandshakeMsg:
 
 def _make_error(*, code: str, detail: str, tick: int = 0) -> ErrorMsg:
     return ErrorMsg(tick=tick, code=code, detail=detail)
+
+
+class _InvalidSubscribeError(ValueError):
+    """Raised when ``?subscribe=`` violates a limit.
+
+    Kept as a dedicated subclass so ``ws_observe`` can distinguish
+    subscription errors from other client-side faults and surface a
+    specific error code without catching bare ``ValueError`` (which would
+    also catch downstream bugs).
+    """
+
+
+_SUBSCRIBE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"\A[A-Za-z0-9_-]+\Z")
+"""Allowed character class for a single ``?subscribe=`` item.
+
+Matches the kebab-case / snake-case slug shape of ``PersonaSpec.persona_id``
+and rejects control characters, whitespace, path separators, and any
+Unicode that could be abused for log injection or impersonation.
+"""
+
+
+def _parse_subscribe_param(raw: str | None) -> frozenset[str] | None:
+    """Translate the ``?subscribe=`` URL param into a subscription set.
+
+    Returns ``None`` (broadcast) when:
+
+    * the param is absent, empty, or exactly ``*``.
+
+    Returns a ``frozenset`` of persona ids when the param is a comma-
+    separated list of non-empty slugs. Raises :class:`_InvalidSubscribeError`
+    if any limit is violated — the caller surfaces this as an
+    ``invalid_subscribe`` :class:`ErrorMsg` and closes the handshake.
+    """
+    if raw is None or raw in {"", "*"}:
+        return None
+    # O(1) byte-length pre-check before ``split``. Defends against a
+    # permissive reverse proxy passing through multi-MB query strings
+    # that would otherwise allocate a long list of short strings.
+    if len(raw) > protocol.MAX_SUBSCRIBE_RAW_LENGTH:
+        raise _InvalidSubscribeError(
+            f"subscribe param is {len(raw)} chars, max is "
+            f"{protocol.MAX_SUBSCRIBE_RAW_LENGTH}",
+        )
+    items = [x.strip() for x in raw.split(protocol.SUBSCRIBE_DELIMITER) if x.strip()]
+    if not items:
+        return None
+    if len(items) > protocol.MAX_SUBSCRIBE_ITEMS:
+        raise _InvalidSubscribeError(
+            f"subscribe has {len(items)} items, max is {protocol.MAX_SUBSCRIBE_ITEMS}",
+        )
+    for item in items:
+        if len(item) > protocol.MAX_SUBSCRIBE_ID_LENGTH:
+            raise _InvalidSubscribeError(
+                f"subscribe item {item[:20]!r}… exceeds "
+                f"{protocol.MAX_SUBSCRIBE_ID_LENGTH} chars",
+            )
+        if not _SUBSCRIBE_ID_PATTERN.match(item):
+            # Reject control chars / whitespace / unicode / path separators
+            # before they reach the log pipeline. persona_id is a slug
+            # (PersonaSpec) so any non-matching item is also a routing miss.
+            raise _InvalidSubscribeError(
+                f"subscribe item {item[:20]!r}… must match "
+                f"[A-Za-z0-9_-]+ (persona_id slug)",
+            )
+    return frozenset(items)
 
 
 def _parse_envelope(raw: str) -> ControlEnvelope | None:
@@ -341,6 +480,31 @@ async def ws_observe(ws: WebSocket) -> None:
     registry: Registry = ws.app.state.registry
     session_id = secrets.token_hex(8)
 
+    # Parse the optional ``?subscribe=`` query parameter before accepting,
+    # so a malformed subscription is rejected before we allocate resources
+    # or notify the peer of a successful upgrade.
+    try:
+        subscribed_agents = _parse_subscribe_param(
+            ws.query_params.get(protocol.SUBSCRIBE_QUERY_PARAM),
+        )
+    except _InvalidSubscribeError as exc:
+        # WebSocket spec requires accept() before we can send any application
+        # frame, so the ErrorMsg path mirrors the valid flow: upgrade first,
+        # surface the error, then close. This intentionally gives the peer
+        # no timing-based oracle between a valid and an invalid subscribe.
+        await ws.accept(
+            headers=[
+                (
+                    protocol.SCHEMA_VERSION_HEADER.lower().encode(),
+                    SCHEMA_VERSION.encode(),
+                ),
+            ],
+        )
+        await _send_error(ws, code="invalid_subscribe", detail=str(exc))
+        with contextlib.suppress(Exception):
+            await ws.close()
+        return
+
     await ws.accept(
         headers=[
             (
@@ -391,7 +555,7 @@ async def ws_observe(ws: WebSocket) -> None:
         out_queue: asyncio.Queue[ControlEnvelope] = asyncio.Queue(
             maxsize=protocol.MAX_ENVELOPE_BACKLOG,
         )
-        registry.add(session_id, out_queue)
+        registry.add(session_id, out_queue, subscribed_agents=subscribed_agents)
         try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(_recv_loop(ws), name=f"recv-{session_id}")
