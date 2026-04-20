@@ -131,6 +131,12 @@ def test_bootconfig_defaults_match_mvp_requirements() -> None:
     assert cfg.ollama_url == "http://127.0.0.1:11434"
 
 
+def test_bootconfig_agents_default_is_empty_tuple() -> None:
+    """M4 foundation field: defaulting to () preserves the M2 1-Kant flow."""
+    cfg = BootConfig()
+    assert cfg.agents == ()
+
+
 # ---------------------------------------------------------------------------
 # _supervise
 # ---------------------------------------------------------------------------

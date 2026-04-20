@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.2.0-m4",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "dialog_turn",
+  "dialog_id": "d_kant_nietzsche_0001",
+  "speaker_id": "a_kant_001",
+  "addressee_id": "a_nietzsche_001",
+  "utterance": "Zwei Dinge erfüllen das Gemüt mit immer neuer und zunehmender Bewunderung."
+}

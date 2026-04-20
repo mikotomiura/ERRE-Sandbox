@@ -80,11 +80,30 @@ def test_envelope_kinds_match_between_schemas_and_router() -> None:
     )
 
 
-def test_python_side_has_seven_kinds() -> None:
-    """Sanity check that §7 still declares seven kinds.
+_EXPECTED_KINDS: frozenset[str] = frozenset(
+    {
+        # M2 (T05 schemas-freeze)
+        "handshake",
+        "agent_update",
+        "speech",
+        "move",
+        "animation",
+        "world_tick",
+        "error",
+        # M4 foundation (dialog_* variants added by m4-contracts-freeze)
+        "dialog_initiate",
+        "dialog_turn",
+        "dialog_close",
+    },
+)
+
+
+def test_python_side_covers_expected_kinds() -> None:
+    """Sanity check that §7 still declares exactly the expected set of kinds.
 
     If this test fails, the Pydantic union changed shape — review
-    ``schemas.py §7`` and the README in ``fixtures/control_envelope/``
-    together.
+    ``schemas.py §7``, the README in ``fixtures/control_envelope/``, and
+    ``_EXPECTED_KINDS`` above together, and bump ``SCHEMA_VERSION`` if the
+    change is intentional.
     """
-    assert len(_python_kinds()) == 7
+    assert _python_kinds() == _EXPECTED_KINDS

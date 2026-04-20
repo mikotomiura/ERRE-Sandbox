@@ -1,0 +1,8 @@
+{
+  "schema_version": "0.2.0-m4",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "dialog_close",
+  "dialog_id": "d_kant_nietzsche_0001",
+  "reason": "completed"
+}

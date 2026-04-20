@@ -14,10 +14,15 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from erre_sandbox.schemas import (
     SCHEMA_VERSION,
+    AgentSpec,
     AgentState,
     AgentUpdateMsg,
     CognitiveHabit,
     ControlEnvelope,
+    DialogCloseMsg,
+    DialogInitiateMsg,
+    DialogScheduler,
+    DialogTurnMsg,
     ERREMode,
     ERREModeName,
     HabitFlag,
@@ -30,8 +35,10 @@ from erre_sandbox.schemas import (
     PersonaSpec,
     Physical,
     Position,
+    ReflectionEvent,
     SamplingBase,
     SamplingDelta,
+    SemanticMemoryRecord,
     SpeechEvent,
     Zone,
 )
@@ -354,3 +361,143 @@ def test_conftest_factory_matches_inline_helper(agent_state_kant: AgentState) ->
     lhs = agent_state_kant.model_dump(exclude={"wall_clock"})
     rhs = _make_agent_state().model_dump(exclude={"wall_clock"})
     assert lhs == rhs
+
+
+# =========================================================================
+# M4 foundation — AgentSpec / ReflectionEvent / SemanticMemoryRecord
+# / Dialog* variants / DialogScheduler Protocol
+# =========================================================================
+
+
+def test_schema_version_is_m4() -> None:
+    """Top-level SCHEMA_VERSION has been bumped for the M4 foundation freeze."""
+    assert SCHEMA_VERSION == "0.2.0-m4"
+
+
+def test_agent_spec_validates_minimal_shape() -> None:
+    spec = AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS)
+    assert spec.persona_id == "kant"
+    assert spec.initial_zone is Zone.PERIPATOS
+
+
+def test_agent_spec_rejects_extra() -> None:
+    with pytest.raises(ValidationError):
+        AgentSpec.model_validate(
+            {"persona_id": "kant", "initial_zone": "peripatos", "rogue": True},
+        )
+
+
+def test_agent_spec_requires_known_zone() -> None:
+    with pytest.raises(ValidationError):
+        AgentSpec.model_validate({"persona_id": "kant", "initial_zone": "valhalla"})
+
+
+def test_reflection_event_round_trip() -> None:
+    event = ReflectionEvent(
+        agent_id="a_kant_001",
+        tick=120,
+        summary_text="Clarity after the 15:30 walk.",
+        src_episodic_ids=["m1", "m2"],
+    )
+    re_loaded = ReflectionEvent.model_validate_json(event.model_dump_json())
+    assert re_loaded == event
+
+
+def test_reflection_event_rejects_negative_tick() -> None:
+    with pytest.raises(ValidationError):
+        ReflectionEvent.model_validate(
+            {"agent_id": "a", "tick": -1, "summary_text": "x"},
+        )
+
+
+def test_semantic_memory_record_accepts_empty_embedding() -> None:
+    record = SemanticMemoryRecord(
+        id="sm1",
+        agent_id="a_kant_001",
+        summary="Idea X refined.",
+    )
+    assert record.embedding == []
+    assert record.origin_reflection_id is None
+
+
+def test_semantic_memory_record_round_trip_with_embedding() -> None:
+    record = SemanticMemoryRecord(
+        id="sm1",
+        agent_id="a_kant_001",
+        embedding=[0.1, 0.2, -0.3],
+        summary="Idea X refined.",
+        origin_reflection_id="rf1",
+    )
+    re_loaded = SemanticMemoryRecord.model_validate_json(record.model_dump_json())
+    assert re_loaded == record
+
+
+def _dialog_envelope_cases() -> list[tuple[str, dict[str, object], type[BaseModel]]]:
+    return [
+        (
+            "dialog_initiate",
+            {
+                "kind": "dialog_initiate",
+                "tick": 42,
+                "initiator_agent_id": "a_kant_001",
+                "target_agent_id": "a_nietzsche_001",
+                "zone": "peripatos",
+            },
+            DialogInitiateMsg,
+        ),
+        (
+            "dialog_turn",
+            {
+                "kind": "dialog_turn",
+                "tick": 42,
+                "dialog_id": "d1",
+                "speaker_id": "a_kant_001",
+                "addressee_id": "a_nietzsche_001",
+                "utterance": "Guten Tag.",
+            },
+            DialogTurnMsg,
+        ),
+        (
+            "dialog_close",
+            {
+                "kind": "dialog_close",
+                "tick": 42,
+                "dialog_id": "d1",
+                "reason": "completed",
+            },
+            DialogCloseMsg,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("kind", "payload", "expected_cls"),
+    _dialog_envelope_cases(),
+    ids=[c[0] for c in _dialog_envelope_cases()],
+)
+def test_control_envelope_union_dispatches_dialog_variants(
+    kind: str,
+    payload: dict[str, object],
+    expected_cls: type[BaseModel],
+) -> None:
+    adapter: TypeAdapter[ControlEnvelope] = TypeAdapter(ControlEnvelope)
+    envelope = adapter.validate_python(payload)
+    assert isinstance(envelope, expected_cls)
+    assert envelope.kind == kind
+
+
+def test_dialog_close_reason_is_literal_set() -> None:
+    DialogCloseMsg(tick=1, dialog_id="d1", reason="interrupted")
+    DialogCloseMsg(tick=1, dialog_id="d1", reason="timeout")
+    with pytest.raises(ValidationError):
+        DialogCloseMsg.model_validate(
+            {"kind": "dialog_close", "tick": 1, "dialog_id": "d1", "reason": "bored"},
+        )
+
+
+def test_dialog_scheduler_protocol_exposes_required_methods() -> None:
+    """The Protocol is interface-only; concrete impl comes in orchestrator task."""
+    for method_name in ("schedule_initiate", "record_turn", "close_dialog"):
+        assert hasattr(DialogScheduler, method_name), (
+            f"DialogScheduler is missing required method {method_name!r}"
+        )

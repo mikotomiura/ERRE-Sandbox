@@ -1,13 +1,17 @@
-# EnvelopeRouter — T16 godot-ws-client
+# EnvelopeRouter — T16 godot-ws-client (M4: dialog variants added)
 #
 # Receives raw ControlEnvelope Dictionaries (emitted by WebSocketClient.gd or
-# FixturePlayer.gd) and re-emits them as one of seven typed signals keyed by
-# the envelope's ``kind`` field.
+# FixturePlayer.gd) and re-emits them as typed signals keyed by the envelope's
+# ``kind`` field.
 #
-# The seven kinds below MUST match ``src/erre_sandbox/schemas.py`` §7 exactly.
+# The kinds below MUST match ``src/erre_sandbox/schemas.py`` §7 exactly.
 # ``tests/test_envelope_kind_sync.py`` parses this file's match block and
 # fails the CI build if drift is detected. Keep each match arm on its own
 # line as ``"kind_name":`` so the regex extractor finds it cleanly.
+#
+# M4 foundation adds ``dialog_initiate`` / ``dialog_turn`` / ``dialog_close``.
+# Dispatch is implemented here but the concrete 3-avatar routing / animation
+# hook-up is deferred to ``m4-multi-agent-orchestrator`` (consumer side).
 class_name EnvelopeRouter
 extends Node
 
@@ -18,6 +22,9 @@ signal move_issued(agent_id: String, target: Dictionary, speed: float)
 signal animation_changed(agent_id: String, animation_name: String, loop: bool)
 signal world_ticked(wall_clock: String, tick: int, active_agents: int)
 signal error_reported(code: String, detail: String)
+signal dialog_initiate_received(initiator_agent_id: String, target_agent_id: String, zone: String)
+signal dialog_turn_received(dialog_id: String, speaker_id: String, addressee_id: String, utterance: String)
+signal dialog_close_received(dialog_id: String, reason: String)
 
 
 func on_envelope_received(envelope: Dictionary) -> void:
@@ -59,6 +66,24 @@ func on_envelope_received(envelope: Dictionary) -> void:
 			error_reported.emit(
 				envelope.get("code", ""),
 				envelope.get("detail", ""),
+			)
+		"dialog_initiate":
+			dialog_initiate_received.emit(
+				envelope.get("initiator_agent_id", ""),
+				envelope.get("target_agent_id", ""),
+				envelope.get("zone", ""),
+			)
+		"dialog_turn":
+			dialog_turn_received.emit(
+				envelope.get("dialog_id", ""),
+				envelope.get("speaker_id", ""),
+				envelope.get("addressee_id", ""),
+				envelope.get("utterance", ""),
+			)
+		"dialog_close":
+			dialog_close_received.emit(
+				envelope.get("dialog_id", ""),
+				envelope.get("reason", ""),
 			)
 		_:
 			push_warning("[EnvelopeRouter] Unknown kind: %s" % kind)

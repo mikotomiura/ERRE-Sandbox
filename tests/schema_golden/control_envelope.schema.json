@@ -32,7 +32,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -71,7 +71,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -117,7 +117,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -215,6 +215,151 @@
       "title": "Cognitive",
       "type": "object"
     },
+    "DialogCloseMsg": {
+      "additionalProperties": false,
+      "description": "A dialog has ended (M4 foundation).\n\n``reason`` is a closed literal set so the gateway and the scheduler can\ndispatch on it without string matching.",
+      "properties": {
+        "dialog_id": {
+          "title": "Dialog Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "dialog_close",
+          "default": "dialog_close",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "completed",
+            "interrupted",
+            "timeout"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "0.2.0-m4",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "tick": {
+          "minimum": 0,
+          "title": "Tick",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tick",
+        "dialog_id",
+        "reason"
+      ],
+      "title": "DialogCloseMsg",
+      "type": "object"
+    },
+    "DialogInitiateMsg": {
+      "additionalProperties": false,
+      "description": "An agent requests to start a dialog with another agent (M4 foundation).\n\nThe scheduler decides whether to admit the request (backpressure, zone\nconstraints, existing dialog state). Admission logic lives in\n``m4-multi-agent-orchestrator``; this envelope only captures the intent.",
+      "properties": {
+        "initiator_agent_id": {
+          "title": "Initiator Agent Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "dialog_initiate",
+          "default": "dialog_initiate",
+          "title": "Kind",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "0.2.0-m4",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "target_agent_id": {
+          "title": "Target Agent Id",
+          "type": "string"
+        },
+        "tick": {
+          "minimum": 0,
+          "title": "Tick",
+          "type": "integer"
+        },
+        "zone": {
+          "$ref": "#/$defs/Zone"
+        }
+      },
+      "required": [
+        "tick",
+        "initiator_agent_id",
+        "target_agent_id",
+        "zone"
+      ],
+      "title": "DialogInitiateMsg",
+      "type": "object"
+    },
+    "DialogTurnMsg": {
+      "additionalProperties": false,
+      "description": "A single turn inside an ongoing dialog (M4 foundation).\n\n``speaker_id`` and ``addressee_id`` are both carried so Godot can drive\nthe correct animations (speech bubble / head-turn) without re-deriving\norientation from world state.",
+      "properties": {
+        "addressee_id": {
+          "title": "Addressee Id",
+          "type": "string"
+        },
+        "dialog_id": {
+          "title": "Dialog Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "dialog_turn",
+          "default": "dialog_turn",
+          "title": "Kind",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "0.2.0-m4",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "speaker_id": {
+          "title": "Speaker Id",
+          "type": "string"
+        },
+        "tick": {
+          "minimum": 0,
+          "title": "Tick",
+          "type": "integer"
+        },
+        "utterance": {
+          "title": "Utterance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tick",
+        "dialog_id",
+        "speaker_id",
+        "addressee_id",
+        "utterance"
+      ],
+      "title": "DialogTurnMsg",
+      "type": "object"
+    },
     "ERREMode": {
       "additionalProperties": false,
       "description": "The agent's current ERRE mode with its sampling overrides.",
@@ -290,7 +435,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -340,7 +485,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -377,7 +522,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -644,7 +789,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -691,7 +836,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.1.0-m2",
+          "default": "0.2.0-m4",
           "title": "Schema Version",
           "type": "string"
         },
@@ -735,6 +880,9 @@
     "mapping": {
       "agent_update": "#/$defs/AgentUpdateMsg",
       "animation": "#/$defs/AnimationMsg",
+      "dialog_close": "#/$defs/DialogCloseMsg",
+      "dialog_initiate": "#/$defs/DialogInitiateMsg",
+      "dialog_turn": "#/$defs/DialogTurnMsg",
       "error": "#/$defs/ErrorMsg",
       "handshake": "#/$defs/HandshakeMsg",
       "move": "#/$defs/MoveMsg",
@@ -764,6 +912,15 @@
     },
     {
       "$ref": "#/$defs/ErrorMsg"
+    },
+    {
+      "$ref": "#/$defs/DialogInitiateMsg"
+    },
+    {
+      "$ref": "#/$defs/DialogTurnMsg"
+    },
+    {
+      "$ref": "#/$defs/DialogCloseMsg"
     }
   ]
 }
