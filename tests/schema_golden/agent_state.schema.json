@@ -383,7 +383,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "0.1.0-m2",
+      "default": "0.2.0-m4",
       "title": "Schema Version",
       "type": "string"
     },

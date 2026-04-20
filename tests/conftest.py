@@ -19,6 +19,9 @@ from erre_sandbox.schemas import (
     AnimationMsg,
     CognitiveHabit,
     ControlEnvelope,
+    DialogCloseMsg,
+    DialogInitiateMsg,
+    DialogTurnMsg,
     ErrorMsg,
     HabitFlag,
     HandshakeMsg,
@@ -208,6 +211,33 @@ def _build_error(tick: int, overrides: dict[str, Any]) -> ErrorMsg:
     )
 
 
+def _build_dialog_initiate(tick: int, overrides: dict[str, Any]) -> DialogInitiateMsg:
+    return DialogInitiateMsg(
+        tick=tick,
+        initiator_agent_id=overrides.pop("initiator_agent_id", "a_kant_001"),
+        target_agent_id=overrides.pop("target_agent_id", "a_nietzsche_001"),
+        zone=overrides.pop("zone", Zone.PERIPATOS),
+    )
+
+
+def _build_dialog_turn(tick: int, overrides: dict[str, Any]) -> DialogTurnMsg:
+    return DialogTurnMsg(
+        tick=tick,
+        dialog_id=overrides.pop("dialog_id", "d_kant_nietzsche_0001"),
+        speaker_id=overrides.pop("speaker_id", "a_kant_001"),
+        addressee_id=overrides.pop("addressee_id", "a_nietzsche_001"),
+        utterance=overrides.pop("utterance", "..."),
+    )
+
+
+def _build_dialog_close(tick: int, overrides: dict[str, Any]) -> DialogCloseMsg:
+    return DialogCloseMsg(
+        tick=tick,
+        dialog_id=overrides.pop("dialog_id", "d_kant_nietzsche_0001"),
+        reason=overrides.pop("reason", "completed"),
+    )
+
+
 _ENVELOPE_BUILDERS: dict[str, Callable[[int, dict[str, Any]], ControlEnvelope]] = {
     "handshake": _build_handshake,
     "agent_update": _build_agent_update,
@@ -216,4 +246,7 @@ _ENVELOPE_BUILDERS: dict[str, Callable[[int, dict[str, Any]], ControlEnvelope]] 
     "animation": _build_animation,
     "world_tick": _build_world_tick,
     "error": _build_error,
+    "dialog_initiate": _build_dialog_initiate,
+    "dialog_turn": _build_dialog_turn,
+    "dialog_close": _build_dialog_close,
 }

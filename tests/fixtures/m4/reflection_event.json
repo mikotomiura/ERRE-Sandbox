@@ -1,0 +1,11 @@
+{
+  "agent_id": "a_kant_001",
+  "tick": 120,
+  "summary_text": "After the 15:30 walk, Kant felt a renewed clarity on the categorical imperative, seeing it less as a rule and more as a self-legislated law.",
+  "src_episodic_ids": [
+    "m_kant_0041",
+    "m_kant_0042",
+    "m_kant_0043"
+  ],
+  "created_at": "2026-04-20T12:00:00Z"
+}

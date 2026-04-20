@@ -145,6 +145,13 @@
 - **責務**: G-GEAR ↔ MacBook 間の通信プロトコル
 - **構成**: `kind` フィールドでメッセージ種別を識別
 - **送信データ**: `{agent_id, position, rotation, animation, speech_bubble}` (30Hz)
+- **M4 拡張** (`schema_version=0.2.0-m4`): `dialog_initiate` / `dialog_turn` / `dialog_close` variant を追加。3 体間対話の開始・1 ターン・終了を ControlEnvelope 上で運ぶ。`DialogScheduler` (schemas.py §7.5 Protocol) が具象実装のインタフェース
+
+### M4 Foundation Primitives (`schema_version=0.2.0-m4`)
+- **`AgentSpec`** (schemas.py §3): bootstrap 時の minimal agent 宣言 (`persona_id` + `initial_zone`)。`BootConfig.agents: tuple[AgentSpec, ...]` で N 体起動に拡張する
+- **`ReflectionEvent`** (schemas.py §6): cognition cycle が発火する reflection 1 回分のスナップショット。発火条件の決定は `m4-cognition-reflection` で
+- **`SemanticMemoryRecord`** (schemas.py §6): reflection から蒸留された長期意味記憶 1 行。sqlite-vec schema 詳細は `m4-memory-semantic-layer` で
+- **`DialogScheduler` Protocol** (schemas.py §7.5): turn-taking / backpressure / timeout の具象実装は `m4-multi-agent-orchestrator` で
 
 ## 5. データフロー
 

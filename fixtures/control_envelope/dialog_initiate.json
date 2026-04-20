@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.2.0-m4",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "dialog_initiate",
+  "initiator_agent_id": "a_kant_001",
+  "target_agent_id": "a_nietzsche_001",
+  "zone": "peripatos"
+}

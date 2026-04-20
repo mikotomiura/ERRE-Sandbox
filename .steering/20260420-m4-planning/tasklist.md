@@ -96,16 +96,16 @@
   `docs/architecture.md` §Composition Root, `docs/functional-design.md` §4 M4
 
 ## MASTER-PLAN 追記
-- [ ] `MASTER-PLAN.md §5` に M4 詳細セクション (上記 6 サブタスク + Contract 凍結対象
+- [x] `MASTER-PLAN.md §5` に M4 詳細セクション (上記 6 サブタスク + Contract 凍結対象
       + 依存グラフ + 検収条件) を追記
-- [ ] memory `project_implementation_plan.md` に M4 planning 完了を追記
+- [x] memory `project_implementation_plan.md` に M4 planning 完了を追記
 
 ## 完了処理
-- [ ] `decisions.md` を作成 (/reimagine 採用判断 + hybrid foundation 小型化の根拠)
-- [ ] commit (`docs(steering): M4 planning — 3-axis + Contract-First subtask 分解 + /reimagine`)
-- [ ] push + PR 作成 (branch: `chore/m4-planning`)
-- [ ] PR review → main merge
-- [ ] tag 発行なし (v0.1.1-m2 据置)
+- [x] `decisions.md` を作成 (/reimagine 採用判断 + hybrid foundation 小型化の根拠)
+- [x] commit (`docs(steering): M4 planning — 3-axis + Contract-First subtask 分解 + /reimagine`)
+- [x] push + PR 作成 (branch: `chore/m4-planning`)
+- [x] PR review → main merge
+- [x] tag 発行なし (v0.1.1-m2 据置)
 
 ## 次セッションで着手する最初のタスク
 

@@ -28,6 +28,7 @@ from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.integration.gateway import make_app
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
 from erre_sandbox.schemas import (
+    AgentSpec,
     AgentState,
     ERREMode,
     ERREModeName,
@@ -49,6 +50,10 @@ class BootConfig:
 
     Instantiated once by ``__main__.cli`` from argparse, then passed into
     :func:`bootstrap`. Kept frozen so tests cannot mutate it across awaits.
+
+    ``agents`` is the M4-foundation extension: an empty tuple keeps the
+    M2 single-Kant flow working unchanged. N-agent boot wiring is the
+    responsibility of ``m4-multi-agent-orchestrator``.
     """
 
     host: str = "0.0.0.0"  # noqa: S104 — LAN only by design
@@ -60,6 +65,7 @@ class BootConfig:
     check_ollama: bool = True
     log_level: str = "info"
     personas_dir: Path = field(default_factory=lambda: Path("personas"))
+    agents: tuple[AgentSpec, ...] = ()
 
 
 def _load_kant_persona(cfg: BootConfig) -> PersonaSpec:

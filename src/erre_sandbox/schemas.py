@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, Final, Literal, TypeAlias
+from typing import Annotated, Final, Literal, Protocol, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,12 +32,17 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.1.0-m2"
+SCHEMA_VERSION: Final[str] = "0.2.0-m4"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
 value is added/removed. Consumed by ``HandshakeMsg`` for early mismatch
 detection between MacBook / G-GEAR / Godot peers.
+
+M4 bump (0.1.0-m2 → 0.2.0-m4): adds the AgentSpec / ReflectionEvent /
+SemanticMemoryRecord primitives and the dialog_initiate / dialog_turn /
+dialog_close ControlEnvelope variants required by the 3-agent milestone.
+See ``.steering/20260420-m4-contracts-freeze/`` for the rationale.
 """
 
 
@@ -195,6 +200,24 @@ class PersonaSpec(BaseModel):
     cognitive_habits: list[CognitiveHabit]
     preferred_zones: list[Zone]
     default_sampling: SamplingBase = Field(default_factory=SamplingBase)
+
+
+class AgentSpec(BaseModel):
+    """Boot-time minimal agent declaration (M4 foundation).
+
+    Carries only the two values the composition root needs to instantiate an
+    agent at startup: which persona YAML to load and where on the map to spawn
+    it. Joined with :class:`PersonaSpec` (by ``persona_id``) and expanded into a
+    full :class:`AgentState` by ``m4-multi-agent-orchestrator``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    persona_id: str = Field(
+        ...,
+        description="Must match a ``PersonaSpec.persona_id`` loaded from YAML.",
+    )
+    initial_zone: Zone
 
 
 # =============================================================================
@@ -413,6 +436,59 @@ class MemoryEntry(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class ReflectionEvent(BaseModel):
+    """Snapshot of one reflection step (M4 foundation).
+
+    The cognition cycle distils a window of recent episodic entries into a
+    single summary at reflection-trigger time. This struct is the on-wire /
+    in-process record of that event, independent of both the trigger policy
+    (decided in ``m4-cognition-reflection``) and the semantic-memory storage
+    backend (decided in ``m4-memory-semantic-layer``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str
+    tick: int = Field(..., ge=0)
+    summary_text: str = Field(
+        ...,
+        description="LLM-distilled reflection content; UTF-8, not length-capped here.",
+    )
+    src_episodic_ids: list[str] = Field(
+        default_factory=list,
+        description="Source ``MemoryEntry.id`` values folded into the summary.",
+    )
+    created_at: datetime = Field(default_factory=_utc_now)
+
+
+class SemanticMemoryRecord(BaseModel):
+    """Long-term semantic memory row distilled from reflection (M4 foundation).
+
+    Minimal shape: the sqlite-vec schema (index configuration, embedding
+    dimensionality, composite keys) is deferred to
+    ``m4-memory-semantic-layer``. ``embedding`` is permitted to be empty so
+    fixture files and unit tests can roundtrip without shipping a real vector.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    agent_id: str
+    embedding: list[float] = Field(
+        default_factory=list,
+        description=(
+            "Row-level vector. Expected non-empty at runtime; empty allowed for "
+            "fixture payloads so contract tests do not pin a particular dim."
+        ),
+    )
+    summary: str
+    origin_reflection_id: str | None = Field(
+        default=None,
+        description="``ReflectionEvent`` this row was distilled from, if any.",
+    )
+    created_at: datetime = Field(default_factory=_utc_now)
+
+
 # =============================================================================
 # §7 ControlEnvelope (discriminated by ``kind``)
 # =============================================================================
@@ -485,6 +561,47 @@ class ErrorMsg(_EnvelopeBase):
     detail: str
 
 
+class DialogInitiateMsg(_EnvelopeBase):
+    """An agent requests to start a dialog with another agent (M4 foundation).
+
+    The scheduler decides whether to admit the request (backpressure, zone
+    constraints, existing dialog state). Admission logic lives in
+    ``m4-multi-agent-orchestrator``; this envelope only captures the intent.
+    """
+
+    kind: Literal["dialog_initiate"] = "dialog_initiate"
+    initiator_agent_id: str
+    target_agent_id: str
+    zone: Zone
+
+
+class DialogTurnMsg(_EnvelopeBase):
+    """A single turn inside an ongoing dialog (M4 foundation).
+
+    ``speaker_id`` and ``addressee_id`` are both carried so Godot can drive
+    the correct animations (speech bubble / head-turn) without re-deriving
+    orientation from world state.
+    """
+
+    kind: Literal["dialog_turn"] = "dialog_turn"
+    dialog_id: str
+    speaker_id: str
+    addressee_id: str
+    utterance: str
+
+
+class DialogCloseMsg(_EnvelopeBase):
+    """A dialog has ended (M4 foundation).
+
+    ``reason`` is a closed literal set so the gateway and the scheduler can
+    dispatch on it without string matching.
+    """
+
+    kind: Literal["dialog_close"] = "dialog_close"
+    dialog_id: str
+    reason: Literal["completed", "interrupted", "timeout"]
+
+
 ControlEnvelope: TypeAlias = Annotated[
     HandshakeMsg
     | AgentUpdateMsg
@@ -492,10 +609,58 @@ ControlEnvelope: TypeAlias = Annotated[
     | MoveMsg
     | AnimationMsg
     | WorldTickMsg
-    | ErrorMsg,
+    | ErrorMsg
+    | DialogInitiateMsg
+    | DialogTurnMsg
+    | DialogCloseMsg,
     Field(discriminator="kind"),
 ]
 """Discriminated union of all WebSocket envelope kinds."""
+
+
+# =============================================================================
+# §7.5 DialogScheduler (interface only, M4 foundation)
+# =============================================================================
+
+
+class DialogScheduler(Protocol):
+    """Interface for agent-to-agent dialog orchestration (M4 foundation).
+
+    Contract-only: the concrete turn-taking policy, backpressure, and timeout
+    handling is the responsibility of ``m4-multi-agent-orchestrator``. This
+    Protocol is frozen here so that ``cognition`` and ``world`` can type-hint
+    against it in parallel tasks without waiting for the implementation.
+
+    Methods return envelope messages (or ``None``) so the gateway can
+    broadcast them over WebSocket without an additional marshalling layer.
+    """
+
+    def schedule_initiate(
+        self,
+        initiator_id: str,
+        target_id: str,
+        zone: Zone,
+        tick: int,
+    ) -> DialogInitiateMsg | None:
+        """Decide whether to admit a new dialog and emit the initiate envelope.
+
+        ``None`` means the scheduler rejected the request (e.g. existing
+        dialog, cooldown, zone mismatch). Non-``None`` is the envelope to
+        broadcast.
+        """
+        ...
+
+    def record_turn(self, turn: DialogTurnMsg) -> None:
+        """Record a turn in the dialog's transcript for later close/replay."""
+        ...
+
+    def close_dialog(
+        self,
+        dialog_id: str,
+        reason: Literal["completed", "interrupted", "timeout"],
+    ) -> DialogCloseMsg:
+        """Close an open dialog and emit the close envelope."""
+        ...
 
 
 # =============================================================================
@@ -504,12 +669,17 @@ ControlEnvelope: TypeAlias = Annotated[
 
 __all__ = [
     "SCHEMA_VERSION",
+    "AgentSpec",
     "AgentState",
     "AgentUpdateMsg",
     "AnimationMsg",
     "Cognitive",
     "CognitiveHabit",
     "ControlEnvelope",
+    "DialogCloseMsg",
+    "DialogInitiateMsg",
+    "DialogScheduler",
+    "DialogTurnMsg",
     "ERREMode",
     "ERREModeName",
     "ERREModeShiftEvent",
@@ -527,9 +697,11 @@ __all__ = [
     "Physical",
     "PlutchikDimension",
     "Position",
+    "ReflectionEvent",
     "RelationshipBond",
     "SamplingBase",
     "SamplingDelta",
+    "SemanticMemoryRecord",
     "ShuhariStage",
     "SpeechEvent",
     "SpeechMsg",
