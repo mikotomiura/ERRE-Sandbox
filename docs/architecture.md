@@ -128,6 +128,15 @@
   - asyncio WebSocket client
   - ERRE DSL interpreter: shu/ha/ri、peripatos、chashitsu の状態機械
 
+### Composition Root (G-GEAR, `bootstrap.py` + `__main__.py`)
+- **責務**: N-agent オーケストレータ構築。M4 #6 `m4-multi-agent-orchestrator` で multi-agent 化
+- **主要コンポーネント**:
+  - `BootConfig.__post_init__`: `agents` 空時に `(AgentSpec(kant, peripatos),)` の 1 本道 default を詰め、`bootstrap()` 本体から分岐を追放
+  - `_load_persona_yaml(dir, persona_id)` + `_build_initial_state(spec, persona)` で persona YAML → AgentState を生成。zone → ERREMode の default マップは `_ZONE_TO_DEFAULT_ERRE_MODE`
+  - `CLI --personas kant,nietzsche,rikyu`: 各 persona の `preferred_zones[0]` を initial_zone に採用
+  - `InMemoryDialogScheduler` (integration 層) を構築、`envelope_sink=runtime.inject_envelope` で配線
+  - `WorldRuntime.attach_dialog_scheduler(scheduler)` で scheduler を runtime に bind
+
 ### Viz (MacBook Air M4)
 - **責務**: 3D 描画、ダッシュボード
 - **主要コンポーネント**:
@@ -158,6 +167,12 @@
 - **構成**: `kind` フィールドでメッセージ種別を識別
 - **送信データ**: `{agent_id, position, rotation, animation, speech_bubble}` (30Hz)
 - **M4 拡張** (`schema_version=0.2.0-m4`): `dialog_initiate` / `dialog_turn` / `dialog_close` variant を追加。3 体間対話の開始・1 ターン・終了を ControlEnvelope 上で運ぶ。`DialogScheduler` (schemas.py §7.5 Protocol) が具象実装のインタフェース
+- **M4 dialog scheduler** (`integration/dialog.py`, `m4-multi-agent-orchestrator`):
+  - `InMemoryDialogScheduler` が Protocol の具象実装。admission control + cooldown + timeout close を in-memory で管理
+  - `envelope_sink: Callable[[ControlEnvelope], None]` を内包し admit / close 時に自身で sink 経由 envelope を流す (caller に put 責任を残さない)
+  - `tick(world_tick, agents: Sequence[AgentView])` が proximity-based auto-fire を駆動: 同 reflective zone (peripatos/chashitsu/agora/garden) に 2+ agent + cooldown 満了 + RNG < AUTO_FIRE_PROB_PER_TICK (0.25) で `schedule_initiate` を内部実行
+  - `WorldRuntime._on_cognition_tick` 末尾で `_run_dialog_tick()` が scheduler に AgentView projection を渡して回す。RNG は inject 可能 (テストで固定)
+  - `AgentView = NamedTuple(agent_id, zone, tick)` のみ渡すので scheduler は AgentRuntime の内部構造を知らない
 
 ### M4 Foundation Primitives (`schema_version=0.2.0-m4`)
 - **`AgentSpec`** (schemas.py §3): bootstrap 時の minimal agent 宣言 (`persona_id` + `initial_zone`)。`BootConfig.agents: tuple[AgentSpec, ...]` で N 体起動に拡張する

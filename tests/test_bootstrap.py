@@ -18,51 +18,88 @@ import pytest
 
 from erre_sandbox.bootstrap import (
     BootConfig,
-    _build_kant_initial_state,
-    _load_kant_persona,
+    _build_initial_state,
+    _load_persona_yaml,
     _supervise,
 )
 from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.inference.ollama_adapter import OllamaUnavailableError
-from erre_sandbox.schemas import ERREModeName, PersonaSpec, Zone
+from erre_sandbox.schemas import AgentSpec, ERREModeName, PersonaSpec, Zone
 
 # ---------------------------------------------------------------------------
-# _load_kant_persona
+# _load_persona_yaml
 # ---------------------------------------------------------------------------
 
 
-def test_load_kant_persona_reads_repo_yaml() -> None:
+def test_load_persona_yaml_reads_repo_kant() -> None:
     """The bundled ``personas/kant.yaml`` validates as :class:`PersonaSpec`."""
-    cfg = BootConfig(personas_dir=Path("personas"))
-    persona = _load_kant_persona(cfg)
+    persona = _load_persona_yaml(Path("personas"), "kant")
     assert isinstance(persona, PersonaSpec)
     assert persona.persona_id == "kant"
 
 
-def test_load_kant_persona_honours_personas_dir(tmp_path: Path) -> None:
-    """``cfg.personas_dir`` is respected so tests can inject fixtures."""
+def test_load_persona_yaml_honours_custom_dir(tmp_path: Path) -> None:
+    """Caller-supplied ``personas_dir`` is respected so tests can inject fixtures."""
     src = Path("personas/kant.yaml").read_text(encoding="utf-8")
     (tmp_path / "kant.yaml").write_text(src, encoding="utf-8")
-    persona = _load_kant_persona(BootConfig(personas_dir=tmp_path))
+    persona = _load_persona_yaml(tmp_path, "kant")
     assert persona.persona_id == "kant"
 
 
+def test_load_persona_yaml_loads_nietzsche_and_rikyu() -> None:
+    """M4 personas load without contract violations."""
+    for pid in ("nietzsche", "rikyu"):
+        persona = _load_persona_yaml(Path("personas"), pid)
+        assert persona.persona_id == pid
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    ["../../etc/passwd", "a/b", "a..b", "Kant", "_leading", ""],
+)
+def test_load_persona_yaml_rejects_unsafe_persona_id(
+    hostile: str,
+    tmp_path: Path,
+) -> None:
+    """The regex guard fires before any filesystem access."""
+    with pytest.raises(ValueError, match="not a safe YAML filename"):
+        _load_persona_yaml(tmp_path, hostile)
+
+
 # ---------------------------------------------------------------------------
-# _build_kant_initial_state
+# _build_initial_state
 # ---------------------------------------------------------------------------
 
 
-def test_build_kant_initial_state_is_in_peripatos() -> None:
-    state = _build_kant_initial_state()
+def _load_kant_for_tests() -> PersonaSpec:
+    return _load_persona_yaml(Path("personas"), "kant")
+
+
+def test_build_initial_state_derives_agent_id_from_persona() -> None:
+    spec = AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS)
+    state = _build_initial_state(spec, _load_kant_for_tests())
     assert state.agent_id == "a_kant_001"
     assert state.persona_id == "kant"
     assert state.position.zone is Zone.PERIPATOS
 
 
-def test_build_kant_initial_state_erre_mode_is_peripatetic() -> None:
-    state = _build_kant_initial_state()
+def test_build_initial_state_picks_erre_mode_from_zone() -> None:
+    spec = AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS)
+    state = _build_initial_state(spec, _load_kant_for_tests())
     assert state.erre.name is ERREModeName.PERIPATETIC
     assert state.erre.entered_at_tick == 0
+
+
+def test_build_initial_state_maps_chashitsu_to_chashitsu_mode() -> None:
+    spec = AgentSpec(persona_id="kant", initial_zone=Zone.CHASHITSU)
+    state = _build_initial_state(spec, _load_kant_for_tests())
+    assert state.erre.name is ERREModeName.CHASHITSU
+
+
+def test_build_initial_state_maps_study_to_deep_work() -> None:
+    spec = AgentSpec(persona_id="kant", initial_zone=Zone.STUDY)
+    state = _build_initial_state(spec, _load_kant_for_tests())
+    assert state.erre.name is ERREModeName.DEEP_WORK
 
 
 # ---------------------------------------------------------------------------
@@ -131,10 +168,25 @@ def test_bootconfig_defaults_match_mvp_requirements() -> None:
     assert cfg.ollama_url == "http://127.0.0.1:11434"
 
 
-def test_bootconfig_agents_default_is_empty_tuple() -> None:
-    """M4 foundation field: defaulting to () preserves the M2 1-Kant flow."""
+def test_bootconfig_default_fills_with_single_kant_spec() -> None:
+    """Empty ``agents`` resolves to the M2 back-compat 1-Kant default.
+
+    The original M4 #1 contract used an empty tuple to signal "fall back"; M4 #6
+    materialises that fallback inside ``__post_init__`` so the orchestrator
+    body can iterate over ``cfg.agents`` without branching on emptiness.
+    """
     cfg = BootConfig()
-    assert cfg.agents == ()
+    assert cfg.agents == (AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS),)
+
+
+def test_bootconfig_preserves_explicit_agents() -> None:
+    specs = (
+        AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS),
+        AgentSpec(persona_id="nietzsche", initial_zone=Zone.PERIPATOS),
+        AgentSpec(persona_id="rikyu", initial_zone=Zone.CHASHITSU),
+    )
+    cfg = BootConfig(agents=specs)
+    assert cfg.agents == specs
 
 
 # ---------------------------------------------------------------------------

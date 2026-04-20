@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, Final, Literal, Protocol, TypeAlias
+from typing import Annotated, Final, Literal, NamedTuple, Protocol, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -220,6 +220,21 @@ class AgentSpec(BaseModel):
         description="Must match a ``PersonaSpec.persona_id`` loaded from YAML.",
     )
     initial_zone: Zone
+
+
+class AgentView(NamedTuple):
+    """Narrow read-only projection of a live agent.
+
+    Used by cross-cutting observers (M4 :class:`DialogScheduler`, future
+    ERRE mode FSM in M5) that should only see ``(agent_id, zone, tick)``.
+    Living in ``schemas`` keeps the type below both ``world/`` (which
+    produces these projections from its :class:`AgentRuntime`) and
+    ``integration/`` (which consumes them), avoiding a layer violation.
+    """
+
+    agent_id: str
+    zone: Zone
+    tick: int
 
 
 # =============================================================================
@@ -677,6 +692,7 @@ __all__ = [
     "AgentSpec",
     "AgentState",
     "AgentUpdateMsg",
+    "AgentView",
     "AnimationMsg",
     "Cognitive",
     "CognitiveHabit",

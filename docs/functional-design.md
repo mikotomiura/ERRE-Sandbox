@@ -142,6 +142,15 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
 ### 必須機能 (MVP)
 - 1体のエージェントが歩行ループを実行し、記憶を読み書きし、Godot で描画される (M2)
 - 3体のエージェントが対話・反省・関係形成を行う (M4)
+  - **M4 実装完了項目** (`schema_version=0.2.0-m4`):
+    - foundation primitives (`AgentSpec` / `ReflectionEvent` / `SemanticMemoryRecord` / `Dialog{Initiate,Turn,Close}Msg` / `DialogScheduler` Protocol) 凍結
+    - Nietzsche / Rikyu persona YAML (sampling / zone rules で kant との差別化を機械保証)
+    - `MemoryStore.upsert_semantic` / `recall_semantic` (sqlite-vec KNN、origin_reflection_id 列)
+    - Gateway multi-agent routing (`?subscribe=` per-agent filter、DoS 対策 4 層)
+    - Cognition reflection (Reflector collaborator、per-agent tick counter、LLM 要約 → embedding → semantic_memory)
+    - Composition Root multi-agent bootstrap (`BootConfig.__post_init__` default、`--personas kant,nietzsche,rikyu` CLI)
+    - `InMemoryDialogScheduler` (admission + cooldown + timeout + proximity auto-fire、envelope_sink 一元化)
+  - **live 検証** (G-GEAR 必須、別タスク): 3-agent walking 30Hz / reflection persistence / dialog 1 往復 / Godot 描画
 - ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5)
 - 5-8体が12時間シミュレーションを破綻なく実行 (M7)
 - 4層評価フレームワークの実装と統計レポート出力 (M10-M11)

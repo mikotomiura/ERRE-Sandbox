@@ -14,17 +14,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import signal
 from contextlib import AsyncExitStack, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import uvicorn
 import yaml
 
 from erre_sandbox.cognition import CognitionCycle
 from erre_sandbox.inference import OllamaChatClient
+from erre_sandbox.integration.dialog import InMemoryDialogScheduler
 from erre_sandbox.integration.gateway import make_app
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
 from erre_sandbox.schemas import (
@@ -67,20 +69,48 @@ class BootConfig:
     personas_dir: Path = field(default_factory=lambda: Path("personas"))
     agents: tuple[AgentSpec, ...] = ()
 
+    def __post_init__(self) -> None:
+        """Fill ``agents`` with the 1-Kant default when the caller omitted it.
 
-def _load_kant_persona(cfg: BootConfig) -> PersonaSpec:
-    """Read ``personas/kant.yaml`` and validate into :class:`PersonaSpec`.
+        Keeping the default inside the config (rather than branching inside
+        :func:`bootstrap`) means the orchestrator body stays a single
+        ``for spec in cfg.agents`` loop and both CI and live paths exercise
+        the same code. ``object.__setattr__`` is the idiomatic escape hatch
+        for mutating a ``frozen=True`` dataclass during init.
+        """
+        if not self.agents:
+            default = (AgentSpec(persona_id="kant", initial_zone=Zone.PERIPATOS),)
+            object.__setattr__(self, "agents", default)
+
+
+_PERSONA_ID_RE: Final[re.Pattern[str]] = re.compile(r"\A[a-z][a-z0-9_-]{0,63}\Z")
+"""Path-traversal guard for ``persona_id``; mirrors the CLI-side regex."""
+
+
+def _load_persona_yaml(personas_dir: Path, persona_id: str) -> PersonaSpec:
+    """Load ``personas/<persona_id>.yaml`` into a :class:`PersonaSpec`.
 
     Raises ``FileNotFoundError`` with a friendly message when the file is
     absent — orchestrator startup fails loudly rather than surfacing an
     opaque stack trace several levels deep.
+
+    ``persona_id`` is validated against :data:`_PERSONA_ID_RE` so that the
+    derived path cannot escape ``personas_dir`` (defence in depth: the CLI
+    already validates, but callers could construct :class:`BootConfig`
+    programmatically).
     """
-    path = cfg.personas_dir / "kant.yaml"
+    if not _PERSONA_ID_RE.fullmatch(persona_id):
+        msg = (
+            f"persona_id {persona_id!r} is not a safe YAML filename "
+            f"(required: {_PERSONA_ID_RE.pattern})"
+        )
+        raise ValueError(msg)
+    path = personas_dir / f"{persona_id}.yaml"
     try:
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"Kant persona YAML not found at {path!s}. "
+            f"Persona YAML not found at {path!s}. "
             "Check cwd or pass --personas-dir pointing at the repository's "
             "personas/ directory.",
         ) from exc
@@ -88,20 +118,45 @@ def _load_kant_persona(cfg: BootConfig) -> PersonaSpec:
     return PersonaSpec.model_validate(data)
 
 
-def _build_kant_initial_state() -> AgentState:
-    """Kant starts at peripatos centre in PERIPATETIC ERRE mode.
+_ZONE_TO_DEFAULT_ERRE_MODE: Final[dict[Zone, ERREModeName]] = {
+    Zone.PERIPATOS: ERREModeName.PERIPATETIC,
+    Zone.CHASHITSU: ERREModeName.CHASHITSU,
+    Zone.STUDY: ERREModeName.DEEP_WORK,
+    Zone.AGORA: ERREModeName.SHALLOW,
+    Zone.GARDEN: ERREModeName.PERIPATETIC,
+}
+"""Initial ERRE mode per spawn zone.
+
+Matches the persona-erre skill's zone→mode convention. ``garden`` falls
+back to PERIPATETIC because it shares the "walk and muse" semantics of
+the peripatos in the current world model.
+"""
+
+
+def _build_initial_state(spec: AgentSpec, persona: PersonaSpec) -> AgentState:
+    """Expand an :class:`AgentSpec` into the initial :class:`AgentState`.
+
+    ``agent_id`` is derived as ``a_<persona_id>_001``. A future milestone
+    can make this CLI-configurable if we need multiple instances of the
+    same persona (unlikely for M4).
 
     Destination is set on the first cognition tick (10s after launch); until
     then the avatar stands still. This is acceptable for MVP — MASTER-PLAN
     §4.4 #4 requires 30Hz rendering, and WorldTickMsg heartbeats emit at 1Hz
     while physics ticks update ``position`` at 30Hz once the agent has a plan.
     """
+    _ = persona  # future hook: persona-specific spawn biases
+    agent_id = f"a_{spec.persona_id}_001"
+    erre_name = _ZONE_TO_DEFAULT_ERRE_MODE.get(
+        spec.initial_zone,
+        ERREModeName.DEEP_WORK,
+    )
     return AgentState(
-        agent_id="a_kant_001",
-        persona_id="kant",
+        agent_id=agent_id,
+        persona_id=spec.persona_id,
         tick=0,
-        position=Position(x=0.0, y=0.0, z=0.0, zone=Zone.PERIPATOS),
-        erre=ERREMode(name=ERREModeName.PERIPATETIC, entered_at_tick=0),
+        position=Position(x=0.0, y=0.0, z=0.0, zone=spec.initial_zone),
+        erre=ERREMode(name=erre_name, entered_at_tick=0),
     )
 
 
@@ -154,7 +209,22 @@ async def bootstrap(cfg: BootConfig) -> None:
             llm=inference,
         )
         runtime = WorldRuntime(cycle=cycle)
-        runtime.register_agent(_build_kant_initial_state(), _load_kant_persona(cfg))
+        # The scheduler's envelope sink writes directly into the runtime's
+        # fan-out queue so dialog envelopes interleave with agent_update /
+        # speech / move without a second delivery path (see design.md §v2).
+        scheduler = InMemoryDialogScheduler(envelope_sink=runtime.inject_envelope)
+        runtime.attach_dialog_scheduler(scheduler)
+
+        for spec in cfg.agents:
+            persona = _load_persona_yaml(cfg.personas_dir, spec.persona_id)
+            state = _build_initial_state(spec, persona)
+            runtime.register_agent(state, persona)
+            logger.info(
+                "[bootstrap] registered agent %s (persona=%s zone=%s)",
+                state.agent_id,
+                spec.persona_id,
+                spec.initial_zone.value,
+            )
 
         app = make_app(runtime=runtime)
         server = uvicorn.Server(
