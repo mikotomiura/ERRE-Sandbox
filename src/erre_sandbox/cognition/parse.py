@@ -70,6 +70,21 @@ class LLMPlan(BaseModel):
     arousal_delta: float = Field(default=0.0, ge=-1.0, le=1.0)
     motivation_delta: float = Field(default=0.0, ge=-1.0, le=1.0)
     importance_hint: float = Field(default=0.5, ge=0.0, le=1.0)
+    # M6-A-3: optional reasoning rationale. Absence must not fail validation —
+    # stable Ollama output is never 100% for added fields, and the plan's
+    # action contract is independent of the reasoning trace.
+    salient: str | None = Field(
+        default=None,
+        description="What the agent noticed as most salient this tick (xAI).",
+    )
+    decision: str | None = Field(
+        default=None,
+        description="One-sentence rationale behind the chosen action (xAI).",
+    )
+    next_intent: str | None = Field(
+        default=None,
+        description="Forward-looking intent surfaced for upcoming ticks (xAI).",
+    )
 
 
 def _find_matching_brace(text: str, start: int) -> int | None:

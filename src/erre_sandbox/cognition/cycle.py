@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,16 +49,23 @@ from erre_sandbox.schemas import (
     AgentState,
     AgentUpdateMsg,
     AnimationMsg,
+    BiorhythmEvent,
     ControlEnvelope,
     ERREMode,
+    ERREModeShiftEvent,
     ERREModeTransitionPolicy,
+    InternalEvent,
     MemoryEntry,
     MemoryKind,
     MoveMsg,
     Physical,
+    ReasoningTrace,
+    ReasoningTraceMsg,
     ReflectionEvent,
+    ReflectionEventMsg,
     SpeechMsg,
     Zone,
+    ZoneTransitionEvent,
 )
 
 if TYPE_CHECKING:
@@ -77,6 +84,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _REFLECTION_ZONES: Final[frozenset[Zone]] = frozenset({Zone.PERIPATOS, Zone.CHASHITSU})
+
+_BIORHYTHM_THRESHOLD: Final[float] = 0.5
+"""Mid-level threshold for fatigue / hunger that drives
+:class:`~erre_sandbox.schemas.BiorhythmEvent` emission (M6-A-2b).
+
+Chosen as a single mid-band boundary rather than a multi-level
+(low/mid/high) scheme so the LLM sees at most one biorhythm event per
+signal per tick. Multi-level crossings would require dedup logic and
+would pull agents out of their current mode on every small fluctuation,
+which contradicts the ERRE "意図的非効率性" principle. If an agent's
+personality demands a finer granularity, extend this to a per-persona
+threshold via :class:`~erre_sandbox.schemas.PersonaSpec`.
+"""
 
 
 class CycleResult(BaseModel):
@@ -208,12 +228,38 @@ class CognitionCycle:
             rng=self._rng,
         )
 
+        # Step 2.25 (M6-A-2b): detect biorhythm threshold crossings. Emitted
+        # BEFORE the FSM / retrieve / LLM so the mode policy can react to the
+        # crossing and the LLM prompt can surface "I got tired" to the agent
+        # narrating in first person. Stress crossings live in Cognitive and
+        # are deferred — Cognitive is assembled post-LLM (Step 8), so stress
+        # biorhythm would arrive a tick late and is not wired here.
+        biorhythm_events = _detect_biorhythm_crossings(
+            previous=agent_state.physical,
+            current=new_physical,
+            agent_id=agent_state.agent_id,
+            tick=agent_state.tick,
+        )
+        if biorhythm_events:
+            observations = [*observations, *biorhythm_events]
+
         # Step 2.5 (M5): ERRE mode FSM transition.
         #
         # Runs BEFORE retrieve / LLM so the sampling at Step 5 reflects the
         # newly-selected mode (zero-tick latency). When no policy is wired the
         # call is a no-op, preserving pre-M5 behaviour.
-        agent_state = self._maybe_apply_erre_fsm(agent_state, observations)
+        #
+        # M6-A-1: when a transition occurs, the emitted ERREModeShiftEvent is
+        # appended to ``observations`` so Steps 4-10 (retrieve / prompt /
+        # reflection) see the mode-shift signal alongside the inputs that
+        # caused it. The upstream sequence is not mutated — we build a new
+        # list and rebind the local.
+        agent_state, shift_event = self._maybe_apply_erre_fsm(
+            agent_state,
+            observations,
+        )
+        if shift_event is not None:
+            observations = [*observations, shift_event]
 
         # Step 3: reflection trigger detection (execution is M4+).
         importance_sum = sum(estimate_importance(o) for o in observations)
@@ -302,6 +348,18 @@ class CognitionCycle:
             observations=observations,
             importance_sum=importance_sum,
         )
+        # M6-A-4: wire the reflection over the envelope stream so the Godot
+        # xAI ReasoningPanel can surface the distilled summary. Only emit
+        # when the reflector actually produced an event — the ``None`` path
+        # already has the ``reflection_triggered`` CycleResult flag for
+        # observability.
+        if reflection_event is not None:
+            envelopes.append(
+                ReflectionEventMsg(
+                    tick=new_state.tick,
+                    event=reflection_event,
+                ),
+            )
 
         return CycleResult(
             agent_state=new_state,
@@ -352,18 +410,21 @@ class CognitionCycle:
         self,
         agent_state: AgentState,
         observations: Sequence[Observation],
-    ) -> AgentState:
+    ) -> tuple[AgentState, ERREModeShiftEvent | None]:
         """Apply the optional ERRE mode FSM; return the (possibly) updated state.
 
-        A ``None`` return from the policy signals "no transition this tick"
-        and is the common case once an agent has settled into a mode; it
-        keeps ``agent_state`` byte-identical. A concrete
+        A ``None`` candidate from the policy signals "no transition this
+        tick" and is the common case once an agent has settled into a mode;
+        the returned tuple is ``(agent_state_unchanged, None)``. A concrete
         :class:`~erre_sandbox.schemas.ERREModeName` forces a fresh
         :class:`~erre_sandbox.schemas.ERREMode` with ``entered_at_tick``
         set to the tick the FSM observed and ``sampling_overrides`` pulled
         from :data:`~erre_sandbox.erre.SAMPLING_DELTA_BY_MODE` so Step 5's
         LLM call in the same tick uses the freshly-selected mode's delta
-        via :func:`~erre_sandbox.inference.sampling.compose_sampling`.
+        via :func:`~erre_sandbox.inference.sampling.compose_sampling`. In
+        that case an :class:`~erre_sandbox.schemas.ERREModeShiftEvent` is
+        returned alongside the new state so Step 2.5 in :meth:`step` can
+        append it to ``observations`` for downstream prompt / reflection.
 
         The FSM is consulted at Step 2.5, **before** ``new_physical`` is
         folded into ``agent_state``. Today ``advance_physical`` never
@@ -374,20 +435,22 @@ class CognitionCycle:
         happen before FSM.
 
         If the policy violates its Protocol contract and returns a value
-        equal to ``current``, we still treat it as a no-op: emitting a
-        fresh :class:`~erre_sandbox.schemas.ERREMode` with a new
-        ``entered_at_tick`` in that case would falsely mark a transition
-        and confuse downstream dwell-time logic.
+        equal to ``current``, we treat it as a no-op (empty tuple tail):
+        emitting a fresh :class:`~erre_sandbox.schemas.ERREMode` with a
+        new ``entered_at_tick`` in that case would falsely mark a
+        transition and confuse downstream dwell-time logic.
 
-        The :class:`~erre_sandbox.schemas.ERREModeShiftEvent` is not
-        emitted here: ``AgentUpdateMsg`` (Step 9) carries the new mode via
-        ``agent_state.erre`` so Godot and memory can observe the change
-        without a second event stream. If a future milestone requires an
-        explicit shift event (e.g. for reflection scoring), emit it from
-        here into either ``observations`` or the returned envelope list.
+        The ``reason`` field on the emitted shift event is inferred from
+        the most-recent mode-influencing observation (see
+        :func:`_infer_shift_reason`). This approximation aligns with the
+        FSM policy's "latest signal wins" semantics; a future milestone
+        that needs byte-accurate attribution should extend the
+        :class:`~erre_sandbox.schemas.ERREModeTransitionPolicy` Protocol
+        to return ``(mode, reason)`` directly rather than reconstructing
+        it here.
         """
         if self._erre_policy is None:
-            return agent_state
+            return agent_state, None
         candidate = self._erre_policy.next_mode(
             current=agent_state.erre.name,
             zone=agent_state.position.zone,
@@ -395,7 +458,8 @@ class CognitionCycle:
             tick=agent_state.tick,
         )
         if candidate is None or candidate == agent_state.erre.name:
-            return agent_state
+            return agent_state, None
+        previous = agent_state.erre.name
         new_erre = ERREMode(
             name=candidate,
             entered_at_tick=agent_state.tick,
@@ -404,11 +468,18 @@ class CognitionCycle:
         logger.debug(
             "ERRE mode transition for agent %s: %s → %s (tick=%d)",
             agent_state.agent_id,
-            agent_state.erre.name,
+            previous,
             candidate,
             agent_state.tick,
         )
-        return agent_state.model_copy(update={"erre": new_erre})
+        shift_event = ERREModeShiftEvent(
+            tick=agent_state.tick,
+            agent_id=agent_state.agent_id,
+            previous=previous,
+            current=candidate,
+            reason=_infer_shift_reason(observations),
+        )
+        return agent_state.model_copy(update={"erre": new_erre}), shift_event
 
     async def _retrieve_safely(
         self,
@@ -498,6 +569,25 @@ class CognitionCycle:
                     animation_name=plan.animation,
                 ),
             )
+        # M6-A-3: emit a ReasoningTraceMsg when the LLM filled at least one
+        # rationale field. Absence is normal (stable output under ~80%), so we
+        # skip the envelope instead of wrapping ``None`` in an empty trace.
+        if (
+            plan.salient is not None
+            or plan.decision is not None
+            or plan.next_intent is not None
+        ):
+            trace = ReasoningTrace(
+                agent_id=new_state.agent_id,
+                tick=new_state.tick,
+                mode=new_state.erre.name,
+                salient=plan.salient,
+                decision=plan.decision,
+                next_intent=plan.next_intent,
+            )
+            envelopes.append(
+                ReasoningTraceMsg(tick=new_state.tick, trace=trace),
+            )
         return envelopes
 
 
@@ -542,6 +632,79 @@ def _detect_zone_entry(
         if obs.event_type == "zone_transition" and obs.to_zone in trigger_zones:
             return True
     return False
+
+
+def _detect_biorhythm_crossings(
+    *,
+    previous: Physical,
+    current: Physical,
+    agent_id: str,
+    tick: int,
+) -> list[BiorhythmEvent]:
+    """Emit a :class:`BiorhythmEvent` for every signal that crossed mid-band.
+
+    Compares the agent's fatigue / hunger before and after the CSDG
+    half-step advance. The mid-level threshold (:data:`_BIORHYTHM_THRESHOLD`)
+    is the only boundary watched in M6-A-2b so we stay inside the "at most
+    one biorhythm event per signal per tick" budget documented on the
+    threshold constant.
+
+    Returns an empty list when no signal crossed — a fast path that keeps
+    the observation-stream allocation pressure off every physics tick.
+    """
+    events: list[BiorhythmEvent] = []
+    for signal, prev_val, curr_val in (
+        ("fatigue", previous.fatigue, current.fatigue),
+        ("hunger", previous.hunger, current.hunger),
+    ):
+        crossed_up = prev_val < _BIORHYTHM_THRESHOLD <= curr_val
+        crossed_down = curr_val < _BIORHYTHM_THRESHOLD <= prev_val
+        if not (crossed_up or crossed_down):
+            continue
+        events.append(
+            BiorhythmEvent(
+                tick=tick,
+                agent_id=agent_id,
+                signal=signal,  # type: ignore[arg-type]
+                level_prev=prev_val,
+                level_now=curr_val,
+                threshold_crossed="up" if crossed_up else "down",
+            ),
+        )
+    return events
+
+
+def _infer_shift_reason(
+    observations: Sequence[Observation],
+) -> Literal["scheduled", "zone", "fatigue", "external", "reflection"]:
+    """Heuristically attribute an ERRE mode transition to its trigger.
+
+    The FSM policy (:class:`~erre_sandbox.erre.DefaultERREModePolicy`)
+    uses "latest signal wins" semantics, so the most-recent
+    mode-influencing observation is the best guess for what caused the
+    transition. We scan in reverse and pick the first match.
+
+    ``InternalEvent.content`` prefixes follow the convention established
+    by the FSM policy's internal handler: ``"fatigue:*"`` signals a
+    fatigue-driven transition, ``"shuhari_promote:*"`` (and any other
+    internal hint) is treated as scheduled progression. A stray
+    ``ERREModeShiftEvent`` in ``observations`` means an external source
+    forced the transition.
+
+    Falls back to ``"external"`` when no mode-influencing observation is
+    found — this can happen when a future rule (dwell-time, tick-modulo)
+    triggers without a corresponding event.
+    """
+    for ev in reversed(observations):
+        if isinstance(ev, ZoneTransitionEvent):
+            return "zone"
+        if isinstance(ev, InternalEvent):
+            if ev.content.startswith("fatigue:"):
+                return "fatigue"
+            return "scheduled"
+        if isinstance(ev, ERREModeShiftEvent):
+            return "external"
+    return "external"
 
 
 __all__ = [

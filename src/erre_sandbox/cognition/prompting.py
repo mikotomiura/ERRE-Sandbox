@@ -37,7 +37,10 @@ _COMMON_PREFIX: Final[str] = (
 RESPONSE_SCHEMA_HINT: Final[str] = (
     "Respond with a SINGLE JSON object matching this schema (all deltas in "
     "[-1.0, 1.0], importance_hint in [0.0, 1.0]; use null for optional fields "
-    "you intentionally skip):\n"
+    "you intentionally skip). The last three keys (salient / decision / "
+    "next_intent) are the reasoning trace shown to the researcher observing "
+    "you — keep each under 80 characters of natural Japanese and be honest "
+    "about why you act; leave them null only if genuinely not applicable:\n"
     "{\n"
     '  "thought": "internal monologue",\n'
     '  "utterance": "speech bubble text or null",\n'
@@ -46,7 +49,10 @@ RESPONSE_SCHEMA_HINT: Final[str] = (
     '  "valence_delta": 0.0,\n'
     '  "arousal_delta": 0.0,\n'
     '  "motivation_delta": 0.0,\n'
-    '  "importance_hint": 0.5\n'
+    '  "importance_hint": 0.5,\n'
+    '  "salient": "what you found most salient this tick or null",\n'
+    '  "decision": "the one-sentence reason for your action or null",\n'
+    '  "next_intent": "what you plan to do next or null"\n'
     "}\n"
     "Return ONLY the JSON object. No prose outside the braces."
 )
@@ -121,7 +127,7 @@ def format_memories(memories: Sequence[RankedMemory], max_items: int = 8) -> str
     return "\n".join(lines)
 
 
-def _observation_line(obs: Observation) -> str:
+def _observation_line(obs: Observation) -> str:  # noqa: PLR0911 — discriminator dispatch
     if obs.event_type == "perception":
         return _one_line(
             f"[perception] {obs.content} (intensity={obs.intensity:.2f})",
@@ -139,6 +145,23 @@ def _observation_line(obs: Observation) -> str:
     if obs.event_type == "internal":
         return _one_line(
             f"[internal hint={obs.importance_hint:.2f}] {obs.content}",
+        )
+    if obs.event_type == "affordance":
+        return _one_line(
+            f"[affordance] {obs.prop_kind}#{obs.prop_id} in {obs.zone.value} "
+            f"(distance={obs.distance:.1f}m, salience={obs.salience:.2f})",
+        )
+    if obs.event_type == "proximity":
+        return (
+            f"[proximity {obs.crossing}] other={obs.other_agent_id} "
+            f"{obs.distance_prev:.1f}m -> {obs.distance_now:.1f}m"
+        )
+    if obs.event_type == "temporal":
+        return f"[temporal] {obs.period_prev.value} -> {obs.period_now.value}"
+    if obs.event_type == "biorhythm":
+        return (
+            f"[biorhythm {obs.signal}:{obs.threshold_crossed}] "
+            f"{obs.level_prev:.2f} -> {obs.level_now:.2f}"
         )
     return "[unknown] (unformatted)"
 

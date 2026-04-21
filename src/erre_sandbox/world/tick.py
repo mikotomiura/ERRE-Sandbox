@@ -40,6 +40,8 @@ from erre_sandbox.schemas import (
     MoveMsg,
     Observation,
     PersonaSpec,
+    TemporalEvent,
+    TimeOfDay,
     WorldTickMsg,
     Zone,
     ZoneTransitionEvent,
@@ -53,6 +55,44 @@ if TYPE_CHECKING:
     from erre_sandbox.cognition import CognitionCycle, CycleResult
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Simulated time-of-day (M6-A-2b)
+# =============================================================================
+
+# Ordered ascending by phase. The period covering ``phase ∈ [phase, next_phase)``
+# is the one returned by :func:`_time_of_day`. The six buckets map a
+# continuous wall-time into the same vocabulary ``TimeOfDay`` uses so the
+# FSM and LLM prompt can reason about "morning" without comparing floats.
+# Boundaries skew toward daylight because research-session relevance peaks
+# around noon / afternoon — night is the short tail.
+_PERIOD_BOUNDARIES: tuple[tuple[float, TimeOfDay], ...] = (
+    (0.00, TimeOfDay.DAWN),
+    (0.10, TimeOfDay.MORNING),
+    (0.40, TimeOfDay.NOON),
+    (0.55, TimeOfDay.AFTERNOON),
+    (0.80, TimeOfDay.DUSK),
+    (0.90, TimeOfDay.NIGHT),
+)
+
+
+def _time_of_day(elapsed: float, day_duration: float) -> TimeOfDay:
+    """Map an elapsed-time scalar to the containing :class:`TimeOfDay` bucket.
+
+    ``day_duration`` is the wall-clock length (seconds) of one simulated day
+    — the runtime passes its configured value so tests can compress a day
+    into milliseconds. The function is pure and cheap; called once per
+    physics tick.
+    """
+    if day_duration <= 0.0:
+        return TimeOfDay.DAWN  # degenerate — avoid divide-by-zero
+    phase = (elapsed % day_duration) / day_duration
+    current = _PERIOD_BOUNDARIES[0][1]
+    for boundary, period in _PERIOD_BOUNDARIES:
+        if phase >= boundary:
+            current = period
+    return current
 
 
 # =============================================================================
@@ -201,6 +241,15 @@ class WorldRuntime:
     DEFAULT_PHYSICS_HZ: ClassVar[float] = 30.0
     DEFAULT_COGNITION_PERIOD_S: ClassVar[float] = 10.0
     DEFAULT_HEARTBEAT_PERIOD_S: ClassVar[float] = 1.0
+    DEFAULT_DAY_DURATION_S: ClassVar[float] = 480.0
+    """Wall-clock seconds per simulated day (M6-A-2b).
+
+    Eight minutes is short enough that a live demo can traverse the full
+    dawn → night cycle in one session while still giving the agent time
+    to exhibit each :class:`TimeOfDay` phase. Tests pass a much smaller
+    value via ``day_duration_s`` so crossing events can be forced quickly
+    without advancing the :class:`ManualClock` for thousands of seconds.
+    """
 
     def __init__(
         self,
@@ -210,6 +259,7 @@ class WorldRuntime:
         physics_hz: float | None = None,
         cognition_period_s: float | None = None,
         heartbeat_period_s: float | None = None,
+        day_duration_s: float | None = None,
     ) -> None:
         self._cycle = cycle
         self._clock: Clock = clock if clock is not None else RealClock()
@@ -224,6 +274,17 @@ class WorldRuntime:
             if heartbeat_period_s is not None
             else self.DEFAULT_HEARTBEAT_PERIOD_S
         )
+        self._day_duration_s = (
+            day_duration_s
+            if day_duration_s is not None
+            else self.DEFAULT_DAY_DURATION_S
+        )
+        # M6-A-2b: simulated time-of-day tracking. ``_time_start`` is
+        # lazily initialised on the first physics tick so ``_current_period``
+        # matches the clock the runtime was actually started with (not the
+        # clock the constructor saw, which is usually still at t=0).
+        self._time_start: float | None = None
+        self._current_period: TimeOfDay = TimeOfDay.DAWN
         self._agents: dict[str, AgentRuntime] = {}
         self._events: list[ScheduledEvent] = []
         # TODO(T14): the unbounded queue is a deliberate MVP trade-off
@@ -399,6 +460,38 @@ class WorldRuntime:
                         to_zone=zone_changed,
                     ),
                 )
+        # M6-A-2b: time-of-day cascade — emit a TemporalEvent for every
+        # registered agent when the simulated clock crosses a period
+        # boundary. No-agent ticks are hot-pathed so ``_time_start`` stays
+        # None until at least one agent is registered; when agents appear
+        # later their first tick sees elapsed near zero.
+        if self._agents:
+            self._fire_temporal_events()
+
+    def _fire_temporal_events(self) -> None:
+        """Detect and emit TimeOfDay boundary crossings for all agents."""
+        now = self._clock.monotonic()
+        if self._time_start is None:
+            self._time_start = now
+            # Silently sync the initial period to the boot time — no event
+            # on first ever tick because there is no prior period to cite.
+            self._current_period = _time_of_day(0.0, self._day_duration_s)
+            return
+        elapsed = now - self._time_start
+        new_period = _time_of_day(elapsed, self._day_duration_s)
+        if new_period == self._current_period:
+            return
+        previous = self._current_period
+        self._current_period = new_period
+        for rt in self._agents.values():
+            rt.pending.append(
+                TemporalEvent(
+                    tick=rt.state.tick,
+                    agent_id=rt.agent_id,
+                    period_prev=previous,
+                    period_now=new_period,
+                ),
+            )
 
     async def _on_cognition_tick(self) -> None:
         if not self._agents:
