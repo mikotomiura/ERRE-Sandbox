@@ -153,10 +153,12 @@
 - [x] `decisions.md` 作成 (7 判断 + 後続タスク引き継ぎ値)
 - [x] 全 steering ファイル最終化 (requirement / design / design-v1 /
       design-comparison / decisions / tasklist)
-- [ ] `git add` 対象ファイルを個別指定で stage (secret 混入防止)
-- [ ] `git commit` (Conventional Commits + `Refs:`)
-- [ ] `git push -u origin feature/m5-orchestrator-integration`
-- [ ] `gh pr create` で PR 作成 → review → merge
+- [x] `git add` 対象ファイルを個別指定で stage (secret 混入防止)
+- [x] `git commit` (Conventional Commits + `Refs:`) — commit 7699a71
+- [x] `git push -u origin feature/m5-orchestrator-integration`
+- [x] `gh pr create` で PR 作成 → **PR #62**
+      (https://github.com/mikotomiura/ERRE-Sandbox/pull/62)
+- [ ] PR review → merge (ユーザー判断)
 
 ## 制約・リマインダ
 
