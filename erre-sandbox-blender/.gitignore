@@ -1,0 +1,14 @@
+# Generated GLB artefacts are copied into ``godot_project/assets/`` and
+# tracked there; the ``exports/`` folder is a scratch staging area so the
+# export script can run even without a pre-existing destination.
+exports/
+
+# Blender autosave / undo backups.
+*.blend1
+*.blend2
+*.blend3
+*.blend@
+
+# Python cache, if the scripts grow shared helpers.
+__pycache__/
+*.pyc

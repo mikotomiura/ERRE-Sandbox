@@ -1,14 +1,20 @@
 [gd_scene load_steps=4 format=3]
 
+; M6-C (2026-04-22): Peripatos scene expanded from 40×4 / 6-post to 60×6 /
+; 20-post colonnade. Matches the new BoundaryLayer zone rect (60×4 → 60×6
+; overlap visually; boundary is still the 60×4 semantic rect since navmesh
+; and ZoneTransitionEvent keep to the core corridor). The extra posts and
+; length give the "peripatetic" mode a visibly longer walk.
+
 [sub_resource type="PlaneMesh" id="1_ground"]
-size = Vector2(40, 4)
+size = Vector2(60, 6)
 
 [sub_resource type="StandardMaterial3D" id="2_groundmat"]
 albedo_color = Color(0.82, 0.78, 0.72, 1)
 roughness = 0.85
 
 [sub_resource type="BoxMesh" id="4_post"]
-size = Vector3(0.2, 1.4, 0.2)
+size = Vector3(0.24, 2.4, 0.24)
 
 [sub_resource type="StandardMaterial3D" id="5_markermat"]
 albedo_color = Color(0.45, 0.38, 0.3, 1)
@@ -20,37 +26,111 @@ roughness = 0.9
 mesh = SubResource("1_ground")
 material_override = SubResource("2_groundmat")
 
-[node name="PostN0" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0.7, -3)
+; --- North row (z = -2.6), 10 posts evenly spaced along X = [-27 .. +27] ---
+
+[node name="PostN00" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27.0, 1.2, -2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
-[node name="PostN1" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, -3)
+[node name="PostN01" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21.0, 1.2, -2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
-[node name="PostN2" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -3)
+[node name="PostN02" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.0, 1.2, -2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
-[node name="PostN3" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, -3)
+[node name="PostN03" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.0, 1.2, -2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
-[node name="PostS0" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, 3)
+[node name="PostN04" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0, 1.2, -2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
-[node name="PostS1" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, 3)
+[node name="PostN05" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 1.2, -2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostN06" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.0, 1.2, -2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostN07" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.0, 1.2, -2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostN08" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.0, 1.2, -2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostN09" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.0, 1.2, -2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+; --- South row (z = +2.6), 10 posts mirroring the north ---
+
+[node name="PostS00" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS01" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS02" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS03" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS04" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS05" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS06" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS07" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS08" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.0, 1.2, 2.6)
+mesh = SubResource("4_post")
+material_override = SubResource("5_markermat")
+
+[node name="PostS09" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.0, 1.2, 2.6)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="Light" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
-omni_range = 40.0
+omni_range = 60.0
 light_energy = 1.2

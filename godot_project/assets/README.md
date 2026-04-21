@@ -24,8 +24,17 @@ Blender は **GPL-2+** であり、`import bpy` したコードは GPL 派生物
 ```
 assets/
 ├── avatars/         # 偉人アバター (Kant.glb, Nietzsche.glb, ...)
-├── environment/     # ゾーン背景 (Linden-Allee.glb 等)
+├── environment/     # ゾーン背景 (chashitsu_v1.glb, ...) — M6-C で初着地
 └── textures/        # 単独テクスチャ (skybox 等)
 ```
 
-T15 時点では空。Blender パイプライン整備 (M4) で実アセット追加。
+## M6-C (2026-04-22): chashitsu_v1 着地経路
+
+- ソース: `../../erre-sandbox-blender/scripts/export_chashitsu.py`
+  (procedural builder: 6×6 m / 高 3.5 m / 床の間 / 囲炉裏 / 釜 / 茶碗 x2 / 切妻屋根)
+- ビルド: `blender --background --python erre-sandbox-blender/scripts/export_chashitsu.py`
+- 成果物: `environment/chashitsu_v1.glb` (このディレクトリに自動配置)
+- 消費側: `../scenes/zones/Chashitsu.tscn` が `load_from_path` で optional に読み込む
+  — `.glb` 未生成でも primitive-only の fallback 姿で boot 可能。
+
+他 4 ゾーン (study / agora / garden) は M7 で同じパターンを適用。
