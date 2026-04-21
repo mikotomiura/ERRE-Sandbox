@@ -84,3 +84,73 @@ uv run python .steering/20260421-m5-acceptance-live/dialog_probe.py
 # MacBook (option)
 # Godot 4.4 で godot_project/project.godot を開き、ws://g-gear.local:8000/stream 接続
 ```
+
+---
+
+## Addendum 1 — Godot `schema_mismatch` 発見と fix 検証 (2026-04-21 14:33-)
+
+### 発見
+
+上記 14:14-14:21 JST の一次 acceptance run 時点では G-GEAR 側のみで 5/7 項目
+PASS、MacBook 側 #5 / #6 は user 依頼の録画待ちとして TBD にしていた。ところが
+MacBook 側で Godot を起動しても以下の reconnect loop が続き、録画不能だった:
+
+```
+[WS] connected to ws://g-gear.local:8000/ws/observe
+[WS] client HandshakeMsg sent
+[WS] disconnected: code=1000 reason=
+[WS] connecting to ws://g-gear.local:8000/ws/observe
+(repeat)
+```
+
+14:33 に orchestrator を再起動して MacBook 接続を受け入れたが、log でも
+`WebSocket /ws/observe accepted → connection open → connection closed` が
+延々繰り返されており、`DialogInitiateMsg` や `AgentUpdateMsg` は配信不能の状態
+と判明 (ACTIVE 遷移前に `schema_mismatch` ErrorMsg で close される契約 —
+`integration/gateway.py:543-552`)。
+
+### 根本原因
+
+`godot_project/scripts/WebSocketClient.gd:28` の
+`CLIENT_SCHEMA_VERSION` が `"0.2.0-m4"` のまま残っていた。
+PR #56 `m5-contracts-freeze` は server 側 `SCHEMA_VERSION` を 0.3.0-m5 に bump
+したが、Godot 側 constant は **M5 Phase 2 全体で更新が漏れていた**
+(PR #59 `m5-godot-zone-visuals` は zone scene / dialog bubble / mode tint のみ、
+PR #62 `m5-orchestrator-integration` は Godot 側未変更)。
+
+### 修正
+
+PR #65 `fix(godot): bump CLIENT_SCHEMA_VERSION from 0.2.0-m4 to 0.3.0-m5`
+(commit `28e98ec`) で 1 行 fix を merge。acceptance task の "コード修正禁止"
+原則に従い、evidence PR #64 とは分離して独立ブランチで提出した。
+
+### 検証
+
+Fix merge 後、user が MacBook で main を pull → Godot project 再起動したところ:
+
+- G-GEAR `/health` が `active_sessions=1` を返すようになった (= ACTIVE セッション
+  維持)
+- Log で `connection open` の後に `connection closed` が **すぐには**続かない
+  正常パターンに変化 (過去は 100ms 以内に close、fix 後は持続)
+- 32 分間の継続 run で 138 件の Reflection trigger + 多数の LLM chat/embed call
+  を観測 (一次 run と同等以上の cognition 密度)
+
+Evidence: `evidence/logs/cognition-ticks-20260421-143307-snapshot.log`
+(14:33-15:09 の 36 分の snapshot。前半 broken / 後半 fixed が連続している貴重な
+両状態ログ)
+
+### 次ステップ (MacBook 側 #5, #6 の Unblock 後)
+
+Fix 検証が取れたので、録画収集は user MacBook で可能な状態になった。録画入手後、
+acceptance.md 本体の #5 / #6 行を PASS/FAIL 判定で埋めて最終化する予定
+(本 PR でなく別 follow-up commit で)。
+
+### 学び (retrospective)
+
+- **schema bump は Python + Godot 両サイドの同期が必要**。今後 schemas.py の
+  `SCHEMA_VERSION` を bump するタスクでは `WebSocketClient.gd:CLIENT_SCHEMA_VERSION`
+  と `fixtures/control_envelope/handshake.json` の両方を同 PR で更新する規約が望ましい
+- 契約テストは `handshake.json` fixture の drift を catch するが、**Godot 側の
+  literal const は静的解析範囲外**。CI に "grep -r SCHEMA_VERSION が両サイドで
+  一致することの確認" ステップを足すか、Godot 側を `load_constant_from_resource`
+  パターンに変える余地がある (M6+ 改善候補)

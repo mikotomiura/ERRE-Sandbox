@@ -19,11 +19,12 @@
     │   ├── gateway-health-20260421-141410.json   # #1 /health 応答
     │   └── dialog-probe-envelopes.json            # #4 initiate + close envelope dump
     ├── logs/
-    │   ├── cognition-ticks-20260421-141410.log   # #2 raw 7min run ログ (すべての元)
-    │   ├── erre-transitions-20260421-141410.log  # #3 FSM 遷移抽出 (32 行)
-    │   ├── sampling-trace-20260421-141410.log    # #3 reflection + sampling 関連
-    │   ├── dialog-trace-20260421-141410.log      # #4 live dialog 抽出 (本文空、auto-fire 不発を記録)
-    │   └── dialog-probe-20260421-141410.log      # #4 6-turn LLM 生成 log
+    │   ├── cognition-ticks-20260421-141410.log            # #2 raw 7min run (primary acceptance evidence)
+    │   ├── cognition-ticks-20260421-143307-snapshot.log   # Addendum: 36min post-fix continuation (schema_mismatch validation)
+    │   ├── erre-transitions-20260421-141410.log           # #3 FSM 遷移抽出 (32 行)
+    │   ├── sampling-trace-20260421-141410.log             # #3 reflection + sampling 関連
+    │   ├── dialog-trace-20260421-141410.log               # #4 live dialog 抽出 (本文空、auto-fire 不発を記録)
+    │   └── dialog-probe-20260421-141410.log               # #4 6-turn LLM 生成 log
     ├── db-dumps/
     │   └── semantic-memory-dump-20260421-141410.txt  # #7 semantic_memory + episodic_memory 集計
     └── recordings/
