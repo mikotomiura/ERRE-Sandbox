@@ -72,7 +72,9 @@
 - [x] `godot_project/scripts/CameraRig.gd` — 3 モード (OVERVIEW/FOLLOW_AGENT/MIND_PEEK)、orbit (drag)、zoom (wheel)、pan (WASD in OVERVIEW only)
 - [x] `godot_project/scenes/MainScene.tscn` — 静的 Camera3D を CameraRig + Camera3D 子に差替え
 - [x] `godot_project/project.godot` — 7 input actions (cam_overview/follow/mind_peek + cam_pan_{forward,back,left,right})
-- [ ] (繰越) `godot_project/scripts/SelectionManager.gd` — agent クリック → `selected_agent_id` signal (`_target_agent` 設定 API は CameraRig 側に用意済)
+- [x] `godot_project/scripts/SelectionManager.gd` (2026-04-22 追加) — agent クリック → raycast (collision layer 2) → `selected_agent_id(agent_id, agent_node)` signal、CameraRig.set_target_agent + OVERVIEW→FOLLOW 自動昇格、ReasoningPanel.set_focused_agent に配線
+- [x] `godot_project/scenes/agents/AgentAvatar.tscn` — StaticBody3D SelectionArea + CapsuleShape3D (collision_layer=2) を追加
+- [x] `godot_project/scripts/ReasoningPanel.gd` — `set_focused_agent(agent_id, agent_node=null)` 署名に拡張 (signal 直結を許容)
 
 ### B-2 ReasoningPanel ✅ 2026-04-22
 - [x] `godot_project/scripts/ReasoningPanel.gd` (新規 — MainScene UILayer 直下の Control)
