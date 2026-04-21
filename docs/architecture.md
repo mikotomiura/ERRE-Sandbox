@@ -138,16 +138,14 @@
   - `WorldRuntime.attach_dialog_scheduler(scheduler)` で scheduler を runtime に bind
   - **M5 orchestrator-integration** (`schema_version=0.3.0-m5`):
     - `DefaultERREModePolicy()` を instantiate し `CognitionCycle(erre_policy=...)` に
-      渡すことで ERRE mode FSM を活性化 (`enable_erre_fsm=False` で rollback)
+      渡すことで ERRE mode FSM を活性化
     - `_load_persona_registry(cfg)` で `{persona_id: PersonaSpec}` を構築し、
       `OllamaDialogTurnGenerator(llm, personas=registry)` に注入。
       `WorldRuntime.attach_dialog_generator(generator)` で wire
-      (`enable_dialog_turn=False` で rollback)
-    - `_ZERO_MODE_DELTAS` は `CognitionCycle(erre_sampling_deltas=...)` への zero
-      table 注入で使用 (`enable_mode_sampling=False` で rollback、FSM 遷移は維持
-      しつつ delta 適用のみ停止)
-    - 3 flag は `BootConfig` ではなく `bootstrap()` keyword-only kwargs に置き、
-      "永続 config と過渡 rollback knob" を命名空間レベルで分離
+    - 過渡期 rollback 用に用意した `--disable-erre-fsm` / `--disable-dialog-turn` /
+      `--disable-mode-sampling` flag + `bootstrap._ZERO_MODE_DELTAS` は
+      `v0.3.0-m5` 付与後に `m5-cleanup-rollback-flags` で除去済
+      (`CognitionCycle.erre_sampling_deltas` DI スロットのみテスト分離性のため残置)
 
 ### Viz (MacBook Air M4)
 - **責務**: 3D 描画、ダッシュボード

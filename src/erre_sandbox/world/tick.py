@@ -234,7 +234,7 @@ class WorldRuntime:
         self._dialog_scheduler: DialogScheduler | None = None
         # M5 orchestrator-integration: optional LLM-backed generator consulted
         # at the end of each cognition tick via ``_drive_dialog_turns``. When
-        # ``None`` (M4 behaviour and ``--disable-dialog-turn`` rollback), open
+        # ``None`` (e.g. unit tests that construct a bare runtime), open
         # dialogs are still admitted / timed out by the scheduler but no
         # utterances are generated — they close via the existing timeout path.
         self._dialog_generator: DialogTurnGenerator | None = None

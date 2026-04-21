@@ -164,12 +164,10 @@ class CognitionCycle:
         # responsibility of ``m5-orchestrator-integration``.
         self._erre_policy = erre_policy
         # Override the per-mode sampling delta table. Defaults to the
-        # production :data:`SAMPLING_DELTA_BY_MODE`. A zero-delta table is
-        # injected by :func:`~erre_sandbox.bootstrap.bootstrap` when the
-        # ``--disable-mode-sampling`` rollback flag is active: the FSM still
-        # runs (mode-name transitions are observable) but the delta lookup
-        # yields empty overrides so ``compose_sampling`` falls back to the
-        # persona's base sampling. ``is not None`` rather than ``or`` so an
+        # production :data:`SAMPLING_DELTA_BY_MODE`. Tests may inject a
+        # custom mapping (e.g. all-zero deltas) to isolate FSM-transition
+        # behaviour from the production table without monkey-patching the
+        # module constant. ``is not None`` rather than ``or`` so an
         # explicitly-empty mapping does not silently fall back to production.
         self._erre_sampling_deltas = (
             erre_sampling_deltas

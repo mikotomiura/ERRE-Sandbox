@@ -98,9 +98,15 @@ Streamlit dashboard do not interpret ANSI codes, but stray bytes from a
 misbehaving model would corrupt logs and ``RichTextLabel`` rendering."""
 
 _DIALOG_LANG_HINT: Final[dict[str, str]] = {
-    "kant": "日本語で応答せよ（学術的・厳密・分析的な語彙を用い、原語のドイツ語・ラテン語の鍵概念は括弧で併記してよい）。",
+    "kant": (
+        "日本語で応答せよ（学術的・厳密・分析的な語彙を用い、"
+        "原語のドイツ語・ラテン語の鍵概念は括弧で併記してよい）。"
+    ),
     "rikyu": "日本語で応答せよ（古典的・侘び寂びの語彙を用いる）。",
-    "nietzsche": "日本語で応答せよ（詩的・アフォリスティック・警句的な語彙を用い、原語のドイツ語の鍵概念は括弧で併記してよい）。",
+    "nietzsche": (
+        "日本語で応答せよ（詩的・アフォリスティック・警句的な語彙を用い、"
+        "原語のドイツ語の鍵概念は括弧で併記してよい）。"
+    ),
 }
 """Per-persona language hint appended to the system prompt. The M5 spike
 (decisions.md judgement 5) originally routed Kant to English and Nietzsche to

@@ -75,47 +75,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "used as its initial_zone. Omit for the default 1-Kant config."
         ),
     )
-    # ------------------------------------------------------------------
-    # M5 rollback flags (transient). See bootstrap() docstring for why
-    # these live as keyword-only kwargs rather than BootConfig fields —
-    # they are expected to be removed once m5-acceptance-live signs off.
-    # Production runs MUST leave all three enabled.
-    # ------------------------------------------------------------------
-    parser.add_argument(
-        "--disable-erre-fsm",
-        dest="enable_erre_fsm",
-        action="store_false",
-        default=True,
-        help=(
-            "M5 rollback: skip wiring DefaultERREModePolicy so AgentState.erre "
-            "stays at its boot-time zone default (pre-M5 behaviour). Leave ON "
-            "in production."
-        ),
-    )
-    parser.add_argument(
-        "--disable-dialog-turn",
-        dest="enable_dialog_turn",
-        action="store_false",
-        default=True,
-        help=(
-            "M5 rollback: skip attaching OllamaDialogTurnGenerator. Dialogs "
-            "still admit + timeout close, but no LLM utterances are generated "
-            "(M4-equivalent transcripts). Combine with --skip-health-check "
-            "to avoid tick-rate Ollama warnings when Ollama is down. "
-            "Leave ON in production."
-        ),
-    )
-    parser.add_argument(
-        "--disable-mode-sampling",
-        dest="enable_mode_sampling",
-        action="store_false",
-        default=True,
-        help=(
-            "M5 rollback: FSM still transitions mode names but "
-            "sampling_overrides stay empty — compose_sampling falls back to "
-            "the persona's base values. Leave ON in production."
-        ),
-    )
     return parser
 
 
@@ -182,14 +141,7 @@ def cli(argv: list[str] | None = None) -> int:
         agents=agents,
     )
     try:
-        asyncio.run(
-            bootstrap(
-                cfg,
-                enable_erre_fsm=args.enable_erre_fsm,
-                enable_dialog_turn=args.enable_dialog_turn,
-                enable_mode_sampling=args.enable_mode_sampling,
-            ),
-        )
+        asyncio.run(bootstrap(cfg))
     except KeyboardInterrupt:
         return 130
     return 0

@@ -17,7 +17,6 @@ import httpx
 import pytest
 
 from erre_sandbox.bootstrap import (
-    _ZERO_MODE_DELTAS,
     BootConfig,
     _build_initial_state,
     _load_persona_registry,
@@ -30,7 +29,6 @@ from erre_sandbox.schemas import (
     AgentSpec,
     ERREModeName,
     PersonaSpec,
-    SamplingDelta,
     Zone,
 )
 
@@ -298,27 +296,3 @@ def test_load_persona_registry_deduplicates_repeated_persona_ids() -> None:
     )
     registry = _load_persona_registry(cfg)
     assert list(registry.keys()) == ["kant"]
-
-
-# ---------------------------------------------------------------------------
-# _ZERO_MODE_DELTAS — drift guard for --disable-mode-sampling
-# ---------------------------------------------------------------------------
-
-
-def test_zero_mode_deltas_covers_all_erre_modes() -> None:
-    """Every ERREModeName must have an entry — otherwise a KeyError at runtime.
-
-    The production `SAMPLING_DELTA_BY_MODE` table is drift-checked elsewhere
-    (tests/test_erre/test_sampling_table.py). This guard applies the same
-    coverage requirement to the disable-path's zero table so that toggling
-    the rollback flag cannot turn a mode transition into a KeyError.
-    """
-    covered = set(_ZERO_MODE_DELTAS.keys())
-    assert covered == set(ERREModeName)
-
-
-def test_zero_mode_deltas_are_all_zero() -> None:
-    """Every entry is an empty :class:`SamplingDelta` — no override applied."""
-    empty = SamplingDelta()
-    for mode, delta in _ZERO_MODE_DELTAS.items():
-        assert delta == empty, f"mode {mode} should have zero delta"

@@ -341,7 +341,11 @@ async def test_cycle_erre_policy_noop_preserves_sampling_overrides(
 
 
 # ---------------------------------------------------------------------------
-# erre_sampling_deltas DI slot — `--disable-mode-sampling` rollback (M5)
+# erre_sampling_deltas DI slot — testing-only isolation of the FSM from the
+# production sampling table (the rollback flag that originally motivated
+# this slot was removed in m5-cleanup-rollback-flags; the slot itself is
+# retained because tests benefit from per-case injection without
+# monkey-patching :data:`SAMPLING_DELTA_BY_MODE`).
 # ---------------------------------------------------------------------------
 
 
@@ -356,11 +360,13 @@ async def test_cycle_erre_sampling_deltas_zero_table_keeps_overrides_empty(
 ) -> None:
     """Zero-delta injected table => FSM name flips but sampling_overrides stay empty.
 
-    Models the ``--disable-mode-sampling`` rollback knob: the FSM is still
-    consulted (so mode name transitions are recorded and live acceptance #3's
-    `AgentState.erre.name` observation works) but the delta lookup hits the
-    zero table so `compose_sampling` sees no overrides and the LLM call uses
-    the persona's base sampling only.
+    Exercises the testing-only DI slot: the FSM is still consulted (so mode
+    name transitions are recorded) but the delta lookup hits the injected
+    zero table, so ``compose_sampling`` sees no overrides and the LLM call
+    uses the persona's base sampling only. Load-bearing because it proves
+    ``CognitionCycle`` honours the injected mapping rather than the module
+    constant, which is what lets other tests pin an FSM transition under a
+    deterministic sampling regime.
     """
     zero_table = {mode: SamplingDelta() for mode in ERREModeName}
     policy = _RecordingFakePolicy(next_mode_return=ERREModeName.CHASHITSU)
