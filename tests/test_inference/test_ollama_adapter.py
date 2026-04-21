@@ -109,6 +109,11 @@ async def test_chat_sends_sampling_and_messages() -> None:
         {"role": "system", "content": "You are Kant."},
         {"role": "user", "content": "Describe today's walk."},
     ]
+    # Regression guard: ``think`` must NOT leak into the default wire shape.
+    # Callers that omit ``think=`` (cognition cycle, Reflector) rely on
+    # qwen3 thinking staying on; an unguarded ``"think": False`` would
+    # silently suppress it for every M2/M4 code path.
+    assert "think" not in body
     options = body["options"]
     assert options["temperature"] == pytest.approx(0.9)
     assert options["top_p"] == pytest.approx(0.9)
@@ -237,6 +242,40 @@ async def test_injected_client_not_closed_by_adapter() -> None:
         await adapter.chat(_system_user(), sampling=_default_sampling())
     assert not injected.is_closed
     await injected.aclose()
+
+
+async def test_chat_think_false_sets_top_level_flag() -> None:
+    """``think=False`` must be emitted at the body top level (not inside options).
+
+    Required by qwen3 thinking-model handling — see
+    ``.steering/20260420-m5-llm-spike/decisions.md`` judgement 1.
+    """
+    captured: list[dict[str, Any]] = []
+    async with _make_client(_ok_response(captured)) as llm:
+        await llm.chat(_system_user(), sampling=_default_sampling(), think=False)
+
+    body = captured[0]
+    assert body["think"] is False
+    assert "think" not in body["options"]
+
+
+async def test_chat_think_true_sets_top_level_flag() -> None:
+    captured: list[dict[str, Any]] = []
+    async with _make_client(_ok_response(captured)) as llm:
+        await llm.chat(_system_user(), sampling=_default_sampling(), think=True)
+
+    body = captured[0]
+    assert body["think"] is True
+    assert "think" not in body["options"]
+
+
+async def test_chat_think_none_omits_key() -> None:
+    """Explicit ``think=None`` (same as default) must omit the key entirely."""
+    captured: list[dict[str, Any]] = []
+    async with _make_client(_ok_response(captured)) as llm:
+        await llm.chat(_system_user(), sampling=_default_sampling(), think=None)
+
+    assert "think" not in captured[0]
 
 
 async def test_close_is_idempotent() -> None:

@@ -193,6 +193,7 @@ class OllamaChatClient:
         sampling: ResolvedSampling,
         model: str | None = None,
         options: dict[str, Any] | None = None,
+        think: bool | None = None,
     ) -> ChatResponse:
         """Send a chat completion and return a normalised :class:`ChatResponse`.
 
@@ -208,13 +209,22 @@ class OllamaChatClient:
                 (``temperature`` / ``top_p`` / ``repeat_penalty``) are applied
                 **after** these, so a caller cannot accidentally override the
                 clamped sampling.
+            think: Top-level Ollama payload flag controlling thinking-model
+                reasoning on models like qwen3. ``None`` (default) omits the
+                key entirely, preserving the M2 wire shape for existing
+                callers (``cognition.cycle`` / ``Reflector``). ``False``
+                suppresses hidden reasoning — required for dialog_turn
+                generation on qwen3:8b where the default spends the response
+                budget on <think> tokens and returns empty content
+                (.steering/20260420-m5-llm-spike/decisions.md judgement 1).
+                Must be set at the body top level, not inside ``options``.
 
         Raises:
             OllamaUnavailableError: When the request cannot be delivered, the
                 server responds non-2xx, or the payload cannot be parsed as a
                 :class:`ChatResponse`.
         """
-        body = self._build_body(messages, sampling, model, options)
+        body = self._build_body(messages, sampling, model, options, think)
         payload = await self._post(body)
         return self._parse(payload)
 
@@ -228,6 +238,7 @@ class OllamaChatClient:
         sampling: ResolvedSampling,
         model: str | None,
         options: dict[str, Any] | None,
+        think: bool | None,  # noqa: FBT001 — private helper; public ``chat`` makes it kw-only
     ) -> dict[str, Any]:
         merged_options: dict[str, Any] = dict(options or {})
         # Sampling is authoritative — intentionally overwrite any caller-supplied
@@ -235,12 +246,19 @@ class OllamaChatClient:
         merged_options["temperature"] = sampling.temperature
         merged_options["top_p"] = sampling.top_p
         merged_options["repeat_penalty"] = sampling.repeat_penalty
-        return {
+        body: dict[str, Any] = {
             "model": model or self.model,
             "messages": [m.model_dump() for m in messages],
             "stream": False,
             "options": merged_options,
         }
+        # Guarded: only emit ``think`` when the caller explicitly opted in.
+        # ``None`` default preserves the pre-M5 wire shape for cognition /
+        # reflection paths, which would otherwise silently suppress qwen3
+        # thinking on every tick.
+        if think is not None:
+            body["think"] = think
+        return body
 
     async def health_check(self) -> None:
         """Verify Ollama is reachable. Raise ``OllamaUnavailableError`` if not.
