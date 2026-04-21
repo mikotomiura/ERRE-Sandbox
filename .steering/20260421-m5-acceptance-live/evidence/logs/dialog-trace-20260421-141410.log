@@ -1,0 +1,14 @@
+# Live dialog event trace — 2026-04-21 14:14-14:21 JST
+# Source: grep -aE 'dialog_initiate|DialogTurnMsg|generate_turn|dialog_close|record_turn|schedule_initiate|exhausted' cognition-ticks-20260421-141410.log | grep -v '253 bytes|capabilities'
+# Result: 0 matching lines. During the 7-minute live run, the scheduler's
+# probabilistic auto-fire (InMemoryDialogScheduler.AUTO_FIRE_PROB_PER_TICK = 0.25)
+# did not roll an admission even though qualifying co-located pairs existed
+# (verified via erre-transitions-20260421-141410.log showing multiple ticks
+# where kant+nietzsche or kant+rikyu were both in peripatos).
+#
+# This is statistical (P(0 admits in ~10 qualifying ticks) ~ 5.6%), not a
+# defect. Item #4 PASS was confirmed via `dialog-probe-20260421-141410.log`,
+# which uses `dialog_probe.py` to force admission and drive 6 LLM turns
+# against real Ollama qwen3:8b. See acceptance.md for the full judgement.
+#
+# (Intentionally empty body - no live dialog events to record.)

@@ -22,6 +22,7 @@
     │   ├── cognition-ticks-20260421-141410.log   # #2 raw 7min run ログ (すべての元)
     │   ├── erre-transitions-20260421-141410.log  # #3 FSM 遷移抽出 (32 行)
     │   ├── sampling-trace-20260421-141410.log    # #3 reflection + sampling 関連
+    │   ├── dialog-trace-20260421-141410.log      # #4 live dialog 抽出 (本文空、auto-fire 不発を記録)
     │   └── dialog-probe-20260421-141410.log      # #4 6-turn LLM 生成 log
     ├── db-dumps/
     │   └── semantic-memory-dump-20260421-141410.txt  # #7 semantic_memory + episodic_memory 集計
@@ -37,7 +38,7 @@
 | 1 | `/health` | `json/gateway-health-*.json` | `logs/cognition-ticks-*.log` の起動ログ |
 | 2 | 3-agent walking | `logs/cognition-ticks-*.log` (86 chat + 100 embed call) | — |
 | 3 | ERRE mode FSM | `logs/erre-transitions-*.log` (32 lines, 3 agents) | `logs/sampling-trace-*.log` |
-| 4 | dialog_turn LLM | `logs/dialog-probe-*.log` (6 turns generated) | `json/dialog-probe-envelopes.json` |
+| 4 | dialog_turn LLM | `logs/dialog-probe-*.log` (6 turns generated) | `json/dialog-probe-envelopes.json`, `logs/dialog-trace-*.log` (empty body + note documenting live auto-fire unroll) |
 | 5 | Godot dialog bubble | `recordings/godot-dialog-*.mp4` (TBD) | `logs/cognition-ticks-*.log` (WS 接続試行ログ) |
 | 6 | Godot ERRE tint | `recordings/godot-mode-tint-*.mp4` (TBD) | — |
 | 7 | Reflection 回帰 | `db-dumps/semantic-memory-dump-*.txt` | `logs/cognition-ticks-*.log` (22 Reflection trigger) |
