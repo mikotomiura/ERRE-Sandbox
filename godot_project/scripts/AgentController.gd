@@ -30,14 +30,19 @@ const ARRIVAL_EPSILON: float = 0.01
 ## from the gateway could otherwise queue a multi-day animation that pins
 ## memory for the rest of the session (security review MEDIUM #2).
 const MAX_TWEEN_DURATION: float = 30.0
+## Default sustain time for a dialog_turn bubble (matches spike's ~4s
+## readability window; fade in/out is 0.3s each inside DialogBubble.gd).
+const DEFAULT_DIALOG_DURATION_SEC: float = 4.0
 
 @export var agent_id: String = ""
 
 @onready var _body: MeshInstance3D = $Body
 @onready var _speech_bubble: Label3D = $SpeechBubble
+@onready var _dialog_bubble: Label3D = $DialogBubble
 
 var _current_animation: String = "idle"
 var _current_tween: Tween = null
+var _current_erre_mode: String = ""
 
 
 func set_agent_id(new_id: String) -> void:
@@ -116,4 +121,37 @@ func show_speech(utterance: String, zone: String) -> void:
 	print(
 		"[AgentController] speech agent_id=%s zone=%s len=%d"
 		% [agent_id, zone, utterance.length()]
+	)
+
+
+func show_dialog_turn(utterance: String) -> void:
+	# Delegates to the DialogBubble child so the controller stays a thin
+	# coordinator — fade Tween, text, and auto-hide live on the bubble itself
+	# (design.md §composition). The log prefix mirrors the other per-action
+	# lines so fixture-replay tests can assert the delegation chain.
+	_dialog_bubble.show_for(utterance, DEFAULT_DIALOG_DURATION_SEC)
+	print(
+		"[AgentController] show_dialog_turn agent_id=%s len=%d"
+		% [agent_id, utterance.length()]
+	)
+
+
+func apply_erre_mode(mode: String) -> void:
+	# Delegates tint to the Body's BodyTinter script. Idempotent on unchanged
+	# modes so successive ``agent_update`` envelopes carrying the same mode
+	# don't start redundant tweens.
+	if mode == "":
+		return
+	if mode == _current_erre_mode:
+		return
+	_current_erre_mode = mode
+	if _body.has_method("apply_mode"):
+		_body.apply_mode(mode)
+	else:
+		push_warning(
+			"[AgentController] Body missing apply_mode; BodyTinter not attached?"
+		)
+	print(
+		"[AgentController] apply_erre_mode agent_id=%s mode=%s"
+		% [agent_id, mode]
 	)

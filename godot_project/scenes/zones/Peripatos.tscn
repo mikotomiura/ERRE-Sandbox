@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=4 format=3]
 
 [sub_resource type="PlaneMesh" id="1_ground"]
 size = Vector2(40, 4)
@@ -6,9 +6,6 @@ size = Vector2(40, 4)
 [sub_resource type="StandardMaterial3D" id="2_groundmat"]
 albedo_color = Color(0.82, 0.78, 0.72, 1)
 roughness = 0.85
-
-[sub_resource type="BoxMesh" id="3_marker"]
-size = Vector3(1.4, 1.0, 0.8)
 
 [sub_resource type="BoxMesh" id="4_post"]
 size = Vector3(0.2, 1.4, 0.2)
@@ -23,43 +20,33 @@ roughness = 0.9
 mesh = SubResource("1_ground")
 material_override = SubResource("2_groundmat")
 
-[node name="StartMarker" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.5, 0)
-mesh = SubResource("3_marker")
-material_override = SubResource("5_markermat")
-
-[node name="EndMarker" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0.5, 0)
-mesh = SubResource("3_marker")
-material_override = SubResource("5_markermat")
-
 [node name="PostN0" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0.7, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0.7, -3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="PostN1" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, -3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="PostN2" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="PostN3" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, -3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="PostS0" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, 2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.7, 3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 
 [node name="PostS1" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, 2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.7, 3)
 mesh = SubResource("4_post")
 material_override = SubResource("5_markermat")
 

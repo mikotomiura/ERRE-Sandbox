@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="PlaneMesh" id="1_terrain"]
+size = Vector2(60, 60)
+
+[sub_resource type="StandardMaterial3D" id="2_terrainmat"]
+albedo_color = Color(0.45, 0.42, 0.38, 1)
+roughness = 0.9
+
+[node name="BaseTerrain" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 0)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("1_terrain")
+material_override = SubResource("2_terrainmat")

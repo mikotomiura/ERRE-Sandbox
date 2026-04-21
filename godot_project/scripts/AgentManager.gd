@@ -22,6 +22,7 @@ const _REQUIRED_SIGNALS: PackedStringArray = [
 	"speech_delivered",
 	"move_issued",
 	"animation_changed",
+	"dialog_turn_received",
 ]
 
 const AVATAR_SCENE: PackedScene = preload("res://scenes/agents/AgentAvatar.tscn")
@@ -42,6 +43,7 @@ func _ready() -> void:
 	router.speech_delivered.connect(_on_speech_delivered)
 	router.move_issued.connect(_on_move_issued)
 	router.animation_changed.connect(_on_animation_changed)
+	router.dialog_turn_received.connect(_on_dialog_turn_received)
 
 
 func _resolve_router() -> Node:
@@ -77,6 +79,18 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 	if avatar == null:
 		return
 	avatar.update_position_from_state(agent_state)
+	# M5: route ``agent_state.erre.name`` into the per-avatar BodyTinter so a
+	# mode change is reflected as an albedo tint. The nested get chain tolerates
+	# pre-M5 envelopes where ``erre`` is absent. ``null`` must be filtered
+	# explicitly — ``str(null)`` would produce the literal string ``"null"`` and
+	# trigger a spurious ERREModeTheme unknown-mode warning (code review M-3).
+	var erre: Dictionary = agent_state.get("erre", {})
+	var raw_mode: Variant = erre.get("name")
+	var mode: String = ""
+	if raw_mode != null and raw_mode is String:
+		mode = raw_mode
+	if mode != "" and avatar.has_method("apply_erre_mode"):
+		avatar.apply_erre_mode(mode)
 
 
 func _on_speech_delivered(agent_id: String, utterance: String, zone: String) -> void:
@@ -98,3 +112,23 @@ func _on_animation_changed(agent_id: String, animation_name: String, _loop: bool
 	if avatar == null:
 		return
 	avatar.set_animation(animation_name)
+
+
+func _on_dialog_turn_received(
+	_dialog_id: String,
+	speaker_id: String,
+	_addressee_id: String,
+	utterance: String,
+) -> void:
+	# Godot only renders the speaker's utterance; the addressee's bubble will
+	# fire when it becomes speaker on its own turn. ``dialog_initiate`` and
+	# ``dialog_close`` are deliberately not wired in M5 (yagni: the bubble
+	# naturally fades via its own Tween/Timer, so close-driven hiding is
+	# unnecessary; initiate-driven facing is deferred to M6).
+	var avatar := _get_or_create_avatar(speaker_id)
+	if avatar == null:
+		return
+	if not avatar.has_method("show_dialog_turn"):
+		push_error("[AgentManager] avatar missing show_dialog_turn; M5 scene not migrated?")
+		return
+	avatar.show_dialog_turn(utterance)

@@ -153,9 +153,9 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
   - **live 検証** (G-GEAR 必須、別タスク): 3-agent walking 30Hz / reflection persistence / dialog 1 往復 / Godot 描画
 - ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5、計画 merged 2026-04-20 PR #53)
   - **M5 予定項目** (`schema_version=0.3.0-m5`、contract 凍結済み `m5-contracts-freeze`):
-    - 静的 `_ZONE_TO_DEFAULT_ERRE_MODE` を event-driven `ERREModeTransitionPolicy` に置換、zone change / fatigue / shuhari を hook
-    - `DialogTurnGenerator` で `dialog_initiate` 後の N ターンを LLM 生成、`dialog_turn_budget` で自動 close (`reason="exhausted"`)
-    - Chashitsu / Zazen zone 最小シーン + ERRE mode tint + Label3D dialog bubble を Godot に追加
+    - 静的 `_ZONE_TO_DEFAULT_ERRE_MODE` を event-driven `ERREModeTransitionPolicy` に置換、zone change / fatigue / shuhari を hook (G-GEAR)
+    - `DialogTurnGenerator` で `dialog_initiate` 後の N ターンを LLM 生成、`dialog_turn_budget` で自動 close (`reason="exhausted"`) (G-GEAR)
+    - Chashitsu / Zazen zone 最小シーン + BaseTerrain 下敷き + ERRE mode tint + Label3D dialog bubble を Godot に追加 **(MacBook 側実装完了: `m5-godot-zone-visuals`, design hybrid 採用)**
     - Contract-First + LLM Spike の hybrid (design: `.steering/20260420-m5-planning/design.md`)
 - 5-8体が12時間シミュレーションを破綻なく実行 (M7)
 - 4層評価フレームワークの実装と統計レポート出力 (M10-M11)

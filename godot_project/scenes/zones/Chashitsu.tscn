@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="PlaneMesh" id="1_chashitsu_ground"]
+size = Vector2(30, 30)
+
+[sub_resource type="StandardMaterial3D" id="2_chashitsu_mat"]
+albedo_color = Color(0.55, 0.42, 0.30, 1)
+roughness = 0.85
+
+[node name="Chashitsu" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("1_chashitsu_ground")
+material_override = SubResource("2_chashitsu_mat")

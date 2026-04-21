@@ -23,9 +23,17 @@ extends Node3D
 ## Add new scenes here rather than editing MainScene.tscn; keeping the zone
 ## list in code lets the editor-less workflow stay clean (T16 judgement 9 +
 ## T17 v2 design §Avatar 構造).
+##
+## ``base_terrain`` is deliberately first so its 60x60 plane spawns underneath
+## the named zones — it addresses the M4-live observation that avatars whose
+## position drifts outside a zone plane appeared to walk on the void
+## (m5-godot-zone-visuals design §Zone MVP + Peripatos retreat).
 const ZONE_MAP: Dictionary = {
+	"base_terrain": preload("res://scenes/zones/BaseTerrain.tscn"),
 	"peripatos": preload("res://scenes/zones/Peripatos.tscn"),
-	# M5 additions will go here: study / chashitsu / agora / garden.
+	"chashitsu": preload("res://scenes/zones/Chashitsu.tscn"),
+	"zazen": preload("res://scenes/zones/Zazen.tscn"),
+	# Remaining M5/M6 additions: study / agora / garden.
 }
 
 @onready var _debug_overlay: Label = $UILayer/DebugOverlay

@@ -24,7 +24,9 @@ from tests._godot_helpers import (
     resolve_godot,
 )
 
-# Order must match FixturePlayer.gd DEFAULT_PLAYLIST.
+# Order must match FixturePlayer.gd DEFAULT_PLAYLIST. The dialog_* trio was
+# added in M5 so test_godot_dialog_bubble can replay a dialog_turn envelope
+# through the shared FixtureHarness without a separate playlist.
 _EXPECTED_PLAYBACK_ORDER: tuple[str, ...] = (
     "handshake",
     "agent_update",
@@ -33,6 +35,9 @@ _EXPECTED_PLAYBACK_ORDER: tuple[str, ...] = (
     "animation",
     "world_tick",
     "error",
+    "dialog_initiate",
+    "dialog_turn",
+    "dialog_close",
 )
 
 # Dispatch log lines emitted by FixturePlayer.gd (one per envelope).

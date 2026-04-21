@@ -17,7 +17,11 @@ const POST_PLAYBACK_GRACE_SEC: float = 2.0
 ## Defensive upper bound on fixture size. Developer-injected paths could point
 ## to an arbitrary file; dropping anything larger keeps harness runs bounded.
 const MAX_FIXTURE_BYTES: int = 1_048_576
-## Fixed playlist. Keep in sync with ``fixtures/control_envelope/README.md``.
+## Fixed playlist. Keep in sync with ``fixtures/control_envelope/README.md``
+## and ``tests/test_godot_ws_client.py::_EXPECTED_PLAYBACK_ORDER``. The
+## dialog_* trio was added in M5 (m5-godot-zone-visuals) so
+## ``test_godot_dialog_bubble`` can replay a ``dialog_turn`` envelope
+## through the same harness without forking the playlist.
 const DEFAULT_PLAYLIST: PackedStringArray = [
 	"handshake.json",
 	"agent_update.json",
@@ -26,6 +30,9 @@ const DEFAULT_PLAYLIST: PackedStringArray = [
 	"animation.json",
 	"world_tick.json",
 	"error.json",
+	"dialog_initiate.json",
+	"dialog_turn.json",
+	"dialog_close.json",
 ]
 ## Fallback search paths (project-local) if ``--fixture-dir`` is not provided.
 const FALLBACK_CANDIDATES: PackedStringArray = [
