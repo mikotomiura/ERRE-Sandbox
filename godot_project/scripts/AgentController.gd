@@ -34,20 +34,40 @@ const MAX_TWEEN_DURATION: float = 30.0
 ## readability window; fade in/out is 0.3s each inside DialogBubble.gd).
 const DEFAULT_DIALOG_DURATION_SEC: float = 4.0
 
+## Radius (m) of the per-agent visual offset ring. Two avatars whose server-
+## side positions collapse to the same zone-spawn coordinate would otherwise
+## render perfectly co-located; the offset spreads them around a small circle
+## so the user can visually distinguish them. The offset is purely visual —
+## ``set_move_target`` / ``update_position_from_state`` apply it to both ends
+## of the tween so the relative distance and duration are unchanged, and the
+## server's proximity / dialog-auto-fire logic (which reasons over the
+## unmodified position) is unaffected.
+const VISUAL_OFFSET_RADIUS_M: float = 0.6
+
 @export var agent_id: String = ""
 
-@onready var _body: MeshInstance3D = $Body
+@onready var _body: Node3D = $Body
 @onready var _speech_bubble: Label3D = $SpeechBubble
 @onready var _dialog_bubble: Label3D = $DialogBubble
 
 var _current_animation: String = "idle"
 var _current_tween: Tween = null
 var _current_erre_mode: String = ""
+var _visual_offset: Vector3 = Vector3.ZERO
 
 
 func set_agent_id(new_id: String) -> void:
 	agent_id = new_id
 	name = new_id  # enables ``AgentManager/<agent_id>`` path lookups
+	# Deterministic per-agent offset on a horizontal ring. ``String.hash()``
+	# returns a stable 32-bit integer so the same agent_id always lands on the
+	# same azimuth across runs, which keeps recordings reproducible.
+	var azimuth: float = float(new_id.hash() % 360) * (PI / 180.0)
+	_visual_offset = Vector3(
+		cos(azimuth) * VISUAL_OFFSET_RADIUS_M,
+		0.0,
+		sin(azimuth) * VISUAL_OFFSET_RADIUS_M,
+	)
 
 
 func update_position_from_state(agent_state: Dictionary) -> void:
@@ -67,7 +87,7 @@ func update_position_from_state(agent_state: Dictionary) -> void:
 			"[AgentController] non-finite position for agent_id=%s; ignoring" % agent_id
 		)
 		return
-	global_position = dest
+	global_position = dest + _visual_offset
 	var tick: int = int(agent_state.get("tick", -1))
 	print(
 		"[AgentController] agent_update agent_id=%s tick=%d pos=(%.2f, %.2f, %.2f)"
@@ -88,7 +108,12 @@ func set_move_target(target: Dictionary, speed: float) -> void:
 			"[AgentController] non-finite move target for agent_id=%s; ignoring" % agent_id
 		)
 		return
-	var distance := global_position.distance_to(dest)
+	# Apply the per-agent visual offset to the destination. ``global_position``
+	# already carries the offset (set on update_position_from_state), so the
+	# tween's start and end are both shifted by the same vector — distance and
+	# duration are unchanged, the visual stays in sync with server-tracked state.
+	var visual_dest: Vector3 = dest + _visual_offset
+	var distance := global_position.distance_to(visual_dest)
 	if distance < ARRIVAL_EPSILON:
 		return
 	if _current_tween != null and _current_tween.is_running():
@@ -97,11 +122,11 @@ func set_move_target(target: Dictionary, speed: float) -> void:
 	var duration: float = min(distance / effective_speed, MAX_TWEEN_DURATION)
 	# Look along the ground plane so a ``dest`` directly above/below the avatar
 	# cannot produce a vertical-pitched look_at (code review MEDIUM #2).
-	var horizontal_dest := Vector3(dest.x, global_position.y, dest.z)
+	var horizontal_dest := Vector3(visual_dest.x, global_position.y, visual_dest.z)
 	if not global_position.is_equal_approx(horizontal_dest):
 		look_at(horizontal_dest, Vector3.UP)
 	_current_tween = create_tween()
-	_current_tween.tween_property(self, "global_position", dest, duration)
+	_current_tween.tween_property(self, "global_position", visual_dest, duration)
 	print(
 		"[AgentController] move agent_id=%s target=(%.2f, %.2f, %.2f) speed=%.2f"
 		% [agent_id, dest.x, dest.y, dest.z, speed]

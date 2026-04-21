@@ -1,47 +1,94 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/AgentController.gd" id="1_agentctl"]
 [ext_resource type="Script" path="res://scripts/agents/BodyTinter.gd" id="2_bodytinter"]
 [ext_resource type="Script" path="res://scripts/agents/DialogBubble.gd" id="3_dialogbubble"]
 
-[sub_resource type="CapsuleMesh" id="1_body"]
-radius = 0.3
-height = 1.8
+[sub_resource type="SphereMesh" id="1_head"]
+radius = 0.22
+height = 0.44
 
-[sub_resource type="BoxMesh" id="2_facing"]
+[sub_resource type="CapsuleMesh" id="2_torso"]
+radius = 0.22
+height = 0.85
+
+[sub_resource type="CapsuleMesh" id="3_limb_arm"]
+radius = 0.08
+height = 0.7
+
+[sub_resource type="CapsuleMesh" id="4_limb_leg"]
+radius = 0.1
+height = 0.8
+
+[sub_resource type="BoxMesh" id="5_facing"]
 size = Vector3(0.18, 0.06, 0.4)
 
-[sub_resource type="StandardMaterial3D" id="3_bodymat"]
+[sub_resource type="StandardMaterial3D" id="6_bodymat"]
 resource_local_to_scene = true
 albedo_color = Color(0.75, 0.78, 0.85, 1)
 
 [node name="AgentAvatar" type="Node3D"]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0, 0, 0)
 script = ExtResource("1_agentctl")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-mesh = SubResource("1_body")
-material_override = SubResource("3_bodymat")
+[node name="Body" type="Node3D" parent="."]
 script = ExtResource("2_bodytinter")
 
+[node name="Head" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+mesh = SubResource("1_head")
+material_override = SubResource("6_bodymat")
+
+[node name="Torso" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("2_torso")
+material_override = SubResource("6_bodymat")
+
+[node name="ArmL" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.32, 0.95, 0)
+mesh = SubResource("3_limb_arm")
+material_override = SubResource("6_bodymat")
+
+[node name="ArmR" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.32, 0.95, 0)
+mesh = SubResource("3_limb_arm")
+material_override = SubResource("6_bodymat")
+
+[node name="LegL" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.4, 0)
+mesh = SubResource("4_limb_leg")
+material_override = SubResource("6_bodymat")
+
+[node name="LegR" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13, 0.4, 0)
+mesh = SubResource("4_limb_leg")
+material_override = SubResource("6_bodymat")
+
 [node name="Facing" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0.35)
-mesh = SubResource("2_facing")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0.25)
+mesh = SubResource("5_facing")
 
 [node name="SpeechBubble" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.35, 0)
 visible = false
 billboard = 1
+no_depth_test = true
 text = ""
-pixel_size = 0.008
-outline_size = 8
+font_size = 48
+outline_size = 16
+modulate = Color(1, 1, 0.95, 1)
+outline_modulate = Color(0, 0, 0, 1)
+pixel_size = 0.012
 
 [node name="DialogBubble" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7, 0)
 visible = false
 modulate = Color(1, 1, 1, 0)
+outline_modulate = Color(0, 0, 0, 1)
 billboard = 1
+no_depth_test = true
 text = ""
-pixel_size = 0.008
-outline_size = 8
+font_size = 48
+outline_size = 16
+pixel_size = 0.012
 script = ExtResource("3_dialogbubble")
