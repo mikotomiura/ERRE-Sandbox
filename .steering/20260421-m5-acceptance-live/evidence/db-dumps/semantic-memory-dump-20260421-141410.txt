@@ -1,0 +1,23 @@
+=== semantic_memory table summary ===
+  a_kant_001                rows=6 with_origin_reflection_id=6
+  a_nietzsche_001           rows=6 with_origin_reflection_id=6
+  a_rikyu_001               rows=12 with_origin_reflection_id=12
+
+=== episodic_memory counts per agent ===
+  a_kant_001                episodic_rows=12
+  a_nietzsche_001           episodic_rows=12
+  a_rikyu_001               episodic_rows=13
+
+=== semantic_memory sample (first per agent, ASCII) ===
+  [a_kant_001] id=255fe1aa origin=5bcc2c2e | The oscillation between study and peripatos mirrors the synthesis of reason and empirical intuition, essential for grounding moral and intel
+  [a_kant_001] id=3afda944 origin=0ba0f5e0 | Transitioning from study to peripatos, reason's duty to duty itself?moral law's imperative, unyielding as the categorical.
+  [a_kant_001] id=3ca5999b origin=2db63e2e | Cyclical interplay between study and peripatos reveals the harmony of reason and contemplation, each transition a step toward reconciling du
+  [a_kant_001] id=a63edfa0 origin=9d5abdc3 | The oscillation between study and peripatos mirrors reason's demands: rigorous thought tempered by contemplative wanderings, where each tran
+  [a_kant_001] id=e0e8c354 origin=d3b9f748 | The oscillation between study and peripatos mirrors the interplay of reason and reflection?each transition a step toward harmonizing intelle
+  [a_kant_001] id=f768ac9c origin=5b4363e7 | The alternation of study and peripatetic thought mirrors reason's rhythmic dance between contemplation and action, a cyclical dance toward e
+  [a_nietzsche_001] id=0a28c0b6 origin=82de807e | The dance of study and peripatos?each transition a step toward overcoming the self, eternally recurring in the eternal return.
+  [a_nietzsche_001] id=1749a920 origin=0e667ca2 | The oscillation between study and peripatos mirrors the dialectical dance of thought and existence?each transition a step toward the tension
+  [a_nietzsche_001] id=343afa17 origin=633daf9d | The interplay of study and peripatos, garden as threshold?each transition a step in the eternal dance of contemplation and motion, vital to 
+  [a_nietzsche_001] id=53bad19a origin=7b6e0a74 | Between study's rigor and peripatos' flow, the mind dances?each transition a step toward truth. Motion is the soul's path.
+  [a_nietzsche_001] id=7eb21d02 origin=05d6c590 | The dance of study and peripatos?steps of will, tension between thought and breath, soul's rhythm in the eternal return of striving.
+  [a_nietzsche_001] id=fe9af8aa origin=04c034ad | The dialectical dance between study and peripatos?where intellect and body contend?reveals truth as a shadow of the eternal Greek gymnasia.

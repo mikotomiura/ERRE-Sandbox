@@ -1,0 +1,25 @@
+2026-04-21 14:22:05,557 [dialog_probe] INFO: Loaded persona registry: ['kant', 'nietzsche', 'rikyu']
+2026-04-21 14:22:05,590 [httpx] INFO: HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+2026-04-21 14:22:05,590 [dialog_probe] INFO: Forced dialog admit: dialog_id=d_1bbb2b8d initiator=a_kant_001 target=a_nietzsche_001 zone=peripatos
+2026-04-21 14:22:06,093 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:06,094 [dialog_probe] INFO: TURN 0 [a_kant_001] latency=0.50s len=68: The mind, like the stars, must be allowed to shine in its own light.
+2026-04-21 14:22:06,530 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:06,531 [dialog_probe] INFO: TURN 1 [a_nietzsche_001] latency=0.44s len=65: Was ist Licht, wenn nicht die Freiheit, die den Geist entfesselt?
+2026-04-21 14:22:06,936 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:06,937 [dialog_probe] INFO: TURN 2 [a_kant_001] latency=0.41s len=84: What is freedom, if not the courage to question the very ground upon which we stand?
+2026-04-21 14:22:07,496 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:07,497 [dialog_probe] INFO: TURN 3 [a_nietzsche_001] latency=0.56s len=84: Was ist Wahrheit, wenn nicht das Ungez\xfcgelte, das die Grenzen der Vernunft zerrei\xdft?
+2026-04-21 14:22:07,886 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:07,887 [dialog_probe] INFO: TURN 4 [a_kant_001] latency=0.39s len=68: What is duty, if not the silent pact between the self and the world?
+2026-04-21 14:22:08,502 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-21 14:22:08,503 [dialog_probe] INFO: TURN 5 [a_nietzsche_001] latency=0.62s len=106: Was ist Macht, wenn nicht die F\xe4higkeit, die Welt zu ver\xe4ndern, nicht durch Gesetze, sondern durch Willen?
+2026-04-21 14:22:08,503 [dialog_probe] INFO: Budget exhausted: dialog_id=d_1bbb2b8d turn_index=6 reason=exhausted
+2026-04-21 14:22:08,503 [dialog_probe] INFO: ---summary---
+2026-04-21 14:22:08,503 [dialog_probe] INFO: total_envelopes=2 initiate=1 turns=0 close=1 elapsed=2.91s
+2026-04-21 14:22:08,504 [dialog_probe] INFO: envelope JSONL saved to .steering\20260421-m5-acceptance-live\evidence\json\dialog-probe-envelopes.json
+2026-04-21 14:22:08,504 [dialog_probe] INFO: ---acceptance criteria (#4)---
+2026-04-21 14:22:08,504 [dialog_probe] INFO:   [PASS] dialog admitted (1 initiate)
+2026-04-21 14:22:08,504 [dialog_probe] INFO:   [FAIL] N >= 3 turns generated
+2026-04-21 14:22:08,504 [dialog_probe] INFO:   [PASS] turn_index monotonic 0..N-1
+2026-04-21 14:22:08,504 [dialog_probe] INFO:   [PASS] latency within 60s for N=3 turns
+2026-04-21 14:22:08,504 [dialog_probe] INFO:   [PASS] close reason in {exhausted, timeout}

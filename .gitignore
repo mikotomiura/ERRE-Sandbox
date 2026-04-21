@@ -44,6 +44,10 @@ godot_project/export_presets.cfg
 # M2 acceptance / smoke run logs (T19 実行フェーズで追加)
 # env var M2_LOG_PATH を設定時のみ生成される jsonl / txt ログ
 logs/
+# ただし acceptance evidence の `logs/` サブディレクトリは commit 対象
+# (M5 m5-acceptance-live で追加)
+!.steering/**/evidence/logs/
+!.steering/**/evidence/logs/**
 
 # T21 runtime artifacts
 var/

@@ -1,0 +1,19 @@
+[
+  {
+    "schema_version": "0.3.0-m5",
+    "tick": 0,
+    "sent_at": "2026-04-21T05:22:05.590696Z",
+    "kind": "dialog_initiate",
+    "initiator_agent_id": "a_kant_001",
+    "target_agent_id": "a_nietzsche_001",
+    "zone": "peripatos"
+  },
+  {
+    "schema_version": "0.3.0-m5",
+    "tick": 5,
+    "sent_at": "2026-04-21T05:22:08.503768Z",
+    "kind": "dialog_close",
+    "dialog_id": "d_1bbb2b8d",
+    "reason": "exhausted"
+  }
+]
