@@ -151,13 +151,14 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
     - Composition Root multi-agent bootstrap (`BootConfig.__post_init__` default、`--personas kant,nietzsche,rikyu` CLI)
     - `InMemoryDialogScheduler` (admission + cooldown + timeout + proximity auto-fire、envelope_sink 一元化)
   - **live 検証** (G-GEAR 必須、別タスク): 3-agent walking 30Hz / reflection persistence / dialog 1 往復 / Godot 描画
-- ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5、計画 merged 2026-04-20 PR #53)
-  - **M5 予定項目** (`schema_version=0.3.0-m5`、contract 凍結済み `m5-contracts-freeze`):
-    - 静的 `_ZONE_TO_DEFAULT_ERRE_MODE` を event-driven `ERREModeTransitionPolicy` に置換 (G-GEAR、`m5-erre-mode-fsm` で `erre_sandbox.erre.DefaultERREModePolicy` として実装、zone change / fatigue / shuhari を hook、`m5-world-zone-triggers` で `CognitionCycle` への配線完了)
-    - ERRE mode 遷移時に `SamplingDelta` を live で反映 (G-GEAR、`m5-erre-sampling-override-live` で `erre_sandbox.erre.SAMPLING_DELTA_BY_MODE` を FSM hook から参照、persona-erre skill §ルール 2 の 8 モード × 3 パラメータ テーブルを単一起源化)
-    - `DialogTurnGenerator` で `dialog_initiate` 後の N ターンを LLM 生成、`dialog_turn_budget` で自動 close (`reason="exhausted"`) (G-GEAR、`m5-dialog-turn-generator` で `OllamaDialogTurnGenerator` を `integration/dialog_turn.py` に実装、spike 由来の `num_predict=120` / `stop=["\n\n"]` / `think=False` / 160 char hard cap + ANSI/C0 scrub / per-persona `_DIALOG_LANG_HINT` / `turn_index>=2` anti-repeat を埋め込み、orchestrator wiring は `m5-orchestrator-integration` に委譲)
-    - Chashitsu / Zazen zone 最小シーン + BaseTerrain 下敷き + ERRE mode tint + Label3D dialog bubble を Godot に追加 **(MacBook 側実装完了: `m5-godot-zone-visuals`, design hybrid 採用)**
-    - Contract-First + LLM Spike の hybrid (design: `.steering/20260420-m5-planning/design.md`)
+- ERRE モード (peripatos/chashitsu/zazen/shu/ha/ri) による認知状態切り替え (M5、2026-04-21 v0.3.0-m5 として 7/7 PASS で完了)
+  - **M5 実装完了項目** (`schema_version=0.3.0-m5`、`v0.3.0-m5` tag @ `main`):
+    - 静的 `_ZONE_TO_DEFAULT_ERRE_MODE` を event-driven `ERREModeTransitionPolicy` に置換済 (`erre_sandbox.erre.DefaultERREModePolicy`、zone change / fatigue / shuhari を hook、`CognitionCycle` へ配線済)
+    - ERRE mode 遷移時に `SamplingDelta` を live 反映 (`erre_sandbox.erre.SAMPLING_DELTA_BY_MODE`、persona-erre skill §ルール 2 の 8 モード × 3 パラメータ テーブルを単一起源化)
+    - `DialogTurnGenerator` で `dialog_initiate` 後の N ターンを LLM 生成し `dialog_turn_budget` で自動 close (`reason="exhausted"`) (`OllamaDialogTurnGenerator` @ `integration/dialog_turn.py`、spike 由来の `num_predict=120` / `stop=["\n\n"]` / `think=False` / 160 char hard cap + ANSI/C0 scrub / per-persona 日本語統一 `_DIALOG_LANG_HINT` / `turn_index>=2` anti-repeat を埋め込み、orchestrator は PR #62 で wire、日本語統一は PR #68 で適用)
+    - Chashitsu / Zazen zone 最小シーン + BaseTerrain 下敷き + ERRE mode tint + Label3D dialog bubble を Godot に実装済 (`m5-godot-zone-visuals` PR #59)
+    - Godot 側 humanoid avatar (Node3D + Head/Torso/Arms/Legs primitive 合成、scene-local 共有 `StandardMaterial3D` で全身一斉 tint)、読みやすい Label3D bubble (font_size=48 / pixel_size=0.012 / outline=16 黒縁 / `no_depth_test`)、agent_id hash ベースの視覚オフセットで複数 agent の重なり防止 (PR #66)
+    - Contract-First + LLM Spike の hybrid (design: `.steering/20260420-m5-planning/design.md`、acceptance: `.steering/20260421-m5-acceptance-live/acceptance.md`)
 - 5-8体が12時間シミュレーションを破綻なく実行 (M7)
 - 4層評価フレームワークの実装と統計レポート出力 (M10-M11)
 

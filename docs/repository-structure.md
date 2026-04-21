@@ -10,7 +10,9 @@ erre-sandbox/
 │   ├── bootstrap.py            # Composition Root: MemoryStore / CognitionCycle /
 │   │                           # WorldRuntime / DialogScheduler の配線
 │   ├── schemas.py              # AgentState, Memory, ControlEnvelope (Pydantic v2)
-│   ├── erre/                   # ERRE パイプライン DSL (M5 で fsm.py / sampling_table.py 追加予定)
+│   ├── erre/                   # ERRE パイプライン DSL (M5 で完成)
+│   │   ├── fsm.py              # ERREModeTransitionPolicy / DefaultERREModePolicy (zone/fatigue/shuhari hook)
+│   │   └── sampling_table.py   # 8 モード x 3 パラメータの SAMPLING_DELTA_BY_MODE 単一起源
 │   ├── inference/              # G-GEAR 側 — LLM 推論
 │   │   ├── sglang_adapter.py   # SGLang バックエンド
 │   │   ├── ollama_adapter.py   # Ollama バックエンド (開発用)
@@ -25,9 +27,10 @@ erre-sandbox/
 │   │   ├── importance.py       # importance scoring
 │   │   ├── parse.py            # LLM 出力パース
 │   │   └── state.py            # state 更新ヘルパ
-│   ├── integration/            # プロセス境界の配線 (M4 で追加)
+│   ├── integration/            # プロセス境界の配線 (M4 で追加、M5 で dialog_turn 追加)
 │   │   ├── gateway.py          # FastAPI + WebSocket (`/stream`, `/ws/observe`, `/health`)
 │   │   ├── dialog.py           # InMemoryDialogScheduler + proximity auto-fire
+│   │   ├── dialog_turn.py      # OllamaDialogTurnGenerator (M5、inference 層を例外的に import)
 │   │   ├── protocol.py         # envelope routing 判定
 │   │   ├── metrics.py          # 観測メトリクス
 │   │   ├── scenarios.py        # 統合テスト用シナリオ
