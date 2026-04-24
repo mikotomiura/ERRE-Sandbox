@@ -8,7 +8,7 @@ import pytest
 
 from erre_sandbox.schemas import MoveMsg, Position, Zone
 from erre_sandbox.world.physics import Kinematics, apply_move_command, step_kinematics
-from erre_sandbox.world.zones import default_spawn
+from erre_sandbox.world.zones import ZONE_CENTERS, default_spawn
 
 
 @pytest.fixture
@@ -68,11 +68,13 @@ class TestStepKinematicsMoving:
         self,
         kin_at_peripatos_centre: Kinematics,
     ) -> None:
-        # Start at (0,0,0) peripatos, go to (11, 0, 11) — just into GARDEN.
+        # Start at peripatos centre, aim 60 % of the way to GARDEN centre —
+        # safely past the Voronoi midpoint regardless of :data:`WORLD_SIZE_M`.
+        garden_cx, _cy, garden_cz = ZONE_CENTERS[Zone.GARDEN]
         kin_at_peripatos_centre.destination = Position(
-            x=11.0,
+            x=garden_cx * 0.6,
             y=0.0,
-            z=11.0,
+            z=garden_cz * 0.6,
             zone=Zone.GARDEN,
         )
         kin_at_peripatos_centre.speed_mps = 100.0

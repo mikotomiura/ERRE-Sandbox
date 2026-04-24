@@ -7,8 +7,8 @@ Public surface for T13:
 * Clock abstraction — :class:`Clock`, :class:`RealClock`, :class:`ManualClock`
 * Physics — :class:`Kinematics`, :func:`step_kinematics`,
   :func:`apply_move_command`
-* Zones — :data:`ZONE_CENTERS`, :data:`ADJACENCY`, :func:`locate_zone`,
-  :func:`default_spawn`, :func:`adjacent_zones`
+* Zones — :data:`WORLD_SIZE_M`, :data:`ZONE_CENTERS`, :data:`ADJACENCY`,
+  :func:`locate_zone`, :func:`default_spawn`, :func:`adjacent_zones`
 
 Layer dependency (see ``architecture-rules`` skill):
 
@@ -33,6 +33,7 @@ from erre_sandbox.world.tick import (
 )
 from erre_sandbox.world.zones import (
     ADJACENCY,
+    WORLD_SIZE_M,
     ZONE_CENTERS,
     adjacent_zones,
     default_spawn,
@@ -41,6 +42,7 @@ from erre_sandbox.world.zones import (
 
 __all__ = [
     "ADJACENCY",
+    "WORLD_SIZE_M",
     "ZONE_CENTERS",
     "AgentRuntime",
     "Clock",

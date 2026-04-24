@@ -28,16 +28,19 @@ enum Mode { OVERVIEW, FOLLOW_AGENT, MIND_PEEK, TOP_DOWN }
 @export var zoom_speed: float = 2.5
 @export var pan_speed: float = 12.0
 @export var min_distance: float = 3.0
-@export var max_distance: float = 60.0
+@export var max_distance: float = 100.0
 @export var default_distance_overview: float = 28.0
 @export var default_distance_follow: float = 14.0
 @export var default_distance_mind_peek: float = 6.0
-@export var default_distance_top_down: float = 40.0
+@export var default_distance_top_down: float = 65.0
 
-# M7 α-cam2: discrete zoom presets hot-keyed to `-` and `=` so a researcher
-# can jump the camera distance without spinning the mouse wheel for several
-# seconds. Values span the sweep from mind-peek close-up to world overview.
-@export var zoom_steps: Array[float] = [3.0, 8.0, 15.0, 30.0, 60.0]
+# M7 α-cam2 + Slice β: discrete zoom presets hot-keyed to `-` and `=` so a
+# researcher can jump the camera distance without spinning the mouse wheel
+# for several seconds. Values span the sweep from mind-peek close-up to
+# the new 100 m world overview (the ``100`` step was added with
+# ``WORLD_SIZE_M`` so the researcher can frame the whole terrain in one
+# keystroke).
+@export var zoom_steps: Array[float] = [3.0, 8.0, 15.0, 30.0, 60.0, 100.0]
 
 signal mode_changed(new_mode: int)
 

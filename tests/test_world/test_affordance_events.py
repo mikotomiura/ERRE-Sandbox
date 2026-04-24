@@ -26,10 +26,14 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-# chashitsu tea bowl ground-truth from ``world/zones.py``. Hard-coded here on
-# purpose so a silent drift in ZONE_PROPS would fail the tests loudly.
-_CHAWAN_01_X = 19.5
-_CHAWAN_01_Z = -19.5
+# chashitsu tea bowl ground-truth pulled from ``world/zones.py`` — since
+# Slice β derives prop coordinates from :data:`WORLD_SIZE_M`, pegging the
+# literals would force a parallel edit every time the world rescales. We
+# still assert the agent-prop geometry (distance deltas) loudly; only the
+# absolute XZ origin tracks the source table.
+_CHAWAN_01 = ZONE_PROPS[Zone.CHASHITSU][0]
+_CHAWAN_01_X = _CHAWAN_01.x
+_CHAWAN_01_Z = _CHAWAN_01.z
 
 
 def _move(runtime: WorldRuntime, agent_id: str, *, x: float, z: float) -> None:

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [sub_resource type="PlaneMesh" id="1_terrain"]
-size = Vector2(60, 60)
+size = Vector2(100, 100)
 
 [sub_resource type="StandardMaterial3D" id="2_terrainmat"]
 albedo_color = Color(0.45, 0.42, 0.38, 1)

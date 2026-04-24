@@ -84,3 +84,32 @@ Follow-up track (A2/A3/B3/C/D) の判断は別タスク or 本ファイルの末
   - Blender export 待ちはバックログ化、建物は primitive 一本
 - **v1 を否定したのではなく両案の美点をブレンドした点が重要**: 純 v2 だと
   Empirical 運用と C3 安全弁を失う、純 v1 だと観察可能性の縦切りを失う
+
+## D8. Slice β 実装 — Plan mode 内 /reimagine で 5 軸決定
+
+- **経緯**: 2026-04-24、Slice α (PR #81) merge 後、design-final.md 記載の β
+  (β-A2 + β-world + β-buildings + β-boundary-sync + β-tests, ~6.5h) に着手。
+  Plan mode で /reimagine 規律 (v1 → 破壊 → v2 → synthesis) を Plan agent に
+  実行させ、5 軸それぞれの設計選択を決定。
+- **採用** (plan file: `/Users/johnd/.claude/plans/zazzy-painting-petal.md`):
+  - Axis 1 (bias): post-parse probabilistic resample + `bias.fired` 構造化ログ
+  - Axis 2 (world scale): `WORLD_SIZE_M: Final[float] = 100.0` 定数導入、
+    centers を `±WORLD_SIZE_M / 3` から派生
+  - Axis 3 (buildings): Study / Agora / Garden の 3 scene を新規 authoring、
+    Zazen 石灯籠は γ に延期
+  - Axis 4 (boundary sync): BoundaryLayer 手 hardcode 再同期、WebSocket
+    `WorldLayoutMsg` envelope は D6 通り γ に延期
+  - Axis 5 (tests): Unit test (seeded RNG) + `bias.fired` trace log、
+    slow probabilistic e2e は γ に延期
+- **実装結果**: 5 commit (refactor + bias + 3 scenes + boundary/camera sync +
+  code-review fixup for RNG persistence)、branch `feat/m7-slice-beta-differentiation`
+- **変更範囲**:
+  - Python: `world/zones.py`, `cognition/cycle.py` + new test_zone_bias.py
+    (6 ケース)
+  - Godot: 3 new .tscn (Study/Agora/Garden) + WorldManager.ZONE_MAP +
+    BoundaryLayer.zone_rects/prop_coords + CameraRig.max_distance/zoom_steps
+  - Tests: test_zones.py / test_physics.py / test_affordance_events.py を
+    ZONE_CENTERS/ZONE_PROPS 派生に書き換え (座標 literal 解消)
+- **γ へ送った負債**: WorldLayoutMsg envelope、Zazen 石灯籠、slow stochastic
+  e2e、Chashitsu.tscn の pre-existing 座標 drift (scene root が Python center
+  に一致しない既存問題)

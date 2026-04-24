@@ -27,25 +27,20 @@ class TestLocateZone:
         for zone, (cx, cy, cz) in ZONE_CENTERS.items():
             assert locate_zone(cx, cy, cz) is zone
 
-    @pytest.mark.parametrize(
-        ("point", "expected"),
-        [
-            ((-10.0, 0.0, -15.0), Zone.STUDY),  # NW quadrant, closer to study
-            ((1.0, 0.0, 1.0), Zone.PERIPATOS),  # near origin
-            ((15.0, 0.0, -15.0), Zone.CHASHITSU),  # NE quadrant
-            ((-5.0, 0.0, 15.0), Zone.AGORA),  # SW-ish (S direction in Godot z+)
-            ((18.0, 0.0, 18.0), Zone.GARDEN),  # SE quadrant
-        ],
-    )
-    def test_points_inside_cells_resolve_locally(
-        self,
-        point: tuple[float, float, float],
-        expected: Zone,
-    ) -> None:
-        assert locate_zone(*point) is expected
+    @pytest.mark.parametrize("zone", list(Zone))
+    def test_points_inside_cells_resolve_locally(self, zone: Zone) -> None:
+        """A point 2 m off a centroid must still resolve to that zone.
+
+        Parametrised by centroid so the Voronoi topology holds regardless of
+        :data:`WORLD_SIZE_M`; previously this test hard-coded absolute XZ
+        points tied to the 60 m layout which drifted silently when the
+        terrain was scaled.
+        """
+        cx, _cy, cz = ZONE_CENTERS[zone]
+        assert locate_zone(cx + 2.0, 0.0, cz + 2.0) is zone
 
     def test_far_field_point_still_resolves(self) -> None:
-        """Outside the rough 40m bounding square, Voronoi still assigns a zone."""
+        """Outside the rough bounding square, Voronoi still assigns a zone."""
         assert locate_zone(1000.0, 0.0, 1000.0) is Zone.GARDEN
         assert locate_zone(-1000.0, 0.0, -1000.0) is Zone.STUDY
 
@@ -54,7 +49,8 @@ class TestLocateZone:
 
     def test_tie_broken_by_enum_declaration_order(self) -> None:
         """When equidistant, the first zone in ``ZONE_CENTERS`` iteration wins."""
-        midpoint_study_peripatos = (-10.0, 0.0, -10.0)
+        study_cx, _cy, study_cz = ZONE_CENTERS[Zone.STUDY]
+        midpoint_study_peripatos = (study_cx * 0.5, 0.0, study_cz * 0.5)
         first = next(iter(ZONE_CENTERS))
         assert locate_zone(*midpoint_study_peripatos) is first
 

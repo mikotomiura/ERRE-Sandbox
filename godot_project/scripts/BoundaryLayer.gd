@@ -29,30 +29,36 @@ extends Node3D
 @export var proximity_threshold: float = 5.0
 @export var circle_segments: int = 48
 
-# Zone rectangles (centre_x, centre_z, size_x, size_z). Values mirror the
-# ZoneManager defaults in WorldManager.gd and ``world/zones.py``; if those
-# ever drift, a future task should hoist this into a shared config.
+# Zone rectangles (centre_x, centre_z, size_x, size_z). Values mirror
+# :data:`ZONE_CENTERS` in ``src/erre_sandbox/world/zones.py`` after the
+# Slice β rescale (``WORLD_SIZE_M = 100`` → centres at
+# ``±WORLD_SIZE_M / 3`` ≈ ±33.33 m). The previous Slice α rectangles
+# tracked the ad-hoc 60 m layout and have been rewritten here to match
+# the Python ground truth.
+#
+# TODO(slice-γ): replace this hand-maintained list with a WorldLayoutMsg
+# envelope so Python pushes ``ZONE_CENTERS`` on connect (decisions.md D6
+# defers the schema change to γ alongside the B3 ReasoningTrace expansion).
 @export var zone_rects: Array = [
-	# Peripatos — long corridor (matches scenes/zones/Peripatos.tscn 60x4 M6-C update)
-	{"name": "peripatos", "cx": 0.0, "cz": 0.0, "sx": 60.0, "sz": 4.0},
-	# Chashitsu — tea room plaza
-	{"name": "chashitsu", "cx": 0.0, "cz": 15.0, "sx": 30.0, "sz": 30.0},
-	# Zazen — meditation plaza
-	{"name": "zazen", "cx": 0.0, "cz": -15.0, "sx": 30.0, "sz": 30.0},
-	# Study — far north (approximated; becomes authored when the study
-	# .blend lands in M7)
-	{"name": "study", "cx": 25.0, "cz": 0.0, "sx": 18.0, "sz": 18.0},
-	# Agora — far south (approximated; M7 zone)
-	{"name": "agora", "cx": -25.0, "cz": 0.0, "sx": 24.0, "sz": 24.0},
+	# Study — NW quadrant (Kant's preferred locus).
+	{"name": "study", "cx": -33.33, "cz": -33.33, "sx": 18.0, "sz": 18.0},
+	# Peripatos — centre corridor (cross-agent thoroughfare).
+	{"name": "peripatos", "cx": 0.0, "cz": 0.0, "sx": 30.0, "sz": 30.0},
+	# Chashitsu — NE quadrant (Rikyū's tea-room locus).
+	{"name": "chashitsu", "cx": 33.33, "cz": -33.33, "sx": 20.0, "sz": 20.0},
+	# Agora — S axis (public gathering locus).
+	{"name": "agora", "cx": 0.0, "cz": 33.33, "sx": 24.0, "sz": 24.0},
+	# Garden — SE quadrant (roji approach).
+	{"name": "garden", "cx": 33.33, "cz": 33.33, "sx": 22.0, "sz": 22.0},
 ]
 
-# M7 B2: prop coordinates mirrored from ``src/erre_sandbox/world/zones.py``
-# ``ZONE_PROPS`` (chashitsu tea bowls). Hard-coded on purpose: the schema
-# wiring via WebSocket (Godot receives a ZONE_PROPS table from Python) is
-# scheduled for Slice β. Keep these values in sync with world/zones.py.
+# M7 B2 + Slice β: prop coordinates mirrored from
+# ``ZONE_PROPS[Zone.CHASHITSU]`` at the post-rescale chashitsu centre
+# (``_ZONE_OFFSET ± 0.5`` with ``_ZONE_OFFSET = WORLD_SIZE_M / 3``).
+# TODO(slice-γ): replace with WorldLayoutMsg envelope (see zone_rects).
 @export var prop_coords: Array = [
-	{"name": "chawan_01", "cx": 19.5, "cz": -19.5},
-	{"name": "chawan_02", "cx": 20.5, "cz": -20.5},
+	{"name": "chawan_01", "cx": 32.83, "cz": -32.83},
+	{"name": "chawan_02", "cx": 33.83, "cz": -33.83},
 ]
 
 var _mesh_instance: MeshInstance3D

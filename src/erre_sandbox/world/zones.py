@@ -43,20 +43,41 @@ class PropSpec(NamedTuple):
     salience: float = 0.5
 
 
+WORLD_SIZE_M: Final[float] = 100.0
+"""Edge length (metres) of the square BaseTerrain plane.
+
+Raised from 60 m (Slice α) to 100 m in Slice β so zone centroids spread over
+a visibly larger area while 3-agent trajectories remain observable from a
+single top-down camera preset. All dependent coordinates below derive from
+this constant so future scaling is a one-line change.
+
+Keep :data:`WORLD_SIZE_M` in sync with the ``PlaneMesh.size`` in
+``godot_project/scenes/zones/BaseTerrain.tscn`` and the top-down camera
+``max_distance`` in ``godot_project/scripts/CameraRig.gd``.
+"""
+
+_ZONE_OFFSET: Final[float] = WORLD_SIZE_M / 3.0
+"""XZ offset of non-central zones from peripatos (world origin).
+
+Non-central zones sit at (±_ZONE_OFFSET, 0, ±_ZONE_OFFSET), giving each zone
+a ~_ZONE_OFFSET-radius Voronoi cell inside the terrain bounds.
+"""
+
 ZONE_CENTERS: Final[Mapping[Zone, tuple[float, float, float]]] = MappingProxyType(
     {
-        Zone.STUDY: (-20.0, 0.0, -20.0),
+        Zone.STUDY: (-_ZONE_OFFSET, 0.0, -_ZONE_OFFSET),
         Zone.PERIPATOS: (0.0, 0.0, 0.0),
-        Zone.CHASHITSU: (20.0, 0.0, -20.0),
-        Zone.AGORA: (0.0, 0.0, 20.0),
-        Zone.GARDEN: (20.0, 0.0, 20.0),
+        Zone.CHASHITSU: (_ZONE_OFFSET, 0.0, -_ZONE_OFFSET),
+        Zone.AGORA: (0.0, 0.0, _ZONE_OFFSET),
+        Zone.GARDEN: (_ZONE_OFFSET, 0.0, _ZONE_OFFSET),
     },
 )
 """Five zone centroids in world XZ-plane coordinates.
 
 The ``y`` component is kept at 0.0 for the MVP flat-ground assumption; it is
 preserved in the tuple so future terrain work can extend the layout without a
-breaking change to the shape of this mapping.
+breaking change to the shape of this mapping. All non-central centres are
+derived from :data:`WORLD_SIZE_M` via :data:`_ZONE_OFFSET`.
 """
 
 ZONE_PROPS: Final[Mapping[Zone, tuple[PropSpec, ...]]] = MappingProxyType(
@@ -65,17 +86,17 @@ ZONE_PROPS: Final[Mapping[Zone, tuple[PropSpec, ...]]] = MappingProxyType(
             PropSpec(
                 prop_id="chawan_01",
                 prop_kind="tea_bowl",
-                x=19.5,
+                x=_ZONE_OFFSET - 0.5,
                 y=0.4,
-                z=-19.5,
+                z=-_ZONE_OFFSET + 0.5,
                 salience=0.7,
             ),
             PropSpec(
                 prop_id="chawan_02",
                 prop_kind="tea_bowl",
-                x=20.5,
+                x=_ZONE_OFFSET + 0.5,
                 y=0.4,
-                z=-20.5,
+                z=-_ZONE_OFFSET - 0.5,
                 salience=0.6,
             ),
         ),

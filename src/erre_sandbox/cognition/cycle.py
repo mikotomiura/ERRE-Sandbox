@@ -21,8 +21,10 @@ Scope boundary (see
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import UTC, datetime
+from random import Random
 from typing import TYPE_CHECKING, ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -72,7 +74,6 @@ from erre_sandbox.schemas import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
-    from random import Random
 
     from erre_sandbox.cognition.parse import LLMPlan
     from erre_sandbox.memory import MemoryStore, RankedMemory, Retriever
@@ -205,6 +206,21 @@ class CognitionCycle:
             if erre_sampling_deltas is not None
             else SAMPLING_DELTA_BY_MODE
         )
+        # Slice β: probability that a destination_zone landing outside the
+        # persona's preferred_zones is resampled toward the preferred list.
+        # Read once at construction — per-tick env reads would obscure the
+        # experiment's knob and violate the "cognition has no env
+        # dependencies" invariant the rest of this module relies on. Tune
+        # via ``ERRE_ZONE_BIAS_P`` between runs; see
+        # ``.steering/20260424-m7-differentiation-observability/design-final.md``.
+        self._zone_bias_p = float(os.environ.get("ERRE_ZONE_BIAS_P", "0.2"))
+        # Bias uses a persistent RNG (shared with ``self._rng`` when one is
+        # injected, otherwise its own ``Random()`` so consecutive ticks draw
+        # from a coherent sequence rather than fresh entropy per step).
+        # Separate field from ``self._rng`` so the ``apply_llm_delta`` noise
+        # contract ("no rng → deterministic") stays intact for callers that
+        # deliberately pass ``None``.
+        self._bias_rng = rng or Random()  # noqa: S311 — non-crypto bias nudge
 
     async def step(
         self,
@@ -329,6 +345,20 @@ class CognitionCycle:
                 reflection_triggered=reflection_triggered,
                 new_physical=new_physical,
             )
+
+        # Slice β: nudge the LLM's destination toward persona preferred_zones
+        # so three agents with different preferred lists produce three
+        # different spatial trajectories. The helper is a no-op when the
+        # destination is already preferred, when preferred_zones is empty,
+        # or when the per-tick bias probability does not fire — so the
+        # envelope-level contract is unchanged in the common case.
+        plan = _bias_target_zone(
+            plan,
+            persona,
+            self._bias_rng,
+            self._zone_bias_p,
+            agent_id=agent_state.agent_id,
+        )
 
         # Step 8: compose Cognitive via pure LLM delta.
         new_cognitive = apply_llm_delta(
@@ -617,6 +647,50 @@ class CognitionCycle:
 # ---------------------------------------------------------------------------
 # Module-private helpers (pure)
 # ---------------------------------------------------------------------------
+
+
+def _bias_target_zone(
+    plan: LLMPlan,
+    persona: PersonaSpec,
+    rng: Random,
+    bias_p: float,
+    *,
+    agent_id: str,
+) -> LLMPlan:
+    """Resample ``plan.destination_zone`` toward persona preferred zones.
+
+    With probability ``bias_p``, if the LLM-chosen zone lies outside
+    ``persona.preferred_zones``, pick a uniform replacement from that list
+    and emit a ``bias.fired`` debug log so the researcher can confirm the
+    bias is actually reshaping trajectories in a live run. The plan is
+    returned unchanged in every other branch (empty preferred list,
+    destination already preferred, destination is ``None``, or the
+    probability did not fire), so normal LLM plans — including the
+    intentional "stay put" signal — propagate unmodified.
+
+    The "destination is ``None``" branch is deliberately a no-op in the
+    first cut: we respect the LLM's choice to stay in place and let live
+    G-GEAR data determine whether the helper should also synthesise a
+    destination when the LLM leaves it empty. See Open Question #1 in
+    ``.steering/20260424-m7-differentiation-observability/`` plan notes.
+    """
+    if not persona.preferred_zones:
+        return plan
+    if plan.destination_zone is None:
+        return plan
+    if plan.destination_zone in persona.preferred_zones:
+        return plan
+    if rng.random() >= bias_p:
+        return plan
+    new_dest = rng.choice(persona.preferred_zones)
+    logger.debug(
+        "bias.fired agent=%s from=%s to=%s bias_p=%.2f",
+        agent_id,
+        plan.destination_zone.value,
+        new_dest.value,
+        bias_p,
+    )
+    return plan.model_copy(update={"destination_zone": new_dest})
 
 
 def _observation_content_for_embed(obs: Observation) -> str:  # noqa: PLR0911 — discriminator dispatch
