@@ -397,3 +397,69 @@ def test_dialog_turn_count_by_persona_query(store: MemoryStore) -> None:
         ).fetchall()
     counts = {r["speaker_persona_id"]: r["turns"] for r in rows}
     assert counts == {"kant": 3, "rikyu": 1, "nietzsche": 1}
+
+
+# ---------------------------------------------------------------------------
+# Bias fired events (M8 baseline-quality-metric)
+# ---------------------------------------------------------------------------
+
+
+def _seed_bias_event(
+    store: MemoryStore,
+    *,
+    tick: int = 10,
+    agent_id: str = "a_kant_001",
+    persona_id: str = "kant",
+    from_zone: str = "agora",
+    to_zone: str = "peripatos",
+    bias_p: float = 0.2,
+) -> str:
+    return store.add_bias_event_sync(
+        tick=tick,
+        agent_id=agent_id,
+        persona_id=persona_id,
+        from_zone=from_zone,
+        to_zone=to_zone,
+        bias_p=bias_p,
+    )
+
+
+def test_add_bias_event_inserts_row(store: MemoryStore) -> None:
+    row_id = _seed_bias_event(store)
+    assert row_id.startswith("be_")
+
+    rows = list(store.iter_bias_events())
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["agent_id"] == "a_kant_001"
+    assert row["persona_id"] == "kant"
+    assert row["from_zone"] == "agora"
+    assert row["to_zone"] == "peripatos"
+    assert abs(float(row["bias_p"]) - 0.2) < 1e-9
+
+
+def test_add_bias_event_allows_multiple_per_tick(store: MemoryStore) -> None:
+    """No UNIQUE constraint — two firings on the same tick must both persist."""
+    _seed_bias_event(store, tick=5, agent_id="a_kant_001")
+    _seed_bias_event(store, tick=5, agent_id="a_kant_001")
+    assert len(list(store.iter_bias_events())) == 2
+
+
+def test_iter_bias_events_filters_by_persona(store: MemoryStore) -> None:
+    _seed_bias_event(store, tick=1, persona_id="kant")
+    _seed_bias_event(store, tick=2, persona_id="rikyu")
+    _seed_bias_event(store, tick=3, persona_id="kant")
+
+    kant_rows = list(store.iter_bias_events(persona="kant"))
+    assert {r["tick"] for r in kant_rows} == {1, 3}
+
+    rikyu_rows = list(store.iter_bias_events(persona="rikyu"))
+    assert {r["tick"] for r in rikyu_rows} == {2}
+
+
+def test_iter_bias_events_filters_by_since(store: MemoryStore) -> None:
+    _seed_bias_event(store)
+    future = datetime.now(tz=UTC) + timedelta(hours=1)
+    assert list(store.iter_bias_events(since=future)) == []
+    past = datetime.now(tz=UTC) - timedelta(hours=1)
+    assert len(list(store.iter_bias_events(since=past))) == 1

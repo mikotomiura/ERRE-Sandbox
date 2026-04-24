@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Final, cast
 import uvicorn
 import yaml
 
-from erre_sandbox.cognition import CognitionCycle
+from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
 from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.integration.dialog import InMemoryDialogScheduler
@@ -221,12 +221,40 @@ async def bootstrap(cfg: BootConfig) -> None:
             await inference.health_check()
 
         retriever = Retriever(memory, embedding)
+
+        # M8 baseline-quality-metric: persist every ``bias.fired`` firing
+        # into sqlite ``bias_events`` so the post-hoc ``baseline-metrics``
+        # CLI can compute the bias_fired_rate metric offline. The closure
+        # references ``runtime`` by name — Python resolves it lazily at
+        # call time, and by that time the ``runtime = WorldRuntime(...)``
+        # assignment below has run, so the lookup succeeds. Sink exceptions
+        # are caught inside ``_bias_target_zone`` (decisions D5).
+        def _persist_bias_event(event: BiasFiredEvent) -> None:
+            persona_id = runtime.agent_persona_id(event.agent_id)
+            if persona_id is None:
+                logger.warning(
+                    "[bootstrap] bias_event sink skipped: unresolved persona "
+                    "for agent=%s tick=%d",
+                    event.agent_id,
+                    event.tick,
+                )
+                return
+            memory.add_bias_event_sync(
+                tick=event.tick,
+                agent_id=event.agent_id,
+                persona_id=persona_id,
+                from_zone=event.from_zone,
+                to_zone=event.to_zone,
+                bias_p=event.bias_p,
+            )
+
         cycle = CognitionCycle(
             retriever=retriever,
             store=memory,
             embedding=embedding,
             llm=inference,
             erre_policy=DefaultERREModePolicy(),
+            bias_sink=_persist_bias_event,
         )
         runtime = WorldRuntime(cycle=cycle)
 

@@ -18,7 +18,12 @@ Layer dependency (see ``architecture-rules`` skill):
 * forbidden: ``world``, ``ui``
 """
 
-from erre_sandbox.cognition.cycle import CognitionCycle, CognitionError, CycleResult
+from erre_sandbox.cognition.cycle import (
+    BiasFiredEvent,
+    CognitionCycle,
+    CognitionError,
+    CycleResult,
+)
 from erre_sandbox.cognition.importance import estimate_importance
 from erre_sandbox.cognition.parse import LLMPlan, parse_llm_plan
 from erre_sandbox.cognition.prompting import (
@@ -44,6 +49,7 @@ __all__ = [
     "DEFAULT_CONFIG",
     "DEFAULT_REFLECTIVE_ZONES",
     "RESPONSE_SCHEMA_HINT",
+    "BiasFiredEvent",
     "CognitionCycle",
     "CognitionError",
     "CycleResult",

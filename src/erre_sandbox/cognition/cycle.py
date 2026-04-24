@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from random import Random
 from typing import TYPE_CHECKING, ClassVar, Final, Literal
@@ -73,7 +74,7 @@ from erre_sandbox.schemas import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
     from erre_sandbox.cognition.parse import LLMPlan
     from erre_sandbox.memory import MemoryStore, RankedMemory, Retriever
@@ -84,6 +85,29 @@ if TYPE_CHECKING:
     )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class BiasFiredEvent:
+    """Structured record of one ``_bias_target_zone`` firing.
+
+    Emitted by :func:`_bias_target_zone` via an optional sink when the helper
+    actually replaces the LLM-chosen ``destination_zone`` with a persona
+    preferred zone. Process-internal (not a wire envelope) — consumers are
+    expected to persist or aggregate in-process (see bootstrap's
+    ``_persist_bias_event`` closure for the canonical downstream).
+
+    ``from_zone`` / ``to_zone`` carry the :class:`~erre_sandbox.schemas.Zone`
+    enum values (``.value`` strings) so sinks can persist without re-importing
+    the enum.
+    """
+
+    tick: int
+    agent_id: str
+    from_zone: str
+    to_zone: str
+    bias_p: float
+
 
 _REFLECTION_ZONES: Final[frozenset[Zone]] = frozenset({Zone.PERIPATOS, Zone.CHASHITSU})
 
@@ -173,6 +197,7 @@ class CognitionCycle:
         reflector: Reflector | None = None,
         erre_policy: ERREModeTransitionPolicy | None = None,
         erre_sampling_deltas: Mapping[ERREModeName, SamplingDelta] | None = None,
+        bias_sink: Callable[[BiasFiredEvent], None] | None = None,
     ) -> None:
         self._retriever = retriever
         self._store = store
@@ -221,6 +246,13 @@ class CognitionCycle:
         # contract ("no rng → deterministic") stays intact for callers that
         # deliberately pass ``None``.
         self._bias_rng = rng or Random()  # noqa: S311 — non-crypto bias nudge
+        # M8 baseline-quality-metric: optional sink receiving one
+        # :class:`BiasFiredEvent` per firing. None in unit tests and the
+        # pre-M8 bootstrap; the production bootstrap wires it to a closure
+        # that persists events via ``MemoryStore.add_bias_event_sync``
+        # (see decisions D2/D5 in
+        # ``.steering/20260425-m8-baseline-quality-metric/decisions.md``).
+        self._bias_sink = bias_sink
 
     async def step(
         self,
@@ -358,6 +390,8 @@ class CognitionCycle:
             self._bias_rng,
             self._zone_bias_p,
             agent_id=agent_state.agent_id,
+            tick=agent_state.tick,
+            bias_sink=self._bias_sink,
         )
 
         # Step 8: compose Cognitive via pure LLM delta.
@@ -656,6 +690,8 @@ def _bias_target_zone(
     bias_p: float,
     *,
     agent_id: str,
+    tick: int | None = None,
+    bias_sink: Callable[[BiasFiredEvent], None] | None = None,
 ) -> LLMPlan:
     """Resample ``plan.destination_zone`` toward persona preferred zones.
 
@@ -667,6 +703,15 @@ def _bias_target_zone(
     destination already preferred, destination is ``None``, or the
     probability did not fire), so normal LLM plans — including the
     intentional "stay put" signal — propagate unmodified.
+
+    When ``bias_sink`` is provided (M8 baseline-quality-metric, decisions
+    D2/D5), a :class:`BiasFiredEvent` is dispatched on every firing so
+    callers can persist the event for post-hoc metric aggregation. The
+    sink is called after the debug log so that a persistence failure
+    (caught below) does not swallow the operator-visible signal. Sink
+    exceptions are logged but never propagate — tearing down the live
+    cognition cycle over observability bookkeeping would be worse than
+    dropping a metric row.
 
     The "destination is ``None``" branch is deliberately a no-op in the
     first cut: we respect the LLM's choice to stay in place and let live
@@ -683,13 +728,31 @@ def _bias_target_zone(
     if rng.random() >= bias_p:
         return plan
     new_dest = rng.choice(persona.preferred_zones)
+    from_value = plan.destination_zone.value
+    to_value = new_dest.value
     logger.debug(
         "bias.fired agent=%s from=%s to=%s bias_p=%.2f",
         agent_id,
-        plan.destination_zone.value,
-        new_dest.value,
+        from_value,
+        to_value,
         bias_p,
     )
+    if bias_sink is not None and tick is not None:
+        event = BiasFiredEvent(
+            tick=tick,
+            agent_id=agent_id,
+            from_zone=from_value,
+            to_zone=to_value,
+            bias_p=bias_p,
+        )
+        try:
+            bias_sink(event)
+        except Exception:  # noqa: BLE001 — sink failures must not kill cycle
+            logger.exception(
+                "bias_sink raised for agent=%s tick=%s; dropping event",
+                agent_id,
+                tick,
+            )
     return plan.model_copy(update={"destination_zone": new_dest})
 
 
@@ -863,6 +926,7 @@ def _infer_shift_reason(
 
 
 __all__ = [
+    "BiasFiredEvent",
     "CognitionCycle",
     "CognitionError",
     "CycleResult",

@@ -96,3 +96,78 @@ def test_resample_is_deterministic_under_seeded_rng(
     first = _bias_target_zone(plan, persona, Random(42), 1.0, agent_id=_AGENT_ID)
     second = _bias_target_zone(plan, persona, Random(42), 1.0, agent_id=_AGENT_ID)
     assert first.destination_zone is second.destination_zone
+
+
+# ---------------------------------------------------------------------------
+# M8 baseline-quality-metric: optional bias_sink capture path
+# ---------------------------------------------------------------------------
+
+
+def test_bias_sink_is_called_on_fire(
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """When the probability fires, the sink must receive one BiasFiredEvent."""
+    from erre_sandbox.cognition.cycle import BiasFiredEvent
+
+    persona = make_persona_spec(preferred_zones=["chashitsu", "garden"])
+    plan = _plan(Zone.PERIPATOS)
+    captured: list[BiasFiredEvent] = []
+    _bias_target_zone(
+        plan,
+        persona,
+        Random(0),
+        1.0,
+        agent_id=_AGENT_ID,
+        tick=42,
+        bias_sink=captured.append,
+    )
+    assert len(captured) == 1
+    event = captured[0]
+    assert event.tick == 42
+    assert event.agent_id == _AGENT_ID
+    assert event.from_zone == "peripatos"
+    assert event.to_zone in {"chashitsu", "garden"}
+    assert event.bias_p == 1.0
+
+
+def test_bias_sink_is_not_called_on_no_op(
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """No firing -> no sink call (probability=0 branch)."""
+    persona = make_persona_spec(preferred_zones=["chashitsu", "garden"])
+    plan = _plan(Zone.PERIPATOS)
+    captured: list[object] = []
+    _bias_target_zone(
+        plan,
+        persona,
+        Random(0),
+        0.0,
+        agent_id=_AGENT_ID,
+        tick=42,
+        bias_sink=captured.append,
+    )
+    assert captured == []
+
+
+def test_bias_sink_exception_does_not_break_resample(
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Sink exceptions are swallowed so the live cycle survives broken sinks."""
+    persona = make_persona_spec(preferred_zones=["chashitsu", "garden"])
+    plan = _plan(Zone.PERIPATOS)
+
+    def _broken_sink(_event: object) -> None:
+        msg = "persistence layer is down"
+        raise RuntimeError(msg)
+
+    result = _bias_target_zone(
+        plan,
+        persona,
+        Random(0),
+        1.0,
+        agent_id=_AGENT_ID,
+        tick=1,
+        bias_sink=_broken_sink,
+    )
+    # Resample still succeeded despite the sink error.
+    assert result.destination_zone in {Zone.CHASHITSU, Zone.GARDEN}

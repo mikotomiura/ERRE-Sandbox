@@ -13,6 +13,7 @@ import json
 import sqlite3
 import struct
 import threading
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, ClassVar, Final
 
@@ -226,6 +227,33 @@ class MemoryStore:
                     """
                     CREATE INDEX IF NOT EXISTS ix_dialog_turns_persona
                     ON dialog_turns(speaker_persona_id, created_at)
+                    """,
+                )
+                # Bias fired events (M8 baseline-quality-metric): capture each
+                # time ``_apply_zone_bias`` replaces the LLM-chosen destination
+                # with a preferred zone. Needed to compute the bias_fired_rate
+                # metric post-hoc via the ``baseline-metrics`` CLI. Wire schema
+                # unchanged — this is process-internal observability routed
+                # through a sink injected by bootstrap (see decisions D2/D5).
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS bias_events (
+                        id TEXT PRIMARY KEY,
+                        dialog_id TEXT,
+                        tick INTEGER NOT NULL,
+                        agent_id TEXT NOT NULL,
+                        persona_id TEXT NOT NULL,
+                        from_zone TEXT NOT NULL,
+                        to_zone TEXT NOT NULL,
+                        bias_p REAL NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                    """,
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS ix_bias_events_persona
+                    ON bias_events(persona_id, created_at)
                     """,
                 )
 
@@ -839,6 +867,114 @@ class MemoryStore:
                 "utterance, created_at "
                 f"FROM dialog_turns {where} "
                 "ORDER BY created_at ASC, turn_index ASC"
+            )
+            rows = conn.execute(sql, params).fetchall()
+        for row in rows:
+            yield dict(row)
+
+    # ------------------------------------------------------------------
+    # Bias fired events (M8 baseline-quality-metric)
+    # ------------------------------------------------------------------
+
+    def add_bias_event_sync(
+        self,
+        *,
+        tick: int,
+        agent_id: str,
+        persona_id: str,
+        from_zone: str,
+        to_zone: str,
+        bias_p: float,
+        dialog_id: str | None = None,
+    ) -> str:
+        """Persist one ``bias.fired`` occurrence synchronously.
+
+        Designed for the cognition-cycle sink, which runs on the event-loop
+        thread immediately after ``_apply_zone_bias`` replaces a destination
+        zone. ``agent_id`` → ``persona_id`` resolution happens upstream in
+        the bootstrap closure (see decisions D5) so this method stays
+        decoupled from the agent registry.
+
+        No UNIQUE constraint — an agent may fire multiple times per tick in
+        theory, and we do not want idempotency to silently drop rows that
+        represent genuinely distinct events. Row ids use a UUID4 suffix to
+        stay collision-free across runs in the same DB.
+        """
+        row_id = f"be_{uuid.uuid4().hex[:12]}"
+        with self._conn_lock:
+            conn = self._ensure_conn()
+            with conn:
+                conn.execute(
+                    "INSERT INTO bias_events("
+                    "id, dialog_id, tick, agent_id, persona_id, "
+                    "from_zone, to_zone, bias_p, created_at"
+                    ") VALUES (?,?,?,?,?,?,?,?,?)",
+                    (
+                        row_id,
+                        dialog_id,
+                        tick,
+                        agent_id,
+                        persona_id,
+                        from_zone,
+                        to_zone,
+                        bias_p,
+                        _dt_to_text(datetime.now(tz=UTC)),
+                    ),
+                )
+        return row_id
+
+    async def add_bias_event(
+        self,
+        *,
+        tick: int,
+        agent_id: str,
+        persona_id: str,
+        from_zone: str,
+        to_zone: str,
+        bias_p: float,
+        dialog_id: str | None = None,
+    ) -> str:
+        """Async wrapper over :meth:`add_bias_event_sync` via ``to_thread``."""
+        return await asyncio.to_thread(
+            self.add_bias_event_sync,
+            tick=tick,
+            agent_id=agent_id,
+            persona_id=persona_id,
+            from_zone=from_zone,
+            to_zone=to_zone,
+            bias_p=bias_p,
+            dialog_id=dialog_id,
+        )
+
+    def iter_bias_events(
+        self,
+        *,
+        persona: str | None = None,
+        since: datetime | None = None,
+    ) -> Iterator[dict[str, object]]:
+        """Yield bias_event rows as plain dicts, oldest first.
+
+        ``persona`` filters by ``persona_id``. ``since`` filters by
+        ``created_at >= since``. Ordered by ``created_at`` then ``tick`` so
+        rows inserted with identical timestamps keep their relative tick
+        order (relevant when multiple agents fire on the same tick).
+        """
+        with self._conn_lock:
+            conn = self._ensure_conn()
+            clauses: list[str] = []
+            params: list[object] = []
+            if persona is not None:
+                clauses.append("persona_id = ?")
+                params.append(persona)
+            if since is not None:
+                clauses.append("created_at >= ?")
+                params.append(_dt_to_text(since))
+            where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+            sql = (
+                "SELECT id, dialog_id, tick, agent_id, persona_id, "
+                "from_zone, to_zone, bias_p, created_at "
+                f"FROM bias_events {where} "
+                "ORDER BY created_at ASC, tick ASC"
             )
             rows = conn.execute(sql, params).fetchall()
         for row in rows:
