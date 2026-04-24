@@ -28,6 +28,9 @@ Claude Code がセッション開始時に自動で読み込む指示書。
    - テスト実行 → `test-runner`
    - セキュリティ確認 → `security-checker`
 4. **破壊と構築の判断**: 高難度の設計判断では `/reimagine` で初回案を破棄し再生成案と比較
+5. **Skill の品質検証**: エージェントが Skill の指示通りに動かない、同じ Skill を使った
+   タスクで繰り返し問題が起きる、Skill の記述が古くなった疑いがある場合は
+   `empirical-prompt-tuning` Skill を起動し、新規 subagent で客観的に検証・改善する。
 
 ## 参照ドキュメント
 

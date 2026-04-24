@@ -4,7 +4,7 @@ description: >
   各 Skill は SKILL.md と必須の補足ファイル（examples.md, patterns.md など）
   を含む。description は具体的トリガー語を必須とし、Shell Preprocessing
   を活用した動的 Skill を最低 1 つ含める。/setup-claude-md の完了後に実行する。
-allowed-tools: Read, Write, Glob, Grep, Bash(mkdir *), Bash(ls *)
+allowed-tools: Read, Write, Glob, Grep, Bash(mkdir *), Bash(ls *), Task
 ---
 
 # /setup-skills — Skill 群構築コマンド
@@ -73,6 +73,9 @@ docs/repository-structure.md
 5. **implementation-workflow** — 実装タスクの共通骨格
    （調査→設計→実装→テスト→レビューの流れ。
    `/add-feature`, `/fix-bug`, `/refactor` から参照される）
+6. **empirical-prompt-tuning** — Skill・コマンドの指示品質を実測評価する手法
+   （Grill me の構造的限界を補完。重要 Skill の品質保証に使用。
+   Task tool で新規 subagent を dispatch し、両面評価で反復改善する）
 
 ### プロジェクト固有 Skill
 6. **[framework]-patterns** — フレームワーク固有のパターン
@@ -239,6 +242,19 @@ cat .claude/skills/[skill-name]/SKILL.md
 
 問題があれば修正してから次の Skill へ。
 
+#### Phase H: Empirical 評価（tier 選択付き）
+
+> 全 Skill に適用するが **tier を選択** してコストを抑える。
+> - **Full**（Iter 0〜7、2-3 シナリオ、hold-out、タグ監査）: `implementation-workflow` + ユーザーが「特に重要」と指定した Skill
+> - **Lite**（1 シナリオ × 2 iter 固定）: 中程度の Skill
+> - **Structural-only**（Iter 0 + Grill me 拡張のみ、dispatch なし）: 軽量 Skill、dispatch 不可環境
+
+Grill me（自己レビュー）では排除できない「書き手のバイアス」を、新規 subagent による実行で客観的に検証する。
+
+`.claude/skills/empirical-prompt-tuning/SKILL.md` を Read で参照し、tier に応じたワークフローで評価・改善を実施する。Full の場合はシナリオ diversity rubric（median / edge-low / edge-high / adversarial のうち 3 象限）、hold-out 最低 2 本、`[critical]` タグ比率 20-40% を遵守する。結果をユーザーに提示して承認を得てから次の Skill へ進む。
+
+**`empirical-prompt-tuning` Skill 自身には Phase H を適用しない**（メタ循環）。代わりに `/reimagine` を Skill ファイルに適用する手順（本 Skill「メタ循環対策」節参照）を使う。
+
 ### Step 4: 動的 Skill の作成（必須・少なくとも 1 つ）
 
 通常の Skill とは別に、Shell Preprocessing を活用した **動的 Skill** を最低 1 つ作成する。
@@ -397,6 +413,19 @@ CRITICAL/HIGH は必ず対応。
 
 補足ファイルは `anti-patterns.md`（「骨格を飛ばして実装に入る」等の失敗集）を推奨。
 
+### Step 4.6: `empirical-prompt-tuning` Skill の作成（必須）
+
+この Skill は **他の Skill やコマンドの指示品質を客観的に検証する手法** を定義する。Phase G（Grill me）が自己レビューであるのに対し、本 Skill はバイアスを排した新規 subagent に実際に動かしてもらう実証的評価を提供する。
+
+セットアップ時の品質ゲート（Phase H）だけでなく、日常タスクの中で既存 Skill の有効性を判断し、必要に応じて更新するランタイム品質保証としても使用する。
+
+作成手順:
+
+1. `.claude/skills/empirical-prompt-tuning/` ディレクトリを作成
+2. プロジェクトルートの `skill-empirical-prompt-tuning.md` を `.claude/skills/empirical-prompt-tuning/SKILL.md` としてコピー
+3. 補足ファイルとして `examples.md`（実際の評価イテレーション記録の具体例）を作成
+4. Phase A〜G を他の Skill と同様に実施（ただし Phase H は適用しない — メタ的な循環を避ける）
+
 ### Step 5: 全 Skill の整合性レビュー
 
 すべての Skill を作成し終えたら、全体を見渡して以下を確認:
@@ -472,6 +501,8 @@ Phase 3 完了です。
 - [ ] 各 Skill に最低 1 つの補足ファイルがある
 - [ ] 動的 Skill が最低 1 つ作成されている
 - [ ] 各 Skill で Grill me ステップ実施済み
+- [ ] `empirical-prompt-tuning` Skill が作成されている
+- [ ] 重要 Skill（`implementation-workflow` 等）で Phase H（Empirical 評価）実施済み
 - [ ] 全体整合性レビュー実施済み
 - [ ] Phase 3 が完了マーク済み
 
@@ -485,3 +516,6 @@ Phase 3 完了です。
 - ❌ allowed-tools を省略する
 - ❌ 複数 Skill を一気に作成する
 - ❌ Grill me を省略する
+- ❌ 重要 Skill の Empirical 評価（Phase H）を省略する（Grill me だけではバイアスが残る）
+- ❌ Empirical 評価で自己再読を代用する（新規 subagent を必ず dispatch する）
+- ❌ Empirical 評価を全 Skill に適用する（コスト爆発。重要 Skill に限定する）
