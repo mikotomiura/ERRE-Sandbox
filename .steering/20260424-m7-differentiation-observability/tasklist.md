@@ -38,11 +38,26 @@
 ## B2 — BoundaryLayer overlay (3h)
 
 - [ ] `godot_project/scripts/BoundaryLayer.gd` の現状 zone rect 描画コードを精読
-- [ ] `_draw_affordance_circles()` 実装（ImmediateMesh or TorusMesh、yellow）
-- [ ] `_draw_proximity_circles()` 実装（cyan）
-- [ ] prop 座標は hardcode（schemas/WebSocket 経由は次 PR）
+- [ ] `_draw_circle(cx, cz, r)` ヘルパー関数を実装（ImmediateMesh で円軌道）
+- [ ] `_draw_affordance_circles()` 実装（ImmediateMesh、yellow 0.9,0.7,0.2）
+- [ ] `_draw_proximity_circles()` 実装（ImmediateMesh、cyan 0.3,0.7,0.9）
+- [ ] prop 座標は hardcode（schemas/WebSocket 経由は Slice β で配線）
 - [ ] Godot で scene 起動し目視で円が描画されていることを確認（可能なら）
 - [ ] commit: `feat(godot): add affordance/proximity overlay to BoundaryLayer (B2)`
+
+## α-cam1 — Camera 真俯瞰 hotkey (0.5h)
+
+- [ ] `godot_project/scripts/CameraRig.gd` の現状モード切替を精読
+- [ ] ホットキー `0` (Key.KEY_0) で pitch=-1.57 (真俯瞰)、altitude 固定 40m のプリセット
+- [ ] `_unhandled_input` に `cam_top_down` action を追加
+- [ ] MainScene の help text に記載
+- [ ] commit: `feat(godot): add top-down camera preset on hotkey 0 (α-cam1)`
+
+## α-cam2 — Camera zoom step preset (0.5h)
+
+- [ ] `CameraRig.gd` に zoom step (wheel-less) ホットキー `-` / `=` で min/max 間を n 段階
+- [ ] ズーム段階は 5 ステップ固定（3m / 8m / 15m / 30m / 60m）
+- [ ] commit: `feat(godot): add zoom step hotkeys -/= for preset distances (α-cam2)`
 
 ## Verification
 

@@ -52,9 +52,35 @@ Follow-up track (A2/A3/B3/C/D) の判断は別タスク or 本ファイルの末
 
 ## 本 PR 外だが記録すべき判断 (deferred)
 
-### C3 (agent anatomy visual) は着手前 `/reimagine` 必須
+### C3 (agent anatomy visual) は Slice γ 実装後に要否判定
 
-- 3 案候補: (i) 粒子/tree 抽象, (ii) UI オーバーレイでメモリカード, (iii)
-  shader-based synapse 発火
-- 実装着手前に /reimagine で比較、採用案を本ファイルに追記
-- **本 First PR には含めない**
+- ~~着手前 /reimagine 必須~~ ← D7 により条件分岐化
+- v2 が提案した ReasoningPanel Relationships セクションで代替される可能性高い
+- Slice γ 実装後に「まだ必要か」を判定。必要なら 3 案 (粒子/UI/shader) を
+  /reimagine で比較、不要なら deprecation して close。
+
+## D7. /reimagine 遡及適用による H1 採用
+
+- **経緯**: 2026-04-24、First PR 着手中に B1 まで実装した時点でユーザーから
+  「設計段階で破壊と構築は適用したの？」の指摘を受けた。メモリ記録「設計タスクでは
+  必ず適用する」「迷ったら適用する」の不遵守を自認。
+- **選択肢**: (α) B1 未コミットで破棄し全体 /reimagine, (β) B1 コミット確定後に
+  B2 + Follow-up だけ /reimagine, (γ) 現状継続
+- **採用**: (β) → design-v1.md / design-v2.md / design-comparison.md / design-final.md の
+  4 ファイル生成
+- **比較結果**: 4 候補 (v1 純 / v2 純 / H1 / H2 / H3) のうち **H1 (v2 骨格 + v1
+  オペレーション詳細)** を採用
+- **根拠**:
+  - v2 の Vertical Slice 構造は「観察可能性の増分」単位で進められ、Slice γ で
+    MASTER-PLAN 約束 (70/35/45) をまとめて埋める合目的性が高い
+  - v1 の工数細分化 / Empirical Lite 実走 / Blender-as-backlog は個人開発運用に
+    必須で捨てたくない
+  - v2 の「成長 UI/anatomy 独立項目を捨てる」は合理的だが、C3 は念のため
+    Slice γ 実装後の条件分岐として残す（無い物ねだりになる前にチェック）
+- **決定影響**:
+  - First PR scope が V+A1+B1+B2 (4 commit) から V+A1+B1+B2+α-cam1+α-cam2 (6 commit) に拡張
+  - Follow-up track 構造が 4-track (A/B/C/D) から 3 slice (α/β/γ) に再編
+  - A3 / D4 独立 UI を廃止、ReasoningTrace.decision に吸収
+  - Blender export 待ちはバックログ化、建物は primitive 一本
+- **v1 を否定したのではなく両案の美点をブレンドした点が重要**: 純 v2 だと
+  Empirical 運用と C3 安全弁を失う、純 v1 だと観察可能性の縦切りを失う
