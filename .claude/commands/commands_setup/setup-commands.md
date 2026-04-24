@@ -413,6 +413,22 @@ Skill の Step A〜I を実行するが、`/refactor` では以下を上書き:
 
 ユーザー承認 + Grill me。
 
+#### 3.4.5 ワークフローコマンドの Empirical 評価（Lite tier）
+
+`/add-feature`, `/fix-bug`, `/refactor` の 3 コマンドは `implementation-workflow` Skill を参照する薄い構造であるため、「Skill 参照の明瞭性」と「オーバーライド指示の解釈一意性」が品質を左右する。Grill me だけでは検出できない「実行者が 2 つのドキュメントをメンタルマージする際の曖昧さ」を、新規 subagent で検証する。
+
+**tier 選択**: 3 コマンド × Full は過剰。`empirical-prompt-tuning` の **Lite tier**（1 シナリオ × 2 iter 固定、hold-out・タグ監査なし）を適用する。コマンド 1 つあたり subagent dispatch 2 回、3 コマンドで計 6 回に収める。
+
+`.claude/skills/empirical-prompt-tuning/SKILL.md` を Read で参照し、各コマンドにつき 1 シナリオで Lite 実施。要件チェックリストの重点項目（`[critical]` 比率 20-40% を遵守、5 項目なら 1-2 個を critical に）:
+
+1. `[critical]` `implementation-workflow` Skill を Read で参照したか → 理由: 参照しないと共通骨格が欠落
+2. `[critical]` オーバーライド指示を正しく適用したか（コマンド固有の制約） → 理由: コマンド固有差分は契約
+3. Step C で設計承認を得てから Step D に進んだか
+4. エラー時のフォールバック指示に従ったか
+5. 出力形式が想定通りか
+
+収束後、結果をユーザーに提示し承認を得てから次のコマンド（/reimagine）の作成に進む。
+
 #### 3.5 `/reimagine`（破壊と構築）
 
 ```markdown
@@ -423,6 +439,9 @@ description: >
   採用案（または両者のハイブリッド）を決定してから実装に入る。
   アーキテクチャ判断、公開 API 設計、難しいバグ、複数案が考えられる設計で起動する。
   実装着手後には使わない（副作用の巻き戻しが困難なため）。
+  Skill ファイルのメタ検証（description ⇔ 本体の乖離検出）にも流用可能
+  — requirement を「frontmatter description + 統合ポイント」、design を「Skill 本体」と
+  読み替える（empirical-prompt-tuning Skill「メタ循環対策」節参照）。
 allowed-tools: Read, Write, Edit
 ---
 
@@ -893,6 +912,7 @@ Phase 5 完了です。
 - [ ] 各コマンドに明確な実行フローが記述されている
 - [ ] 各コマンドが適切に Skill と Agent を呼び出している
 - [ ] `/add-feature`, `/fix-bug`, `/refactor` が implementation-workflow Skill を参照する薄い構造になっている
+- [ ] `/add-feature`, `/fix-bug`, `/refactor` の Empirical 評価が実施済み
 - [ ] `/reimagine` が実装着手前専用である旨が明記されている
 - [ ] 各コマンドで Grill me ステップ実施済み
 - [ ] 進捗ファイルの相互参照マップ（Skill → Command, Agent → Command）が更新されている
@@ -908,3 +928,4 @@ Phase 5 完了です。
 - ❌ `/add-feature`, `/fix-bug`, `/refactor` の各コマンド内に共通骨格を再度書く（implementation-workflow Skill に任せる）
 - ❌ `/reimagine` を実装着手後に使う（副作用を巻き戻せない）
 - ❌ `/reimagine` の Step 2（意図的リセット）を省略して初回案を見ながら再生成する
+- ❌ ワークフローコマンドの Empirical 評価を省略する（Skill 参照型のコマンドは指示の曖昧さが入りやすい）

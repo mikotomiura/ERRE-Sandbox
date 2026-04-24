@@ -112,6 +112,11 @@ find .claude/skills -name "SKILL.md"
 - [ ] description に「以下の状況で必須参照:」がある
 - [ ] 補足ファイル（examples.md, patterns.md など）が存在する
 - [ ] 動的 Skill が最低 1 つあるか（`!` 構文を使うもの）
+- [ ] `empirical-prompt-tuning` Skill が存在するか
+- [ ] `implementation-workflow` に Empirical 評価が実施されたか（最終イテレーションで不明瞭点 0 件）
+- [ ] 重要 Skill の tier 分類が明示されているか（Full / Lite / Structural-only）
+- [ ] `.steering/deferred-evaluations.md` に未評価項目が溜まっていないか（存在する場合は処理する）
+- [ ] **四半期定期チェック**: 前回の Empirical 評価から 3 ヶ月以上経過している Skill について、`/reimagine` を Skill ファイルに適用（description ⇔ 本体の乖離検出）
 
 問題のある Skill をリストアップ。
 
@@ -165,6 +170,7 @@ find .claude/commands -name "*.md"
 - [ ] 実行フローが具体的か
 - [ ] Skill と Agent を適切に呼び出しているか
 - [ ] 制約 / アンチパターンが記載されているか
+- [ ] `/add-feature`, `/fix-bug`, `/refactor` に Empirical 評価が実施されたか（Skill 参照型のコマンドは指示の曖昧さが入りやすい）
 
 ### Step 7: Hook の動作チェック
 
