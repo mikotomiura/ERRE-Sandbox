@@ -73,6 +73,24 @@ Mirrors :data:`erre_sandbox.cognition.cycle._REFLECTION_ZONES` and is kept
 here so a test can override the policy without touching the cycle module.
 """
 
+_REFLECTION_LANG_HINT: Final[dict[str, str]] = {
+    "kant": (
+        "日本語で記述せよ（学術的・厳密・分析的な語彙を用い、"
+        "原語のドイツ語・ラテン語の鍵概念は括弧で併記してよい）。"
+    ),
+    "rikyu": "日本語で記述せよ（古典的・侘び寂びの語彙を用いる）。",
+    "nietzsche": (
+        "日本語で記述せよ（詩的・アフォリスティック・警句的な語彙を用い、"
+        "原語のドイツ語の鍵概念は括弧で併記してよい）。"
+    ),
+}
+"""Per-persona language hint appended to the reflection system prompt.
+
+Mirrors ``_DIALOG_LANG_HINT`` in ``integration/dialog_turn.py`` (PR #68) so
+LATEST REFLECTION matches speech/dialog output language. Verb is 「記述せよ」
+rather than dialog's 「応答せよ」 because reflection is a written monologue.
+Unknown persona ids skip injection (degrade, don't raise)."""
+
 
 @dataclass(frozen=True)
 class ReflectionPolicy:
@@ -134,6 +152,9 @@ def build_reflection_messages(
         "a memory you want to keep. Return ONLY the paragraph — no headers, "
         "no JSON, no bullet points."
     )
+    lang_hint = _REFLECTION_LANG_HINT.get(persona.persona_id, "")
+    if lang_hint:
+        system = f"{system} {lang_hint}"
     if not episodic:
         body = "(no recent episodic memories)"
     else:

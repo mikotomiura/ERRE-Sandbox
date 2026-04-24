@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from erre_sandbox.cognition import CognitionCycle, ReflectionPolicy, Reflector
+from erre_sandbox.cognition.reflection import build_reflection_messages
 from erre_sandbox.inference import OllamaUnavailableError
 from erre_sandbox.memory import EmbeddingUnavailableError
 from erre_sandbox.schemas import (
@@ -556,3 +557,71 @@ async def test_cycle_default_reflector_exists_and_fires(
 
     # Default policy requires 10 ticks; this is tick #1, so no reflection.
     assert result.reflection_event is None
+
+
+# ---------------------------------------------------------------------------
+# Language hint (M7 V) — reflection must speak Japanese, mirroring dialog_turn
+# ---------------------------------------------------------------------------
+
+
+def test_reflection_system_prompt_includes_japanese_hint_for_kant(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """Kant reflection must append the Japanese language hint.
+
+    Mirrors the ``_DIALOG_LANG_HINT`` contract in ``integration/dialog_turn.py``
+    (PR #68). Without this, LATEST REFLECTION appears in English on the
+    researcher's screen despite speech/dialog being Japanese.
+    """
+    persona = make_persona_spec(persona_id="kant")
+    agent = make_agent_state()
+    messages = build_reflection_messages(persona, agent, episodic=[])
+    system = messages[0].content
+    assert "日本語" in system, (
+        "reflection system prompt must contain Japanese instruction"
+    )
+    assert "記述せよ" in system, (
+        "reflection hint uses 「記述せよ」 (written monologue), not 「応答せよ」"
+    )
+
+
+def test_reflection_system_prompt_hint_varies_by_persona(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """Each known persona gets a distinct lang hint (same pattern as dialog)."""
+    agent = make_agent_state()
+    kant_system = build_reflection_messages(
+        make_persona_spec(persona_id="kant"),
+        agent,
+        episodic=[],
+    )[0].content
+    rikyu_system = build_reflection_messages(
+        make_persona_spec(persona_id="rikyu"),
+        agent,
+        episodic=[],
+    )[0].content
+    nietzsche_system = build_reflection_messages(
+        make_persona_spec(persona_id="nietzsche"),
+        agent,
+        episodic=[],
+    )[0].content
+    # Each persona's hint references a distinct vocabulary register.
+    assert "学術的" in kant_system
+    assert "侘び寂び" in rikyu_system
+    assert "アフォリスティック" in nietzsche_system
+
+
+def test_reflection_system_prompt_no_hint_for_unknown_persona(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """Unknown persona ids must not raise and must not inject a hint."""
+    persona = make_persona_spec(persona_id="unknown-persona")
+    agent = make_agent_state()
+    messages = build_reflection_messages(persona, agent, episodic=[])
+    system = messages[0].content
+    # English-only base prompt, no Japanese hint appended.
+    assert "日本語" not in system
+    assert "記述せよ" not in system

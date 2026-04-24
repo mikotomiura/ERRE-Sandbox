@@ -33,6 +33,7 @@ from itertools import combinations
 from typing import TYPE_CHECKING, ClassVar, Final, Literal
 
 from erre_sandbox.schemas import (
+    AffordanceEvent,
     AgentState,
     AgentView,
     ControlEnvelope,
@@ -50,7 +51,7 @@ from erre_sandbox.schemas import (
     ZoneTransitionEvent,
 )
 from erre_sandbox.world.physics import Kinematics, apply_move_command, step_kinematics
-from erre_sandbox.world.zones import default_spawn, locate_zone
+from erre_sandbox.world.zones import ZONE_PROPS, default_spawn, locate_zone
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Coroutine, Sequence
@@ -90,6 +91,17 @@ deliberately larger than a conversational radius so the FSM can react
 **before** the dialog scheduler kicks in — five metres is the MASTER-PLAN
 reading of "same room but not yet engaged".
 """
+
+
+_AFFORDANCE_RADIUS_M: Final[float] = 2.0
+"""Distance at which an agent is considered to notice a static world prop (M7 B1).
+
+Mirrors the crossing-only semantics of :data:`_PROXIMITY_THRESHOLD_M`: a
+single :class:`AffordanceEvent` is emitted when the agent's XZ distance to
+a prop first falls below this radius. Until the agent has moved back out
+of range and re-entered, no further event fires. The value is tighter than
+proximity (5 m) because props are spot-like salience markers — a tea bowl
+is noticed when the agent is *at* it, not merely in the same zone."""
 
 
 def _time_of_day(elapsed: float, day_duration: float) -> TimeOfDay:
@@ -308,6 +320,12 @@ class WorldRuntime:
         # WorldRuntime does not currently expose agent removal, so
         # purge-on-deregister is left to the caller that adds that hook.
         self._pair_distances: dict[frozenset[str], float] = {}
+        # M7 B1: per-(agent_id, prop_id) last-seen XZ distance so
+        # AffordanceEvent emits once per *entry* into a prop's salient radius,
+        # not every tick the agent remains inside it. Populated lazily by
+        # ``_fire_affordance_events``; entries are never purged (the table is
+        # O(agents × props) and both bounds are small at MVP scale).
+        self._agent_prop_distances: dict[tuple[str, str], float] = {}
         self._agents: dict[str, AgentRuntime] = {}
         self._events: list[ScheduledEvent] = []
         # TODO(T14): the unbounded queue is a deliberate MVP trade-off
@@ -496,6 +514,13 @@ class WorldRuntime:
         # hot-path: no pairs, nothing to do.
         if len(self._agents) >= 2:  # noqa: PLR2004 — "pair" is inherently 2
             self._fire_proximity_events()
+        # M7 B1: agent-prop affordance entries. Also needs the kinematic
+        # positions just advanced above. Runs with any non-empty agent set —
+        # a lone agent still notices props. Props are loaded from the static
+        # ZONE_PROPS table so the loop cost is bounded by the MVP fixture
+        # (two chashitsu tea bowls in the initial scope).
+        if self._agents:
+            self._fire_affordance_events()
 
     def _fire_proximity_events(self) -> None:
         """Detect agent-pair distance crossings of :data:`_PROXIMITY_THRESHOLD_M`.
@@ -557,6 +582,56 @@ class WorldRuntime:
                     crossing=crossing,
                 ),
             )
+
+    def _fire_affordance_events(self) -> None:
+        """Emit :class:`AffordanceEvent` when an agent enters a prop's radius.
+
+        Mirrors the crossing-only semantics of :meth:`_fire_proximity_events`:
+        the event fires once when the XZ distance first falls below
+        :data:`_AFFORDANCE_RADIUS_M`, then stays silent until the agent has
+        moved back out of range and re-entered. This matches ProximityEvent's
+        "edge, not level" design so chashitsu visitors do not flood the
+        observation stream while sitting next to a tea bowl.
+
+        Iterates every ``(agent, prop)`` pair in the static :data:`ZONE_PROPS`
+        table. Bound at MVP scope: three agents × two chashitsu bowls = six
+        distance checks per tick.
+        """
+        for zone, props in ZONE_PROPS.items():
+            if not props:
+                continue
+            for rt in self._agents.values():
+                ax = rt.state.position.x
+                az = rt.state.position.z
+                for prop in props:
+                    dx = ax - prop.x
+                    dz = az - prop.z
+                    distance = math.hypot(dx, dz)
+                    key = (rt.agent_id, prop.prop_id)
+                    prev = self._agent_prop_distances.get(key)
+                    self._agent_prop_distances[key] = distance
+                    if prev is None:
+                        # First observation: no prior tick to compare against.
+                        # Do not fire on the very first frame the prop is seen,
+                        # otherwise every spawn-inside-chashitsu triggers a
+                        # spurious entry even when the agent never moved.
+                        continue
+                    crossed_enter = (
+                        prev >= _AFFORDANCE_RADIUS_M and distance < _AFFORDANCE_RADIUS_M
+                    )
+                    if not crossed_enter:
+                        continue
+                    rt.pending.append(
+                        AffordanceEvent(
+                            tick=rt.state.tick,
+                            agent_id=rt.agent_id,
+                            prop_id=prop.prop_id,
+                            prop_kind=prop.prop_kind,
+                            zone=zone,
+                            distance=distance,
+                            salience=prop.salience,
+                        ),
+                    )
 
     def _fire_temporal_events(self) -> None:
         """Detect and emit TimeOfDay boundary crossings for all agents."""

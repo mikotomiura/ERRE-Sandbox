@@ -68,8 +68,22 @@ def _format_persona_block(persona: PersonaSpec) -> str:
         for h in persona.cognitive_habits
     )
     zones = ", ".join(z.value for z in persona.preferred_zones)
+    p = persona.personality
+    # Big Five + ERRE-specific traits as two compact lines so three agents
+    # sharing one scene read as three biologies instead of one. Numeric form
+    # (not adjectives) keeps the prompt short and leaves the natural-language
+    # interpretation to the LLM — giving each persona's own voice room to
+    # colour identical 0.8 differently. See M7 First PR D4 in decisions.md.
+    big_five = (
+        f"openness={p.openness:.2f} conscientiousness={p.conscientiousness:.2f} "
+        f"extraversion={p.extraversion:.2f} agreeableness={p.agreeableness:.2f} "
+        f"neuroticism={p.neuroticism:.2f}"
+    )
+    aesthetic = f"wabi={p.wabi:.2f} ma_sense={p.ma_sense:.2f}"
     return (
         f"Persona: {persona.display_name} ({persona.era}).\n"
+        f"Personality (Big Five, [0,1]): {big_five}.\n"
+        f"Aesthetic sensibility: {aesthetic}.\n"
         f"Preferred zones: {zones}.\n"
         f"Cognitive habits (fact / legend / speculative):\n{habits}"
     )

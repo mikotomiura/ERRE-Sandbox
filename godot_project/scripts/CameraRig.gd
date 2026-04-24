@@ -21,7 +21,7 @@
 # (T16 judgement 4 — same pattern used by EnvelopeRouter).
 extends Node3D
 
-enum Mode { OVERVIEW, FOLLOW_AGENT, MIND_PEEK }
+enum Mode { OVERVIEW, FOLLOW_AGENT, MIND_PEEK, TOP_DOWN }
 
 @export var mode: Mode = Mode.OVERVIEW
 @export var orbit_speed: float = 0.006
@@ -32,6 +32,12 @@ enum Mode { OVERVIEW, FOLLOW_AGENT, MIND_PEEK }
 @export var default_distance_overview: float = 28.0
 @export var default_distance_follow: float = 14.0
 @export var default_distance_mind_peek: float = 6.0
+@export var default_distance_top_down: float = 40.0
+
+# M7 α-cam2: discrete zoom presets hot-keyed to `-` and `=` so a researcher
+# can jump the camera distance without spinning the mouse wheel for several
+# seconds. Values span the sweep from mind-peek close-up to world overview.
+@export var zoom_steps: Array[float] = [3.0, 8.0, 15.0, 30.0, 60.0]
 
 signal mode_changed(new_mode: int)
 
@@ -74,6 +80,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("cam_mind_peek"):
 		set_mode(Mode.MIND_PEEK)
+		return
+	# M7 α-cam1: hotkey 0 → true overhead preset. Pitch stops one hair shy of
+	# straight down (-1.5 rad ≈ -86°) to stay inside the same gimbal-safe
+	# clamp the mouse orbit uses; a full -π/2 would align the camera forward
+	# axis with Vector3.UP and wreck the look_at basis.
+	if event.is_action_pressed("cam_top_down"):
+		set_mode(Mode.TOP_DOWN)
+		return
+	# M7 α-cam2: discrete zoom steps — faster for "zoom all the way in/out"
+	# than spinning the wheel, and gives researchers a reproducible distance
+	# for live-recording reruns.
+	if event.is_action_pressed("cam_zoom_in"):
+		_zoom_step(-1)
+		return
+	if event.is_action_pressed("cam_zoom_out"):
+		_zoom_step(1)
 		return
 	# Drag gate — hold right-or-middle mouse button to orbit.
 	if event is InputEventMouseButton:
@@ -125,6 +147,26 @@ func _zoom(delta: float) -> void:
 	_apply_transform()
 
 
+func _zoom_step(direction: int) -> void:
+	# direction: -1 = step closer, +1 = step farther. Snap the current
+	# _distance to the nearest declared step first, then move by ``direction``
+	# one notch, so a mouse-wheel sweep that landed between two presets still
+	# has a defined "next step" instead of no-oping.
+	if zoom_steps.is_empty():
+		return
+	var current_step: int = 0
+	var best_delta: float = INF
+	for i in zoom_steps.size():
+		var step_value: float = zoom_steps[i]
+		var dd: float = abs(_distance - step_value)
+		if dd < best_delta:
+			best_delta = dd
+			current_step = i
+	var next_step: int = clamp(current_step + direction, 0, zoom_steps.size() - 1)
+	_distance = zoom_steps[next_step]
+	_apply_transform()
+
+
 func _apply_transform() -> void:
 	# Spherical-to-cartesian for the camera offset around the pivot.
 	var offset := Vector3(
@@ -152,6 +194,12 @@ func set_mode(new_mode: Mode) -> void:
 			_distance = default_distance_follow
 		Mode.MIND_PEEK:
 			_distance = default_distance_mind_peek
+		Mode.TOP_DOWN:
+			# Near-vertical pitch + high altitude = "look straight down at
+			# the whole stage". Pivot is left untouched so toggling TOP_DOWN
+			# from OVERVIEW keeps the researcher centred where they were.
+			_pitch = -1.5
+			_distance = default_distance_top_down
 	_apply_transform()
 	mode_changed.emit(int(mode))
 

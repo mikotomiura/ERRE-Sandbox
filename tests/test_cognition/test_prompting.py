@@ -47,6 +47,60 @@ def test_system_prompt_contains_persona_habits(
     assert persona.display_name in prompt
 
 
+def test_system_prompt_contains_personality_fields(
+    make_persona_spec,
+    agent_state_kant: AgentState,
+) -> None:
+    """M7 A1: Big Five + wabi/ma_sense must appear in the persona block.
+
+    Without this, the LLM has no handle on per-agent personality differences
+    and all three agents' Reasoning panels collapse to the same voice
+    (observed live on 2026-04-22). The default fixture is Kant with
+    conscientiousness=0.95, openness=0.85, so the prompt must reflect those.
+    """
+    persona: PersonaSpec = make_persona_spec()
+    prompt = build_system_prompt(persona, agent_state_kant)
+    # Big Five keys present
+    assert "openness=" in prompt
+    assert "conscientiousness=" in prompt
+    assert "extraversion=" in prompt
+    assert "agreeableness=" in prompt
+    assert "neuroticism=" in prompt
+    # ERRE-specific aesthetic traits present
+    assert "wabi=" in prompt
+    assert "ma_sense=" in prompt
+    # Kant fixture values flow through
+    assert "openness=0.85" in prompt
+    assert "conscientiousness=0.95" in prompt
+
+
+def test_persona_block_differentiates_two_personas(
+    make_persona_spec,
+    agent_state_kant: AgentState,
+) -> None:
+    """Two personas with different Big Five must produce distinct prompts.
+
+    Guard against a future refactor that accidentally drops personality
+    into a shared constant.
+    """
+    kant = make_persona_spec(
+        persona_id="kant",
+        personality={"openness": 0.85, "conscientiousness": 0.95},
+    )
+    rikyu = make_persona_spec(
+        persona_id="rikyu",
+        display_name="Sen no Rikyu",
+        personality={"openness": 0.60, "wabi": 0.95, "ma_sense": 0.90},
+    )
+    kant_prompt = build_system_prompt(kant, agent_state_kant)
+    rikyu_prompt = build_system_prompt(rikyu, agent_state_kant)
+    # Numeric signatures must differ
+    assert "openness=0.85" in kant_prompt
+    assert "openness=0.60" in rikyu_prompt
+    assert "wabi=0.95" in rikyu_prompt
+    assert "wabi=0.95" not in kant_prompt
+
+
 def test_system_prompt_starts_with_common_prefix(
     make_persona_spec,
     agent_state_kant: AgentState,

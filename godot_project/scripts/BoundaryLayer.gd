@@ -18,6 +18,17 @@ extends Node3D
 @export var line_color: Color = Color(0.2, 0.9, 1.0, 0.9)
 @export var line_height: float = 0.05
 
+# M7 B2 — event boundary overlays. Yellow circles around static world props
+# show where ``AffordanceEvent`` fires (2 m radius). A single cyan circle at
+# world origin shows the 5 m ``ProximityEvent`` scale — per-agent proximity
+# circles are deferred to Slice γ when the layer gains agent position
+# awareness (right now BoundaryLayer is static).
+@export var affordance_color: Color = Color(0.95, 0.75, 0.2, 0.85)
+@export var affordance_radius: float = 2.0
+@export var proximity_color: Color = Color(0.25, 0.75, 0.95, 0.6)
+@export var proximity_threshold: float = 5.0
+@export var circle_segments: int = 48
+
 # Zone rectangles (centre_x, centre_z, size_x, size_z). Values mirror the
 # ZoneManager defaults in WorldManager.gd and ``world/zones.py``; if those
 # ever drift, a future task should hoist this into a shared config.
@@ -35,23 +46,62 @@ extends Node3D
 	{"name": "agora", "cx": -25.0, "cz": 0.0, "sx": 24.0, "sz": 24.0},
 ]
 
+# M7 B2: prop coordinates mirrored from ``src/erre_sandbox/world/zones.py``
+# ``ZONE_PROPS`` (chashitsu tea bowls). Hard-coded on purpose: the schema
+# wiring via WebSocket (Godot receives a ZONE_PROPS table from Python) is
+# scheduled for Slice β. Keep these values in sync with world/zones.py.
+@export var prop_coords: Array = [
+	{"name": "chawan_01", "cx": 19.5, "cz": -19.5},
+	{"name": "chawan_02", "cx": 20.5, "cz": -20.5},
+]
+
 var _mesh_instance: MeshInstance3D
 var _mesh: ImmediateMesh
 var _material: StandardMaterial3D
+var _affordance_instance: MeshInstance3D
+var _affordance_mesh: ImmediateMesh
+var _affordance_material: StandardMaterial3D
+var _proximity_instance: MeshInstance3D
+var _proximity_mesh: ImmediateMesh
+var _proximity_material: StandardMaterial3D
 
 
 func _ready() -> void:
-	_material = StandardMaterial3D.new()
-	_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_material.albedo_color = line_color
-	_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_material.no_depth_test = true
+	_material = _make_unshaded_material(line_color)
 	_mesh = ImmediateMesh.new()
 	_mesh_instance = MeshInstance3D.new()
 	_mesh_instance.mesh = _mesh
 	_mesh_instance.material_override = _material
 	add_child(_mesh_instance)
+	# M7 B2 — affordance overlay (yellow) owns its own mesh instance so the
+	# three surface sets never share state; changing the zone-rect palette
+	# later would otherwise repaint the affordance circles too.
+	_affordance_material = _make_unshaded_material(affordance_color)
+	_affordance_mesh = ImmediateMesh.new()
+	_affordance_instance = MeshInstance3D.new()
+	_affordance_instance.mesh = _affordance_mesh
+	_affordance_instance.material_override = _affordance_material
+	add_child(_affordance_instance)
+	# M7 B2 — proximity scale legend (cyan) mirrors the AffordanceEvent
+	# instance pattern. One static 5 m circle at world origin is the MVP
+	# here — per-agent dynamic proximity circles are Slice γ scope when
+	# BoundaryLayer gains agent position awareness.
+	_proximity_material = _make_unshaded_material(proximity_color)
+	_proximity_mesh = ImmediateMesh.new()
+	_proximity_instance = MeshInstance3D.new()
+	_proximity_instance.mesh = _proximity_mesh
+	_proximity_instance.material_override = _proximity_material
+	add_child(_proximity_instance)
 	_redraw()
+
+
+func _make_unshaded_material(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.no_depth_test = true
+	return mat
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -78,3 +128,35 @@ func _redraw() -> void:
 		_mesh.surface_add_vertex(p4)
 		_mesh.surface_add_vertex(p1)
 		_mesh.surface_end()
+	# M7 B2 — affordance circles per prop (2 m yellow).
+	_affordance_mesh.clear_surfaces()
+	for prop: Dictionary in prop_coords:
+		var cx: float = prop.get("cx", 0.0)
+		var cz: float = prop.get("cz", 0.0)
+		_draw_circle(_affordance_mesh, _affordance_material, cx, cz, affordance_radius)
+	# M7 B2 — proximity scale legend (single 5 m cyan circle at origin).
+	# Slice γ replaces this with per-agent dynamic circles when the layer
+	# gains agent tracking; until then, the static legend gives the
+	# researcher a ground-truth size reference for the 5 m threshold.
+	_proximity_mesh.clear_surfaces()
+	_draw_circle(_proximity_mesh, _proximity_material, 0.0, 0.0, proximity_threshold)
+
+
+func _draw_circle(
+	mesh: ImmediateMesh,
+	material: StandardMaterial3D,
+	cx: float,
+	cz: float,
+	radius: float,
+) -> void:
+	# Approximate a circle on the XZ plane with ``circle_segments`` line
+	# segments. Closed loop: the first vertex is repeated at the end so the
+	# LINE_STRIP primitive produces a continuous ring rather than a C-shape.
+	var y := line_height
+	mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, material)
+	for i in circle_segments + 1:
+		var theta := TAU * float(i) / float(circle_segments)
+		var px := cx + cos(theta) * radius
+		var pz := cz + sin(theta) * radius
+		mesh.surface_add_vertex(Vector3(px, y, pz))
+	mesh.surface_end()
