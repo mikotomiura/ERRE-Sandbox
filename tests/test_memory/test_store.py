@@ -268,3 +268,132 @@ async def test_concurrent_add_does_not_raise_systemerror(
         fetched = await store.get_by_id(e.id)
         assert fetched is not None
         assert fetched.content == e.content
+
+
+# ---------------------------------------------------------------------------
+# Dialog turn log (M8 L6-D1 precondition)
+# ---------------------------------------------------------------------------
+
+
+def _turn(
+    *,
+    dialog_id: str = "d_test_0001",
+    turn_index: int = 0,
+    speaker: str = "a_kant_001",
+    addressee: str = "a_nietzsche_001",
+    utterance: str = "guten Tag",
+    tick: int = 10,
+):  # type: ignore[no-untyped-def]
+    from erre_sandbox.schemas import DialogTurnMsg
+
+    return DialogTurnMsg(
+        tick=tick,
+        dialog_id=dialog_id,
+        speaker_id=speaker,
+        addressee_id=addressee,
+        utterance=utterance,
+        turn_index=turn_index,
+    )
+
+
+def test_add_dialog_turn_inserts_row(store: MemoryStore) -> None:
+    turn = _turn()
+    row_id = store.add_dialog_turn_sync(
+        turn,
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+    assert row_id == "dt_d_test_0001_0000"
+
+    rows = list(store.iter_dialog_turns())
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["dialog_id"] == "d_test_0001"
+    assert row["turn_index"] == 0
+    assert row["speaker_persona_id"] == "kant"
+    assert row["addressee_persona_id"] == "nietzsche"
+    assert row["utterance"] == "guten Tag"
+
+
+def test_add_dialog_turn_is_idempotent_on_duplicate(store: MemoryStore) -> None:
+    """Re-inserting the same (dialog_id, turn_index) must be a no-op."""
+    turn = _turn(utterance="first")
+    store.add_dialog_turn_sync(
+        turn,
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+    # Second call with a different utterance — INSERT OR IGNORE keeps original.
+    again = _turn(utterance="second")
+    store.add_dialog_turn_sync(
+        again,
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+    rows = list(store.iter_dialog_turns())
+    assert len(rows) == 1
+    assert rows[0]["utterance"] == "first"
+
+
+def test_iter_dialog_turns_filters_by_persona(store: MemoryStore) -> None:
+    store.add_dialog_turn_sync(
+        _turn(turn_index=0, speaker="a_kant_001"),
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+    store.add_dialog_turn_sync(
+        _turn(turn_index=1, speaker="a_rikyu_001"),
+        speaker_persona_id="rikyu",
+        addressee_persona_id="nietzsche",
+    )
+    store.add_dialog_turn_sync(
+        _turn(turn_index=2, speaker="a_kant_001"),
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+
+    kant_rows = list(store.iter_dialog_turns(persona="kant"))
+    assert {r["turn_index"] for r in kant_rows} == {0, 2}
+
+    rikyu_rows = list(store.iter_dialog_turns(persona="rikyu"))
+    assert {r["turn_index"] for r in rikyu_rows} == {1}
+
+    all_rows = list(store.iter_dialog_turns())
+    assert len(all_rows) == 3
+
+
+def test_iter_dialog_turns_filters_by_since(store: MemoryStore) -> None:
+    """``since`` drops rows whose created_at is before the cutoff."""
+    store.add_dialog_turn_sync(
+        _turn(turn_index=0),
+        speaker_persona_id="kant",
+        addressee_persona_id="nietzsche",
+    )
+    # Cutoff strictly in the future — everything should be dropped.
+    future = datetime.now(tz=UTC) + timedelta(hours=1)
+    assert list(store.iter_dialog_turns(since=future)) == []
+
+    # Cutoff far in the past — everything should be kept.
+    past = datetime.now(tz=UTC) - timedelta(hours=1)
+    rows = list(store.iter_dialog_turns(since=past))
+    assert len(rows) == 1
+
+
+def test_dialog_turn_count_by_persona_query(store: MemoryStore) -> None:
+    """The canonical M9-readiness query returns per-persona turn counts."""
+    for i, persona in enumerate(["kant", "kant", "rikyu", "nietzsche", "kant"]):
+        store.add_dialog_turn_sync(
+            _turn(turn_index=i, speaker=f"a_{persona}_001"),
+            speaker_persona_id=persona,
+            addressee_persona_id="rikyu",
+        )
+
+    # Execute the shipped SQL against the in-memory DB and assert the shape.
+    conn = store._ensure_conn()  # noqa: SLF001 — test-only access is acceptable
+    with store._conn_lock:  # noqa: SLF001
+        rows = conn.execute(
+            "SELECT speaker_persona_id, COUNT(*) AS turns "
+            "FROM dialog_turns GROUP BY speaker_persona_id ORDER BY turns DESC",
+        ).fetchall()
+    counts = {r["speaker_persona_id"]: r["turns"] for r in rows}
+    assert counts == {"kant": 3, "rikyu": 1, "nietzsche": 1}

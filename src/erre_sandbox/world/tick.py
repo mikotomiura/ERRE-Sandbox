@@ -431,6 +431,17 @@ class WorldRuntime:
         """Snapshot of currently registered agent ids (order = registration)."""
         return list(self._agents)
 
+    def agent_persona_id(self, agent_id: str) -> str | None:
+        """Resolve ``agent_id`` to its ``persona_id``; ``None`` when unknown.
+
+        Used by the M8 L6-D1 dialog-turn sink closure in bootstrap to stamp
+        each persisted turn with both participants' persona ids (see
+        ``.steering/20260425-m8-episodic-log-pipeline/decisions.md`` D2).
+        Read-only — does not mutate the registry.
+        """
+        agent = self._agents.get(agent_id)
+        return agent.state.persona_id if agent is not None else None
+
     # ----- Envelope consumers (T14 hooks) -----
 
     async def recv_envelope(self) -> ControlEnvelope:

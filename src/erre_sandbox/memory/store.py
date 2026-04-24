@@ -18,10 +18,15 @@ from typing import TYPE_CHECKING, ClassVar, Final
 
 import sqlite_vec
 
-from erre_sandbox.schemas import MemoryEntry, MemoryKind, SemanticMemoryRecord
+from erre_sandbox.schemas import (
+    DialogTurnMsg,
+    MemoryEntry,
+    MemoryKind,
+    SemanticMemoryRecord,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Iterator, Sequence
     from pathlib import Path
 
 DEFAULT_EMBED_DIM: Final[int] = 768
@@ -192,6 +197,35 @@ class MemoryStore:
                         memory_id TEXT PRIMARY KEY,
                         embedding float[{self._embed_dim}]
                     )
+                    """,
+                )
+                # Dialog turns (M8 L6-D1 precondition): complete per-turn log for
+                # tracking ≥1000 turns/persona prerequisite of the M9 LoRA
+                # training milestone. ``persona_id`` is resolved at sink time
+                # from the bootstrap agent registry (see decisions D2) so the
+                # wire schema stays untouched. Idempotency via UNIQUE(dialog_id,
+                # turn_index) lets the sink re-fire safely on restart.
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS dialog_turns (
+                        id TEXT PRIMARY KEY,
+                        dialog_id TEXT NOT NULL,
+                        tick INTEGER NOT NULL,
+                        turn_index INTEGER NOT NULL,
+                        speaker_agent_id TEXT NOT NULL,
+                        speaker_persona_id TEXT NOT NULL,
+                        addressee_agent_id TEXT NOT NULL,
+                        addressee_persona_id TEXT NOT NULL,
+                        utterance TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        UNIQUE(dialog_id, turn_index)
+                    )
+                    """,
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS ix_dialog_turns_persona
+                    ON dialog_turns(speaker_persona_id, created_at)
                     """,
                 )
 
@@ -700,6 +734,115 @@ class MemoryStore:
                     ),
                 )
             return results
+
+    # ------------------------------------------------------------------
+    # Dialog turns (M8 L6-D1 precondition)
+    # ------------------------------------------------------------------
+
+    def add_dialog_turn_sync(
+        self,
+        turn: DialogTurnMsg,
+        *,
+        speaker_persona_id: str,
+        addressee_persona_id: str,
+    ) -> str:
+        """Persist ``turn`` into the ``dialog_turns`` table synchronously.
+
+        Intended for the :class:`InMemoryDialogScheduler` sink which runs on
+        the event-loop thread after each :meth:`record_turn` call and must
+        not await. ``persona_id`` for speaker / addressee is resolved at the
+        call site from the bootstrap agent registry (see decisions D2).
+
+        Idempotent via ``INSERT OR IGNORE`` on the ``UNIQUE(dialog_id,
+        turn_index)`` constraint — re-emitting the same turn after a restart
+        is a no-op rather than a row duplication.
+
+        Returns the row id (new UUID when the row was inserted, or the
+        existing id when the INSERT was ignored).
+        """
+        row_id = f"dt_{turn.dialog_id}_{turn.turn_index:04d}"
+        with self._conn_lock:
+            conn = self._ensure_conn()
+            with conn:
+                conn.execute(
+                    "INSERT OR IGNORE INTO dialog_turns("
+                    "id, dialog_id, tick, turn_index, "
+                    "speaker_agent_id, speaker_persona_id, "
+                    "addressee_agent_id, addressee_persona_id, "
+                    "utterance, created_at"
+                    ") VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        row_id,
+                        turn.dialog_id,
+                        turn.tick,
+                        turn.turn_index,
+                        turn.speaker_id,
+                        speaker_persona_id,
+                        turn.addressee_id,
+                        addressee_persona_id,
+                        turn.utterance,
+                        _dt_to_text(datetime.now(tz=UTC)),
+                    ),
+                )
+        return row_id
+
+    async def add_dialog_turn(
+        self,
+        turn: DialogTurnMsg,
+        *,
+        speaker_persona_id: str,
+        addressee_persona_id: str,
+    ) -> str:
+        """Async wrapper over :meth:`add_dialog_turn_sync` via ``to_thread``.
+
+        Non-scheduler callers (CLI, tests, future async sinks) should prefer
+        this variant so the event loop is not blocked on sqlite I/O.
+        """
+        return await asyncio.to_thread(
+            self.add_dialog_turn_sync,
+            turn,
+            speaker_persona_id=speaker_persona_id,
+            addressee_persona_id=addressee_persona_id,
+        )
+
+    def iter_dialog_turns(
+        self,
+        *,
+        persona: str | None = None,
+        since: datetime | None = None,
+    ) -> Iterator[dict[str, object]]:
+        """Yield dialog turn rows as plain dicts, oldest first.
+
+        ``persona`` filters by ``speaker_persona_id`` (addressee is not
+        matched — export is speaker-scoped for LoRA training-data semantics).
+        ``since`` filters by ``created_at >= since``.
+
+        Returns plain dicts (not :class:`DialogTurnMsg`) so the export CLI
+        can emit rows that include the resolved ``speaker_persona_id`` /
+        ``addressee_persona_id`` without having to re-join at export time.
+        """
+        with self._conn_lock:
+            conn = self._ensure_conn()
+            clauses: list[str] = []
+            params: list[object] = []
+            if persona is not None:
+                clauses.append("speaker_persona_id = ?")
+                params.append(persona)
+            if since is not None:
+                clauses.append("created_at >= ?")
+                params.append(_dt_to_text(since))
+            where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+            sql = (
+                "SELECT id, dialog_id, tick, turn_index, "
+                "speaker_agent_id, speaker_persona_id, "
+                "addressee_agent_id, addressee_persona_id, "
+                "utterance, created_at "
+                f"FROM dialog_turns {where} "
+                "ORDER BY created_at ASC, turn_index ASC"
+            )
+            rows = conn.execute(sql, params).fetchall()
+        for row in rows:
+            yield dict(row)
 
 
 # =============================================================================

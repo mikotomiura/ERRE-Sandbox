@@ -34,6 +34,7 @@ from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
 from erre_sandbox.schemas import (
     AgentSpec,
     AgentState,
+    DialogTurnMsg,
     ERREMode,
     ERREModeName,
     PersonaSpec,
@@ -228,10 +229,40 @@ async def bootstrap(cfg: BootConfig) -> None:
             erre_policy=DefaultERREModePolicy(),
         )
         runtime = WorldRuntime(cycle=cycle)
+
+        # M8 L6-D1: per-turn sink persists every recorded dialog turn into
+        # sqlite ``dialog_turns`` for later LoRA-training export. The closure
+        # resolves ``agent_id → persona_id`` via ``runtime.agent_persona_id``
+        # so the wire schema stays untouched (decisions D2). Sink failures
+        # are caught inside ``InMemoryDialogScheduler.record_turn`` so a
+        # transient sqlite glitch cannot tear down the live loop.
+        def _persist_dialog_turn(turn: DialogTurnMsg) -> None:
+            speaker_pid = runtime.agent_persona_id(turn.speaker_id)
+            addressee_pid = runtime.agent_persona_id(turn.addressee_id)
+            if speaker_pid is None or addressee_pid is None:
+                logger.warning(
+                    "[bootstrap] dialog_turn sink skipped: unresolved persona for "
+                    "dialog_id=%s speaker=%s(%s) addressee=%s(%s)",
+                    turn.dialog_id,
+                    turn.speaker_id,
+                    speaker_pid,
+                    turn.addressee_id,
+                    addressee_pid,
+                )
+                return
+            memory.add_dialog_turn_sync(
+                turn,
+                speaker_persona_id=speaker_pid,
+                addressee_persona_id=addressee_pid,
+            )
+
         # The scheduler's envelope sink writes directly into the runtime's
         # fan-out queue so dialog envelopes interleave with agent_update /
         # speech / move without a second delivery path (see design.md §v2).
-        scheduler = InMemoryDialogScheduler(envelope_sink=runtime.inject_envelope)
+        scheduler = InMemoryDialogScheduler(
+            envelope_sink=runtime.inject_envelope,
+            turn_sink=_persist_dialog_turn,
+        )
         runtime.attach_dialog_scheduler(scheduler)
 
         # Dialog turn generator wiring: built from the pre-loaded persona

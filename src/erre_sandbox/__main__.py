@@ -3,6 +3,12 @@
 Keeps CLI parsing and ``asyncio.run`` bookkeeping here so that
 :func:`erre_sandbox.bootstrap.bootstrap` stays argv-agnostic and
 directly unit-testable.
+
+As of M8 (L6-D1) the CLI supports sub-commands. The default sub-command is
+``run`` (boot the orchestrator) so invocations without an explicit
+sub-command keep working. The new ``export-log`` sub-command streams the
+sqlite ``dialog_turns`` table as JSONL — see
+``.steering/20260425-m8-episodic-log-pipeline/`` for the rationale.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ from pathlib import Path
 from typing import Final
 
 from erre_sandbox.bootstrap import BootConfig, bootstrap
+from erre_sandbox.cli import export_log
 from erre_sandbox.schemas import AgentSpec, PersonaSpec
 
 try:
@@ -35,12 +42,30 @@ forbids the rest.
 """
 
 
-def _build_parser() -> argparse.ArgumentParser:
+_SUBCOMMANDS: Final[frozenset[str]] = frozenset({"export-log"})
+"""Sub-command tokens that divert dispatch away from the default ``run`` path.
+
+Kept as an explicit set so the argv-0 dispatch in :func:`cli` stays a
+readable ``in`` check rather than a mystery list of magic strings. Adding
+a new sub-command means (a) listing the token here and (b) wiring its
+register/run pair in :func:`cli`.
+"""
+
+
+def _build_run_parser() -> argparse.ArgumentParser:
+    """Parser for the default ``run`` path (boot the orchestrator).
+
+    Split from the sub-command parsers to avoid argparse's prefix-matching
+    between root-level ``--personas`` and the ``export-log`` sub-command's
+    ``--persona`` (observed 2026-04-24 when both lived on the root parser).
+    """
     parser = argparse.ArgumentParser(
         prog="erre-sandbox",
         description=(
             "ERRE-Sandbox orchestrator. Runs one Kant walker on the peripatos "
-            "by default; pass --personas for the M4 3-agent configuration."
+            "by default; pass --personas for the M4 3-agent configuration. "
+            "Use ``erre-sandbox export-log --help`` for the M8 L6-D1 log "
+            "export sub-command."
         ),
     )
     parser.add_argument("--host", default="0.0.0.0")  # noqa: S104 — LAN only
@@ -76,6 +101,28 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     return parser
+
+
+def _build_subcommand_parser() -> argparse.ArgumentParser:
+    """Parser for explicit sub-commands (``export-log`` etc)."""
+    parser = argparse.ArgumentParser(
+        prog="erre-sandbox",
+        description=(
+            "ERRE-Sandbox sub-commands (M8+). See ``erre-sandbox --help`` "
+            "for the default orchestrator-run options."
+        ),
+    )
+    subparsers = parser.add_subparsers(
+        dest="subcommand",
+        required=True,
+        metavar="{export-log}",
+    )
+    export_log.register(subparsers)
+    return parser
+
+
+# Keep the legacy name for backwards compatibility with tests that import it.
+_build_parser = _build_run_parser
 
 
 def _resolve_agents(
@@ -125,7 +172,20 @@ def _resolve_agents(
 
 
 def cli(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+    # argv dispatch: if the first positional token is a known sub-command
+    # name we route to a dedicated sub-command parser. Otherwise we keep
+    # the pre-M8 behaviour (boot the orchestrator directly). Using two
+    # separate parsers instead of argparse sub-parsers avoids prefix-match
+    # ambiguity between root ``--personas`` and export-log's ``--persona``.
+    effective_argv = list(sys.argv[1:]) if argv is None else list(argv)
+    if effective_argv and effective_argv[0] in _SUBCOMMANDS:
+        args = _build_subcommand_parser().parse_args(effective_argv)
+        if args.subcommand == "export-log":
+            return export_log.run(args)
+        msg = f"unknown subcommand: {args.subcommand!r}"  # pragma: no cover
+        raise SystemExit(msg)
+
+    args = _build_run_parser().parse_args(effective_argv)
     personas_dir = Path(args.personas_dir)
     agents = _resolve_agents(args.personas, personas_dir)
     cfg = BootConfig(

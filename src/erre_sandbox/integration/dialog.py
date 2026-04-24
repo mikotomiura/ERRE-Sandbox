@@ -105,9 +105,16 @@ class InMemoryDialogScheduler:
         *,
         envelope_sink: Callable[[ControlEnvelope], None],
         rng: Random | None = None,
+        turn_sink: Callable[[DialogTurnMsg], None] | None = None,
     ) -> None:
         self._sink = envelope_sink
         self._rng = rng if rng is not None else Random()  # noqa: S311 — non-crypto
+        # M8 L6-D1: optional per-turn sink. When bootstrap wires it to a
+        # ``MemoryStore.add_dialog_turn_sync`` closure (with agent_id →
+        # persona_id resolution baked in), every recorded turn lands in
+        # sqlite for later LoRA-training export. Left None for unit tests
+        # and the existing lightweight fixtures that have no store.
+        self._turn_sink = turn_sink
         self._open: dict[str, _OpenDialog] = {}
         self._pair_to_id: dict[frozenset[str], str] = {}
         # Bounded by C(N, 2) for N agents — M4 targets N≤3 so this cannot
@@ -170,6 +177,12 @@ class InMemoryDialogScheduler:
 
         Raises ``KeyError`` when the dialog is not open — this surfaces bugs
         (agents speaking into a closed dialog) rather than silently dropping.
+
+        When a ``turn_sink`` was injected at construction (M8 L6-D1), the
+        turn is forwarded to it after the in-memory bookkeeping so the sink
+        observes turns in the same order as the transcript. Sink exceptions
+        are caught and logged — a transient persistence failure must not
+        tear down the live dialog loop.
         """
         dialog = self._open.get(turn.dialog_id)
         if dialog is None:
@@ -178,6 +191,16 @@ class InMemoryDialogScheduler:
             )
         dialog.turns.append(turn)
         dialog.last_activity_tick = turn.tick
+        if self._turn_sink is not None:
+            try:
+                self._turn_sink(turn)
+            except Exception:  # noqa: BLE001 — sink failures must not kill run
+                logger.exception(
+                    "turn_sink raised for dialog_id=%s turn_index=%d; "
+                    "dropping row but keeping dialog alive",
+                    turn.dialog_id,
+                    turn.turn_index,
+                )
 
     def close_dialog(
         self,
