@@ -143,7 +143,8 @@ T02 ───┴─ T03
 | **M4** | 3 体対話・反省・関係形成 | `cognition-reflection`, `memory-semantic-layer`, `personas-nietzsche-rikyu-yaml`, `gateway-multi-agent-stream` | 認証なし継続 (LAN 前提) |
 | **M5** | ERRE モード 6 種切替 (peripatos/chashitsu/zazen/shu/ha/ri) | `erre-mode-fsm`, `erre-sampling-override`, `world-zone-triggers`, `godot-zone-visuals` | サンプリング切替を persona-erre Skill に従って実装 |
 | **M7** | 5-8 体 × 12 時間安定運転 | `memory-decay-compression`, `cognition-piano-parallel`, `inference-sglang-migration`, `observability-logging` | **ここで SGLang へ移行**、Ollama は開発時のみに |
-| **M9** | LoRA per persona (vLLM) | `inference-vllm-adapter`, `lora-training-pipeline`, `lora-runtime-swap` | M4-M7 で蓄積した ≥1000 ターン/ペルソナの対話ログで訓練 |
+| **M8** | 観察 → LoRA 判断の橋渡し spike | `m8-episodic-log-pipeline`, `m8-baseline-quality-metric`, `m8-scaling-bottleneck-profiling`, `m8-session-phase-model` | L6 ADR 1/2/3 の preconditions を同時解決、M9 着手の go/no-go 判定材料を生む (詳細: `.steering/20260424-steering-scaling-lora/decisions.md`) |
+| **M9** | LoRA per persona (vLLM) | `inference-vllm-adapter`, `lora-training-pipeline`, `lora-runtime-swap` | M4-M7 で蓄積した ≥1000 ターン/ペルソナの対話ログで訓練。前提: L6 ADR1 の defer-and-measure 方針、M8 baseline quality data で A1-a/b/c/d/e 比較 |
 | **M10-11** | 4 層評価 + 統計レポート | `eval-layer1-spatial`, `eval-layer2-semantic`, `eval-layer3-ritual`, `eval-layer4-thirdparty`, `eval-statistics-bh-fdr`, `docs-osf-preregistration` | n≥20 試行、BH-FDR 補正、OSF 事前登録 |
 
 **段階的負債解消**: 認証追加 (v1.0 前後)、MkDocs JA/EN (M10)、Zenodo DOI 発行 (v1.0)。

@@ -1,57 +1,61 @@
 # Tasklist — L6 Steering (LoRA / Scaling / User-Dialogue IF)
 
-> 全て文書タスク、Plan mode 不要 (設計判断 ≠ 実装判断)。
-> 1-2h、並走可能 (Slice β / γ の待ち時間に進められる)。
+> 全て文書タスク、Plan mode は /reimagine のため一時使用 (v1→v2 転回の判断に必要)。
+> 2-3h 見込 (v2 採用で design.md が厚くなった反映、~310 行総量)。
+> 並走可能 (Slice β / γ の待ち時間に進められる)。
+>
+> **/reimagine 履歴**: v1 (tasklist 暫定採用 c/a/a) → v2 (defer/observability/2-phase)
+> 転回済。詳細 `design-comparison.md`。本 tasklist は v2 実行のためにリライト済。
 
 ## Setup
 
-- [ ] `feat/steering-scaling-lora` branch を main から切る
-- [ ] `llm-inference` Skill を Read、VRAM 予算と現在のモデル体系を把握
-- [ ] `persona-erre` Skill を Read、ERRE mode との関係を把握
+- [x] `feat/steering-scaling-lora` branch を main から切る
+- [x] `llm-inference` Skill を Read、VRAM 予算と現在のモデル体系を把握
+- [x] `persona-erre` Skill を Read、ERRE mode との関係を把握
+- [x] base model 名を `ollama_adapter.py:37` で確定 (`qwen3:8b`)
 
-## ADR 1 — LoRA による persona 分化 (30m)
+## /reimagine 適用
 
-- [ ] 現状: 1 base (gpt-oss:20b MoE) + prompt injection で 3 persona
-- [ ] 選択肢:
-  - (a) 現状維持 (prompt injection)
-  - (b) persona ごとに LoRA adapter
-  - (c) 混合 (一部 persona のみ LoRA、他は prompt)
-- [ ] 採用 (暫定): M8 で (c) 試作、判定は 3 agent 以上に増えたときの差異観察
-- [ ] 根拠: VRAM 圧と persona 分化の trade-off、学習コスト、再学習ループ
-- [ ] 次アクション: M8 で LoRA spike task を立てる preconditions を明示
+- [x] `design-v1.md` に初回案を退避
+- [x] requirement.md だけで v2 をゼロ生成 → `design.md`
+- [x] `design-comparison.md` で v1/v2 を並列比較
+- [x] ユーザーが v2 採用を確定
 
-## ADR 2 — Agent scaling (30m)
+## design.md (v2 substantive research repository)
 
-- [ ] 現状: 3 agent 並列、10s tick、VRAM 余裕あり
-- [ ] 選択肢:
-  - (a) 4th persona (Socrates / 孔子 / 他) 追加
-  - (b) 同 persona 複数インスタンス (Kant × 2 等)
-  - (c) 現状維持、3 agent で深掘り
-- [ ] 採用 (暫定): (a) を M8 で試作、ペルソナは思想史的に補完的な人物を選ぶ
-- [ ] 根拠: dialog_turn 組み合わせ爆発 (3 agent = 3 pair、4 agent = 6 pair)、
-      VRAM、観察可能性の劣化点
-- [ ] 次アクション: candidate persona list、dialog_turn pairing scheduler の
-      設計タスクを起票
+- [x] §1 現状スナップショット (推論スタック / persona 分化 / agent 数制約 / WS-UI)
+- [x] §2 3 軸の選択肢 taxonomy (各 a-f の 6 択まで網羅)
+- [x] §3 M8 共通 preconditions (episodic log / baseline metric / session phase)
+- [x] §4 方法論的緊張 (autonomy vs intervention)
+- [x] §5 MASTER-PLAN M8 行提案
+- [x] §6-§9 実行フロー / 変更対象 / 検証 / Out of Scope / 設計判断履歴
 
-## ADR 3 — User-dialogue IF (30m)
+## decisions.md (3 ADR、各 ≤20 行)
 
-- [ ] 現状: 研究者は観察のみ、対話口なし
-- [ ] 選択肢:
-  - (a) Godot UI の text input box → DialogTurnMsg で特殊 agent "user" として
-  - (b) MIND_PEEK UI 経由の prompt injection
-  - (c) 別 WebSocket channel で user-only envelope
-- [ ] 採用 (暫定): (a)、user を特殊 agent として扱うと既存 dialog_turn loop に
-      最小侵襲で乗る
-- [ ] 根拠: 既存 schema の再利用、affinity 測定の整合性、prompt injection は
-      debug 用途に留める
-- [ ] 次アクション: user agent の persona YAML 雛形、turn-taking policy、
-      user 発話から動くべき agent 選定ロジックの設計タスクを起票
+- [x] **D1. LoRA による persona 分化 — defer-and-measure**
+  - architecture 確定は M9 まで defer、M8 では baseline 計測と log pipeline
+  - 次アクション: `m8-episodic-log-pipeline`, `m8-baseline-quality-metric`
+- [x] **D2. Agent scaling — observability-triggered**
+  - 3 維持 + metric 閾値超過で contrastive +1 (量先行ではなく metric-first)
+  - 次アクション: `m8-scaling-bottleneck-profiling`
+- [x] **D3. User-dialogue IF — two-phase methodology**
+  - autonomous run と Q&A epoch を session_phase で時間分離
+  - 次アクション: `m8-session-phase-model`
+
+## MASTER-PLAN.md 更新
+
+- [x] M8 行を追加 (M7 と M9 の間の空白を埋める)
+- [x] M9 行に L6 ADR1 defer-and-measure 前提を追記
 
 ## Review + PR
 
-- [ ] `decisions.md` の 3 ADR を読み直し、Skill との不整合がないか確認
-- [ ] MASTER-PLAN.md に L6 完了行を追加、M8 preconditions を追記
-- [ ] branch diff が **docs のみ** であることを確認 (`git diff --stat`)
+- [ ] `decisions.md` の 3 ADR を再読み、Skill 参照 (llm-inference / persona-erre /
+      architecture-rules) が各 ADR 末に残っているか確認
+- [ ] `wc -l decisions.md` と ADR 別 line count で各 ≤20 行を確認
+- [ ] branch diff が **docs のみ** であることを確認 (`git diff --stat` で .md 以外ゼロ)
+- [ ] commit 作成 (Conventional Commits、scope は `steering`)
 - [ ] `git push -u origin feat/steering-scaling-lora`
 - [ ] `gh pr create`、title `docs(steering): L6 — scaling / LoRA / user-dialogue IF roadmap`
+- [ ] PR body に v2 採用骨子 + 親 D2 への Ref + /reimagine 履歴を記載
+- [ ] merge 後、memory `project_m7_beta_merged.md` を「L6 完了、次は γ or β live-accept」に更新
 - [ ] merge 後、本 tasklist を完了記録して close
