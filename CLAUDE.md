@@ -61,7 +61,14 @@ Claude Code がセッション開始時に自動で読み込む指示書。
 
 - **50% ルール**: 使用率 50% 超で次の区切りに `/smart-compact`
 - **タスク切り替え時**: `/compact` ではなく `/clear`
-- **Plan → Execute**: 複雑タスクは `Shift+Tab` 2回 → Opus で計画 → Sonnet で実装
+- **Plan mode 必須**: 設計判断・新機能・リファクタリングの**最初の段階**は必ず Plan mode
+  (`Shift+Tab` 2回) + Opus。Plan 承認前の実装着手は禁止。auto mode でも Plan を飛ばさない
+- **Plan 内 /reimagine 必須**: 高難度設計（アーキテクチャ / 公開 API / 難しいバグ /
+  複数案ありうる設計）では Plan mode 内で `/reimagine` を必ず発動し、初回案を意図的に
+  破棄してゼロから再生成した案と並べて比較する。単発 Plan エージェント 1 発で設計を確定しない
+- **Plan → Clear → Execute ハンドオフ**: Plan 承認後、context 使用率が 30% を超えていたら
+  `/clear` で切り、次セッションで plan ファイル + `.steering/<task>/design-final.md` を
+  Read してから実装に入る（長セッションでの判断品質劣化を回避）
 
 ## モデル選択
 
@@ -82,6 +89,8 @@ Claude Code がセッション開始時に自動で読み込む指示書。
 - GPL 依存を `src/erre_sandbox/` に import しない
 - クラウド LLM API を必須依存にしない (予算ゼロ制約)
 - `main` ブランチに直接 push しない
+- Plan mode 外で設計判断を確定しない（設計 → 実装の境界を Plan 承認で明示化する）
+- 高難度設計で `/reimagine` を省略しない（同一エージェントの 1 発案は構造的にバイアスが残る）
 
 ## コマンド・エージェント
 
