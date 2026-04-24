@@ -17,9 +17,19 @@
   A1-a のコストは prompt token 以外無く、並行で log 蓄積すれば機会損失ゼロ。
 - **次アクション** (M8 preconditions):
   - `m8-episodic-log-pipeline` — dialog_turn log 完全永続化、persona 別 turn count 計測
-  - `m8-baseline-quality-metric` — prompt-only での対話 fidelity / affinity 推移 /
-    `bias.fired` 頻度を定量指標化、LoRA 導入後の比較基準点を固定
-  - M9 着手条件: baseline data + ≥500 turns/persona 到達 (M9 前提 ≥1000 の緩和は別 ADR)
+    (2026-04-24 PR #88 merge 済、scope を dialog_turn のみに縮小)
+  - `m8-baseline-quality-metric` — prompt-only での対話 fidelity (self_repetition +
+    cross_persona_echo の 2 次元) と `bias.fired` 頻度を定量指標化。**affinity は
+    defer**、本節 residual の `m8-affinity-dynamics` に分離 (本 spike の Phase 1 で
+    `RelationshipBond.affinity` に mutation logic ゼロが判明、mutation なしで測定
+    すると baseline が常に 0.0 になり M9 比較が不能)
+  - `m8-affinity-dynamics` (L6 D1 residual、新規) — `RelationshipBond.affinity` の
+    mutation logic を設計・実装 (interaction 頻度 / dialog 応答長 / 共起 zone 等
+    から derive)。完了後 baseline JSON の `affinity_trajectory` field を null から
+    実数に昇格。M9 LoRA 効果測定の追加 reference 軸として活用
+  - M9 着手条件: baseline data (fidelity + bias_fired_rate 固定) + ≥500 turns/persona
+    到達 (M9 前提 ≥1000 の緩和は別 ADR)。affinity は M9 着手の必須ではないが、
+    `m8-affinity-dynamics` が間に合えば比較精度が上がる
   - 関連 Skill: `llm-inference` (VRAM 予算)、`persona-erre` (system prompt 構造)
 
 ## D2. Agent scaling — observability-triggered
