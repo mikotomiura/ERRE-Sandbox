@@ -40,10 +40,12 @@ from erre_sandbox.schemas import (
     DialogScheduler,
     DialogTurnGenerator,
     DialogTurnMsg,
+    EpochPhase,
     MoveMsg,
     Observation,
     PersonaSpec,
     ProximityEvent,
+    RunLifecycleState,
     TemporalEvent,
     TimeOfDay,
     WorldTickMsg,
@@ -342,6 +344,61 @@ class WorldRuntime:
         self._dialog_generator: DialogTurnGenerator | None = None
         self._running: bool = False
         self._seq: int = 0
+        # M8 L6-D3: run-level epoch state for the two-phase methodology.
+        # Defaults to AUTONOMOUS so existing callers (run()) get today's
+        # behaviour unchanged. Mutated only via transition_to_q_and_a() /
+        # transition_to_evaluation() — direct assignment is not supported
+        # (the field is addressed through a read-only property).
+        self._run_lifecycle: RunLifecycleState = RunLifecycleState()
+
+    # ----- Run lifecycle (M8) -----
+
+    @property
+    def run_lifecycle(self) -> RunLifecycleState:
+        """Snapshot of the current run-level epoch state.
+
+        Returns the live ``RunLifecycleState`` instance. Pydantic models are
+        mutable by default, but callers **must not** mutate it — all state
+        changes go through :meth:`transition_to_q_and_a` /
+        :meth:`transition_to_evaluation` so the FSM invariants hold.
+        """
+        return self._run_lifecycle
+
+    def transition_to_q_and_a(self) -> RunLifecycleState:
+        """Advance the run from ``autonomous`` to ``q_and_a``.
+
+        Raises :class:`ValueError` if the current phase is not
+        :attr:`EpochPhase.AUTONOMOUS`. Replaces the lifecycle instance so
+        observers that snapshotted the old value see a stable record.
+        """
+        current = self._run_lifecycle.epoch_phase
+        if current is not EpochPhase.AUTONOMOUS:
+            msg = (
+                f"cannot transition to q_and_a from {current.value!r}; "
+                "only autonomous → q_and_a is allowed"
+            )
+            raise ValueError(msg)
+        self._run_lifecycle = RunLifecycleState(epoch_phase=EpochPhase.Q_AND_A)
+        return self._run_lifecycle
+
+    def transition_to_evaluation(self) -> RunLifecycleState:
+        """Advance the run from ``q_and_a`` to ``evaluation``.
+
+        Raises :class:`ValueError` if the current phase is not
+        :attr:`EpochPhase.Q_AND_A`. Direct ``autonomous → evaluation`` is
+        disallowed to protect the autonomous-emergence claim (any Q&A
+        interaction with the researcher must be recorded before the run
+        enters offline scoring).
+        """
+        current = self._run_lifecycle.epoch_phase
+        if current is not EpochPhase.Q_AND_A:
+            msg = (
+                f"cannot transition to evaluation from {current.value!r}; "
+                "only q_and_a → evaluation is allowed"
+            )
+            raise ValueError(msg)
+        self._run_lifecycle = RunLifecycleState(epoch_phase=EpochPhase.EVALUATION)
+        return self._run_lifecycle
 
     # ----- Registration -----
 

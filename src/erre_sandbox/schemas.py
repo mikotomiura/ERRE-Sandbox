@@ -10,6 +10,7 @@ Sections
 * §2 Enums
 * §3 Persona (static, YAML-loaded) — incl. ``AgentSpec`` (M4)
 * §4 AgentState (dynamic, per-tick)
+* §4.5 Run lifecycle — ``RunLifecycleState`` (M8, run-level epoch phase)
 * §5 Observation (event, discriminated by ``event_type``)
 * §6 Memory — incl. ``ReflectionEvent`` / ``SemanticMemoryRecord`` (M4)
 * §7 ControlEnvelope (message, discriminated by ``kind``) — incl. ``Dialog*`` (M4)
@@ -40,7 +41,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.4.0-m6"
+SCHEMA_VERSION: Final[str] = "0.5.0-m8"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
@@ -69,17 +70,28 @@ Proximity / Temporal) and ``cognition/cycle.py`` (Biorhythm) and is wired
 in the M6-A-2b sub-task; the schema bump is taken early so the four
 M6-A tracks can type-hint against the frozen contract.
 
-Compatibility with M5 payloads:
+M8 bump (0.4.0-m6 → 0.5.0-m8): adds :class:`EpochPhase` (§2) and
+:class:`RunLifecycleState` (§4.5) for the two-phase methodology adopted in
+L6 ADR D3 (see ``.steering/20260424-steering-scaling-lora/decisions.md``).
+Run-level state (``autonomous`` / ``q_and_a`` / ``evaluation``) is owned by
+:class:`~erre_sandbox.world.tick.WorldRuntime`; allowed transitions are
+``autonomous → q_and_a → evaluation`` with no reverse. Additive: no existing
+wire variant changes, and the new ``RunLifecycleState`` is not (yet) carried
+by any :class:`ControlEnvelope` member — consumers that ignore it remain
+wire-compatible. The new ``EpochPhase`` name is deliberately distinct from
+the gateway-layer ``SessionPhase`` at ``integration/protocol.py`` so the two
+orthogonal state machines cannot be confused. See
+``.steering/20260425-m8-session-phase-model/`` for the rationale.
 
-* Additive and wire-compatible for consumers: new ``event_type`` values
-  on the ``Observation`` discriminator do not break validation of old
-  payloads.
-* Producers that enumerate ``Observation`` exhaustively (e.g. pattern
-  matching with a ``case _:`` catch-all that raises) will see the new
-  variants fall through — review any such sites before deploying mixed
-  0.3.0-m5 / 0.4.0-m6 agents.
+Compatibility with M6 payloads:
 
-See ``.steering/20260421-m6-observatory/`` for the rationale.
+* Additive and wire-compatible for consumers: no existing ``event_type`` /
+  ``kind`` / ``reason`` discriminator gains or loses a value.
+* Producers that construct :class:`~erre_sandbox.world.tick.WorldRuntime`
+  directly need no change — ``RunLifecycleState`` defaults to
+  :attr:`EpochPhase.AUTONOMOUS` so the existing run() behaviour is preserved.
+
+See ``.steering/20260425-m8-session-phase-model/`` for the rationale.
 """
 
 
@@ -168,6 +180,25 @@ class PlutchikDimension(StrEnum):
     DISGUST = "disgust"
     ANGER = "anger"
     ANTICIPATION = "anticipation"
+
+
+class EpochPhase(StrEnum):
+    """Three research epochs of a run (M8, L6 ADR D3 ``two-phase methodology``).
+
+    A ``WorldRuntime`` progresses ``autonomous → q_and_a → evaluation`` with
+    no reverse. The goal is to protect the autonomous-emergence claim: the
+    ``autonomous`` epoch has no researcher intervention, and any user dialogue
+    (``speaker_id="researcher"``) belongs to ``q_and_a``. Offline scoring in
+    ``evaluation`` is a stub for M10-11 and carries no runtime effect yet.
+
+    This enum is **orthogonal** to the gateway-layer ``SessionPhase`` at
+    ``integration/protocol.py`` (AWAITING_HANDSHAKE / ACTIVE / CLOSING),
+    which describes WS handshake progression, not research lifecycle.
+    """
+
+    AUTONOMOUS = "autonomous"
+    Q_AND_A = "q_and_a"
+    EVALUATION = "evaluation"
 
 
 # Convenience float ranges used repeatedly below.
@@ -413,6 +444,30 @@ class AgentState(BaseModel):
     cognitive: Cognitive = Field(default_factory=Cognitive)
     erre: ERREMode
     relationships: list[RelationshipBond] = Field(default_factory=list)
+
+
+# =============================================================================
+# §4.5 Run lifecycle (run-level, owned by WorldRuntime)
+# =============================================================================
+
+
+class RunLifecycleState(BaseModel):
+    """Run-level epoch state for the two-phase methodology (M8, L6 ADR D3).
+
+    Distinct from per-agent :class:`AgentState` (which is per-tick) and from
+    ``BootConfig`` (which is immutable startup config). Owned by
+    :class:`~erre_sandbox.world.tick.WorldRuntime` and mutated only via its
+    ``transition_to_q_and_a()`` / ``transition_to_evaluation()`` methods —
+    never direct field assignment from outside the runtime.
+
+    Serialisable so runtime state can be logged or (in a future spike)
+    carried on a :class:`ControlEnvelope` variant for observers.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    epoch_phase: EpochPhase = EpochPhase.AUTONOMOUS
+    epoch_started_at: datetime = Field(default_factory=_utc_now)
 
 
 # =============================================================================
@@ -1030,6 +1085,7 @@ __all__ = [
     "ERREModeName",
     "ERREModeShiftEvent",
     "ERREModeTransitionPolicy",
+    "EpochPhase",
     "ErrorMsg",
     "HabitFlag",
     "HandshakeMsg",
@@ -1050,6 +1106,7 @@ __all__ = [
     "ReflectionEvent",
     "ReflectionEventMsg",
     "RelationshipBond",
+    "RunLifecycleState",
     "SamplingBase",
     "SamplingDelta",
     "SemanticMemoryRecord",

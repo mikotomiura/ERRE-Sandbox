@@ -39,7 +39,12 @@ from erre_sandbox.schemas import (
 
 
 def test_schema_version_is_m6() -> None:
-    assert SCHEMA_VERSION == "0.4.0-m6"
+    # M6 introduced AffordanceEvent / ProximityEvent / TemporalEvent /
+    # BiorhythmEvent + the TimeOfDay enum. Subsequent milestones (M8+) stay
+    # compatible with those additions — this file exercises the M6 surface
+    # against whatever the current SCHEMA_VERSION happens to be, so we track
+    # the active milestone pin here too.
+    assert SCHEMA_VERSION == "0.5.0-m8"
 
 
 # ---------- §2 TimeOfDay enum ------------------------------------------------

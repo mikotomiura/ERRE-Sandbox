@@ -23,6 +23,7 @@ from erre_sandbox.schemas import (
     DialogInitiateMsg,
     DialogScheduler,
     DialogTurnMsg,
+    EpochPhase,
     ERREMode,
     ERREModeName,
     HabitFlag,
@@ -36,6 +37,7 @@ from erre_sandbox.schemas import (
     Physical,
     Position,
     ReflectionEvent,
+    RunLifecycleState,
     SamplingBase,
     SamplingDelta,
     SemanticMemoryRecord,
@@ -375,7 +377,7 @@ def test_schema_version_is_current_milestone() -> None:
     Pin is intentionally reusable: each milestone bump updates this literal
     together with the ``schema_version`` check in ``test_schemas_m{N}.py``.
     """
-    assert SCHEMA_VERSION == "0.4.0-m6"
+    assert SCHEMA_VERSION == "0.5.0-m8"
 
 
 def test_agent_spec_validates_minimal_shape() -> None:
@@ -506,3 +508,43 @@ def test_dialog_scheduler_protocol_exposes_required_methods() -> None:
         assert hasattr(DialogScheduler, method_name), (
             f"DialogScheduler is missing required method {method_name!r}"
         )
+
+
+# -----------------------------------------------------------------------------
+# §4.5 Run lifecycle (M8 L6-D3)
+# -----------------------------------------------------------------------------
+
+
+def test_epoch_phase_has_three_members() -> None:
+    assert {p.value for p in EpochPhase} == {"autonomous", "q_and_a", "evaluation"}
+
+
+def test_epoch_phase_round_trip_as_json() -> None:
+    state = RunLifecycleState(epoch_phase=EpochPhase.Q_AND_A)
+    payload = json.loads(state.model_dump_json())
+    assert payload["epoch_phase"] == "q_and_a"
+    restored = RunLifecycleState.model_validate(payload)
+    assert restored.epoch_phase is EpochPhase.Q_AND_A
+    # epoch_started_at survives the JSON round-trip (datetime → ISO-8601 → datetime).
+    assert restored.epoch_started_at == state.epoch_started_at
+
+
+def test_run_lifecycle_state_defaults_to_autonomous() -> None:
+    state = RunLifecycleState()
+    assert state.epoch_phase is EpochPhase.AUTONOMOUS
+    # ``epoch_started_at`` is populated by ``_utc_now`` default factory so it
+    # is always present even when callers omit it.
+    assert state.epoch_started_at is not None
+
+
+def test_run_lifecycle_state_rejects_unknown_fields() -> None:
+    """``extra="forbid"`` guards typos like ``run_phase`` vs ``epoch_phase``."""
+    with pytest.raises(ValidationError):
+        RunLifecycleState.model_validate(
+            {"epoch_phase": "autonomous", "run_phase": "autonomous"},
+        )
+
+
+def test_run_lifecycle_state_rejects_unknown_phase() -> None:
+    with pytest.raises(ValidationError):
+        RunLifecycleState.model_validate({"epoch_phase": "bogus"})

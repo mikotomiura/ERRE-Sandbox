@@ -22,7 +22,7 @@
 # Design rationale recorded in
 # .steering/20260420-m4-personas-nietzsche-rikyu-yaml/design.md (v2 + hybrid).
 
-schema_version: "0.4.0-m6"
+schema_version: "0.5.0-m8"
 persona_id: rikyu
 display_name: "千 利休"
 era: "1522-1591"
