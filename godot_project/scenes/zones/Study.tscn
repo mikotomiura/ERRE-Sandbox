@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3]
+
+; Slice β (2026-04-24) — Study zone primitive scaffold. Three shelf-wall
+; Box primitives give the researcher a visual landmark so Kant's time in
+; the Study is visible from a top-down camera. Sized to roughly mark the
+; zone's footprint; the Blender-authored .glb eventually replaces this
+; build (tracked under the backlog in the Slice β plan).
+;
+; Scene root sits at (-33.33, 0, -33.33) to match
+; ``src/erre_sandbox/world/zones.py`` ``ZONE_CENTERS[STUDY]``
+; (``-WORLD_SIZE_M / 3``). Keep that transform in sync whenever
+; ``WORLD_SIZE_M`` changes; the wireframe in ``BoundaryLayer.gd``
+; ``zone_rects`` is the parallel mirror.
+
+[sub_resource type="PlaneMesh" id="1_study_ground"]
+size = Vector2(18, 18)
+
+[sub_resource type="StandardMaterial3D" id="2_study_mat"]
+albedo_color = Color(0.42, 0.35, 0.28, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="3_shelf"]
+size = Vector3(6.0, 2.2, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="4_shelf_mat"]
+albedo_color = Color(0.32, 0.22, 0.14, 1)
+roughness = 0.78
+
+[node name="Study" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.33, 0, -33.33)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+mesh = SubResource("1_study_ground")
+material_override = SubResource("2_study_mat")
+
+[node name="Shelf_N" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -5.6)
+mesh = SubResource("3_shelf")
+material_override = SubResource("4_shelf_mat")
+
+[node name="Shelf_W" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -5.6, 1.1, 0)
+mesh = SubResource("3_shelf")
+material_override = SubResource("4_shelf_mat")
+
+[node name="Shelf_E" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 5.6, 1.1, 0)
+mesh = SubResource("3_shelf")
+material_override = SubResource("4_shelf_mat")
