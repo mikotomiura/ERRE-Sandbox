@@ -62,8 +62,9 @@ class _StubReflector(Reflector):
         persona: Any,
         observations: Any,
         importance_sum: float,
+        recent_dialog_turns: Any = (),
     ) -> ReflectionEvent | None:
-        del agent_state, persona, observations, importance_sum
+        del agent_state, persona, observations, importance_sum, recent_dialog_turns
         return self._event_override
 
 

@@ -20,15 +20,17 @@ Scope boundary (see
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from random import Random
 from typing import TYPE_CHECKING, ClassVar, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from erre_sandbox.cognition.importance import estimate_importance
 from erre_sandbox.cognition.parse import parse_llm_plan
@@ -49,12 +51,14 @@ from erre_sandbox.inference import (
 )
 from erre_sandbox.memory import EmbeddingClient, EmbeddingUnavailableError
 from erre_sandbox.schemas import (
+    AffordanceEvent,
     AgentState,
     AgentUpdateMsg,
     AnimationMsg,
     BiorhythmEvent,
     Cognitive,
     ControlEnvelope,
+    DialogTurnMsg,
     ERREMode,
     ERREModeShiftEvent,
     ERREModeTransitionPolicy,
@@ -64,6 +68,7 @@ from erre_sandbox.schemas import (
     MoveMsg,
     Observation,
     Physical,
+    ProximityEvent,
     ReasoningTrace,
     ReasoningTraceMsg,
     ReflectionEvent,
@@ -110,6 +115,34 @@ class BiasFiredEvent:
 
 
 _REFLECTION_ZONES: Final[frozenset[Zone]] = frozenset({Zone.PERIPATOS, Zone.CHASHITSU})
+
+_PEER_TURNS_LIMIT: Final[int] = 3
+"""Cap on peer-persona dialog turns surfaced to reflection (M7γ D1).
+
+Three is the same shoulder used elsewhere in the prompt builder for
+"recent X" sections — large enough to hint at conversational dynamics,
+small enough that the prompt stays under the working-context budget.
+"""
+
+_TRACE_OBSERVED_OBJECTS_LIMIT: Final[int] = 3
+"""Cap on :attr:`ReasoningTrace.observed_objects` (M7γ D3).
+
+Top-3 by :attr:`AffordanceEvent.salience`; ties resolved by stable sort
+order (insertion order from the observation stream)."""
+
+_TRACE_NEARBY_AGENTS_LIMIT: Final[int] = 2
+"""Cap on :attr:`ReasoningTrace.nearby_agents` (M7γ D3).
+
+Two is the typical PIANO co-walking pair size; agents in larger crowds
+will report the two who most recently entered proximity rather than a
+saturated list."""
+
+_TRACE_RETRIEVED_MEMORIES_LIMIT: Final[int] = 3
+"""Cap on :attr:`ReasoningTrace.retrieved_memories` (M7γ D3).
+
+Mirrors the retriever's typical top-k (per-agent + per-world) so the
+xAI panel never exceeds three citation chips per tick."""
+
 
 _BIORHYTHM_THRESHOLD: Final[float] = 0.5
 """Mid-level threshold for fatigue / hunger that drives
@@ -423,16 +456,27 @@ class CognitionCycle:
                 "cognitive": new_cognitive,
             },
         )
-        envelopes = self._build_envelopes(new_state, plan)
+        envelopes = self._build_envelopes(
+            new_state,
+            plan,
+            observations=observations,
+            memories=memories,
+        )
 
         # Step 10: reflection. Delegated to a collaborator so trigger policy
         # and LLM-distillation plumbing live outside this module. The
         # reflector never raises: outages resolve to ``reflection_event=None``.
+        # M7γ D1: surface up to three recent peer-persona turns so the
+        # distillation can react to what *others* just said. Fetched from
+        # the dialog-turn log already populated by the bootstrap turn-sink
+        # chain, so this stays a pure read against sqlite.
+        recent_peer_turns = await self._fetch_recent_peer_turns(persona)
         reflection_event = await self._reflector.maybe_reflect(
             agent_state=new_state,
             persona=persona,
             observations=observations,
             importance_sum=importance_sum,
+            recent_dialog_turns=recent_peer_turns,
         )
         # M6-A-4: wire the reflection over the envelope stream so the Godot
         # xAI ReasoningPanel can surface the distilled summary. Only emit
@@ -620,6 +664,9 @@ class CognitionCycle:
         self,
         new_state: AgentState,
         plan: LLMPlan,
+        *,
+        observations: Sequence[Observation] = (),
+        memories: Sequence[RankedMemory] = (),
     ) -> list[ControlEnvelope]:
         envelopes: list[ControlEnvelope] = [
             AgentUpdateMsg(tick=new_state.tick, agent_state=new_state),
@@ -656,26 +703,91 @@ class CognitionCycle:
                     animation_name=plan.animation,
                 ),
             )
-        # M6-A-3: emit a ReasoningTraceMsg when the LLM filled at least one
-        # rationale field. Absence is normal (stable output under ~80%), so we
-        # skip the envelope instead of wrapping ``None`` in an empty trace.
+        # M7γ D3+D4: structured rationale carries the observation / memory
+        # provenance and an affinity hint so the xAI panel can show *why*
+        # the agent decided this way. Even when the LLM did not fill any
+        # rationale field, the trace is emitted whenever at least one of
+        # the M7γ provenance lists is non-empty *or* there is a recent
+        # bond — otherwise downstream consumers would lose the affinity
+        # signal entirely on quiet ticks.
+        observed_objects = _trace_observed_objects(observations)
+        nearby_agents = _trace_nearby_agents(observations)
+        retrieved_memories = _trace_retrieved_memories(memories)
+        decision = _decision_with_affinity(plan.decision, new_state)
         if (
             plan.salient is not None
-            or plan.decision is not None
+            or decision is not None
             or plan.next_intent is not None
+            or observed_objects
+            or nearby_agents
+            or retrieved_memories
         ):
             trace = ReasoningTrace(
                 agent_id=new_state.agent_id,
                 tick=new_state.tick,
                 mode=new_state.erre.name,
                 salient=plan.salient,
-                decision=plan.decision,
+                decision=decision,
                 next_intent=plan.next_intent,
+                observed_objects=observed_objects,
+                nearby_agents=nearby_agents,
+                retrieved_memories=retrieved_memories,
             )
             envelopes.append(
                 ReasoningTraceMsg(tick=new_state.tick, trace=trace),
             )
         return envelopes
+
+    async def _fetch_recent_peer_turns(
+        self,
+        persona: PersonaSpec,
+    ) -> list[DialogTurnMsg]:
+        """Return up to three most-recent dialog turns from *other* personas.
+
+        Reads ``dialog_turns`` rows synchronously off the event loop via
+        :func:`asyncio.to_thread` so a slow sqlite scan cannot stall the
+        cognition cycle. Returns ``[]`` on any failure — reflection D1 is
+        an additive signal, not a blocking dependency.
+
+        Reconstructs :class:`DialogTurnMsg` from the export-flavoured row
+        dicts produced by :meth:`MemoryStore.iter_dialog_turns`. The
+        non-wire fields (``schema_version`` / ``sent_at``) take their
+        default factories; only the fields the reflection prompt consumes
+        are mapped.
+        """
+        try:
+            rows = await asyncio.to_thread(
+                lambda: list(self._store.iter_dialog_turns()),
+            )
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "iter_dialog_turns failed for peer turns (%s); skipping reflection D1",
+                exc,
+            )
+            return []
+        peer_rows = [
+            r for r in rows if r.get("speaker_persona_id") != persona.persona_id
+        ]
+        peer_rows = peer_rows[-_PEER_TURNS_LIMIT:]
+        out: list[DialogTurnMsg] = []
+        for row in peer_rows:
+            try:
+                out.append(
+                    DialogTurnMsg(
+                        tick=int(row.get("tick", 0)),
+                        dialog_id=str(row.get("dialog_id", "")),
+                        speaker_id=str(row.get("speaker_agent_id", "")),
+                        addressee_id=str(row.get("addressee_agent_id", "")),
+                        utterance=str(row.get("utterance", "")),
+                        turn_index=int(row.get("turn_index", 0)),
+                    ),
+                )
+            except (ValidationError, ValueError, TypeError) as exc:
+                logger.debug(
+                    "skipping malformed dialog_turn row in peer fetch: %s",
+                    exc,
+                )
+        return out
 
 
 # ---------------------------------------------------------------------------
@@ -923,6 +1035,82 @@ def _infer_shift_reason(
         if isinstance(ev, ERREModeShiftEvent):
             return "external"
     return "external"
+
+
+def _trace_observed_objects(observations: Sequence[Observation]) -> list[str]:
+    """Top-3 ``AffordanceEvent.prop_id`` by salience (M7γ D3).
+
+    Stable ordering: salience descending, then insertion order — so two
+    props with equal salience surface in the order the observation stream
+    delivered them. Empty input yields an empty list (the trace consumer
+    should not need to special-case ``None`` vs ``[]``).
+    """
+    affordances = [o for o in observations if isinstance(o, AffordanceEvent)]
+    affordances.sort(key=lambda o: o.salience, reverse=True)
+    return [o.prop_id for o in affordances[:_TRACE_OBSERVED_OBJECTS_LIMIT]]
+
+
+def _trace_nearby_agents(observations: Sequence[Observation]) -> list[str]:
+    """Top-2 ``ProximityEvent.other_agent_id`` with ``crossing="enter"`` (M7γ D3).
+
+    Only ``enter`` crossings are surfaced — a ``leave`` crossing is the
+    *absence* of relevance, not a positive signal worth tracing. The cap
+    matches typical PIANO co-walking pair sizes; agents in larger crowds
+    will see the two who most recently entered proximity.
+    """
+    enters = [
+        o
+        for o in observations
+        if isinstance(o, ProximityEvent) and o.crossing == "enter"
+    ]
+    return [o.other_agent_id for o in enters[:_TRACE_NEARBY_AGENTS_LIMIT]]
+
+
+def _trace_retrieved_memories(memories: Sequence[RankedMemory]) -> list[str]:
+    """Top-3 :attr:`MemoryEntry.id` from the ranked retrieval (M7γ D3).
+
+    The retriever already returns memories sorted by combined score, so we
+    take the prefix without re-ranking. Empty when retrieval produced no
+    rows (LLM unavailable, embedding outage, or no match) — the trace
+    field then degrades to ``[]`` rather than papering over the gap.
+    """
+    return [m.entry.id for m in memories[:_TRACE_RETRIEVED_MEMORIES_LIMIT]]
+
+
+def _decision_with_affinity(
+    decision: str | None,
+    new_state: AgentState,
+) -> str | None:
+    """Append the most-recent bond's affinity hint to ``decision`` (M7γ D4).
+
+    Picks the :class:`RelationshipBond` with the highest
+    :attr:`RelationshipBond.last_interaction_tick` (None ticks rank below
+    any concrete tick) so the hint reflects *who the agent just spoke to*
+    rather than a stale long-term relationship.
+
+    When there is no bond at all the original decision passes through
+    unchanged. When ``decision`` is None and there *is* a bond the hint
+    becomes the entire decision — that is intentional, because the γ
+    acceptance test asserts the substring ``"affinity"`` is present
+    whenever bonds exist, regardless of LLM rationale completeness.
+
+    Format: ``f" affinity={bond.affinity:+.2f} with {bond.other_agent_id}"``
+    suffixed to the LLM's decision when present, or used standalone
+    otherwise. The ``+.2f`` format matches the Godot ReasoningPanel
+    rendering for the relationships foldout (Slice γ Commit 4).
+    """
+    if not new_state.relationships:
+        return decision
+    most_recent = max(
+        new_state.relationships,
+        key=lambda b: (
+            b.last_interaction_tick if b.last_interaction_tick is not None else -1
+        ),
+    )
+    hint = f"affinity={most_recent.affinity:+.2f} with {most_recent.other_agent_id}"
+    if decision is None:
+        return hint
+    return f"{decision} ({hint})"
 
 
 __all__ = [

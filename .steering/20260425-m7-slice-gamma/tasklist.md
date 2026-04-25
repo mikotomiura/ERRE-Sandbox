@@ -26,27 +26,33 @@
 - [x] `uv run pytest tests/` 全パス + `ruff check/format` 私の変更分 clean
 - [x] commit: `feat(schemas): m7-γ ReasoningTrace+WorldLayoutMsg, bump 0.6.0-m7g`
 
-## Commit 2: cognition (relational + reflection + trace) (3h)
+## Commit 2: cognition (relational + reflection + trace) (3h)  ✅
 
-- [ ] `src/erre_sandbox/cognition/relational.py` 新設
+- [x] `src/erre_sandbox/cognition/relational.py` 新設
       `compute_affinity_delta(turn, recent_transcript, persona) -> float` 純関数
-      (γ 初期実装は constant `+0.02`、clamp [-1.0, 1.0])
-- [ ] `tests/test_cognition/test_relational.py` 追加 (境界値 / clamp / signature)
-- [ ] `src/erre_sandbox/bootstrap.py` の `turn_sink` を chain 化、
-      `_persist_relational_event` を chain (relational_memory INSERT +
-      `RelationshipBond.affinity` を `compute_affinity_delta` で更新)
-- [ ] `src/erre_sandbox/cognition/reflection.py::build_reflection_messages` に
-      `recent_dialog_turns: Sequence[DialogTurnMsg] = ()` 引数追加
-- [ ] `src/erre_sandbox/cognition/cycle.py` で reflection 呼び出し時に
-      `store.iter_dialog_turns(persona=other_personas, since=now-300s)` で 3 件取得
-- [ ] ReasoningTrace 生成位置で
+      (γ 初期実装は constant `+0.02`、clamp [-1.0, 1.0]) +
+      `apply_affinity` / `clamp_affinity_delta` ヘルパ
+- [x] `tests/test_cognition/test_relational.py` 追加 (境界値 / clamp / signature
+      / 6-step dialog budget の確認、計 15 件)
+- [x] `src/erre_sandbox/bootstrap.py` の `turn_sink` を chain 化、
+      `_make_relational_sink` factory で複雑度を抑制、
+      relational_memory INSERT + 双方向 `RelationshipBond.affinity` 更新
+- [x] `WorldRuntime.apply_affinity_delta(agent_id, other_agent_id, delta, *, tick)`
+      新設 — bond mutation を model_copy 経由で実施、未登録 agent は no-op
+- [x] `src/erre_sandbox/cognition/reflection.py::build_reflection_messages` に
+      `recent_dialog_turns: Sequence[DialogTurnMsg] = ()` 引数追加、
+      Reflector.maybe_reflect / _execute も同引数を伝搬
+- [x] `src/erre_sandbox/cognition/cycle.py::_fetch_recent_peer_turns` 新設、
+      reflection 呼び出し直前に他 persona の dialog_turn 上限 3 件を取得して渡す
+- [x] ReasoningTrace 生成位置 (`_build_envelopes`) を拡張:
       observed_objects ← AffordanceEvent salience top-3、
       nearby_agents ← ProximityEvent.crossing="enter" max 2、
-      retrieved_memories ← recall_*.id top-3 を埋め、
-      `decision` に `f"... affinity={bond.affinity:+.2f} ..."` を埋め込み
-- [ ] unit tests 追加 (chain hook, prompt 構造, trace 内容)
-- [ ] `uv run pytest tests/` + `ruff check/format` 全パス
-- [ ] commit: `feat(cognition): m7-γ affinity hook + reflection peer turns + trace`
+      retrieved_memories ← memories[:3].entry.id、
+      `decision` に `f"affinity={bond.affinity:+.2f} with {other_agent_id}"` を suffix
+- [x] `tests/test_cognition/test_reflection_envelope.py::_StubReflector` の
+      signature を新引数対応 (バックワード互換テストの修正)
+- [x] `uv run pytest tests/` 全パス (855) + `ruff check/format` 私の変更分 clean
+- [x] commit: `feat(cognition): m7-γ affinity hook + reflection peer turns + trace`
 
 ## Commit 3: gateway WorldLayoutMsg on-connect (1h)
 

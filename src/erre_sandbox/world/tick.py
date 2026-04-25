@@ -32,6 +32,7 @@ from dataclasses import dataclass, field, replace
 from itertools import combinations
 from typing import TYPE_CHECKING, ClassVar, Final, Literal
 
+from erre_sandbox.cognition.relational import apply_affinity
 from erre_sandbox.schemas import (
     AffordanceEvent,
     AgentState,
@@ -44,16 +45,25 @@ from erre_sandbox.schemas import (
     MoveMsg,
     Observation,
     PersonaSpec,
+    PropLayout,
     ProximityEvent,
+    RelationshipBond,
     RunLifecycleState,
     TemporalEvent,
     TimeOfDay,
+    WorldLayoutMsg,
     WorldTickMsg,
     Zone,
+    ZoneLayout,
     ZoneTransitionEvent,
 )
 from erre_sandbox.world.physics import Kinematics, apply_move_command, step_kinematics
-from erre_sandbox.world.zones import ZONE_PROPS, default_spawn, locate_zone
+from erre_sandbox.world.zones import (
+    ZONE_CENTERS,
+    ZONE_PROPS,
+    default_spawn,
+    locate_zone,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Coroutine, Sequence
@@ -441,6 +451,96 @@ class WorldRuntime:
         """
         agent = self._agents.get(agent_id)
         return agent.state.persona_id if agent is not None else None
+
+    def apply_affinity_delta(
+        self,
+        *,
+        agent_id: str,
+        other_agent_id: str,
+        delta: float,
+        tick: int,
+    ) -> None:
+        """Apply an affinity ``delta`` to ``agent_id``'s bond with ``other_agent_id``.
+
+        Mutates :attr:`AgentRuntime.state` in place via ``model_copy`` so the
+        next ``AgentUpdateMsg`` snapshot picks up the new
+        :class:`RelationshipBond`. When ``agent_id`` has no existing bond
+        with ``other_agent_id`` a fresh bond is appended; otherwise the
+        existing bond's :attr:`RelationshipBond.affinity` is updated (clamped
+        through :func:`erre_sandbox.cognition.relational.apply_affinity`),
+        :attr:`RelationshipBond.ichigo_ichie_count` is incremented, and
+        :attr:`RelationshipBond.last_interaction_tick` is set to ``tick``.
+
+        Silent no-op when ``agent_id`` is not registered: the relational
+        hook fires from the bootstrap turn-sink chain, which races a
+        possible (M7γ-out-of-scope) deregistration. Future M9+ removal
+        wiring should keep this fail-soft so a transient missing agent
+        cannot crash the live runtime.
+        """
+        rt = self._agents.get(agent_id)
+        if rt is None:
+            return
+        existing = list(rt.state.relationships)
+        new_bonds: list[RelationshipBond] = []
+        found = False
+        for bond in existing:
+            if bond.other_agent_id == other_agent_id:
+                new_bonds.append(
+                    bond.model_copy(
+                        update={
+                            "affinity": apply_affinity(bond.affinity, delta),
+                            "ichigo_ichie_count": bond.ichigo_ichie_count + 1,
+                            "last_interaction_tick": tick,
+                        },
+                    ),
+                )
+                found = True
+            else:
+                new_bonds.append(bond)
+        if not found:
+            new_bonds.append(
+                RelationshipBond(
+                    other_agent_id=other_agent_id,
+                    affinity=apply_affinity(0.0, delta),
+                    familiarity=0.0,
+                    ichigo_ichie_count=1,
+                    last_interaction_tick=tick,
+                ),
+            )
+        rt.state = rt.state.model_copy(update={"relationships": new_bonds})
+
+    def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg:
+        """Construct a :class:`WorldLayoutMsg` from the static zone tables (M7γ).
+
+        Pure read of :data:`erre_sandbox.world.zones.ZONE_CENTERS` and
+        :data:`~erre_sandbox.world.zones.ZONE_PROPS` — no runtime state is
+        consulted because in γ the world layout is immutable per run. The
+        gateway emits this message exactly once per WS connection
+        (see Slice γ Commit 3), immediately before completing the
+        handshake-side ``registry.add(...)`` call.
+
+        ``tick`` defaults to ``0`` to match the on-connect convention used
+        by the ``world_layout.json`` fixture and asserted by
+        ``tests/test_envelope_fixtures.py::test_shared_invariants_across_fixtures``.
+        """
+        zones = [
+            ZoneLayout(zone=zone, x=x, y=y, z=z)
+            for zone, (x, y, z) in ZONE_CENTERS.items()
+        ]
+        props: list[PropLayout] = [
+            PropLayout(
+                prop_id=spec.prop_id,
+                prop_kind=spec.prop_kind,
+                zone=zone,
+                x=spec.x,
+                y=spec.y,
+                z=spec.z,
+                salience=spec.salience,
+            )
+            for zone, prop_specs in ZONE_PROPS.items()
+            for spec in prop_specs
+        ]
+        return WorldLayoutMsg(tick=tick, zones=zones, props=props)
 
     # ----- Envelope consumers (T14 hooks) -----
 

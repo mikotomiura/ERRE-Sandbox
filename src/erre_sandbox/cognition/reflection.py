@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from erre_sandbox.memory import EmbeddingClient, MemoryStore
     from erre_sandbox.schemas import (
         AgentState,
+        DialogTurnMsg,
         MemoryEntry,
         Observation,
         PersonaSpec,
@@ -132,6 +133,7 @@ def build_reflection_messages(
     persona: PersonaSpec,
     agent: AgentState,
     episodic: Sequence[MemoryEntry],
+    recent_dialog_turns: Sequence[DialogTurnMsg] = (),
 ) -> list[ChatMessage]:
     """Build the two-message prompt the reflection LLM call consumes.
 
@@ -141,6 +143,14 @@ def build_reflection_messages(
     :attr:`SemanticMemoryRecord.summary`, so the output format here is
     load-bearing: we explicitly ask for plain text and cap the length,
     because we do not run a parser afterwards.
+
+    M7γ: when ``recent_dialog_turns`` is non-empty, a "Recent peer
+    utterances" section is appended to the system prompt. Each line carries
+    one peer turn so the agent's reflection can react to *what other
+    agents just said* — D1 in
+    ``.steering/20260424-m7-differentiation-observability/decisions.md``.
+    Empty default keeps M6 callers (and unit tests for those callers)
+    binary-compatible.
     """
     zone = agent.position.zone.value
     mode = agent.erre.name.value
@@ -155,6 +165,15 @@ def build_reflection_messages(
     lang_hint = _REFLECTION_LANG_HINT.get(persona.persona_id, "")
     if lang_hint:
         system = f"{system} {lang_hint}"
+    if recent_dialog_turns:
+        peer_lines = [
+            f"- {turn.speaker_id}: {_truncate(turn.utterance)}"
+            for turn in recent_dialog_turns
+        ]
+        peer_block = "\n".join(peer_lines)
+        system = (
+            f"{system}\n\nRecent peer utterances (newest last, max 3):\n{peer_block}"
+        )
     if not episodic:
         body = "(no recent episodic memories)"
     else:
@@ -215,12 +234,18 @@ class Reflector:
         persona: PersonaSpec,
         observations: Sequence[Observation],
         importance_sum: float,
+        recent_dialog_turns: Sequence[DialogTurnMsg] = (),
     ) -> ReflectionEvent | None:
         """Evaluate the policy and, if triggered, run the full reflection path.
 
         Returns the produced :class:`ReflectionEvent` on success, or
         ``None`` when either the policy declined or a downstream (LLM /
         embedding / store) operation failed.
+
+        ``recent_dialog_turns`` (M7γ D1): up to three recent turns from
+        *other* personas, surfaced in the reflection system prompt so the
+        agent's distillation can react to peer utterances. Empty default
+        keeps existing M6 callers binary-compatible.
         """
         ticks_since = self.record_tick(agent_state.agent_id)
         zone_entered = _detect_zone_entry(observations, self._policy.trigger_zones)
@@ -237,6 +262,7 @@ class Reflector:
         event = await self._execute(
             agent_state=agent_state,
             persona=persona,
+            recent_dialog_turns=recent_dialog_turns,
         )
         if event is not None:
             self.reset_counter(agent_state.agent_id)
@@ -247,6 +273,7 @@ class Reflector:
         *,
         agent_state: AgentState,
         persona: PersonaSpec,
+        recent_dialog_turns: Sequence[DialogTurnMsg] = (),
     ) -> ReflectionEvent | None:
         episodic = await self._store.list_by_agent(
             agent_id=agent_state.agent_id,
@@ -260,7 +287,12 @@ class Reflector:
             )
             return None
 
-        messages = build_reflection_messages(persona, agent_state, episodic)
+        messages = build_reflection_messages(
+            persona,
+            agent_state,
+            episodic,
+            recent_dialog_turns=recent_dialog_turns,
+        )
         sampling = compose_sampling(
             persona.default_sampling,
             agent_state.erre.sampling_overrides,

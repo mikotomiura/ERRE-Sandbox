@@ -16,6 +16,8 @@ import asyncio
 import logging
 import re
 import signal
+import sqlite3
+import uuid
 from contextlib import AsyncExitStack, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +27,7 @@ import uvicorn
 import yaml
 
 from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle
+from erre_sandbox.cognition.relational import compute_affinity_delta
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
 from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.integration.dialog import InMemoryDialogScheduler
@@ -37,6 +40,8 @@ from erre_sandbox.schemas import (
     DialogTurnMsg,
     ERREMode,
     ERREModeName,
+    MemoryEntry,
+    MemoryKind,
     PersonaSpec,
     Position,
     Zone,
@@ -44,7 +49,7 @@ from erre_sandbox.schemas import (
 from erre_sandbox.world import WorldRuntime
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +184,87 @@ def _build_initial_state(spec: AgentSpec, persona: PersonaSpec) -> AgentState:
     )
 
 
-async def bootstrap(cfg: BootConfig) -> None:
+def _make_relational_sink(
+    *,
+    runtime: WorldRuntime,
+    memory: MemoryStore,
+    persona_registry: dict[str, PersonaSpec],
+) -> Callable[[DialogTurnMsg], None]:
+    """Build the M7γ per-turn relational-hook sink.
+
+    Returned callable runs synchronously from
+    :class:`InMemoryDialogScheduler.record_turn`: it inserts a
+    :class:`MemoryEntry` of kind ``RELATIONAL`` for the speaker and applies
+    a :func:`compute_affinity_delta` adjustment to *both* sides'
+    :class:`RelationshipBond.affinity` so the dialog turn shows up
+    symmetrically in agent state.
+
+    Sink failures are swallowed inside ``record_turn`` (see
+    ``integration/dialog.py:197``); we log warnings here so operators can
+    still see them in the journal, but never raise.
+    """
+
+    def _persist_relational_event(turn: DialogTurnMsg) -> None:
+        speaker_persona_id = runtime.agent_persona_id(turn.speaker_id)
+        speaker_persona = (
+            persona_registry.get(speaker_persona_id)
+            if speaker_persona_id is not None
+            else None
+        )
+        if speaker_persona is None:
+            logger.warning(
+                "[bootstrap] relational sink skipped: unresolved speaker "
+                "persona for dialog_id=%s speaker=%s",
+                turn.dialog_id,
+                turn.speaker_id,
+            )
+            return
+        delta = compute_affinity_delta(
+            turn,
+            recent_transcript=(),
+            persona=speaker_persona,
+        )
+        relational_entry = MemoryEntry(
+            id=str(uuid.uuid4()),
+            agent_id=turn.speaker_id,
+            kind=MemoryKind.RELATIONAL,
+            content=f"Spoke to {turn.addressee_id}: {turn.utterance}",
+            importance=0.5,
+            tags=[
+                f"dialog:{turn.dialog_id}",
+                f"addressee:{turn.addressee_id}",
+                f"turn_index:{turn.turn_index}",
+            ],
+        )
+        try:
+            memory._add_sync(relational_entry, None)  # noqa: SLF001 — internal sync hook
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "[bootstrap] relational memory INSERT failed for "
+                "dialog_id=%s tick=%d: %s",
+                turn.dialog_id,
+                turn.tick,
+                exc,
+            )
+            return
+        # Bidirectional bond mutation: both sides feel the dialog turn.
+        runtime.apply_affinity_delta(
+            agent_id=turn.speaker_id,
+            other_agent_id=turn.addressee_id,
+            delta=delta,
+            tick=turn.tick,
+        )
+        runtime.apply_affinity_delta(
+            agent_id=turn.addressee_id,
+            other_agent_id=turn.speaker_id,
+            delta=delta,
+            tick=turn.tick,
+        )
+
+    return _persist_relational_event
+
+
+async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915 — composition root inherently long
     """Construct the full stack and supervise runtime + uvicorn.
 
     Resource lifecycle is structured via :class:`AsyncExitStack` so any
@@ -284,19 +369,33 @@ async def bootstrap(cfg: BootConfig) -> None:
                 addressee_persona_id=addressee_pid,
             )
 
+        # M7γ Commit 2: relational hook chain. After the M8 dialog-turn
+        # persistence, append a per-turn relational-memory INSERT and a
+        # bidirectional :class:`RelationshipBond` affinity update.
+        persona_registry = _load_persona_registry(cfg)
+        _persist_relational_event = _make_relational_sink(
+            runtime=runtime,
+            memory=memory,
+            persona_registry=persona_registry,
+        )
+
+        def _chained_turn_sink(turn: DialogTurnMsg) -> None:
+            """Run M8 dialog-turn persistence first, then γ relational hook."""
+            _persist_dialog_turn(turn)
+            _persist_relational_event(turn)
+
         # The scheduler's envelope sink writes directly into the runtime's
         # fan-out queue so dialog envelopes interleave with agent_update /
         # speech / move without a second delivery path (see design.md §v2).
         scheduler = InMemoryDialogScheduler(
             envelope_sink=runtime.inject_envelope,
-            turn_sink=_persist_dialog_turn,
+            turn_sink=_chained_turn_sink,
         )
         runtime.attach_dialog_scheduler(scheduler)
 
         # Dialog turn generator wiring: built from the pre-loaded persona
         # registry so the generator can resolve the addressee's display_name
         # at prompt-build time.
-        persona_registry = _load_persona_registry(cfg)
         dialog_generator = OllamaDialogTurnGenerator(
             llm=inference,
             personas=persona_registry,
