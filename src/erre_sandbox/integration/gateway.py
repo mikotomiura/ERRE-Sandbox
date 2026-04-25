@@ -48,6 +48,7 @@ from erre_sandbox.schemas import (
     HandshakeMsg,
     MoveMsg,
     SpeechMsg,
+    WorldLayoutMsg,
     WorldTickMsg,
 )
 
@@ -88,6 +89,12 @@ _SERVER_CAPABILITIES: Final[tuple[str, ...]] = (
     "dialog_initiate",
     "dialog_turn",
     "dialog_close",
+    # M6-A-3 / M6-A-4 xAI variants and the M7γ on-connect world layout
+    # snapshot. Advertised so clients can drop the capability-probing
+    # round-trip when they upgrade.
+    "reasoning_trace",
+    "reflection_event",
+    "world_layout",
 )
 
 
@@ -105,10 +112,14 @@ class _RuntimeLike(Protocol):
 
     Kept intentionally narrower than :class:`WorldRuntime` so tests can
     supply a ``MockRuntime`` without importing ``world``. Only
-    :meth:`recv_envelope` is used on the broadcast path.
+    :meth:`recv_envelope` is used on the broadcast path; M7γ adds
+    :meth:`layout_snapshot` so the WS handler can push a per-session
+    :class:`WorldLayoutMsg` immediately after handshake validation.
     """
 
     async def recv_envelope(self) -> ControlEnvelope: ...
+
+    def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg: ...
 
 
 def _envelope_target_agents(env: ControlEnvelope) -> frozenset[str] | None:
@@ -552,6 +563,15 @@ async def ws_observe(ws: WebSocket) -> None:
             return
 
         # ---------- Phase 2: ACTIVE ----------
+        # M7γ: push a single :class:`WorldLayoutMsg` snapshot immediately
+        # after handshake validation, before the session joins the registry
+        # fan-out. Sending pre-registry guarantees the layout always lands
+        # *before* any cognition-driven envelope, so the Godot
+        # :class:`BoundaryLayer` can hydrate ``zone_rects`` / ``prop_coords``
+        # before the first agent tick paints over them.
+        runtime: _RuntimeLike = ws.app.state.runtime
+        await _send(ws, runtime.layout_snapshot())
+
         out_queue: asyncio.Queue[ControlEnvelope] = asyncio.Queue(
             maxsize=protocol.MAX_ENVELOPE_BACKLOG,
         )
@@ -620,6 +640,16 @@ class _NullRuntime:
         await asyncio.Event().wait()
         # Unreachable but type-level satisfying return.
         return WorldTickMsg(tick=0, active_agents=0)  # pragma: no cover
+
+    def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg:
+        """Return an empty layout snapshot.
+
+        The ``_NullRuntime`` carries no zone or prop state, so the snapshot
+        is intentionally empty. Real :class:`WorldRuntime` instances build
+        the message from :data:`erre_sandbox.world.zones.ZONE_CENTERS` /
+        :data:`~erre_sandbox.world.zones.ZONE_PROPS`.
+        """
+        return WorldLayoutMsg(tick=tick)
 
 
 # =============================================================================

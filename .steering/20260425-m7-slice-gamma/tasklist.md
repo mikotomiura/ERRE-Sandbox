@@ -54,16 +54,24 @@
 - [x] `uv run pytest tests/` 全パス (855) + `ruff check/format` 私の変更分 clean
 - [x] commit: `feat(cognition): m7-γ affinity hook + reflection peer turns + trace`
 
-## Commit 3: gateway WorldLayoutMsg on-connect (1h)
+## Commit 3: gateway WorldLayoutMsg on-connect (1h)  ✅
 
-- [ ] `WorldRuntime.layout_snapshot() -> WorldLayoutMsg` property を `world/tick.py` に追加
-      (`ZONE_CENTERS` + `ZONE_PROPS` から純構築)
-- [ ] `src/erre_sandbox/integration/gateway.py:558` の `registry.add(...)` 直前に
-      `await _send(ws, runtime.layout_snapshot())` 挿入
-- [ ] `tests/test_integration/test_world_layout_msg.py` で connect → world_layout 受信 assert
-      (golden JSON snapshot 比較)
-- [ ] `uv run pytest tests/` 全パス
-- [ ] commit: `feat(gateway): m7-γ WorldLayoutMsg single-shot on-connect`
+- [x] `WorldRuntime.layout_snapshot()` (Commit 2 で先行実装、γ 用 zones+props 構築)
+- [x] `_RuntimeLike` Protocol に `layout_snapshot` を追加
+- [x] `_NullRuntime` に空 layout を返す stub を追加
+- [x] `_SERVER_CAPABILITIES` に `world_layout` (および欠けていた M6 の
+      `reasoning_trace` / `reflection_event`) を追加
+- [x] `gateway.ws_observe` の `registry.add(...)` 直前で
+      `await _send(ws, runtime.layout_snapshot())` を実行
+- [x] `tests/test_integration/test_world_layout_msg.py` 新設 (5 tests)
+      — connect → world_layout 受信 / capabilities / null runtime / golden fixture /
+      WorldRuntime.layout_snapshot 内容
+- [x] `tests/test_integration/conftest.py::MockRuntime` に `layout_snapshot` stub 追加
+- [x] `tests/test_integration/_ws_helpers.py::promote_to_active` 新設 + 既存
+      gateway / multi_agent_stream / scenario tests を `_promote_to_active` 経由化
+- [x] `test_every_advertised_kind_has_explicit_routing` の expected_global を更新
+- [x] `uv run pytest tests/` 全パス (860) + ruff clean
+- [x] commit: `feat(gateway): m7-γ WorldLayoutMsg single-shot on-connect`
 
 ## Commit 4: Godot Relationships UI + layout consumer + scene 補修 (3.5h)
 

@@ -23,7 +23,7 @@ from erre_sandbox.schemas import (
     WorldTickMsg,
     Zone,
 )
-from tests.test_integration._ws_helpers import client_handshake, recv_envelope
+from tests.test_integration._ws_helpers import promote_to_active, recv_envelope
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -54,7 +54,7 @@ def test_s_walking_step0_world_registers_kant_in_peripatos(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)  # server handshake
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
 
         t0 = time.perf_counter()
         client.portal.call(mock_runtime.put, env)
@@ -82,7 +82,7 @@ def test_s_walking_step1_gateway_heartbeat(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
         client.portal.call(mock_runtime.put, tick_env)
         got = recv_envelope(ws)
 
@@ -116,7 +116,7 @@ def test_s_walking_step2_cognition_emits_move(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
 
         client.portal.call(mock_runtime.put, move)
         got_move = recv_envelope(ws)
@@ -147,7 +147,7 @@ def test_s_walking_step3_godot_avatar_moves(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
         client.portal.call(mock_runtime.put, anim)
         got = recv_envelope(ws)
 

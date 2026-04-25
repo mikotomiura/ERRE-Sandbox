@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 # underscore is now misleading. Kept private for now to avoid src/ churn
 # outside the T19 execution-phase scope.
 from erre_sandbox.integration.gateway import _parse_envelope
-from erre_sandbox.schemas import HandshakeMsg
+from erre_sandbox.schemas import HandshakeMsg, WorldLayoutMsg
 
 if TYPE_CHECKING:
     from erre_sandbox.schemas import ControlEnvelope
@@ -43,4 +43,18 @@ def recv_envelope(ws: Any) -> ControlEnvelope:
     return env
 
 
-__all__ = ["client_handshake", "recv_envelope"]
+def promote_to_active(ws: Any) -> None:
+    """Send the client handshake and consume the M7γ on-connect WorldLayoutMsg.
+
+    Mirrors ``test_gateway._promote_to_active`` for scenario tests that
+    hold a TestClient WS proxy. Tests that explicitly verify the layout
+    shape should NOT use this helper.
+    """
+    ws.send_text(client_handshake())
+    layout = recv_envelope(ws)
+    assert isinstance(layout, WorldLayoutMsg), (
+        f"expected WorldLayoutMsg between handshake and ACTIVE, got {layout!r}"
+    )
+
+
+__all__ = ["client_handshake", "promote_to_active", "recv_envelope"]

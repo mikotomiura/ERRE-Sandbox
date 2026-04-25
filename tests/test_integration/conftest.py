@@ -46,6 +46,7 @@ from erre_sandbox.memory import (
     QUERY_PREFIX,
     MemoryStore,
 )
+from erre_sandbox.schemas import PropLayout, WorldLayoutMsg, ZoneLayout
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
@@ -91,16 +92,34 @@ class MockRuntime:
     :meth:`recv_envelope` yield that envelope. Mirrors
     :meth:`WorldRuntime.recv_envelope` semantics (blocking FIFO) without
     pulling in the world layer.
+
+    M7γ adds :meth:`layout_snapshot` so the gateway's on-connect emit
+    has a stub to call. Tests that want to assert specific layout shapes
+    can supply ``zones`` / ``props`` at construction time.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        layout_zones: list[ZoneLayout] | None = None,
+        layout_props: list[PropLayout] | None = None,
+    ) -> None:
         self._queue: asyncio.Queue[ControlEnvelope] = asyncio.Queue()
+        self._layout_zones = layout_zones if layout_zones is not None else []
+        self._layout_props = layout_props if layout_props is not None else []
 
     async def recv_envelope(self) -> ControlEnvelope:
         return await self._queue.get()
 
     async def put(self, env: ControlEnvelope) -> None:
         await self._queue.put(env)
+
+    def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg:
+        return WorldLayoutMsg(
+            tick=tick,
+            zones=list(self._layout_zones),
+            props=list(self._layout_props),
+        )
 
 
 @pytest.fixture

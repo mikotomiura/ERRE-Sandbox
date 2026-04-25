@@ -23,7 +23,7 @@ from erre_sandbox.schemas import (
     HandshakeMsg,
     WorldTickMsg,
 )
-from tests.test_integration._ws_helpers import client_handshake, recv_envelope
+from tests.test_integration._ws_helpers import promote_to_active, recv_envelope
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -51,7 +51,7 @@ def test_s_tick_robustness_initial_agent_update(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
         client.portal.call(mock_runtime.put, env)
         got = recv_envelope(ws)
 
@@ -75,7 +75,7 @@ def test_s_tick_robustness_tolerates_missed_heartbeat(
 
     with client.websocket_connect("/ws/observe") as ws:
         _ = recv_envelope(ws)
-        ws.send_text(client_handshake())
+        promote_to_active(ws)
 
         client.portal.call(mock_runtime.put, tick1)
         got1 = recv_envelope(ws)
@@ -104,7 +104,7 @@ def test_s_tick_robustness_survives_reconnect(
         assert isinstance(server_hs_1, HandshakeMsg)
         assert server_hs_1.tick == 0
         assert server_hs_1.schema_version == SCHEMA_VERSION
-        ws1.send_text(client_handshake())
+        promote_to_active(ws1)
 
     # Second session: fresh server handshake.
     with client.websocket_connect("/ws/observe") as ws2:
@@ -112,7 +112,7 @@ def test_s_tick_robustness_survives_reconnect(
         assert isinstance(server_hs_2, HandshakeMsg)
         assert server_hs_2.tick == 0
         assert server_hs_2.schema_version == SCHEMA_VERSION
-        ws2.send_text(client_handshake())
+        promote_to_active(ws2)
 
 
 def test_s_tick_robustness_memory_continuity(
@@ -146,13 +146,13 @@ def test_s_tick_robustness_memory_continuity(
 
     with client.websocket_connect("/ws/observe") as ws1:
         _ = recv_envelope(ws1)
-        ws1.send_text(client_handshake())
+        promote_to_active(ws1)
         client.portal.call(mock_runtime.put, pre)
         got_pre = recv_envelope(ws1)
 
     with client.websocket_connect("/ws/observe") as ws2:
         _ = recv_envelope(ws2)
-        ws2.send_text(client_handshake())
+        promote_to_active(ws2)
         client.portal.call(mock_runtime.put, post)
         got_post = recv_envelope(ws2)
 

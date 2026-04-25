@@ -43,6 +43,7 @@ from erre_sandbox.schemas import (
     MoveMsg,
     Position,
     SpeechMsg,
+    WorldLayoutMsg,
     WorldTickMsg,
     Zone,
 )
@@ -203,12 +204,19 @@ class TestEnvelopeTargetAgents:
             _SERVER_CAPABILITIES,
         )
 
-        # kinds whose routing is intentionally global (None).
+        # kinds whose routing is intentionally global (None). M6 added
+        # reasoning_trace / reflection_event (xAI panel surfaces them
+        # session-wide); M7γ added world_layout (per-session on-connect
+        # snapshot, not run through fan_out at all but routing of "global"
+        # is the safe default for any future fan-out path).
         expected_global = {
             "handshake",
             "world_tick",
             "error",
             "dialog_close",
+            "reasoning_trace",
+            "reflection_event",
+            "world_layout",
         }
         # kinds that must return a non-None, non-empty routing set. The
         # specific members are covered by the individual tests above; here
@@ -321,6 +329,19 @@ def _recv_envelope(ws: Any) -> ControlEnvelope:
     return env
 
 
+def _promote_to_active(ws: Any) -> None:
+    """Send the client handshake and consume the M7γ on-connect WorldLayoutMsg.
+
+    Mirrors the helper in :mod:`test_gateway`; kept here as a local copy
+    so this file stays self-contained.
+    """
+    ws.send_text(_client_hs())
+    layout = _recv_envelope(ws)
+    assert isinstance(layout, WorldLayoutMsg), (
+        f"expected WorldLayoutMsg between handshake and ACTIVE, got {layout!r}"
+    )
+
+
 def _drain_after_ack(ws: Any) -> list[ControlEnvelope]:
     """Read 1 frame then return immediately — used to tidy server handshake.
 
@@ -340,7 +361,7 @@ class TestSubscribeIntegration:
     ) -> None:
         with client.websocket_connect("/ws/observe?subscribe=kant") as ws:
             _drain_after_ack(ws)
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)
 
             # Push two speech envelopes — one for kant, one for nietzsche.
             client.portal.call(
@@ -381,7 +402,7 @@ class TestSubscribeIntegration:
     ) -> None:
         with client.websocket_connect("/ws/observe?subscribe=*") as ws:
             _drain_after_ack(ws)
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)
             client.portal.call(
                 mock_runtime.put,
                 SpeechMsg(
@@ -415,7 +436,7 @@ class TestSubscribeIntegration:
             "/ws/observe?subscribe=kant,nietzsche",
         ) as ws:
             _drain_after_ack(ws)
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)
             client.portal.call(
                 mock_runtime.put,
                 SpeechMsg(
@@ -464,7 +485,7 @@ class TestSubscribeIntegration:
         ):
             for ws in (ws_kant, ws_nie, ws_rikyu):
                 _drain_after_ack(ws)
-                ws.send_text(_client_hs())
+                _promote_to_active(ws)
 
             client.portal.call(
                 mock_runtime.put,
@@ -503,7 +524,7 @@ class TestSubscribeIntegration:
         ):
             for ws in (ws_kant, ws_rikyu):
                 _drain_after_ack(ws)
-                ws.send_text(_client_hs())
+                _promote_to_active(ws)
             client.portal.call(
                 mock_runtime.put,
                 DialogCloseMsg(

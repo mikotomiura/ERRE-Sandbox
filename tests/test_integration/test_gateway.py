@@ -34,6 +34,7 @@ from erre_sandbox.schemas import (
     ErrorMsg,
     HandshakeMsg,
     SpeechMsg,
+    WorldLayoutMsg,
     WorldTickMsg,
     Zone,
 )
@@ -57,8 +58,10 @@ class TestMakeServerHandshake:
         assert hs.schema_version == SCHEMA_VERSION
         assert "handshake" in hs.capabilities
         assert "agent_update" in hs.capabilities
-        # The full 10-kind set mirrors ControlEnvelope discriminators
-        # (M4 foundation added dialog_initiate / dialog_turn / dialog_close).
+        # The full kind set mirrors ControlEnvelope discriminators (M4
+        # foundation added dialog_*; M6 added reasoning_trace and
+        # reflection_event; M7γ adds world_layout for the on-connect
+        # snapshot).
         assert set(hs.capabilities) == {
             "handshake",
             "agent_update",
@@ -70,6 +73,9 @@ class TestMakeServerHandshake:
             "dialog_initiate",
             "dialog_turn",
             "dialog_close",
+            "reasoning_trace",
+            "reflection_event",
+            "world_layout",
         }
 
 
@@ -184,6 +190,22 @@ def _recv_envelope(ws: Any) -> ControlEnvelope:
     return env
 
 
+def _promote_to_active(ws: Any) -> None:
+    """Send the client handshake and consume the M7γ on-connect WorldLayoutMsg.
+
+    The gateway pushes a single ``world_layout`` envelope between handshake
+    validation and registry insertion, so any test that wants to assert
+    further runtime-driven envelopes must drain it first. Tests that
+    explicitly verify the layout shape should NOT use this helper —
+    see ``test_world_layout_msg.py``.
+    """
+    ws.send_text(_client_hs())
+    layout = _recv_envelope(ws)
+    assert isinstance(layout, WorldLayoutMsg), (
+        f"expected WorldLayoutMsg between handshake and ACTIVE, got {layout!r}"
+    )
+
+
 class TestHealthEndpoint:
     def test_health_returns_schema_and_status(self, client: TestClient) -> None:
         r = client.get("/health")
@@ -213,7 +235,7 @@ class TestHandshakeSuccess:
     ) -> None:
         with client.websocket_connect("/ws/observe") as ws:
             _ = _recv_envelope(ws)  # server handshake
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)  # sends client hs + drains world_layout
             # TestClient runs the app on a separate thread via an anyio
             # BlockingPortal; use it to call the async mock_runtime.put.
             speech = SpeechMsg(
@@ -289,7 +311,7 @@ class TestActivePhaseRobustness:
     ) -> None:
         with client.websocket_connect("/ws/observe") as ws:
             _ = _recv_envelope(ws)
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)
             ws.send_text("{not valid json")
             err = _recv_envelope(ws)
             assert isinstance(err, ErrorMsg)
@@ -308,7 +330,7 @@ class TestActivePhaseRobustness:
     ) -> None:
         with client.websocket_connect("/ws/observe") as ws:
             _ = _recv_envelope(ws)
-            ws.send_text(_client_hs())
+            _promote_to_active(ws)
             # Stay silent for > IDLE_DISCONNECT_S (patched to 0.5s).
             err = _recv_envelope(ws)
             assert isinstance(err, ErrorMsg)
@@ -329,8 +351,8 @@ class TestFanOut:
         ):
             _ = _recv_envelope(ws1)
             _ = _recv_envelope(ws2)
-            ws1.send_text(_client_hs())
-            ws2.send_text(_client_hs())
+            _promote_to_active(ws1)
+            _promote_to_active(ws2)
             env = WorldTickMsg(tick=3, active_agents=0)
             client.portal.call(mock_runtime.put, env)
             got1 = _recv_envelope(ws1)
