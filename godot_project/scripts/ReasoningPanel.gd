@@ -286,6 +286,6 @@ func _persona_from_agent_id(agent_id: String) -> String:
 	# middle persona segment for the relationships block so the line stays
 	# scannable. Falls back to the raw id when the dotted layout breaks.
 	var parts := agent_id.split(".")
-	if parts.size() >= 2 and String(parts[1]) != "":
-		return String(parts[1])
+	if parts.size() >= 2 and parts[1] != "":
+		return parts[1]
 	return agent_id

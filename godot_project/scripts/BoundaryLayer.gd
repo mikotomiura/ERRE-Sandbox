@@ -242,6 +242,12 @@ func _on_world_layout_received(zones: Array, props: Array) -> void:
 			"sx": float(defaults.get("sx", 18.0)),
 			"sz": float(defaults.get("sz", 18.0)),
 		})
+	# Asymmetric on purpose: zones keep the Godot-authored defaults when the
+	# envelope carries no rows, because every γ run has 5 fixed zones and an
+	# empty list is structurally a malformed payload — falling back to the
+	# defaults keeps the wireframe usable rather than disappearing the
+	# whole world. Props (below) take the opposite policy because zero
+	# props is a legitimate layout state.
 	if not new_rects.is_empty():
 		zone_rects = new_rects
 

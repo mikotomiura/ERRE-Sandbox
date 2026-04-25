@@ -56,7 +56,7 @@ current = true
 
 [node name="BoundaryLayer" type="Node3D" parent="UILayer/Split/WorldView/WorldViewport"]
 script = ExtResource("7_boundary")
-router_path = NodePath("../../../../EnvelopeRouter")
+router_path = NodePath("../../../../../EnvelopeRouter")
 
 [node name="AgentManager" type="Node3D" parent="UILayer/Split/WorldView/WorldViewport" unique_id=75119993]
 script = ExtResource("4_agentmgr")
