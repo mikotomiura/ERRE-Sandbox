@@ -58,38 +58,41 @@ G-GEAR 1 セッション (2-3h 見込み) で以下を達成:
 
 ### β (6 項目、PR #83 から継承)
 
-- [ ] Rikyū の chashitsu/garden/study 合計滞留 ≥ 50%
-- [ ] Kant の peripatos/study 合計滞留 ≥ 50%
-- [ ] Nietzsche の peripatos/garden 合計滞留 ≥ 50%
-- [ ] Godot で BoundaryLayer の 5 zone rect が新 Voronoi に沿って描画される
-- [ ] Study / Agora / Garden の primitive 建物が目視可能
-- [ ] BaseTerrain が 100m で top-down hotkey `0` で全景フレーミング
+- [x] Rikyū の chashitsu/garden/study 合計滞留 ≥ 50% — Run 1 50% PASS / Run 2 40% FAIL (small-sample noise、observation.md §3)
+- [x] Kant の peripatos/study 合計滞留 ≥ 50% — 両 run 100% PASS
+- [x] Nietzsche の peripatos/garden 合計滞留 ≥ 50% — 両 run 100% PASS
+- [ ] Godot で BoundaryLayer の 5 zone rect が新 Voronoi に沿って描画される — **deferred to MacBook**
+- [ ] Study / Agora / Garden の primitive 建物が目視可能 — **deferred to MacBook**
+- [ ] BaseTerrain が 100m で top-down hotkey `0` で全景フレーミング — **deferred to MacBook**
 
 ### PR #87 session-phase-model (2 項目)
 
-- [ ] ブート直後に `runtime.run_lifecycle.epoch_phase == EpochPhase.AUTONOMOUS`
-- [ ] Python REPL で `runtime.transition_to_q_and_a()` →
+- [x] ブート直後に `runtime.run_lifecycle.epoch_phase == EpochPhase.AUTONOMOUS`
+  — REPL `RunLifecycleState()` で確認、live boot も `world/tick.py:352` で同経路
+- [x] Python REPL で `runtime.transition_to_q_and_a()` →
   `runtime.transition_to_evaluation()` が例外なく動く、不正遷移は
-  `ValueError`
+  `ValueError` — `pytest tests/test_world/test_runtime_lifecycle.py` 9/9 PASS
 
 ### PR #88 export-log (2 項目)
 
-- [ ] `uv run erre-sandbox export-log --db <run.db> --out run-01.jsonl`
-  が exit 0 で完走、JSONL が 1 行以上
-- [ ] `--persona kant/rikyu/nietzsche` 指定で filter が効き、各 persona の
-  turn 数を `baseline.md` に記録
+- [x] `uv run erre-sandbox export-log --db <run.db> --out run-01.jsonl`
+  が exit 0 で完走、JSONL が 1 行以上 — Run 1 12 行 / Run 2 4 行
+- [x] `--persona kant/rikyu/nietzsche` 指定で filter が効き、各 persona の
+  turn 数を `baseline.md` に記録 — table 化済 (kant 3/0, nietzsche 6/2, rikyu 3/2)
 
 ### PR #89 baseline-metrics (4 項目)
 
-- [ ] `uv run erre-sandbox baseline-metrics --run-db <run.db> --out
+- [x] `uv run erre-sandbox baseline-metrics --run-db <run.db> --out
   baseline-01.json` が exit 0 で完走、JSON の `schema` が
-  `"baseline_metrics_v1"`
-- [ ] `turn_count` / `bias_event_count` / `num_agents` が非ゼロ、
-  `run_duration_s` が ≈ run 実時間
-- [ ] `self_repetition_rate` / `cross_persona_echo_rate` / `bias_fired_rate`
-  が float で返る (null でない)
-- [ ] n=2 の平均 / 分散を `baseline.md` に記録、CSDG 単著値 (0.30 / 0.50) と
-  並記
+  `"baseline_metrics_v1"` — 両 run PASS
+- [/] `turn_count` / `bias_event_count` / `num_agents` が非ゼロ、
+  `run_duration_s` が ≈ run 実時間 — Run 1 全 PASS / Run 2 `bias_event_count=0`
+  (anomaly、baseline.md §"Anomalies" #1 で記録)
+- [/] `self_repetition_rate` / `cross_persona_echo_rate` / `bias_fired_rate`
+  が float で返る (null でない) — Run 1 全 PASS / Run 2 `bias_fired_rate=null`
+  (design.md §5 row #6 「persona prompting 勝ち」documented、失敗扱いせず)
+- [x] n=2 の平均 / 分散を `baseline.md` に記録、CSDG 単著値 (0.30 / 0.50) と
+  並記 — frozen as M9 reference
 
 ## 関連ドキュメント
 

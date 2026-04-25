@@ -1,0 +1,82 @@
+{
+  "run_01_bias01": {
+    "a_kant_001": {
+      "persona": "kant",
+      "ticks": 4,
+      "zones_pct": {
+        "peripatos": 75.0,
+        "study": 25.0
+      }
+    },
+    "a_nietzsche_001": {
+      "persona": "nietzsche",
+      "ticks": 4,
+      "zones_pct": {
+        "peripatos": 100.0
+      }
+    },
+    "a_rikyu_001": {
+      "persona": "rikyu",
+      "ticks": 4,
+      "zones_pct": {
+        "garden": 50.0,
+        "peripatos": 50.0
+      }
+    }
+  },
+  "run_02_bias02": {
+    "a_kant_001": {
+      "persona": "kant",
+      "ticks": 5,
+      "zones_pct": {
+        "study": 40.0,
+        "peripatos": 60.0
+      }
+    },
+    "a_nietzsche_001": {
+      "persona": "nietzsche",
+      "ticks": 5,
+      "zones_pct": {
+        "peripatos": 100.0
+      }
+    },
+    "a_rikyu_001": {
+      "persona": "rikyu",
+      "ticks": 5,
+      "zones_pct": {
+        "chashitsu": 40.0,
+        "peripatos": 60.0
+      }
+    }
+  },
+  "verdicts": {
+    "Run 1 (0.1)": {
+      "kant": [
+        100.0,
+        "PASS"
+      ],
+      "nietzsche": [
+        100.0,
+        "PASS"
+      ],
+      "rikyu": [
+        50.0,
+        "PASS"
+      ]
+    },
+    "Run 2 (0.2)": {
+      "kant": [
+        100.0,
+        "PASS"
+      ],
+      "nietzsche": [
+        100.0,
+        "PASS"
+      ],
+      "rikyu": [
+        40.0,
+        "FAIL"
+      ]
+    }
+  }
+}

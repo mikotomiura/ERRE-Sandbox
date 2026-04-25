@@ -31,6 +31,17 @@
     到達 (M9 前提 ≥1000 の緩和は別 ADR)。affinity は M9 着手の必須ではないが、
     `m8-affinity-dynamics` が間に合えば比較精度が上がる
   - 関連 Skill: `llm-inference` (VRAM 予算)、`persona-erre` (system prompt 構造)
+- **2026-04-25 update**: G-GEAR live acceptance bundle 完了、baseline 固定済 (n=2、
+  Run 1 が M9 比較 reference)。詳細: `.steering/20260425-m7-beta-live-acceptance/baseline.md`。
+  - Frozen reference values (Run 1, bias_p=0.1, 80s, 3 persona):
+    `self_repetition_rate=0.0` / `cross_persona_echo_rate=0.0` / `bias_fired_rate=0.5556`
+  - CSDG 単著閾値 (0.30 / 0.50) と比較すると baseline は **両方 floor=0.0**
+    (n=12 turns では near-duplicate 検出するに corpus 不足、M9 同条件 run でも
+    floor 維持を期待)
+  - `affinity_trajectory` は予定通り null。`m8-affinity-dynamics` 完了後に
+    新たな reference を追加して 4 次元化する
+  - **M9 比較準備完了**: 同 G-GEAR / qwen3:8b+LoRA / 3 persona / 80s / bias_p=0.1
+    で `baseline-metrics` を回し、Run 1 と diff を取れば M9 着手判断可能
 
 ## D2. Agent scaling — observability-triggered
 

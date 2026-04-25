@@ -1,0 +1,11 @@
+{
+  "schema": "baseline_metrics_v1",
+  "turn_count": 4,
+  "bias_event_count": 0,
+  "num_agents": 2,
+  "run_duration_s": 30.0,
+  "self_repetition_rate": 0.0,
+  "cross_persona_echo_rate": 0.0,
+  "bias_fired_rate": null,
+  "affinity_trajectory": null
+}

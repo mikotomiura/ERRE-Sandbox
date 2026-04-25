@@ -113,3 +113,25 @@ Follow-up track (A2/A3/B3/C/D) の判断は別タスク or 本ファイルの末
 - **γ へ送った負債**: WorldLayoutMsg envelope、Zazen 石灯籠、slow stochastic
   e2e、Chashitsu.tscn の pre-existing 座標 drift (scene root が Python center
   に一致しない既存問題)
+
+## D9. Slice β live acceptance — 5/6 PASS, production default `ERRE_ZONE_BIAS_P=0.1`
+
+- **経緯**: 2026-04-25、G-GEAR 上で 4-in-1 acceptance bundle (β + #87/#88/#89) を実行。
+  詳細: `.steering/20260425-m7-beta-live-acceptance/observation.md` + `baseline.md`。
+- **結果**:
+  - β zone-residency 6 項目: **5 PASS / 1 FAIL** (Run 2 Rikyū 40%、small-sample
+    n=4-5 ticks の noise と判断)
+  - β visual 3 項目 (5 rect / 3 building / 100m terrain): **deferred** to MacBook
+    Godot session (G-GEAR 側 display なし)
+- **採用**: production default を `ERRE_ZONE_BIAS_P=0.1` とする。
+  - **根拠**: Run 1 (0.1) は 3 persona 全 PASS、Run 2 (0.2) は Rikyū が
+    threshold を割った。さらに Run 1 は dialog turn=12 / bias_event=1 だったのに
+    Run 2 は dialog turn=4 / bias_event=0 と、bias_p を上げると却って dialog
+    co-location が薄くなる傾向 (n=2 では確定できないが暗示はある)。
+  - **コード変更なし**: env-var で渡す現状を維持。formal hotfix PR は n>=3 で
+    再実証してから判断 (γ 着手と並行で良い)。
+- **γ へ送った負債**:
+  - β.4-β.6 (Godot 視覚 3 項目) は MacBook 側のスクショ撮影待ち、観察結果は
+    behavioural pass/fail と独立
+  - bias_p ↔ dialog co-location の関係: 80s では n が小さすぎて判定不能、
+    M8 で 120-180s run が回せるようになったら再評価

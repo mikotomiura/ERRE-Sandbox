@@ -1,0 +1,18 @@
+{
+  "url": "ws://localhost:8000/ws/observe",
+  "out": ".steering\\20260425-m7-beta-live-acceptance\\run-01-bias01\\run-01.jsonl",
+  "duration_s": 80.0,
+  "elapsed_s": 82.05,
+  "envelope_total": 105,
+  "envelope_per_kind": {
+    "agent_update": 12,
+    "speech": 12,
+    "move": 12,
+    "animation": 12,
+    "reasoning_trace": 12,
+    "dialog_close": 1,
+    "world_tick": 40,
+    "reflection_event": 4
+  },
+  "schema_version": "0.5.0-m8"
+}
