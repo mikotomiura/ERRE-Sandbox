@@ -273,3 +273,79 @@ TestClient WebSocket lifecycle (`with` context exit + explicit
   + 1 LOW (`String(parts[1])` redundancy). Fixup commit `093297b`
   resolved HIGH and MEDIUM #1 + LOW; MEDIUM #2 left as-is (matches
   `test_dialog_sink.py` precedent for scheduler internal access).
+
+## R3 — MacBook post-merge review (CSDG 比較観点、2026-04-25)
+
+G-GEAR ハンドオフ依頼に基づき、PR #92 を post-merge で CSDG (前身プロジェクト) の
+4 軸 (半数式 / 3 層 Critic / 2 層メモリ / 多様性強制) と整合性を取りながら
+code-reviewer agent でレビューした。次の δ Plan mode 起動時に Read される。
+
+### HIGH (δ / m8-affinity-dynamics 着手前に決着)
+
+- **H1**: `compute_affinity_delta` constant +0.02 lacks decay/attenuation
+  (`relational.py:80` で `del turn, recent_transcript, persona`)。CSDG 半数式
+  `base = prev*(1-decay) + event_impact*event_weight` の adoption を δ Plan で
+  必ず scope する。50 turns で affinity 1.0 cap → flat の step function 回避
+- **H2**: `apply_affinity_delta` の `model_copy` mutation が **single-writer
+  assumption** に依存しているが未文書化 (`world/tick.py:510`)。M9 並列処理導入で
+  race するリスク → `# SAFETY: single-writer` コメント追加か `asyncio.Lock` 導入
+- **H3**: `_fetch_recent_peer_turns` が全 dialog_turns を Python 側でロード後
+  filter (`cycle.py:759`)。M8+ で table 数千行になると 0.3 calls/s × full scan は
+  スケールしない → SQLite 側に push (`since_tick` / `limit` / `recent_peer_turns`
+  専用 query)
+
+### MEDIUM (δ Plan の design-final.md に組み込む)
+
+- **M1**: `MemoryEntry(kind=RELATIONAL)` の `importance=0.5` flat → CSDG の
+  `event_impact * event_weight` を `|delta| / AFFINITY_UPPER` で導出
+- **M2**: `_decision_with_affinity` が `last_interaction_tick` のみで bond 選択
+  (`cycle.py:1104`)。Godot ReasoningPanel は `|affinity|` primary で sort
+  しているので Python 側を `(|affinity|, last_interaction_tick)` desc に揃える
+- **M3**: reflection peer-turn injection で `speaker_id` (`a_nietzsche_001`) を
+  そのまま LLM に渡しており persona name にならない (`reflection.py:169-175`)
+  → persona registry resolver を `build_reflection_messages` に渡す
+- **M4**: γ は **正の delta のみ**。CSDG 半数式は negative impact 対応で、
+  `RelationshipBond.affinity` は `[-1.0, 1.0]` だが production path に
+  negative-delta trigger 無し → δ で lexical contradiction or persona-trait
+  antagonism factor を導入。`Physical.emotional_conflict` も unused
+- **M5**: `WorldLayoutMsg` on-connect で `layout_snapshot()` が遅い場合の
+  handshake stall ガード無し (`gateway.py:573`) → `asyncio.timeout(2.0)` +
+  empty-layout fallback
+
+### LOW (m8-affinity-dynamics 以降のバックログ)
+
+- **L1**: `BoundaryLayer.gd` zone size != 5 で `push_warning()` 追加
+- **L2**: `ReasoningPanel.gd:_persona_from_agent_id` が `split(".")` だが本番
+  agent_id は `a_kant_001` (underscore) → cosmetic bug、`split("_")` 修正
+- **L3**: `test_slice_gamma_e2e.py:195` で `runtime._agents` private dict 直接
+  アクセス → `get_agent_state()` public accessor 追加
+- **L4**: `_make_relational_sink` が `memory._add_sync` (private API) 呼び出し
+  → `add_sync()` public 化検討
+
+### CSDG 4 軸 比較サマリー
+
+| CSDG 資産 | γ 状態 | δ Action |
+|---|---|---|
+| **半数式** `prev*(1-decay) + event_impact*event_weight` | 未採用 (constant +0.02、signature 互換) | **必須**: body を decay-weighted に置換、event_impact = utterance sentiment / lexical features、event_weight = `PersonaSpec.personality` traits |
+| **3 層 Critic** (Rule 0.40 / Statistical 0.35 / LLM-Judge 0.25) | 未採用 | **defer to m8-affinity-dynamics or M10-11**。Rule = affinity-clamp invariant (γ 既存)、Statistical / LLM-Judge は delta 蓄積後 calibrate |
+| **2 層 Memory** (短期 3 日 + 長期 信念・転換点) | 部分採用 (短期: `retrieved_memories` top-3, `recent_dialog_turns` max-3 / 長期: `bond.affinity` 蓄積のみ、promotion 閾値無し) | δ で `belief_threshold` (e.g., `\|affinity\| > 0.5` after N interactions) 導入 → SemanticMemoryRecord に格上げ ("I trust Rikyu") |
+| **11 構造制約 / 多様性強制** | 未採用 | δ で最低限: (a) vocab-repetition guard (`recent_dialog_turns` から n-gram dedup)、(b) opening-line diversity (system prompt 制約)。残り 9 制約は M10-11 |
+
+### 結論: **Slice δ → m8-affinity-dynamics の順** を推奨
+
+1. **H1** (CSDG 半数式) と **M4** (negative delta) は両方とも `compute_affinity_delta`
+   body の改修 = δ explicit scope (design-final.md "lexical heuristic is
+   signature-compatible and δ swaps in the body"). m8-affinity-dynamics を
+   先にやると constant +0.02 上に dynamics を構築 → real formula 到来時に
+   refactor 二重コスト
+2. **H3** は δ の richer `recent_transcript` consumption (hot path) と
+   m8-affinity-dynamics の offline metric query (cold path) 双方に必要だが、
+   hot path 優先のほうが運用安全
+3. **M2** (decision sort key) と **M3** (speaker persona) は live run で UX 観測
+   される regression なので δ scope で同時に解消
+4. CSDG 2 層メモリ bridge (M1 + 長期 belief promotion) は real δ formula 上で
+   threshold calibration が必要 → 順序依存
+
+→ 次は **Slice δ Plan mode (Opus + /reimagine 必須)** を起動、本 R3 + decisions.md
+D2 の "how to apply" + design-final.md の δ scope 注記を Read してから設計開始。
+m8-affinity-dynamics は δ 完了後に L6 D1 residual として再開。
