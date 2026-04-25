@@ -1,4 +1,12 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
+
+; Slice γ (2026-04-25) — Zazen meditation scaffold gains a single stone
+; lantern (granite cylinder post + flat cap) modelled on the Garden roji
+; lantern in ``godot_project/scenes/zones/Garden.tscn``. The motif gives
+; the meditation locus a focal silhouette so that an agent in the zazen
+; ERRE mode is visibly anchored to a contemplative landmark rather than
+; standing on an empty plane. Dimensions match Garden's lantern (1.6 m
+; post, 0.8 m cap) for visual consistency.
 
 [sub_resource type="PlaneMesh" id="1_zazen_ground"]
 size = Vector2(30, 30)
@@ -7,9 +15,31 @@ size = Vector2(30, 30)
 albedo_color = Color(0.50, 0.50, 0.52, 1)
 roughness = 0.85
 
+[sub_resource type="CylinderMesh" id="3_lantern_post"]
+top_radius = 0.18
+bottom_radius = 0.22
+height = 1.6
+
+[sub_resource type="BoxMesh" id="4_lantern_cap"]
+size = Vector3(0.8, 0.18, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="5_granite"]
+albedo_color = Color(0.48, 0.46, 0.44, 1)
+roughness = 0.88
+
 [node name="Zazen" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -15)
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 mesh = SubResource("1_zazen_ground")
 material_override = SubResource("2_zazen_mat")
+
+[node name="LanternPost" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("3_lantern_post")
+material_override = SubResource("5_granite")
+
+[node name="LanternCap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+mesh = SubResource("4_lantern_cap")
+material_override = SubResource("5_granite")

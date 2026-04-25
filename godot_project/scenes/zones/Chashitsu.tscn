@@ -6,6 +6,13 @@
 ; res://assets/environment/chashitsu_v1.glb. Until that export lands, the
 ; primitives below give the researcher the scale and silhouette the user
 ; requested ("茶室をもう少し大きく / デザイン多様性を持たせたい").
+;
+; Slice γ (2026-04-25): scene root moved from (0, 0, 15) to
+; (33.33, 0, -33.33) to match ``ZONE_CENTERS[CHASHITSU]`` in
+; ``src/erre_sandbox/world/zones.py`` (``+WORLD_SIZE_M / 3`` on X,
+; ``-WORLD_SIZE_M / 3`` on Z). Child mesh positions are relative and stay
+; unchanged. The earlier Z=15 sat outside any zone Voronoi cell, so the
+; tea-room visually drifted away from BoundaryLayer's chashitsu rect.
 
 [sub_resource type="PlaneMesh" id="1_chashitsu_ground"]
 size = Vector2(30, 30)
@@ -73,7 +80,7 @@ bottom_radius = 0.1
 height = 0.08
 
 [node name="Chashitsu" type="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.33, 0, -33.33)
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 mesh = SubResource("1_chashitsu_ground")
