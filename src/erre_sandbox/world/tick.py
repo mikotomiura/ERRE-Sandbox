@@ -452,6 +452,26 @@ class WorldRuntime:
         agent = self._agents.get(agent_id)
         return agent.state.persona_id if agent is not None else None
 
+    def get_bond_affinity(
+        self,
+        agent_id: str,
+        other_agent_id: str,
+    ) -> float:
+        """Return ``agent_id``'s current affinity toward ``other_agent_id``.
+
+        ``0.0`` when ``agent_id`` is unknown or has no bond yet — matches
+        :class:`RelationshipBond.affinity`'s default so the M7δ semi-formula's
+        ``prev`` argument can be threaded through the bootstrap relational
+        sink without a special "first interaction" branch. Read-only.
+        """
+        rt = self._agents.get(agent_id)
+        if rt is None:
+            return 0.0
+        for bond in rt.state.relationships:
+            if bond.other_agent_id == other_agent_id:
+                return bond.affinity
+        return 0.0
+
     def apply_affinity_delta(
         self,
         *,
@@ -477,6 +497,12 @@ class WorldRuntime:
         wiring should keep this fail-soft so a transient missing agent
         cannot crash the live runtime.
         """
+        # SAFETY: single-writer assumption. The relational sink in
+        # bootstrap is the sole producer of affinity-delta calls and runs
+        # synchronously inside ``InMemoryDialogScheduler.record_turn``.
+        # If M9 introduces parallel cognition cycles or external mutators
+        # this method must guard ``rt.state.model_copy`` with an
+        # ``asyncio.Lock`` to prevent lost updates (R3 H2).
         rt = self._agents.get(agent_id)
         if rt is None:
             return

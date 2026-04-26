@@ -205,9 +205,16 @@ async def test_three_agent_relational_loop(
             f"{agent_id} bonds {partners} != expected {expected_partners}"
         )
         for bond in bonds:
-            # Slice γ delta is a constant +0.02 → every bond is positive
-            # after a single turn, and ichigo_ichie_count must be exactly 1.
-            assert bond.affinity > 0.0
+            # Slice δ semi-formula: delta is non-zero (positive for
+            # non-antagonistic pairings, negative for kant↔nietzsche via
+            # the _TRAIT_ANTAGONISM table). Either sign is valid; only
+            # zero (γ-era constant defeat) would indicate the formula
+            # silently regressed. ichigo_ichie_count must be exactly 1
+            # because each agent participated in exactly one turn.
+            assert bond.affinity != pytest.approx(0.0), (
+                f"{agent_id} bond with {bond.other_agent_id} has zero "
+                f"affinity — semi-formula did not fire."
+            )
             assert bond.ichigo_ichie_count == 1
             assert bond.last_interaction_tick is not None
 

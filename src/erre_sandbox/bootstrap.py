@@ -219,11 +219,41 @@ def _make_relational_sink(
                 turn.speaker_id,
             )
             return
-        delta = compute_affinity_delta(
+        addressee_persona_id = runtime.agent_persona_id(turn.addressee_id)
+        addressee_persona = (
+            persona_registry.get(addressee_persona_id)
+            if addressee_persona_id is not None
+            else None
+        )
+        # M7δ: each side computes its own delta from its own ``prev``
+        # (RelationshipBond.affinity at this instant) and from the
+        # respective perspective. The semi-formula is asymmetric in
+        # ``persona`` (decay/weight follow the perspective-holder's traits)
+        # so we cannot share a single delta across sides as M7γ did.
+        speaker_prev = runtime.get_bond_affinity(turn.speaker_id, turn.addressee_id)
+        delta_speaker = compute_affinity_delta(
             turn,
             recent_transcript=(),
             persona=speaker_persona,
+            prev=speaker_prev,
+            addressee_persona=addressee_persona,
         )
+        if addressee_persona is not None:
+            addressee_prev = runtime.get_bond_affinity(
+                turn.addressee_id,
+                turn.speaker_id,
+            )
+            delta_addressee = compute_affinity_delta(
+                turn,
+                recent_transcript=(),
+                persona=addressee_persona,
+                prev=addressee_prev,
+                addressee_persona=speaker_persona,
+            )
+        else:
+            # Defensive: addressee persona unresolved → fall back to the
+            # speaker-side delta to keep the bidirectional contract.
+            delta_addressee = delta_speaker
         relational_entry = MemoryEntry(
             id=str(uuid.uuid4()),
             agent_id=turn.speaker_id,
@@ -247,17 +277,18 @@ def _make_relational_sink(
                 exc,
             )
             return
-        # Bidirectional bond mutation: both sides feel the dialog turn.
+        # Bidirectional bond mutation: each side feels the dialog turn
+        # through its own perspective-derived delta.
         runtime.apply_affinity_delta(
             agent_id=turn.speaker_id,
             other_agent_id=turn.addressee_id,
-            delta=delta,
+            delta=delta_speaker,
             tick=turn.tick,
         )
         runtime.apply_affinity_delta(
             agent_id=turn.addressee_id,
             other_agent_id=turn.speaker_id,
-            delta=delta,
+            delta=delta_addressee,
             tick=turn.tick,
         )
 
