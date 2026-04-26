@@ -507,10 +507,17 @@ async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915, C901 — composi
                     addressee_pid,
                 )
                 return
+            # M7ε: stamp the live run-lifecycle epoch onto every persisted
+            # turn so ``scaling_metrics.aggregate()`` can drop QA_USER turns
+            # from relational-saturation metrics (M8 D5 / ADR D3). Reading
+            # ``runtime.run_lifecycle`` at sink time makes the value
+            # automatically follow ``transition_to_q_and_a()`` when the
+            # m9-LoRA Q&A driver lands.
             memory.add_dialog_turn_sync(
                 turn,
                 speaker_persona_id=speaker_pid,
                 addressee_persona_id=addressee_pid,
+                epoch_phase=runtime.run_lifecycle.epoch_phase,
             )
 
         # M7γ Commit 2: relational hook chain. After the M8 dialog-turn

@@ -506,3 +506,146 @@ def test_aggregate_supports_probe_wrapped_envelope(tmp_path: Path) -> None:
         math.log2(5),
         abs=1e-9,
     )
+
+
+# ---------------------------------------------------------------------------
+# M7ε D4 / M8 D5 — aggregate() filters by epoch_phase
+# ---------------------------------------------------------------------------
+
+
+def test_aggregate_filters_qa_user_turns(tmp_path: Path) -> None:
+    """``aggregate()`` only sees AUTONOMOUS turns; Q_AND_A turns are dropped.
+
+    Seed 6 AUTONOMOUS turns (which alone yield well-defined M1/M2 metrics)
+    and 6 Q_AND_A turns. After the M7ε filter, the metric values must
+    match the AUTONOMOUS-only baseline — Q_AND_A rows must not perturb
+    pair_information_gain or late_turn_fraction.
+    """
+    from erre_sandbox.schemas import DialogTurnMsg, EpochPhase
+
+    db_path = tmp_path / "mixed_phase.db"
+    store = MemoryStore(db_path=db_path)
+    store.create_schema()
+
+    # Six AUTONOMOUS turns — same shape as ``test_aggregate_seeded_db_populates_m1_m2``.
+    autonomous_pairs = [
+        ("kant", "rikyu"),
+        ("rikyu", "kant"),
+        ("kant", "rikyu"),
+        ("kant", "nietzsche"),
+        ("nietzsche", "kant"),
+        ("kant", "nietzsche"),
+    ]
+    for turn_index, (speaker, addressee) in enumerate(autonomous_pairs):
+        store.add_dialog_turn_sync(
+            DialogTurnMsg(
+                tick=10 + turn_index,
+                dialog_id="d_auto",
+                speaker_id=f"a_{speaker}_001",
+                addressee_id=f"a_{addressee}_001",
+                utterance=f"auto {turn_index}",
+                turn_index=turn_index,
+            ),
+            speaker_persona_id=speaker,
+            addressee_persona_id=addressee,
+            epoch_phase=EpochPhase.AUTONOMOUS,
+        )
+
+    # Six Q_AND_A turns with a degenerate single-pair pattern so that, if
+    # the filter were broken, M1 (pair_information_gain) would collapse
+    # toward 0 and the test would fail loudly.
+    for turn_index in range(6):
+        store.add_dialog_turn_sync(
+            DialogTurnMsg(
+                tick=20 + turn_index,
+                dialog_id="d_qa",
+                speaker_id="a_kant_001",
+                addressee_id="a_rikyu_001",
+                utterance=f"qa {turn_index}",
+                turn_index=turn_index,
+            ),
+            speaker_persona_id="kant",
+            addressee_persona_id="rikyu",
+            epoch_phase=EpochPhase.Q_AND_A,
+        )
+
+    result = aggregate(db_path, run_id="mixed_phase")
+    # Only the 6 autonomous turns drive metrics.
+    assert result["num_dialog_turns"] == 6
+    assert result["num_agents"] == 3
+    autonomous_pair_info = result["pair_information_gain_bits"]
+    autonomous_late = result["late_turn_fraction"]
+    assert isinstance(autonomous_pair_info, float)
+
+    # Compute the AUTONOMOUS-only baseline directly from the same DB and
+    # compare. This makes the assertion immune to formula tweaks: whatever
+    # the autonomous-only number is, the mixed-phase number must equal it.
+    baseline_db = tmp_path / "auto_only.db"
+    baseline_store = MemoryStore(db_path=baseline_db)
+    baseline_store.create_schema()
+    for turn_index, (speaker, addressee) in enumerate(autonomous_pairs):
+        baseline_store.add_dialog_turn_sync(
+            DialogTurnMsg(
+                tick=10 + turn_index,
+                dialog_id="d_auto",
+                speaker_id=f"a_{speaker}_001",
+                addressee_id=f"a_{addressee}_001",
+                utterance=f"auto {turn_index}",
+                turn_index=turn_index,
+            ),
+            speaker_persona_id=speaker,
+            addressee_persona_id=addressee,
+            epoch_phase=EpochPhase.AUTONOMOUS,
+        )
+    baseline_result = aggregate(baseline_db, run_id="auto_only")
+    assert autonomous_pair_info == pytest.approx(
+        baseline_result["pair_information_gain_bits"]
+    )
+    assert autonomous_late == pytest.approx(baseline_result["late_turn_fraction"])
+
+
+def test_aggregate_pre_migration_null_treated_as_autonomous(tmp_path: Path) -> None:
+    """Pre-M7ε rows have NULL ``epoch_phase`` and must count as AUTONOMOUS.
+
+    Backward-compat contract from ε decisions D4 / store docstring: a
+    legacy DB whose ``dialog_turns`` rows pre-date the column must read
+    back through the AUTONOMOUS filter and contribute to metrics, not be
+    silently dropped.
+    """
+    db_path = tmp_path / "null_phase.db"
+    store = MemoryStore(db_path=db_path)
+    store.create_schema()
+
+    # Insert rows directly with NULL epoch_phase, bypassing add_dialog_turn_sync.
+    conn = store._ensure_conn()
+    with store._conn_lock:
+        for turn_index in range(6):
+            speaker, addressee = (
+                ("kant", "nietzsche")
+                if turn_index % 2 == 0
+                else ("nietzsche", "kant")
+            )
+            conn.execute(
+                "INSERT INTO dialog_turns(id, dialog_id, tick, turn_index, "
+                "speaker_agent_id, speaker_persona_id, addressee_agent_id, "
+                "addressee_persona_id, utterance, created_at, epoch_phase) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,NULL)",
+                (
+                    f"dt_legacy_{turn_index:04d}",
+                    "d_legacy",
+                    10 + turn_index,
+                    turn_index,
+                    f"a_{speaker}_001",
+                    speaker,
+                    f"a_{addressee}_001",
+                    addressee,
+                    f"legacy {turn_index}",
+                    f"2026-04-25T12:00:{turn_index:02d}+00:00",
+                ),
+            )
+        conn.commit()
+
+    result = aggregate(db_path, run_id="legacy")
+    # All 6 NULL rows survive the filter.
+    assert result["num_dialog_turns"] == 6
+    assert result["num_agents"] == 2

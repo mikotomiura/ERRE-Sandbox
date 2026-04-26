@@ -550,20 +550,25 @@ def aggregate(
 
     .. note::
 
-       D5 (session_phase boundary): the M8 spike runs without
-       ``session_phase`` populated, so every turn is treated as
-       AUTONOMOUS for metric purposes. When ADR D3 lands the filter
-       (``session_phase == AUTONOMOUS``) goes here, around the
-       ``store.iter_dialog_turns()`` call.
+       D5 (epoch_phase boundary, M7ε): only ``EpochPhase.AUTONOMOUS``
+       turns drive the relational-saturation metrics. Q&A epoch turns
+       (researcher-injected, ``EpochPhase.Q_AND_A``) are filtered out
+       at iteration time so the trigger reflects autonomous behaviour
+       quality, not user-induced bias. Pre-M7ε rows have NULL
+       ``epoch_phase`` and are treated as AUTONOMOUS for backward compat
+       (see ``MemoryStore.iter_dialog_turns`` docstring).
     """
     # Local import: store is async-heavy and we don't want to pay its
     # startup cost when callers only want the pure helpers above.
     from erre_sandbox.memory.store import MemoryStore  # noqa: PLC0415
+    from erre_sandbox.schemas import EpochPhase  # noqa: PLC0415
 
     store = MemoryStore(db_path=run_db_path)
     store.create_schema()
     try:
-        turns = list(store.iter_dialog_turns())
+        turns = list(
+            store.iter_dialog_turns(epoch_phase=EpochPhase.AUTONOMOUS),
+        )
     finally:
         conn = store._conn  # noqa: SLF001 — sync close mirrors evidence.metrics.aggregate
         if conn is not None:
