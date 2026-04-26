@@ -220,6 +220,17 @@ def _maybe_persist_belief(
     )
     if record is None:
         return
+    # M7ζ: stamp ``RelationshipBond.latest_belief_kind`` so the next
+    # AgentUpdateMsg snapshot carries the typed classification — the
+    # Godot ReasoningPanel reads it from the bond directly. record.belief_kind
+    # is non-None at this point because maybe_promote_belief always populates
+    # it on a successful promotion (see cognition/belief.py:202).
+    if record.belief_kind is not None:
+        runtime.apply_belief_promotion(
+            agent_id=agent_id,
+            other_agent_id=other_agent_id,
+            belief_kind=record.belief_kind,
+        )
     try:
         memory._upsert_semantic_sync(record)  # noqa: SLF001 — sink-internal sync hook
     except sqlite3.DatabaseError as exc:

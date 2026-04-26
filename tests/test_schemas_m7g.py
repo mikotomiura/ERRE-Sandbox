@@ -34,6 +34,7 @@ from erre_sandbox.schemas import (
     PropLayout,
     ReasoningTrace,
     ReasoningTraceMsg,
+    RelationshipBond,
     WorldLayoutMsg,
     Zone,
     ZoneLayout,
@@ -220,6 +221,37 @@ def test_reasoning_trace_rejects_extra_fields() -> None:
                 "tick": 0,
                 "mode": "peripatetic",
                 "rogue_field": "should be rejected",
+            },
+        )
+
+
+# ---------- M7ζ RelationshipBond.latest_belief_kind --------------------------
+
+
+def test_relationship_bond_latest_belief_kind_defaults_to_none() -> None:
+    """M7ζ-additive: pre-0.9.0-m7z bonds deserialise without the field."""
+    bond = RelationshipBond.model_validate({"other_agent_id": "a_nietzsche_001"})
+    assert bond.latest_belief_kind is None
+
+
+@pytest.mark.parametrize("kind", ["trust", "clash", "wary", "curious", "ambivalent"])
+def test_relationship_bond_latest_belief_kind_accepts_each_literal(kind: str) -> None:
+    """All five SemanticMemoryRecord.belief_kind values round-trip on the bond."""
+    bond = RelationshipBond(
+        other_agent_id="a_other_001",
+        latest_belief_kind=kind,  # type: ignore[arg-type]
+    )
+    re_loaded = RelationshipBond.model_validate_json(bond.model_dump_json())
+    assert re_loaded.latest_belief_kind == kind
+
+
+def test_relationship_bond_latest_belief_kind_rejects_unknown_value() -> None:
+    """An unrecognised literal must fail validation rather than silently pass."""
+    with pytest.raises(ValidationError):
+        RelationshipBond.model_validate(
+            {
+                "other_agent_id": "a_other_001",
+                "latest_belief_kind": "ecstatic",
             },
         )
 

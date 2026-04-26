@@ -598,6 +598,51 @@ class WorldRuntime:
             update={"relationships": new_bonds, "physical": new_physical},
         )
 
+    def apply_belief_promotion(
+        self,
+        *,
+        agent_id: str,
+        other_agent_id: str,
+        belief_kind: Literal["trust", "clash", "wary", "curious", "ambivalent"],
+    ) -> None:
+        """Stamp ``RelationshipBond.latest_belief_kind`` on a promoted dyad (M7ζ).
+
+        Called from the bootstrap relational sink the moment
+        :func:`erre_sandbox.cognition.belief.maybe_promote_belief` returns a
+        non-None record, so the next ``AgentUpdateMsg`` snapshot carries the
+        typed classification on the bond. Co-locating the write here (rather
+        than at agent_state-export time via a semantic_memory lookup) avoids
+        an extra DB read on every panel refresh; the bond IS the source of
+        truth for what the Godot ``ReasoningPanel`` renders.
+
+        Silent no-op when ``agent_id`` is not registered or the bond is
+        absent: the relational sink is fire-and-forget, identical to
+        :meth:`apply_affinity_delta`'s contract.
+
+        SAFETY: same single-writer assumption as :meth:`apply_affinity_delta`
+        — the bootstrap sink is the sole producer and runs synchronously.
+        """
+        rt = self._agents.get(agent_id)
+        if rt is None:
+            return
+        existing = list(rt.state.relationships)
+        new_bonds: list[RelationshipBond] = []
+        found = False
+        for bond in existing:
+            if bond.other_agent_id == other_agent_id:
+                new_bonds.append(
+                    bond.model_copy(update={"latest_belief_kind": belief_kind}),
+                )
+                found = True
+            else:
+                new_bonds.append(bond)
+        if not found:
+            # Defensive: a promotion without a prior bond should never
+            # happen (maybe_promote_belief reads bond fields), but if it
+            # does the sink stays fail-soft rather than fabricating a bond.
+            return
+        rt.state = rt.state.model_copy(update={"relationships": new_bonds})
+
     def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg:
         """Construct a :class:`WorldLayoutMsg` from the static zone tables (M7γ).
 

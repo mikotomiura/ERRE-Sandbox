@@ -481,6 +481,32 @@ class RelationshipBond(BaseModel):
             "``ReasoningPanel`` to render ``'last in <zone>'`` next to affinity."
         ),
     )
+    latest_belief_kind: (
+        Literal[
+            "trust",
+            "clash",
+            "wary",
+            "curious",
+            "ambivalent",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description=(
+            "Most-recent typed classification promoted from this bond's "
+            "affinity loop (M7ζ). Same value domain as "
+            ":attr:`SemanticMemoryRecord.belief_kind` — kept here so the "
+            "Godot ``ReasoningPanel`` can render an icon prefix "
+            "(``◯△✕？◇``) next to the bond row without joining to the "
+            "semantic_memory table at every panel refresh. Written by "
+            "``WorldRuntime.apply_belief_promotion`` from the bootstrap "
+            "relational sink the moment ``cognition.belief.maybe_promote_belief`` "
+            "graduates the bond past its ``|affinity| × N`` gates. Older "
+            "bonds (pre-0.9.0-m7z) deserialise as None; once set, the value "
+            "is overwritten only by a subsequent successful promotion of the "
+            "same dyad — an affinity drop below threshold does not clear it."
+        ),
+    )
 
 
 class AgentState(BaseModel):

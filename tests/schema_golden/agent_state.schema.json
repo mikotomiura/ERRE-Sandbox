@@ -308,6 +308,26 @@
           "default": null,
           "description": "Zone where the most recent dyad interaction occurred. M7δ-added; older bonds (pre-0.7.0-m7d) deserialise as None. Written by ``WorldRuntime.apply_affinity_delta`` and read by Godot's ``ReasoningPanel`` to render ``'last in <zone>'`` next to affinity."
         },
+        "latest_belief_kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "trust",
+                "clash",
+                "wary",
+                "curious",
+                "ambivalent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Most-recent typed classification promoted from this bond's affinity loop (M7ζ). Same value domain as :attr:`SemanticMemoryRecord.belief_kind` — kept here so the Godot ``ReasoningPanel`` can render an icon prefix (``◯△✕？◇``) next to the bond row without joining to the semantic_memory table at every panel refresh. Written by ``WorldRuntime.apply_belief_promotion`` from the bootstrap relational sink the moment ``cognition.belief.maybe_promote_belief`` graduates the bond past its ``|affinity| × N`` gates. Older bonds (pre-0.9.0-m7z) deserialise as None; once set, the value is overwritten only by a subsequent successful promotion of the same dyad — an affinity drop below threshold does not clear it.",
+          "title": "Latest Belief Kind"
+        },
         "other_agent_id": {
           "title": "Other Agent Id",
           "type": "string"
