@@ -119,17 +119,20 @@ is noticed when the agent is *at* it, not merely in the same zone."""
 _NEGATIVE_DELTA_TRIGGER: Final[float] = -0.05
 """M7δ threshold below which a negative affinity delta raises emotional_conflict.
 
-Calibrated so the antagonism table's -0.30 magnitude (kant↔nietzsche)
+Calibrated so the antagonism table's -0.10 magnitude (kant↔nietzsche)
 fires the bump while transient negative noise from decay alone (decay
-contribution at low ``prev`` is well above -0.05) does not."""
+contribution at low ``prev`` is well above -0.05) does not. Value as of
+the C5 retune; see ``.steering/20260426-m7-slice-delta/observation.md``
+for the full calibration trajectory."""
 
 _EMOTIONAL_CONFLICT_GAIN: Final[float] = 0.5
 """Coefficient applied to ``abs(delta)`` when raising emotional_conflict.
 
-A -0.30 antagonism delta therefore raises emotional_conflict by 0.15
+A -0.10 antagonism delta therefore raises emotional_conflict by 0.05
 per turn, clamped at the upper bound of 1.0. The decay back to baseline
 (``-0.02`` per tick) happens in
-:func:`erre_sandbox.cognition.state.advance_physical`."""
+:func:`erre_sandbox.cognition.state.advance_physical`. Value as of the
+C5 retune; see ``.steering/20260426-m7-slice-delta/observation.md``."""
 
 
 def _time_of_day(elapsed: float, day_duration: float) -> TimeOfDay:

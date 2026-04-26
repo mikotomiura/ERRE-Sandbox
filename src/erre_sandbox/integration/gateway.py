@@ -69,6 +69,12 @@ models), so it is created once at import time and reused.
 """
 
 _MAX_RAW_FRAME_BYTES: Final[int] = 64 * 1024
+"""Hard upper bound on a single WS text frame we try to parse.
+
+Anything larger is rejected with :class:`ErrorMsg` ``invalid_envelope``
+without even attempting to decode — a cheap DoS mitigation in line with the
+same bound used by ``cognition.parse.MAX_RAW_PLAN_BYTES``.
+"""
 
 _LAYOUT_SNAPSHOT_TIMEOUT_S: Final[float] = 2.0
 """Hard cap on ``layout_snapshot`` build time at handshake (M7δ R3 M5).
@@ -79,12 +85,6 @@ exists for the failure mode where a future runtime extension reaches into
 the live world (DB, LLM cache warm-up, etc.) and stalls indefinitely;
 the gateway then falls back to an empty ``WorldLayoutMsg`` so the WS
 handshake still completes."""
-"""Hard upper bound on a single WS text frame we try to parse.
-
-Anything larger is rejected with :class:`ErrorMsg` ``invalid_envelope``
-without even attempting to decode — a cheap DoS mitigation in line with the
-same bound used by ``cognition.parse.MAX_RAW_PLAN_BYTES``.
-"""
 
 _SERVER_CAPABILITIES: Final[tuple[str, ...]] = (
     "handshake",

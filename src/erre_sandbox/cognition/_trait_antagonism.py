@@ -32,8 +32,11 @@ from typing import Final
 # Mapping ``(speaker_persona_id, addressee_persona_id) → antagonism``.
 # Antagonism is a *negative* event_impact contribution that flows into
 # ``compute_affinity_delta`` and dominates the structural positive term so
-# the delta lands clearly in the negative region. -0.30 is the calibrated
-# magnitude from .steering/20260426-m7-slice-delta/design-final.md (Axis 2).
+# the delta lands clearly in the negative region. -0.10 is the calibrated
+# magnitude as of the C5 retune in
+# .steering/20260426-m7-slice-delta/decisions.md ("C5 calibration retune");
+# the original -0.30 in design-final.md was reduced to land saturation
+# crossings inside the 6-12 turn live-acceptance window.
 _TRAIT_ANTAGONISM: Final[dict[tuple[str, str], float]] = {
     ("kant", "nietzsche"): -0.10,
     ("nietzsche", "kant"): -0.10,
