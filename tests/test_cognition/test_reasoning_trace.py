@@ -137,11 +137,72 @@ async def test_cycle_emits_reasoning_trace_envelope_when_fields_filled(
     assert len(msgs) == 1
     trace: ReasoningTrace = msgs[0].trace
     assert trace.agent_id == result.agent_state.agent_id
+    assert trace.persona_id == result.agent_state.persona_id  # M7ζ stamp
     assert trace.tick == result.agent_state.tick
     assert trace.mode == result.agent_state.erre.name
     assert trace.salient == "遠くの聖堂の鐘"
     assert trace.decision == "散策を続けて定言命法を言語化する"
     assert trace.next_intent == "戻って三批判書の第二章を書き継ぐ"
+
+
+async def test_cycle_stamps_persona_id_for_non_default_persona(
+    make_agent_state: Callable[..., Any],
+    make_persona_spec: Callable[..., Any],
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+) -> None:
+    """The persona_id stamp must follow ``AgentState.persona_id``, not a constant.
+
+    M7ζ: the Godot ``ReasoningPanel`` uses ``trace.persona_id`` to look up
+    display_name + 1-line summary in its static dict, so a wrong stamp would
+    surface the wrong persona to the researcher.
+    """
+    llm_content = _plan_json(decision="silence is the answer")
+    persona: PersonaSpec = make_persona_spec(
+        persona_id="rikyu", display_name="Sen no Rikyū",
+    )
+    agent = make_agent_state(agent_id="a_rikyu_002", persona_id="rikyu")
+    embedding = make_embedding_client()
+    llm = make_chat_client(content=llm_content)
+
+    try:
+        cycle = CognitionCycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            rng=Random(0),
+        )
+        result = await cycle.step(agent, persona, [])
+    finally:
+        await embedding.close()
+        await llm.close()
+
+    msgs = _reasoning_msgs(result.envelopes)
+    assert len(msgs) == 1
+    assert msgs[0].trace.persona_id == "rikyu"
+
+
+def test_reasoning_trace_persona_id_defaults_to_none() -> None:
+    """Older M7ε wire payloads (no persona_id) deserialise as ``persona_id=None``.
+
+    Backward-compat invariant — without this, the M7ζ schema bump would
+    immediately break any cached fixtures captured pre-0.9.0-m7z.
+    """
+    trace = ReasoningTrace.model_validate(
+        {
+            "agent_id": "a_kant_001",
+            "tick": 7,
+            "mode": "deep_work",
+            "salient": "an old payload",
+        },
+    )
+    assert trace.persona_id is None
+    # Round-trip preserves the explicit None.
+    re_loaded = ReasoningTrace.model_validate_json(trace.model_dump_json())
+    assert re_loaded.persona_id is None
 
 
 async def test_cycle_omits_reasoning_trace_envelope_when_all_none(

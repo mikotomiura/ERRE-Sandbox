@@ -725,6 +725,7 @@ class CognitionCycle:
             trace = ReasoningTrace(
                 agent_id=new_state.agent_id,
                 tick=new_state.tick,
+                persona_id=new_state.persona_id,
                 mode=new_state.erre.name,
                 salient=plan.salient,
                 decision=decision,
