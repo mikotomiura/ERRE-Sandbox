@@ -69,6 +69,16 @@ models), so it is created once at import time and reused.
 """
 
 _MAX_RAW_FRAME_BYTES: Final[int] = 64 * 1024
+
+_LAYOUT_SNAPSHOT_TIMEOUT_S: Final[float] = 2.0
+"""Hard cap on ``layout_snapshot`` build time at handshake (M7δ R3 M5).
+
+Two seconds is generous given the production snapshot is a pure read of
+``ZONE_CENTERS`` / ``ZONE_PROPS`` (microseconds in practice). The bound
+exists for the failure mode where a future runtime extension reaches into
+the live world (DB, LLM cache warm-up, etc.) and stalls indefinitely;
+the gateway then falls back to an empty ``WorldLayoutMsg`` so the WS
+handshake still completes."""
 """Hard upper bound on a single WS text frame we try to parse.
 
 Anything larger is rejected with :class:`ErrorMsg` ``invalid_envelope``
@@ -472,7 +482,7 @@ async def _broadcaster(runtime: _RuntimeLike, registry: Registry) -> None:
 # =============================================================================
 
 
-async def ws_observe(ws: WebSocket) -> None:
+async def ws_observe(ws: WebSocket) -> None:  # noqa: PLR0915 — protocol state machine inherently long
     """Top-level WS handler. Also the session state machine.
 
     The three protocol phases map onto the function's linear control flow:
@@ -569,8 +579,26 @@ async def ws_observe(ws: WebSocket) -> None:
         # *before* any cognition-driven envelope, so the Godot
         # :class:`BoundaryLayer` can hydrate ``zone_rects`` / ``prop_coords``
         # before the first agent tick paints over them.
+        #
+        # M7δ R3 M5: bound the snapshot build with ``asyncio.timeout(2.0)``
+        # so a slow scan cannot stall the handshake. On timeout we fall back
+        # to an empty :class:`WorldLayoutMsg` (the same shape ``_NullRuntime``
+        # returns) and continue — Godot's BoundaryLayer treats an empty
+        # ``zone_rects`` as "no overlay", which is degraded but live, not
+        # frozen. Logged at WARNING so operators can see the regression.
         runtime: _RuntimeLike = ws.app.state.runtime
-        await _send(ws, runtime.layout_snapshot())
+        try:
+            async with asyncio.timeout(_LAYOUT_SNAPSHOT_TIMEOUT_S):
+                layout_msg = await asyncio.to_thread(runtime.layout_snapshot)
+        except TimeoutError:
+            logger.warning(
+                "[gateway] layout_snapshot exceeded %.1fs — sending empty "
+                "fallback so handshake can complete (session=%s)",
+                _LAYOUT_SNAPSHOT_TIMEOUT_S,
+                session_id,
+            )
+            layout_msg = WorldLayoutMsg(tick=0)
+        await _send(ws, layout_msg)
 
         out_queue: asyncio.Queue[ControlEnvelope] = asyncio.Queue(
             maxsize=protocol.MAX_ENVELOPE_BACKLOG,

@@ -21,6 +21,7 @@ from erre_sandbox.cognition.reflection import build_reflection_messages
 from erre_sandbox.inference import OllamaUnavailableError
 from erre_sandbox.memory import EmbeddingUnavailableError
 from erre_sandbox.schemas import (
+    DialogTurnMsg,
     MemoryEntry,
     MemoryKind,
     ReflectionEvent,
@@ -625,3 +626,92 @@ def test_reflection_system_prompt_no_hint_for_unknown_persona(
     # English-only base prompt, no Japanese hint appended.
     assert "日本語" not in system
     assert "記述せよ" not in system
+
+
+# ---------------------------------------------------------------------------
+# M7δ R3 M3 — persona resolver renders display names in the peer block
+# ---------------------------------------------------------------------------
+
+
+def test_reflection_peer_block_uses_speaker_id_when_no_resolver(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """Default behaviour (M7γ): raw ``speaker_id`` appears verbatim."""
+    persona = make_persona_spec(persona_id="kant")
+    agent = make_agent_state()
+    peer_turn = DialogTurnMsg(
+        tick=10,
+        dialog_id="d1",
+        speaker_id="a_nietzsche_001",
+        addressee_id="a_kant_001",
+        utterance="Tanze, nicht meditiere.",
+        turn_index=0,
+    )
+    messages = build_reflection_messages(
+        persona,
+        agent,
+        episodic=[],
+        recent_dialog_turns=[peer_turn],
+    )
+    system = messages[0].content
+    assert "a_nietzsche_001" in system
+    assert "Friedrich Nietzsche" not in system
+
+
+def test_reflection_peer_block_uses_resolver_display_name(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """With a resolver, peer lines show the persona's display name."""
+    persona = make_persona_spec(persona_id="kant")
+    agent = make_agent_state()
+    peer_turn = DialogTurnMsg(
+        tick=10,
+        dialog_id="d1",
+        speaker_id="a_nietzsche_001",
+        addressee_id="a_kant_001",
+        utterance="Tanze, nicht meditiere.",
+        turn_index=0,
+    )
+
+    def _resolver(speaker_id: str) -> str | None:
+        return {"a_nietzsche_001": "Friedrich Nietzsche"}.get(speaker_id)
+
+    messages = build_reflection_messages(
+        persona,
+        agent,
+        episodic=[],
+        recent_dialog_turns=[peer_turn],
+        persona_resolver=_resolver,
+    )
+    system = messages[0].content
+    assert "Friedrich Nietzsche" in system
+    # Raw id should no longer appear in the peer block.
+    assert "a_nietzsche_001" not in system
+
+
+def test_reflection_peer_block_falls_back_when_resolver_returns_none(
+    make_agent_state: Any,
+    make_persona_spec: Any,
+) -> None:
+    """Unresolved speaker ids degrade gracefully to the raw id."""
+    persona = make_persona_spec(persona_id="kant")
+    agent = make_agent_state()
+    peer_turn = DialogTurnMsg(
+        tick=10,
+        dialog_id="d1",
+        speaker_id="a_unknown_001",
+        addressee_id="a_kant_001",
+        utterance="...",
+        turn_index=0,
+    )
+    messages = build_reflection_messages(
+        persona,
+        agent,
+        episodic=[],
+        recent_dialog_turns=[peer_turn],
+        persona_resolver=lambda _sid: None,
+    )
+    system = messages[0].content
+    assert "a_unknown_001" in system

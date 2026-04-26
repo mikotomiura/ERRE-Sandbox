@@ -43,7 +43,7 @@ from erre_sandbox.schemas import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Callable, Iterable, Sequence
 
     from erre_sandbox.inference import OllamaChatClient
     from erre_sandbox.memory import EmbeddingClient, MemoryStore
@@ -134,6 +134,8 @@ def build_reflection_messages(
     agent: AgentState,
     episodic: Sequence[MemoryEntry],
     recent_dialog_turns: Sequence[DialogTurnMsg] = (),
+    *,
+    persona_resolver: Callable[[str], str | None] | None = None,
 ) -> list[ChatMessage]:
     """Build the two-message prompt the reflection LLM call consumes.
 
@@ -151,6 +153,14 @@ def build_reflection_messages(
     ``.steering/20260424-m7-differentiation-observability/decisions.md``.
     Empty default keeps M6 callers (and unit tests for those callers)
     binary-compatible.
+
+    M7δ (R3 M3): the optional ``persona_resolver`` maps a peer
+    ``speaker_id`` (e.g. ``a_nietzsche_001``) to the persona's
+    ``display_name`` (e.g. ``"Friedrich Nietzsche"``) so the LLM sees
+    historically-grounded names rather than internal id strings. The
+    resolver may return ``None`` for unresolved ids; the line then falls
+    back to the raw ``speaker_id``. Default ``None`` preserves the M7γ
+    rendering for callers that have not yet been migrated.
     """
     zone = agent.position.zone.value
     mode = agent.erre.name.value
@@ -166,10 +176,14 @@ def build_reflection_messages(
     if lang_hint:
         system = f"{system} {lang_hint}"
     if recent_dialog_turns:
-        peer_lines = [
-            f"- {turn.speaker_id}: {_truncate(turn.utterance)}"
-            for turn in recent_dialog_turns
-        ]
+        peer_lines: list[str] = []
+        for turn in recent_dialog_turns:
+            speaker_label = turn.speaker_id
+            if persona_resolver is not None:
+                resolved = persona_resolver(turn.speaker_id)
+                if resolved:
+                    speaker_label = resolved
+            peer_lines.append(f"- {speaker_label}: {_truncate(turn.utterance)}")
         peer_block = "\n".join(peer_lines)
         system = (
             f"{system}\n\nRecent peer utterances (newest last, max 3):\n{peer_block}"
@@ -203,12 +217,19 @@ class Reflector:
         embedding: EmbeddingClient,
         llm: OllamaChatClient,
         policy: ReflectionPolicy | None = None,
+        persona_resolver: Callable[[str], str | None] | None = None,
     ) -> None:
         self._store = store
         self._embedding = embedding
         self._llm = llm
         self._policy = policy or ReflectionPolicy()
         self._ticks_since_last: dict[str, int] = {}
+        # M7δ R3 M3: optional ``speaker_id → display_name`` resolver
+        # threaded into ``build_reflection_messages`` so peer-utterance
+        # lines render historical names instead of internal agent ids.
+        # Default ``None`` keeps M7γ rendering for callers (e.g. unit
+        # tests) that have not supplied one.
+        self._persona_resolver = persona_resolver
 
     @property
     def policy(self) -> ReflectionPolicy:
@@ -292,6 +313,7 @@ class Reflector:
             agent_state,
             episodic,
             recent_dialog_turns=recent_dialog_turns,
+            persona_resolver=self._persona_resolver,
         )
         sampling = compose_sampling(
             persona.default_sampling,

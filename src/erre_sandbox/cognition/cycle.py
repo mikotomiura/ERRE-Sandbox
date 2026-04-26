@@ -1091,12 +1091,16 @@ def _decision_with_affinity(
     decision: str | None,
     new_state: AgentState,
 ) -> str | None:
-    """Append the most-recent bond's affinity hint to ``decision`` (M7γ D4).
+    """Append the most salient bond's affinity hint to ``decision`` (M7γ D4 + M7δ M2).
 
-    Picks the :class:`RelationshipBond` with the highest
-    :attr:`RelationshipBond.last_interaction_tick` (None ticks rank below
-    any concrete tick) so the hint reflects *who the agent just spoke to*
-    rather than a stale long-term relationship.
+    M7γ ranked bonds by ``last_interaction_tick`` only — so a recently-
+    touched but neutral bond would shadow a strongly-charged older one.
+    M7δ tightens the rule: rank by ``(|affinity|, last_interaction_tick)``
+    descending so the hint surfaces the bond that actually carries
+    emotional weight. The Godot :class:`ReasoningPanel` already sorts the
+    Relationships foldout by ``|affinity|`` first; this Python-side change
+    aligns the LLM's decision-suffix hint with what the user sees on
+    screen (R3 M2).
 
     When there is no bond at all the original decision passes through
     unchanged. When ``decision`` is None and there *is* a bond the hint
@@ -1111,13 +1115,14 @@ def _decision_with_affinity(
     """
     if not new_state.relationships:
         return decision
-    most_recent = max(
+    most_salient = max(
         new_state.relationships,
         key=lambda b: (
-            b.last_interaction_tick if b.last_interaction_tick is not None else -1
+            abs(b.affinity),
+            b.last_interaction_tick if b.last_interaction_tick is not None else -1,
         ),
     )
-    hint = f"affinity={most_recent.affinity:+.2f} with {most_recent.other_agent_id}"
+    hint = f"affinity={most_salient.affinity:+.2f} with {most_salient.other_agent_id}"
     if decision is None:
         return hint
     return f"{decision} ({hint})"

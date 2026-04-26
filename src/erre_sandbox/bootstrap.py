@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Final, cast
 import uvicorn
 import yaml
 
-from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle
+from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle, Reflector
 from erre_sandbox.cognition.belief import maybe_promote_belief
 from erre_sandbox.cognition.relational import compute_affinity_delta
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
@@ -375,7 +375,7 @@ def _make_relational_sink(
     return _persist_relational_event
 
 
-async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915 — composition root inherently long
+async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915, C901 — composition root inherently long + branchy
     """Construct the full stack and supervise runtime + uvicorn.
 
     Resource lifecycle is structured via :class:`AsyncExitStack` so any
@@ -444,6 +444,30 @@ async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915 — composition r
                 bias_p=event.bias_p,
             )
 
+        # M7δ R3 M3: persona resolver maps ``speaker_id`` (e.g.
+        # ``a_nietzsche_001``) → ``display_name`` (``Friedrich Nietzsche``)
+        # so the reflection LLM sees historical names in the "recent peer
+        # utterances" block instead of internal agent ids. Built once here
+        # and shared across all agents through the Reflector singleton.
+        def _resolve_persona_display_name(agent_id: str) -> str | None:
+            persona_id = runtime.agent_persona_id(agent_id)
+            if persona_id is None:
+                return None
+            spec = persona_registry.get(persona_id)
+            return spec.display_name if spec is not None else None
+
+        # ``WorldRuntime`` and ``CognitionCycle`` both reference each
+        # other indirectly: the cycle's reflector is built with a
+        # persona-resolver closure that needs the runtime; the runtime
+        # construction below takes the cycle. Build the reflector first
+        # with a forward-declaration trampoline so the resolver captures
+        # ``runtime`` after assignment.
+        reflector = Reflector(
+            store=memory,
+            embedding=embedding,
+            llm=inference,
+            persona_resolver=_resolve_persona_display_name,
+        )
         cycle = CognitionCycle(
             retriever=retriever,
             store=memory,
@@ -451,6 +475,7 @@ async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915 — composition r
             llm=inference,
             erre_policy=DefaultERREModePolicy(),
             bias_sink=_persist_bias_event,
+            reflector=reflector,
         )
         runtime = WorldRuntime(cycle=cycle)
 
