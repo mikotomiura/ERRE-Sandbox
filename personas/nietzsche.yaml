@@ -21,7 +21,7 @@
 # Design rationale recorded in
 # .steering/20260420-m4-personas-nietzsche-rikyu-yaml/design.md (v2 + hybrid).
 
-schema_version: "0.8.0-m7e"
+schema_version: "0.9.0-m7z"
 persona_id: nietzsche
 display_name: "Friedrich Nietzsche"
 era: "1844-1900"
