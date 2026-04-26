@@ -402,7 +402,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "0.7.0-m7d",
+      "default": "0.8.0-m7e",
       "title": "Schema Version",
       "type": "string"
     },

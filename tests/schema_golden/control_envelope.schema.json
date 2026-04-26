@@ -32,7 +32,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -71,7 +71,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -117,7 +117,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -247,7 +247,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -285,7 +285,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -335,7 +335,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -450,7 +450,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -500,7 +500,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -537,7 +537,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -841,7 +841,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -920,7 +920,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1067,7 +1067,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1117,7 +1117,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1162,7 +1162,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.7.0-m7d",
+          "default": "0.8.0-m7e",
           "title": "Schema Version",
           "type": "string"
         },

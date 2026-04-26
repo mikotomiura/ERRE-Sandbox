@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.7.0-m7d",
+  "schema_version": "0.8.0-m7e",
   "tick": 42,
   "sent_at": "2026-04-18T12:00:00Z",
   "kind": "world_tick",

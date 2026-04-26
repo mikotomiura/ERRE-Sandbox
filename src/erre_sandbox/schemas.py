@@ -41,7 +41,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.7.0-m7d"
+SCHEMA_VERSION: Final[str] = "0.8.0-m7e"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
