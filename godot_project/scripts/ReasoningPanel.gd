@@ -36,6 +36,14 @@ var _intent_label: Label
 var _reflection_label: Label
 var _relationships_label: Label
 var _last_reflection_tick: int = -1
+# M7-ζ-1: multi-agent selector. ``_known_agents`` mirrors the OptionButton
+# items 1..N (item 0 stays the placeholder) so SelectionManager click-focus
+# and selector changes can sync without iterating the OptionButton each
+# update. ``_syncing_selector`` is a re-entry guard so set_focused_agent →
+# selector.select() does not re-trigger ``item_selected`` and recurse.
+var _agent_selector: OptionButton
+var _known_agents: Array[String] = []
+var _syncing_selector: bool = false
 
 
 func _ready() -> void:
@@ -91,6 +99,15 @@ func _build_tree() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 10)
 	margin.add_child(vbox)
+
+	# M7-ζ-1: agent selector at the top. Lives inside the vbox so it scrolls
+	# with the panel content. Boots disabled with the placeholder item;
+	# becomes selectable as soon as ``_on_agent_updated`` registers an id.
+	_agent_selector = OptionButton.new()
+	_agent_selector.add_item(Strings.LABELS["SELECTOR_PROMPT"])
+	_agent_selector.disabled = true
+	_agent_selector.item_selected.connect(_on_agent_selector_item_selected)
+	vbox.add_child(_agent_selector)
 
 	_title_label = _make_label(vbox, Strings.LABELS["PANEL_TITLE"], 18, Color(0.9, 0.92, 0.95, 1.0))
 	_mode_label = _make_label(vbox, Strings.LABELS["AGENT_NONE"], 12, Color(0.65, 0.75, 0.9, 1.0))
@@ -161,6 +178,7 @@ func set_focused_agent(agent_id: String, _agent_node: Node3D = null) -> void:
 	else:
 		_title_label.text = Strings.LABELS["PANEL_TITLE"]
 	_mode_label.text = Strings.LABELS["AGENT_WAITING"]
+	_sync_selector_to_focus(agent_id)
 
 
 # ---- EnvelopeRouter signal handlers ----
@@ -212,6 +230,10 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 	# mirrors ``_on_reasoning_trace_received`` so the panel becomes useful
 	# even when the run only emits ``agent_update`` envelopes (e.g. before
 	# the first reasoning_trace tick).
+	# M7-ζ-1: register every agent we see into the selector so the researcher
+	# can switch focus without clicking the avatar (live verification C4:
+	# "ほかの agent たちの Reasoning パネルも見れるように").
+	_register_agent_in_selector(agent_id)
 	if _focused_agent == "":
 		set_focused_agent(agent_id)
 	if agent_id != _focused_agent:
@@ -220,6 +242,51 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 	if not (raw is Array):
 		return
 	_relationships_label.text = _format_relationships(raw)
+
+
+# ---- M7-ζ-1 selector helpers ----
+
+
+func _register_agent_in_selector(agent_id: String) -> void:
+	if agent_id == "" or _agent_selector == null:
+		return
+	if _known_agents.has(agent_id):
+		return
+	_known_agents.append(agent_id)
+	_agent_selector.add_item(agent_id)
+	if _agent_selector.disabled:
+		_agent_selector.disabled = false
+	# If the SelectionManager focused this agent before any update arrived,
+	# the selector has been stuck on the placeholder. Sync it now.
+	if agent_id == _focused_agent:
+		_sync_selector_to_focus(agent_id)
+
+
+func _on_agent_selector_item_selected(idx: int) -> void:
+	if _syncing_selector:
+		return
+	# Item 0 is the placeholder ``SELECTOR_PROMPT``; agent items start at 1.
+	if idx <= 0 or idx > _known_agents.size():
+		return
+	var agent_id := _known_agents[idx - 1]
+	if agent_id == _focused_agent:
+		return
+	set_focused_agent(agent_id)
+
+
+func _sync_selector_to_focus(agent_id: String) -> void:
+	if _agent_selector == null:
+		return
+	var target_idx: int = 0
+	if agent_id != "":
+		var found := _known_agents.find(agent_id)
+		if found >= 0:
+			target_idx = found + 1
+	if _agent_selector.selected == target_idx:
+		return
+	_syncing_selector = true
+	_agent_selector.select(target_idx)
+	_syncing_selector = false
 
 
 func _format_relationships(bonds: Array) -> String:
