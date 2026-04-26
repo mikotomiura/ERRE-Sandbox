@@ -1,0 +1,18 @@
+{
+  "schema": "scaling_metrics_v1",
+  "run_id": "sample-02-recompute",
+  "run_duration_s": 10.0,
+  "num_agents": 2,
+  "num_dialog_turns": 2,
+  "pair_information_gain_bits": null,
+  "pair_information_gain_max_bits": 0.0,
+  "late_turn_fraction": 0.0,
+  "zone_kl_from_uniform_bits": 0.7708299238800977,
+  "zone_kl_max_bits": 2.321928094887362,
+  "thresholds": {
+    "pair_information_gain_min_bits": 0.0,
+    "late_turn_fraction_max": 0.6,
+    "zone_kl_from_uniform_min_bits": 0.6965784284662087
+  },
+  "alerts": []
+}

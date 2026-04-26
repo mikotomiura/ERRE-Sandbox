@@ -1,0 +1,615 @@
+2026-04-26 18:08:11,496 [erre_sandbox.bootstrap] INFO: [bootstrap] health_check http://127.0.0.1:11434 (model=qwen3:8b)
+2026-04-26 18:08:11,507 [httpx] INFO: HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+2026-04-26 18:08:11,513 [erre_sandbox.bootstrap] INFO: [bootstrap] dialog_turn wired (3 personas in registry)
+2026-04-26 18:08:11,515 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_kant_001 (persona=kant zone=study)
+2026-04-26 18:08:11,517 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_nietzsche_001 (persona=nietzsche zone=peripatos)
+2026-04-26 18:08:11,519 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_rikyu_001 (persona=rikyu zone=chashitsu)
+2026-04-26 18:08:11,532 [erre_sandbox.bootstrap] INFO: [bootstrap] starting (host=0.0.0.0 port=8000 db=var/run-delta.db)
+INFO:     Started server process [13912]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     192.168.3.118:60432 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60434 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60436 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:08:21,585 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:21,628 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:21,659 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60459 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60461 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60463 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63450 - "GET / HTTP/1.1" 404 Not Found
+INFO:     192.168.3.118:60487 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60488 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60490 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60514 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60515 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60517 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60542 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60541 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60547 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60569 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60570 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60574 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60601 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60600 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60605 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:08:35,299 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60627 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60628 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60632 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63457 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+2026-04-26 18:08:36,203 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,899 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,923 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,927 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,932 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,949 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,955 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,960 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,966 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_kant_001 (sum=1.70, zone_entry=True)
+2026-04-26 18:08:36,970 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,975 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_rikyu_001 (sum=2.10, zone_entry=True)
+2026-04-26 18:08:36,980 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:36,986 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60654 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60655 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60659 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60682 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60683 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60687 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60710 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60709 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60714 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60736 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60737 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60741 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60764 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60765 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60768 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+2026-04-26 18:08:46,171 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     connection closed
+2026-04-26 18:08:47,587 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60792 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60791 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60796 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60818 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60819 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60823 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:08:52,005 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60847 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60846 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60851 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:08:53,786 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:08:53,816 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60873 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:60872 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60878 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60899 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60900 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60907 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:08:57,187 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,205 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,231 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,235 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,239 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,250 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,257 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:08:57,262 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_nietzsche_001 (sum=1.70, zone_entry=False)
+2026-04-26 18:08:57,275 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:60927 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60928 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60937 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60954 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60956 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60965 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:60982 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:60984 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:60992 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61011 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61013 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61020 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:06,531 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61041 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61040 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:09:07,353 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61048 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:08,597 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61067 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61068 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61075 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61096 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61095 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61103 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:11,716 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,734 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,770 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,773 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,777 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,793 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,797 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,801 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:11,819 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61122 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61123 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61131 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61150 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61151 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61160 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61177 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61178 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61187 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61205 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61204 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61214 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:21,107 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61232 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61231 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61241 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61259 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61258 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61270 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:25,057 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,355 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,377 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,382 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,386 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,395 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_rikyu_001 (sum=0.50, zone_entry=True)
+2026-04-26 18:09:25,399 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,405 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,409 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,417 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,424 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_kant_001 (sum=2.10, zone_entry=False)
+2026-04-26 18:09:25,425 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,430 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_nietzsche_001 (sum=2.10, zone_entry=True)
+2026-04-26 18:09:25,437 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:25,442 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61288 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61287 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61298 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61316 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61315 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61325 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61342 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61343 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61352 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61369 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61370 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61379 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61399 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61400 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+2026-04-26 18:09:34,193 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61410 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61428 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61429 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:09:36,385 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61437 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61455 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61456 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61464 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61483 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61482 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:09:40,690 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61490 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61511 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61510 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61518 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61537 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61538 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61548 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:46,324 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:46,367 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61564 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61565 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:09:46,834 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:46,883 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61575 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61592 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61591 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61602 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61619 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61620 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61630 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61648 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61649 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61659 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61675 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61676 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61687 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61703 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61702 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:09:57,365 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:57,383 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61714 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:09:58,124 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:09:58,153 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:58,156 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:58,161 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:58,173 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:09:58,177 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61730 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61729 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61742 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61757 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61758 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61771 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61788 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61789 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61799 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61816 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61815 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:10:05,810 [erre_sandbox.integration.gateway] ERROR: session 10afed578a65df58 crashed
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\ERRE-Sand_Box\src\erre_sandbox\integration\gateway.py", line 608, in ws_observe
+  |     async with asyncio.TaskGroup() as tg:
+  |   File "C:\Users\johnd\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\asyncio\taskgroups.py", line 145, in __aexit__
+  |     raise me from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\ERRE-Sand_Box\src\erre_sandbox\integration\gateway.py", line 415, in _recv_loop
+    |     raw = await ws.receive_text()
+    |           ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\ERRE-Sand_Box\.venv\Lib\site-packages\starlette\websockets.py", line 120, in receive_text
+    |     self._raise_on_disconnect(message)
+    |   File "C:\ERRE-Sand_Box\.venv\Lib\site-packages\starlette\websockets.py", line 114, in _raise_on_disconnect
+    |     raise WebSocketDisconnect(message["code"], message.get("reason"))
+    | starlette.websockets.WebSocketDisconnect: (1000, '')
+    +------------------------------------
+INFO:     192.168.3.118:61827 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61842 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61843 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61854 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61871 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     192.168.3.118:61870 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+2026-04-26 18:10:09,751 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:10:10,112 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61882 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     192.168.3.118:61899 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61898 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+2026-04-26 18:10:12,570 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61912 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed
+2026-04-26 18:10:13,064 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,098 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,102 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,107 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,120 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,123 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,128 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,134 [erre_sandbox.cognition.cycle] INFO: Reflection trigger for agent a_kant_001 (sum=1.70, zone_entry=True)
+2026-04-26 18:10:13,138 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+2026-04-26 18:10:13,144 [httpx] INFO: HTTP Request: POST http://127.0.0.1:11434/api/embed "HTTP/1.1 200 OK"
+INFO:     192.168.3.118:61925 - "WebSocket /ws/observe" [accepted]
+INFO:     192.168.3.118:61926 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     192.168.3.118:61939 - "WebSocket /ws/observe" [accepted]
+INFO:     connection open
+INFO:     connection closed

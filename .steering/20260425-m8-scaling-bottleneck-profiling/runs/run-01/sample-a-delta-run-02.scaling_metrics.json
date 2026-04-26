@@ -1,0 +1,18 @@
+{
+  "schema": "scaling_metrics_v1",
+  "run_id": "sample-a-delta-run-02",
+  "run_duration_s": 110.0,
+  "num_agents": 3,
+  "num_dialog_turns": 12,
+  "pair_information_gain_bits": 0.5944262670085811,
+  "pair_information_gain_max_bits": 1.584962500721156,
+  "late_turn_fraction": 0.3333333333333333,
+  "zone_kl_from_uniform_bits": 0.7190118176018089,
+  "zone_kl_max_bits": 2.321928094887362,
+  "thresholds": {
+    "pair_information_gain_min_bits": 0.4754887502163468,
+    "late_turn_fraction_max": 0.6,
+    "zone_kl_from_uniform_min_bits": 0.6965784284662087
+  },
+  "alerts": []
+}

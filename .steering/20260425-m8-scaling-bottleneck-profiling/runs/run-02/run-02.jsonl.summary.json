@@ -1,0 +1,20 @@
+{
+  "url": "ws://localhost:8000/ws/observe",
+  "out": ".steering\\20260425-m8-scaling-bottleneck-profiling\\runs\\run-02\\run-02.jsonl",
+  "duration_s": 90.0,
+  "elapsed_s": 92.08,
+  "envelope_total": 134,
+  "envelope_per_kind": {
+    "world_layout": 1,
+    "agent_update": 15,
+    "speech": 15,
+    "move": 15,
+    "animation": 15,
+    "reasoning_trace": 15,
+    "world_tick": 50,
+    "reflection_event": 6,
+    "dialog_initiate": 1,
+    "dialog_turn": 1
+  },
+  "schema_version": "0.7.0-m7d"
+}
