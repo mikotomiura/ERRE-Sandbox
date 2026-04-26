@@ -20,6 +20,7 @@
 | 創発 | Emergence | エージェント個体の規則からは予測できない集団レベルの現象 (文化形成・儀式化等) | 「12時間シミュレーションで創発的な集会パターンが観察された」 |
 | 儀式 | Ritual | 反復性 + 時空間規則性 + 集合性 + 非機能性 の4条件 AND 判定で操作的に定義される行動パターン | 「エージェントが毎朝同じ場所に集まる行動は儀式の候補」 |
 | ペルソナドリフト | Persona Drift | 対話ターン数の増加に伴い、��ージェントの言動が初期設定から乖離する現象。外部 AgentState + 記憶 + LoRA の三重冗長で緩和 | 「50ターン以降のペルソナ一貫性スコアを監視する」 |
+| observability-triggered scaling | Observability-triggered Scaling | agent 数を増やす判断を「量先行 (4 体目を入れて困るか見る)」ではなく「観測者の認知資源限界を 3 metric で測り、解析的上限の % を割った瞬間に +1 起票」に置き換える ADR D2 採用方針。M8 spike (`scaling-bottleneck-profiling`) で実装 | 「pair_information_gain が log2(C(N,2)) の 30% を割ったので observability-triggered scaling の trigger が立った」 |
 
 ## 技術用語
 
@@ -36,6 +37,9 @@
 | ControlEnvelope | ControlEnvelope | G-GEAR ↔ MacBook 間の WebSocket 通信で使用する統一メッセージスキーマ。`kind` フィールドでメッセージ種別を識別 | Gateway, FastAPI |
 | tick | Tick | シミュレーションの最小時間単位。物理は 30Hz (33ms)、認知は 0.1Hz (10秒) | world/tick.py |
 | ゾーン | Zone | ワールド内の5つの空間区分: study (書斎)、peripatos (歩行路)、chashitsu (茶室)、agora (広場)、garden (庭園) | world/zones.py |
+| pair_information_gain | Pair Information Gain | 観測者が次の dialog_turn の (speaker, addressee) ペアから得る相互情報量 (bits/turn)。`H(pair) - H(pair | history_k=3)` で計算。値↓ = 観測者が次の pair を予測できる = relational saturation。解析的上限 `log2(C(N,2))` | M8 scaling spike, observability-triggered scaling |
+| late_turn_fraction | Late Turn Fraction | dialog_turn のうち turn_index が dialog_turn_budget の半分 (=3) を超えた割合 ∈ [0,1]。値↑ = dialog 後半偏向 = 観測者の注意が turn 序盤で枯れている proxy | M8 scaling spike |
+| zone_kl_from_uniform | Zone KL from Uniform | 全 agent の zone 占有時間分布と uniform prior の KL divergence (bits)。値↑ = zone 偏向 = bias 効いている、値↓ = uniform 化 = bias 失効 = scaling trigger。解析的上限 `log2(n_zones)` | M8 scaling spike, observability-triggered scaling |
 
 ## 略語
 

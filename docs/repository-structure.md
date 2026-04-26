@@ -32,9 +32,16 @@ erre-sandbox/
 │   │   ├── dialog.py           # InMemoryDialogScheduler + proximity auto-fire
 │   │   ├── dialog_turn.py      # OllamaDialogTurnGenerator (M5、inference 層を例外的に import)
 │   │   ├── protocol.py         # envelope routing 判定
-│   │   ├── metrics.py          # 観測メトリクス
+│   │   ├── metrics.py          # 統合層の観測メトリクス
 │   │   ├── scenarios.py        # 統合テスト用シナリオ
 │   │   └── acceptance.py       # acceptance probe ヘルパ
+│   ├── evidence/               # post-hoc metric 集計 (M8 で追加)
+│   │   ├── metrics.py          # baseline quality (self_repetition / cross_persona_echo / bias_fired)
+│   │   └── scaling_metrics.py  # scaling profile (pair_info_gain / late_turn_fraction / zone_kl)
+│   ├── cli/                    # subcommand 実装 (M8 で追加)
+│   │   ├── baseline_metrics.py # `erre-sandbox baseline-metrics`
+│   │   ├── export_log.py       # `erre-sandbox export-log`
+│   │   └── scaling_metrics.py  # `erre-sandbox scaling-metrics`
 │   ├── world/                  # ワールドシミュレーション
 │   │   ├── tick.py             # asyncio tick loop (WorldRuntime)
 │   │   └── zones.py            # peripatos/chashitsu/agora/garden/study

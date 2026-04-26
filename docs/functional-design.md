@@ -94,6 +94,36 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
 - **層4 (第三者ブラインド評価)**: LLM-as-judge、人間評価者 ICC、ペルソナ固有創発
 - **統計設計**: n >= 20 回の独立試行、3段階 ablation、Benjamini-Hochberg FDR 補正、OSF 事前登録
 
+### 機能 6: M8 観測 metric — baseline quality + scaling profile
+
+post-hoc 集計 CLI で 2 系統の metric を出す。M9 LoRA 比較の reference point と
+observability-triggered scaling の trigger 判定の両用途。
+
+- **概要**: 永続化済み run データ (sqlite `dialog_turns` / probe NDJSON journal)
+  から pure-function で metric を計算し、JSON 1 ファイルにまとめる
+- **baseline quality** (`erre-sandbox baseline-metrics`、L6 D1 後半):
+  - `self_repetition_rate` — persona ごとの直近 N=5 turn の trigram Jaccard 平均。
+    LOW = persona の発話が turn-over-turn で fresh
+  - `cross_persona_echo_rate` — 同 dialog 内の異 persona 発話間 trigram Jaccard。
+    LOW = persona が言語的に区別される
+  - `bias_fired_rate` — 観測 bias 発火回数を期待発火回数 (`duration × num_agents
+    × bias_p`) で正規化
+- **scaling profile** (`erre-sandbox scaling-metrics`、L6 D2 spike):
+  - `pair_information_gain` (bits/turn) — 観測者が次の dialog pair から得る相互情報量。
+    解析的上限 `log2(C(N,2))`、LOW = 観測者が次の pair を予測できる = relational saturation
+  - `late_turn_fraction` (ratio) — turn_index > dialog_turn_budget/2 の dialog_turn の割合。
+    HIGH = dialog 後半偏向 = 観測者の注意が turn 序盤で枯れている proxy
+  - `zone_kl_from_uniform` (bits) — agent zone 占有分布と uniform prior の KL divergence。
+    解析的上限 `log2(n_zones)`、LOW = uniform 化 = bias 失効 = scaling trigger
+- **閾値判定**: σ-based heuristic を捨て、N に依存しない次元無し閾値
+  (解析的上限の 30% / 60%) を採用。1 metric でも閾値を割れば
+  `var/scaling_alert.log` に 1 行 TSV append + CLI exit code 1
+- **依存方向**: `evidence/` → schemas / memory / cognition (constants only)。
+  world / integration / ui には依存しない (post-hoc layer)
+- **D3 互換性**: `session_phase` model 実装後に `aggregate()` 内で
+  `session_phase != AUTONOMOUS` の turn を filter で落とす一段落を追加するだけで
+  Q&A epoch を metric から自動除外できる構造
+
 ## 3. ユースケース
 
 ### UC-1: ゲーム開発者が自律 NPC 村を構築する (最優先)

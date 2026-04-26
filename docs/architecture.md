@@ -94,6 +94,25 @@
   - 二層スコープ: per-agent (top-8) + world (top-3)
   - 減衰関数: `strength = importance * exp(-λ*days) * (1 + recall_count*0.2)`
 
+### Evidence Layer (G-GEAR, post-hoc)
+- **責務**: 永続化済み run データから観測 metric を pure-function で計算し、
+  M9 比較や scaling トリガー判定に使う JSON / TSV を出力する
+- **主要コンポーネント**:
+  - `evidence/metrics.py` (M8 baseline quality): self_repetition_rate /
+    cross_persona_echo_rate / bias_fired_rate。CLI: `erre-sandbox baseline-metrics`
+  - `evidence/scaling_metrics.py` (M8 scaling spike, L6 ADR D2 precondition):
+    pair_information_gain (bits/turn) / late_turn_fraction (ratio) /
+    zone_kl_from_uniform (bits)。CLI: `erre-sandbox scaling-metrics`
+- **observability-triggered scaling** (L6 ADR D2): 量先行 (4th persona を
+  入れて困るか見る) を捨て、metric が解析的上限の % を割った瞬間に M9 +1
+  persona 起票を判断する。閾値は σ-based heuristic ではなく `log2(C(N,2))`
+  / `log2(n_zones)` の % で表現することで N に依存しない次元無し閾値とする
+  (decisions.md D4 参照)。`var/scaling_alert.log` に違反時 1 行 TSV を append
+- **入力**: sqlite `dialog_turns` (M1/M2) + 任意の probe NDJSON journal (M3)。
+  `--journal` 省略時は M3 = null で graceful degradation
+- **依存方向**: schemas / memory / cognition (constants only)。world / integration /
+  ui には依存しない
+
 ### Gateway (G-GEAR)
 - **責務**: MacBook 側との通信
 - **主要コンポーネント**:
