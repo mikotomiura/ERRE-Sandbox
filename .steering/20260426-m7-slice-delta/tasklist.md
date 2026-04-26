@@ -69,7 +69,10 @@ design-final.md 確定後にここを書く。仮の skeleton:
 - [x] `observation.md` + `decisions.md` 更新
       (residual handed to `.steering/20260426-m7-delta-live-fix/`)
 - [x] PR 起票 (verdict branch = chore/m7-delta-live-acceptance)
-      → https://github.com/mikotomiura/ERRE-Sandbox/pull/97
+      → https://github.com/mikotomiura/ERRE-Sandbox/pull/97 (merged)
+- [x] **Residual closed via run-02** (option A: --duration 360, no code
+      change) → 5/5 PASS, peak |affinity|=0.471, 1 belief promotion
+      (kant wary→nietzsche). branch = chore/m7-delta-live-fix.
 
 ## Verification
 
@@ -86,5 +89,7 @@ design-final.md 確定後にここを書く。仮の skeleton:
 
 ## /finish-task
 
-- [ ] memory `project_m7_beta_merged.md` 更新 (δ merged + 次は ε / m8-affinity-dynamics)
-- [ ] 本 tasklist の最終 tick
+- [ ] memory 更新: `project_m7_beta_baseline_frozen.md` を派生 or 拡張して
+      δ baseline (run-02 5/5 PASS, formula calibration frozen) を記録、
+      次は ε / m8-affinity-dynamics
+- [ ] 本 tasklist の最終 tick (run-02 PR merge 後)

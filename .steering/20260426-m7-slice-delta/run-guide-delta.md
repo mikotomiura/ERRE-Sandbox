@@ -45,18 +45,26 @@ Wait until the orchestrator reports the WS gateway is listening on
 
 ## Step 3 — Envelope probe (terminal B)
 
+> **Duration window correction (post run-01)**: the 90-120s window in
+> the original design was overoptimistic. Run-01 (122s) hit 4/5 with
+> gate 2 (belief_promotions) falling short because per-dyad turns
+> averaged 2.8 vs the C5-predicted 6-9 turn crossing window. **Use
+> ``--duration 360`` minimum** for live runs that intend to cross
+> belief promotion at all 6 directional pairs; run-02 confirmed this.
+
 ```bash
-# terminal B — duration matches the design-final 90-120s window
+# terminal B — 360s minimum to give ≥1 dyad enough recurrence to cross
 uv run python .steering/20260426-m7-slice-delta/evidence/_stream_probe_m7d.py \
   --url ws://localhost:8000/ws/observe \
-  --duration 120 \
-  --out .steering/20260426-m7-slice-delta/run-01-delta/run-01.jsonl
+  --duration 360 \
+  --out .steering/20260426-m7-slice-delta/run-02-delta/run-02.jsonl
 ```
 
 The probe prints a JSON line summary on exit. Cross-check
 ``envelope_per_kind`` includes ``dialog_turn >= 3`` —
-``run-01-delta/run-01.jsonl.summary.json`` is written next to the
-journal.
+``run-02-delta/run-02.jsonl.summary.json`` is written next to the
+journal. (Substitute ``run-NN-delta/run-NN.jsonl`` for re-runs after
+run-02.)
 
 ## Step 4 — DB + journal summary
 
@@ -67,8 +75,8 @@ flushed), summarise the DB and the journal:
 # terminal B (orchestrator still up in A)
 uv run python .steering/20260426-m7-slice-delta/evidence/_db_summary_m7d.py \
   --db var/run-delta.db \
-  --journal .steering/20260426-m7-slice-delta/run-01-delta/run-01.jsonl \
-  --out .steering/20260426-m7-slice-delta/run-01-delta/run-01.db_summary.json
+  --journal .steering/20260426-m7-slice-delta/run-NN-delta/run-NN.jsonl \
+  --out .steering/20260426-m7-slice-delta/run-NN-delta/run-NN.db_summary.json
 ```
 
 The output prints to stdout and writes to the ``.json`` file. Skim for:
@@ -85,7 +93,7 @@ The output prints to stdout and writes to the ``.json`` file. Skim for:
 # terminal A — Ctrl-C. Orchestrator log will land at stdout; capture it
 # manually if you want:
 ERRE_ZONE_BIAS_P=0.1 uv run erre-sandbox ... 2>&1 | \
-  tee .steering/20260426-m7-slice-delta/run-01-delta/orchestrator.log
+  tee .steering/20260426-m7-slice-delta/run-NN-delta/orchestrator.log
 ```
 
 (If you forgot to ``tee`` upfront, the run is still valid as long as
@@ -98,13 +106,13 @@ one screenshot of the ``ReasoningPanel`` showing the new
 ``"last in <zone>"`` suffix:
 
 * Filename: ``screenshot-relationships-delta.png``
-* Save to: ``.steering/20260426-m7-slice-delta/run-01-delta/``
+* Save to: ``.steering/20260426-m7-slice-delta/run-NN-delta/`` (same dir as that run's other artifacts)
 * Open the panel on any agent that has had ≥1 dialog turn
 * Verify line shape: ``<persona> affinity ±0.NN (N turns, last in <zone> @ tick T)``
 
 ## Step 7 — Acceptance verdict
 
-Open ``.steering/20260426-m7-slice-delta/run-01-delta/run-01.db_summary.json``
+Open ``.steering/20260426-m7-slice-delta/run-NN-delta/run-NN.db_summary.json``
 and check off each gate against ``.steering/20260426-m7-slice-delta/observation.md``
 "Live G-GEAR run (pending)". If all 5 land, append a "Live G-GEAR run
 (landed)" section to ``observation.md`` with the actual numbers

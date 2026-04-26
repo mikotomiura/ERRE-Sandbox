@@ -87,13 +87,77 @@ All five C8 acceptance assertions pass via
 * ✅ ≥1 belief promotion in ``semantic_memory`` with ``belief_kind`` populated
 * ✅ deterministic upsert id (≤ 2 distinct rows for the kant↔nietzsche pair)
 
-## Live G-GEAR run (landed — 4/5 PASS, 1 δ-residual handed to ε)
+## Live G-GEAR run (landed — 5/5 PASS at run-02, run-01 retained as history)
 
-**Run-01** — ``run-01-delta/`` on G-GEAR (RTX 5060 Ti 16GB / Ollama 0.21.2 / qwen3:8b),
-2026-04-26 16:48-16:51 UTC+9, ``ERRE_ZONE_BIAS_P=0.1``,
-``--personas kant,nietzsche,rikyu``, ``--db var/run-delta.db``, 122.09s elapsed.
+**Final verdict: 5/5 PASS** via run-02 (option A: ``--duration 360``). Run-01
+(122s) hit 4/5 with gate 2 falling short; run-02 (360s) flipped gate 2 by
+giving the kant↔nietzsche antagonist pair enough recurrence to cross
+|affinity| > 0.45. See ``.steering/20260426-m7-delta-live-fix/decisions.md``
+for the option-A-success decision and the corrected duration window in
+``run-guide-delta.md``.
 
-### Envelope tally (probe ``run-01.jsonl.summary.json``)
+### Run-02 (option A — landed, gate 2 flips)
+
+``run-02-delta/`` on G-GEAR (RTX 5060 Ti 16GB / Ollama 0.21.2 / qwen3:8b),
+2026-04-26 17:08-17:14 UTC+9, ``ERRE_ZONE_BIAS_P=0.1``,
+``--personas kant,nietzsche,rikyu``, ``--db var/run-delta.db``, 362.07s elapsed,
+**no code change vs main HEAD** (PR #97 + scaffold only).
+
+| kind | count |
+|---|---|
+| world_tick | 190 |
+| agent_update | 57 |
+| speech / animation / reasoning_trace | 56 each |
+| move | 54 |
+| reflection_event | 11 |
+| **dialog_turn** | **12** |
+| dialog_initiate / dialog_close | 2 each |
+| world_layout | 1 |
+| **total** | **497** |
+
+| table | rows |
+|---|---|
+| dialog_turns | 12 |
+| relational_memory | 12 |
+| episodic_memory | 41 |
+| semantic_memory | 12 |
+| procedural_memory | 0 |
+| **belief_promotions (kind ≠ NULL)** | **1** |
+
+Sole belief promotion: ``kant`` → ``wary`` toward ``nietzsche`` at
+``confidence = 0.471`` — matches peak |affinity| = 0.471 (negative path,
+``< -0.45``) and the C5 simulation prediction that the kant↔nietzsche
+antagonist pair crosses earliest. The two positive paths (kant↔rikyu,
+nietzsche↔rikyu) topped at +0.34 / +0.34, below the 0.45 threshold,
+which is consistent with simulation; positive promotions would need
+turn 7-9 per-dyad accumulation that the run-02 dialog distribution did
+not provide.
+
+| # | Gate | Result | Observed |
+|---|---|---|---|
+| 1 | ``db.table_counts.dialog_turns`` ≥ 3 | ✅ PASS | 12 |
+| 2 | ``db.belief_promotions`` non-empty | ✅ **PASS (flipped)** | 1 (kant wary→nietzsche, conf 0.47) |
+| 3 | ``journal.bonds_with_last_interaction_zone`` > 0 | ✅ PASS | 56/56 |
+| 4 | ``journal.max_emotional_conflict_observed`` > 0 | ✅ PASS | 0.1154 |
+| 5 | both signs of affinity present | ✅ PASS | 34 pos / 22 neg |
+
+**Verdict: 5/5 PASS.** Option A succeeded with no code change — the
+122s window in run-guide-delta.md was overoptimistic relative to the
+formula's recurrence pace; 360s gives ≥1 dyad enough turns to cross.
+
+### Surprising distribution detail
+
+run-02 had **fewer** total dialog_turns (12) than run-01 (17), but more
+**concentration**: 2 dialogs ran to dialog_close (vs run-01's 3 dialogs
+producing 17 turns). The kant↔nietzsche pair received 4 antagonist
+turns with ``ichigo_ichie_count`` reaching 3 — the recurrence multiplier
+was the deciding factor, not raw turn volume. This is consistent with
+the C5 simulation: antagonism stacks the same direction every turn,
+saturating faster than the diffuse positive paths.
+
+### Run-01 (history — first attempt, 4/5, retained for traceability)
+
+#### Envelope tally (probe ``run-01.jsonl.summary.json``)
 
 | kind | count |
 |---|---|
@@ -108,7 +172,7 @@ All five C8 acceptance assertions pass via
 
 Schema version on the wire: ``0.7.0-m7d`` (matches PR #95).
 
-### DB tally (``run-01.db_summary.json``)
+#### DB tally (``run-01.db_summary.json``)
 
 | table | rows |
 |---|---|
@@ -119,7 +183,7 @@ Schema version on the wire: ``0.7.0-m7d`` (matches PR #95).
 | procedural_memory | 0 |
 | **belief_promotions (kind ≠ NULL)** | **0** |
 
-### Gate verdict
+#### Gate verdict (run-01)
 
 | # | Gate | Result | Observed |
 |---|---|---|---|
@@ -129,12 +193,10 @@ Schema version on the wire: ``0.7.0-m7d`` (matches PR #95).
 | 4 | ``journal.max_emotional_conflict_observed`` > 0 | ✅ PASS | 0.082 (negative path fired ≥1 time) |
 | 5 | both signs of affinity present | ✅ PASS | 20 positive / 8 negative bond samples |
 
-**Verdict: 4/5 — gate 2 missed.** Per ``run-guide-delta.md`` Step 7, observation.md
-records the actual numbers but **does not** relax the gate; the failing path
-is recorded as a δ-residual at ``.steering/20260426-m7-delta-live-fix/``
-and handed to slice ε.
+run-01 verdict: **4/5 — gate 2 missed.** Diagnosis below; remediation
+landed via run-02 above.
 
-### Diagnosis (gate 2)
+#### Diagnosis (gate 2 at run-01, retained)
 
 * Live affinity peaks: **+0.358** (positive) / **-0.324** (negative). Both
   below the ``BELIEF_THRESHOLD = 0.45`` from ``cognition/belief.py``.
@@ -150,7 +212,7 @@ and handed to slice ε.
 * No 5th-gate-style hardware/runtime bug was observed — formula and
   ``last_interaction_zone`` plumbing both held up under live LLM noise.
 
-### Side-observations (informational, not gates)
+#### Side-observations (informational, not gates)
 
 * ``EXPLAIN QUERY PLAN`` (γ-run latency claim) was **not** measured in this
   run; left for ε if/when it becomes load-relevant.
