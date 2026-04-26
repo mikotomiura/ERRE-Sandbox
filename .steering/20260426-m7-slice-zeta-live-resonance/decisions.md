@@ -99,6 +99,16 @@ diff が読みにくく、persona YAML 側の人手編集も冗長になる。
 過剰。将来 (post-M11) 全 i18n に踏み切るときに `tr()` への置換は
 sed 1 発で済む (一元管理されているため)。
 
+**新ペルソナ追加時の運用** (M7ζ-2 c4 で persona display_name + 1-line
+summary も Strings.gd に統合した結果): 新ペルソナを増やす際は
+`personas/<id>.yaml` の追加と同時に
+`PERSONA_NAME_<ID>` / `PERSONA_SUMMARY_<ID>` の 2 キーを Strings.gd
+に追記する必要がある (`<ID>` は upper-case)。未追記の場合は
+`PERSONA_NAME_UNKNOWN` / `PERSONA_SUMMARY_UNKNOWN` にフォールバック
+する (= "(未知のペルソナ)" + "—") ので live は壊れないが、ペルソナ
+identity が画面に出ない退行になる。M9 で persona expansion 線を
+draw する際の checklist に含めること。
+
 ## D6 — 3 PR 直列 vs 並列
 
 **判断**: ε と無関係に ζ-1 → ζ-2 → ζ-3 を **直列** で land する
