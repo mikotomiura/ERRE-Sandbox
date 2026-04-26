@@ -90,7 +90,7 @@ design-final.md 確定後にここを書く。仮の skeleton:
 
 ## /finish-task
 
-- [ ] memory 更新: `project_m7_beta_baseline_frozen.md` を派生 or 拡張して
-      δ baseline (run-02 5/5 PASS, formula calibration frozen) を記録、
-      次は ε / m8-affinity-dynamics
-- [ ] 本 tasklist の最終 tick (run-02 PR merge 後)
+- [x] memory 更新: `project_m7_delta_live_acceptance.md` を新規作成
+      (β-frozen note とは独立した δ entry。formula calibration 5値 +
+      "concentration > volume" 教訓 + run-guide duration 訂正を記録)
+- [x] 本 tasklist の最終 tick (run-02 PR #98 merge 後 = main HEAD 0291fd7)
