@@ -354,7 +354,11 @@ async def test_relational_sink_swallows_integrity_error_on_add_sync(
     """
     import sqlite3
 
+    call_count = 0
+
     def _raise_integrity_error(*_args: object, **_kwargs: object) -> None:
+        nonlocal call_count
+        call_count += 1
         raise sqlite3.IntegrityError("simulated CHECK violation")
 
     monkeypatch.setattr(store, "_add_sync", _raise_integrity_error)
@@ -378,7 +382,12 @@ async def test_relational_sink_swallows_integrity_error_on_add_sync(
             turn_index=0,
         ),
     )
-    # Reaching here means the sink returned cleanly.
+    # Reaching here means the sink returned cleanly. The call-count
+    # assertion (review M1) keeps the test honest if a future formula
+    # change reroutes the relational write away from ``_add_sync``.
+    assert call_count >= 1, (
+        "expected the patched _add_sync to be invoked at least once"
+    )
 
 
 async def test_belief_persist_swallows_integrity_error_on_upsert_semantic(
@@ -394,7 +403,11 @@ async def test_belief_persist_swallows_integrity_error_on_upsert_semantic(
     """
     import sqlite3
 
+    call_count = 0
+
     def _raise_integrity_error(*_args: object, **_kwargs: object) -> None:
+        nonlocal call_count
+        call_count += 1
         raise sqlite3.IntegrityError("simulated UNIQUE violation")
 
     monkeypatch.setattr(store, "_upsert_semantic_sync", _raise_integrity_error)
@@ -423,4 +436,12 @@ async def test_belief_persist_swallows_integrity_error_on_upsert_semantic(
                 turn_index=i,
             ),
         )
-    # Reaching here means the sink swallowed every IntegrityError.
+    # Reaching here means the sink swallowed every IntegrityError. The
+    # call-count assertion (review M1) keeps the test honest: if a
+    # future formula retune stops crossing the belief gates within 14
+    # turns, the patched upsert never fires and this test silently
+    # degrades to overlap with the companion above.
+    assert call_count >= 1, (
+        "expected the patched _upsert_semantic_sync to be invoked at "
+        "least once (belief gates not crossed; retune may be needed)"
+    )
