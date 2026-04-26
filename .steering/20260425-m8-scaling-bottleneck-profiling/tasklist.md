@@ -51,5 +51,6 @@
 
 ## 完了処理
 - [x] `design.md` 最終化、`decisions.md` に 3 metric 定義 + 確定閾値を固定
-- [ ] commit → PR (`feat(evidence): M8 scaling bottleneck profiling`)
+- [x] commit → PR (`feat(evidence): M8 scaling bottleneck profiling`)
+      → https://github.com/mikotomiura/ERRE-Sandbox/pull/100
 - [ ] merge 後、L6 D2 status を「閾値案確定、M9 以降のトリガー判定に使用可」に更新
