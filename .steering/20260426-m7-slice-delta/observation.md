@@ -87,15 +87,76 @@ All five C8 acceptance assertions pass via
 * ✅ ≥1 belief promotion in ``semantic_memory`` with ``belief_kind`` populated
 * ✅ deterministic upsert id (≤ 2 distinct rows for the kant↔nietzsche pair)
 
-## Live G-GEAR run (pending)
+## Live G-GEAR run (landed — 4/5 PASS, 1 δ-residual handed to ε)
 
-The live ``uv run erre-sandbox --personas kant,nietzsche,rikyu --db var/run-delta.db``
-acceptance run requires the RTX hardware (G-GEAR machine) and is left for
-the user to dispatch. Expected observations from a 90-120s run:
+**Run-01** — ``run-01-delta/`` on G-GEAR (RTX 5060 Ti 16GB / Ollama 0.21.2 / qwen3:8b),
+2026-04-26 16:48-16:51 UTC+9, ``ERRE_ZONE_BIAS_P=0.1``,
+``--personas kant,nietzsche,rikyu``, ``--db var/run-delta.db``, 122.09s elapsed.
 
-* dialog_turn ≥ 3 (typically 6-12 turns across 2-3 dialogs)
-* both signs of bond.affinity delta in time-series
-* belief promotion in ``semantic_memory`` table with ``belief_kind`` populated
-* ``recent_peer_turns`` p95 latency < γ Run-1 baseline (verify via
-  ``EXPLAIN QUERY PLAN`` showing ``LIMIT`` push to SQLite)
-* Godot ReasoningPanel screenshot showing ``"last in <zone> @ tick T"``
+### Envelope tally (probe ``run-01.jsonl.summary.json``)
+
+| kind | count |
+|---|---|
+| world_tick | 60 |
+| agent_update / speech / animation / reasoning_trace | 18 each |
+| dialog_turn | **17** |
+| move | 17 |
+| reflection_event | 3 |
+| dialog_initiate | 3 |
+| world_layout | 1 |
+| **total** | **173** |
+
+Schema version on the wire: ``0.7.0-m7d`` (matches PR #95).
+
+### DB tally (``run-01.db_summary.json``)
+
+| table | rows |
+|---|---|
+| dialog_turns | 17 |
+| relational_memory | 17 |
+| episodic_memory | 12 |
+| semantic_memory | 3 |
+| procedural_memory | 0 |
+| **belief_promotions (kind ≠ NULL)** | **0** |
+
+### Gate verdict
+
+| # | Gate | Result | Observed |
+|---|---|---|---|
+| 1 | ``db.table_counts.dialog_turns`` ≥ 3 | ✅ PASS | 17 |
+| 2 | ``db.belief_promotions`` non-empty | ❌ **FAIL** | 0 (peak \|affinity\| = 0.358 < 0.45 threshold) |
+| 3 | ``journal.bonds_with_last_interaction_zone`` > 0 | ✅ PASS | 28 (= 28/28 bonds carry the zone stamp) |
+| 4 | ``journal.max_emotional_conflict_observed`` > 0 | ✅ PASS | 0.082 (negative path fired ≥1 time) |
+| 5 | both signs of affinity present | ✅ PASS | 20 positive / 8 negative bond samples |
+
+**Verdict: 4/5 — gate 2 missed.** Per ``run-guide-delta.md`` Step 7, observation.md
+records the actual numbers but **does not** relax the gate; the failing path
+is recorded as a δ-residual at ``.steering/20260426-m7-delta-live-fix/``
+and handed to slice ε.
+
+### Diagnosis (gate 2)
+
+* Live affinity peaks: **+0.358** (positive) / **-0.324** (negative). Both
+  below the ``BELIEF_THRESHOLD = 0.45`` from ``cognition/belief.py``.
+* Per-dyad turn budget in 120s: 17 dialog_turns / 6 directional pairs (3
+  personas × 2 directions) ≈ **2.8 turns/dyad** — but the C5 simulation
+  in observation.md predicts crossing at turn **6 (kant↔nietzsche)** /
+  **7 (kant→rikyu)** / **9 (nietzsche→rikyu)**.
+* The deterministic e2e suite hits the threshold by stacking many turns on
+  a single dyad with antagonism guaranteed every turn; the live run spreads
+  turns across all dyads, dilutes antagonism with curiosity-mode openings,
+  and the rikyu-side bonds saturate slower than the simulation because
+  utterances are shorter than the 200-char saturation point.
+* No 5th-gate-style hardware/runtime bug was observed — formula and
+  ``last_interaction_zone`` plumbing both held up under live LLM noise.
+
+### Side-observations (informational, not gates)
+
+* ``EXPLAIN QUERY PLAN`` (γ-run latency claim) was **not** measured in this
+  run; left for ε if/when it becomes load-relevant.
+* Godot ``ReasoningPanel`` screenshot: deferred to MacBook side per
+  M7-β/M7-γ split (``project_m7_beta_baseline_frozen.md`` memory).
+* Gateway logged one ``WebSocketDisconnect (code 1000)`` as ``ERROR`` in
+  ``_recv_loop`` (``gateway.py:415``). Symptom is benign (clean MacBook
+  disconnect surfacing as TaskGroup error); cosmetic log-noise residual,
+  recorded in the live-fix task dir.

@@ -64,3 +64,23 @@ socket-leak issue (introduced before δ; reproducible on
 passes; in the full suite it occasionally claims a warning that pytest's
 ``unraisableexception`` plugin attributes to the next-running test.
 Cleanup is L6 backlog scope.
+
+## Live G-GEAR run-01 verdict (2026-04-26)
+
+**4/5 PASS, 1 δ-residual.** Gates 1, 3, 4, 5 land cleanly on a 122s
+``kant,nietzsche,rikyu`` run with ``ERRE_ZONE_BIAS_P=0.1``. Gate 2
+(``belief_promotions`` non-empty) misses because peak |affinity| only
+reaches 0.358 in 17 dialog_turns (≈2.8 turns/dyad), short of the
+0.45 threshold and well under the C5-predicted 6-9 turn crossing window.
+
+Per ``run-guide-delta.md`` Step 7, observation.md does **not** relax the
+gate. The diagnosis + remediation candidates (option A: longer run /
+B: impact retune / C: threshold lower / defer-to-ε) are recorded in
+``.steering/20260426-m7-delta-live-fix/``. The cheapest probe — re-run
+at ``--duration 360`` — is the recommended first step before any code
+change.
+
+Side-observation: gateway logs ``WebSocketDisconnect (code 1000)`` as
+``ERROR`` from ``_recv_loop`` inside ``TaskGroup`` on every clean
+MacBook disconnect. Cosmetic only; bundled into the live-fix task as
+a separate residual.

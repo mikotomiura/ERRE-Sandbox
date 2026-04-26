@@ -1,0 +1,20 @@
+{
+  "url": "ws://localhost:8000/ws/observe",
+  "out": ".steering\\20260426-m7-slice-delta\\run-01-delta\\run-01.jsonl",
+  "duration_s": 120.0,
+  "elapsed_s": 122.09,
+  "envelope_total": 173,
+  "envelope_per_kind": {
+    "world_layout": 1,
+    "agent_update": 18,
+    "speech": 18,
+    "move": 17,
+    "animation": 18,
+    "reasoning_trace": 18,
+    "reflection_event": 3,
+    "dialog_initiate": 3,
+    "dialog_turn": 17,
+    "world_tick": 60
+  },
+  "schema_version": "0.7.0-m7d"
+}

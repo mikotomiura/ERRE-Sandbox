@@ -62,10 +62,13 @@ design-final.md 確定後にここを書く。仮の skeleton:
 - [ ] GUT fixture-based test
 
 ### Commit 7: acceptance + live G-GEAR
-- [ ] 90-120s run × 1-2 本
-- [ ] zone-residency / affinity distribution / belief promotion 集計
-- [ ] `observation.md` + `decisions.md` 更新
-- [ ] PR 起票
+- [x] 90-120s run × 1-2 本 → run-01 (122s, 173 envelopes, 17 dialog_turn)
+- [x] zone-residency / affinity distribution / belief promotion 集計
+      → 4/5 PASS, 1 δ-residual (gate 2: belief_promotions empty,
+      peak |affinity|=0.358 < 0.45 threshold)
+- [x] `observation.md` + `decisions.md` 更新
+      (residual handed to `.steering/20260426-m7-delta-live-fix/`)
+- [ ] PR 起票 (verdict branch = chore/m7-delta-live-acceptance)
 
 ## Verification
 
