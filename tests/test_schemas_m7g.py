@@ -47,11 +47,13 @@ def test_schema_version_is_m7g() -> None:
 
     M7γ introduced WorldLayoutMsg + the three ReasoningTrace observability
     fields. M7δ added belief promotion fields, M7ε bumps for the internal
-    ``dialog_turns.epoch_phase`` column. The surface this file exercises
+    ``dialog_turns.epoch_phase`` column, and M7ζ bumps for additive panel
+    context (``ReasoningTrace.persona_id`` /
+    ``RelationshipBond.latest_belief_kind``). The surface this file exercises
     remains valid against the current SCHEMA_VERSION pin
-    (``0.8.0-m7e``).
+    (``0.9.0-m7z``).
     """
-    assert SCHEMA_VERSION == "0.8.0-m7e"
+    assert SCHEMA_VERSION == "0.9.0-m7z"
 
 
 # ---------- §7 WorldLayoutMsg discriminator ----------------------------------

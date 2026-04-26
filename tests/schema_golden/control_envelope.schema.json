@@ -32,7 +32,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -71,7 +71,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -117,7 +117,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -247,7 +247,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -285,7 +285,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -335,7 +335,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -450,7 +450,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -500,7 +500,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -537,7 +537,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -795,6 +795,19 @@
           "title": "Observed Objects",
           "type": "array"
         },
+        "persona_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Persona this trace belongs to (matches ``PersonaSpec.persona_id``). M7ζ-added so the Godot ``ReasoningPanel`` can render the persona identity alongside the trace without joining ``AgentState``. Older M7ε producers (pre-0.9.0-m7z) deserialise as ``None``; consumers must tolerate the missing case and fall back to ``agent_id``.",
+          "title": "Persona Id"
+        },
         "retrieved_memories": {
           "description": "Top-3 ``MemoryEntry.id`` values surfaced by recall calls during this tick (M7γ). Lets the xAI panel link the decision back to the specific memory rows it leaned on.",
           "items": {
@@ -841,7 +854,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -920,7 +933,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1067,7 +1080,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1117,7 +1130,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1162,7 +1175,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.8.0-m7e",
+          "default": "0.9.0-m7z",
           "title": "Schema Version",
           "type": "string"
         },
