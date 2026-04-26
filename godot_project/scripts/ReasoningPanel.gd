@@ -28,8 +28,14 @@ const Strings = preload("res://scripts/i18n/Strings.gd")
 @export var router_path: NodePath
 
 var _focused_agent: String = ""
+# M7-ζ-2: most-recently observed persona_id for the focused agent — sourced
+# from ``ReasoningTrace.persona_id`` (M7-ζ-2 wire) or ``AgentUpdate.persona_id``
+# (always carried). Cached so the title + summary do not flicker between
+# resolved and "(persona unknown)" when the two streams interleave.
+var _focused_persona_id: String = ""
 var _title_label: Label
 var _mode_label: Label
+var _persona_summary_label: Label
 var _salient_label: Label
 var _decision_label: Label
 var _intent_label: Label
@@ -111,6 +117,11 @@ func _build_tree() -> void:
 
 	_title_label = _make_label(vbox, Strings.LABELS["PANEL_TITLE"], 18, Color(0.9, 0.92, 0.95, 1.0))
 	_mode_label = _make_label(vbox, Strings.LABELS["AGENT_NONE"], 12, Color(0.65, 0.75, 0.9, 1.0))
+	# M7-ζ-2: 1-line persona personality summary, sized between mode and
+	# section headers. Hidden until a trace / update gives us a persona_id.
+	_persona_summary_label = _make_label(
+		vbox, Strings.LABELS["PERSONA_SUMMARY_UNKNOWN"], 11, Color(0.75, 0.78, 0.85, 1.0),
+	)
 	vbox.add_child(_make_divider())
 
 	_make_label(vbox, Strings.LABELS["SALIENT"], 11, Color(0.8, 0.7, 0.4, 1.0))
@@ -167,11 +178,13 @@ func set_focused_agent(agent_id: String, _agent_node: Node3D = null) -> void:
 	if agent_id == _focused_agent:
 		return
 	_focused_agent = agent_id
+	_focused_persona_id = ""
 	_salient_label.text = Strings.LABELS["VALUE_DASH"]
 	_decision_label.text = Strings.LABELS["VALUE_DASH"]
 	_intent_label.text = Strings.LABELS["VALUE_DASH"]
 	_reflection_label.text = Strings.LABELS["REFLECTION_NONE"]
 	_relationships_label.text = Strings.LABELS["RELATIONSHIPS_NONE"]
+	_persona_summary_label.text = Strings.LABELS["PERSONA_SUMMARY_UNKNOWN"]
 	_last_reflection_tick = -1
 	if agent_id != "":
 		_title_label.text = Strings.LABELS["PANEL_TITLE_FOR_AGENT"] % agent_id
@@ -179,6 +192,41 @@ func set_focused_agent(agent_id: String, _agent_node: Node3D = null) -> void:
 		_title_label.text = Strings.LABELS["PANEL_TITLE"]
 	_mode_label.text = Strings.LABELS["AGENT_WAITING"]
 	_sync_selector_to_focus(agent_id)
+
+
+func _apply_persona_to_title(agent_id: String, persona_id: String) -> void:
+	# M7-ζ-2: upgrade the bare ``Reasoning Panel — <agent_id>`` title to
+	# ``Reasoning Panel — <agent_id> (<display_name>)`` and surface the
+	# 1-line personality summary the moment either ``ReasoningTrace.persona_id``
+	# or ``AgentUpdate.persona_id`` resolves it. Re-entry safe: if the same
+	# persona_id arrives again the labels are already correct.
+	if agent_id == "" or persona_id == "":
+		return
+	if persona_id == _focused_persona_id:
+		return
+	_focused_persona_id = persona_id
+	_title_label.text = Strings.LABELS["PANEL_TITLE_FOR_AGENT_PERSONA"] % [
+		agent_id, _persona_display_name(persona_id),
+	]
+	_persona_summary_label.text = _persona_summary(persona_id)
+
+
+func _persona_display_name(persona_id: String) -> String:
+	if persona_id == "":
+		return Strings.LABELS["PERSONA_NAME_UNKNOWN"]
+	var key := "PERSONA_NAME_%s" % persona_id.to_upper()
+	if Strings.LABELS.has(key):
+		return Strings.LABELS[key]
+	return Strings.LABELS["PERSONA_NAME_UNKNOWN"]
+
+
+func _persona_summary(persona_id: String) -> String:
+	if persona_id == "":
+		return Strings.LABELS["PERSONA_SUMMARY_UNKNOWN"]
+	var key := "PERSONA_SUMMARY_%s" % persona_id.to_upper()
+	if Strings.LABELS.has(key):
+		return Strings.LABELS[key]
+	return Strings.LABELS["PERSONA_SUMMARY_UNKNOWN"]
 
 
 # ---- EnvelopeRouter signal handlers ----
@@ -197,6 +245,12 @@ func _on_reasoning_trace_received(agent_id: String, tick: int, trace: Dictionary
 	_salient_label.text = _coalesce(trace.get("salient"), Strings.LABELS["VALUE_DASH"])
 	_decision_label.text = _coalesce(trace.get("decision"), Strings.LABELS["VALUE_DASH"])
 	_intent_label.text = _coalesce(trace.get("next_intent"), Strings.LABELS["VALUE_DASH"])
+	# M7-ζ-2: persona_id is optional on the wire (None for pre-0.9.0-m7z
+	# producers). Only upgrade the title when the field resolves to a
+	# non-empty string.
+	var persona_value: Variant = trace.get("persona_id")
+	if persona_value != null and str(persona_value) != "":
+		_apply_persona_to_title(agent_id, str(persona_value))
 
 
 func _on_reflection_event_received(
@@ -238,6 +292,13 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 		set_focused_agent(agent_id)
 	if agent_id != _focused_agent:
 		return
+	# M7-ζ-2: agent_update always carries persona_id (it's a required field
+	# on AgentState), so this is the more reliable resolver of the two —
+	# the trace stream's persona_id is optional and only fires on ticks
+	# where the LLM produced narrative fields.
+	var persona_value: Variant = agent_state.get("persona_id")
+	if persona_value != null and str(persona_value) != "":
+		_apply_persona_to_title(agent_id, str(persona_value))
 	var raw: Variant = agent_state.get("relationships", [])
 	if not (raw is Array):
 		return
