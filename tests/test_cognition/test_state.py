@@ -87,6 +87,20 @@ def test_advance_physical_rng_is_deterministic() -> None:
     assert out_a.mood_baseline == out_b.mood_baseline
 
 
+def test_advance_physical_decays_emotional_conflict() -> None:
+    """M7δ: emotional_conflict drops by 0.02 per tick toward 0."""
+    prev = Physical(emotional_conflict=0.30)
+    out = advance_physical(prev, events=[], rng=None)
+    assert out.emotional_conflict == pytest.approx(0.28)
+
+
+def test_advance_physical_emotional_conflict_floor_at_zero() -> None:
+    """Decay does not go negative once conflict has fully decayed."""
+    prev = Physical(emotional_conflict=0.01)
+    out = advance_physical(prev, events=[], rng=None)
+    assert out.emotional_conflict == 0.0
+
+
 def test_apply_llm_delta_monotone_in_valence() -> None:
     prev = Cognitive(valence=0.0)
     pos = apply_llm_delta(prev, _plan(valence_delta=0.3), rng=None)

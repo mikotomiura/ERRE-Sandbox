@@ -116,6 +116,22 @@ proximity (5 m) because props are spot-like salience markers — a tea bowl
 is noticed when the agent is *at* it, not merely in the same zone."""
 
 
+_NEGATIVE_DELTA_TRIGGER: Final[float] = -0.05
+"""M7δ threshold below which a negative affinity delta raises emotional_conflict.
+
+Calibrated so the antagonism table's -0.30 magnitude (kant↔nietzsche)
+fires the bump while transient negative noise from decay alone (decay
+contribution at low ``prev`` is well above -0.05) does not."""
+
+_EMOTIONAL_CONFLICT_GAIN: Final[float] = 0.5
+"""Coefficient applied to ``abs(delta)`` when raising emotional_conflict.
+
+A -0.30 antagonism delta therefore raises emotional_conflict by 0.15
+per turn, clamped at the upper bound of 1.0. The decay back to baseline
+(``-0.02`` per tick) happens in
+:func:`erre_sandbox.cognition.state.advance_physical`."""
+
+
 def _time_of_day(elapsed: float, day_duration: float) -> TimeOfDay:
     """Map an elapsed-time scalar to the containing :class:`TimeOfDay` bucket.
 
@@ -472,6 +488,18 @@ class WorldRuntime:
                 return bond.affinity
         return 0.0
 
+    def get_agent_zone(self, agent_id: str) -> Zone | None:
+        """Return the zone of ``agent_id``'s current :class:`Position`.
+
+        ``None`` when ``agent_id`` is unknown. Used by the M7δ bootstrap
+        relational sink to stamp ``RelationshipBond.last_interaction_zone``
+        with the zone the speaker spoke from. Read-only.
+        """
+        rt = self._agents.get(agent_id)
+        if rt is None:
+            return None
+        return rt.state.position.zone
+
     def apply_affinity_delta(
         self,
         *,
@@ -479,6 +507,7 @@ class WorldRuntime:
         other_agent_id: str,
         delta: float,
         tick: int,
+        zone: Zone | None = None,
     ) -> None:
         """Apply an affinity ``delta`` to ``agent_id``'s bond with ``other_agent_id``.
 
@@ -490,6 +519,20 @@ class WorldRuntime:
         through :func:`erre_sandbox.cognition.relational.apply_affinity`),
         :attr:`RelationshipBond.ichigo_ichie_count` is incremented, and
         :attr:`RelationshipBond.last_interaction_tick` is set to ``tick``.
+
+        M7δ extensions:
+
+        * ``zone`` — when supplied, written to
+          :attr:`RelationshipBond.last_interaction_zone` so the Godot
+          ``ReasoningPanel`` can render ``"<persona> affinity ±0.NN
+          (N turns, last in <zone> @ tick T)"``. Default ``None`` keeps
+          the field unset for callers that have not yet been migrated.
+        * ``Physical.emotional_conflict`` write — negative ``delta`` past
+          the M7δ trigger threshold (``< -0.05``) raises this field by
+          ``abs(delta) * 0.5`` (clamped to ``[0, 1]``). Decay back to
+          baseline lives in :func:`erre_sandbox.cognition.state.advance_physical`
+          (per-tick ``-0.02``). Closes the dangling-read at
+          ``cognition/state.py::sleep_penalty`` (R3 M4).
 
         Silent no-op when ``agent_id`` is not registered: the relational
         hook fires from the bootstrap turn-sink chain, which races a
@@ -517,6 +560,7 @@ class WorldRuntime:
                             "affinity": apply_affinity(bond.affinity, delta),
                             "ichigo_ichie_count": bond.ichigo_ichie_count + 1,
                             "last_interaction_tick": tick,
+                            "last_interaction_zone": zone,
                         },
                     ),
                 )
@@ -531,9 +575,25 @@ class WorldRuntime:
                     familiarity=0.0,
                     ichigo_ichie_count=1,
                     last_interaction_tick=tick,
+                    last_interaction_zone=zone,
                 ),
             )
-        rt.state = rt.state.model_copy(update={"relationships": new_bonds})
+        # M7δ: negative delta past the trigger threshold raises the
+        # speaker / addressee's emotional_conflict so future cognition
+        # cycles read the residue (sleep_penalty already consumes it).
+        new_physical = rt.state.physical
+        if delta < _NEGATIVE_DELTA_TRIGGER:
+            bumped = min(
+                1.0,
+                rt.state.physical.emotional_conflict
+                + abs(delta) * _EMOTIONAL_CONFLICT_GAIN,
+            )
+            new_physical = rt.state.physical.model_copy(
+                update={"emotional_conflict": bumped},
+            )
+        rt.state = rt.state.model_copy(
+            update={"relationships": new_bonds, "physical": new_physical},
+        )
 
     def layout_snapshot(self, *, tick: int = 0) -> WorldLayoutMsg:
         """Construct a :class:`WorldLayoutMsg` from the static zone tables (M7γ).

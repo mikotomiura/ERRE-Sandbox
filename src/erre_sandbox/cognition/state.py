@@ -39,6 +39,16 @@ _UNIT_MAX: Final[float] = 1.0
 _SIGNED_MIN: Final[float] = -1.0
 _SIGNED_MAX: Final[float] = 1.0
 
+_EMOTIONAL_CONFLICT_DECAY: Final[float] = 0.02
+"""Per-tick decay applied to ``Physical.emotional_conflict`` (M7δ).
+
+Pairs with the relational-sink write at
+``world/tick.py::apply_affinity_delta`` (``+abs(delta)*0.5`` on negative
+delta past ``-0.05``). A single -0.30 antagonism event raises
+emotional_conflict by 0.15; with this decay it returns to baseline in
+~7-8 ticks if no further negative event reinforces it.
+"""
+
 # Event-impact lookups. Keys are ``Observation.event_type`` literals.
 # ``speech`` impact is ``|emotional_impact|`` taken from the event itself
 # (see ``_event_impact``), so the lookup value is the scaling weight only.
@@ -196,12 +206,19 @@ def advance_physical(
         + _noise(rng, config.noise_scale),
     )
 
+    # M7δ: emotional_conflict decays toward 0 each tick. Writes happen at
+    # the relational sink (``world/tick.py::apply_affinity_delta``) when a
+    # negative affinity delta crosses the trigger threshold; this decay
+    # provides the matching down-slope so a momentary clash fades over
+    # ~50 ticks if no further negative event reinforces it.
+    emotional_conflict = max(0.0, prev.emotional_conflict - _EMOTIONAL_CONFLICT_DECAY)
+
     return Physical(
         sleep_quality=sleep_quality,
         physical_energy=physical_energy,
         mood_baseline=mood_baseline,
         cognitive_load=cognitive_load,
-        emotional_conflict=prev.emotional_conflict,
+        emotional_conflict=emotional_conflict,
         fatigue=prev.fatigue,
         hunger=prev.hunger,
         breath_rate=prev.breath_rate,

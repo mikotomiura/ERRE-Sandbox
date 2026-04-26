@@ -278,18 +278,25 @@ def _make_relational_sink(
             )
             return
         # Bidirectional bond mutation: each side feels the dialog turn
-        # through its own perspective-derived delta.
+        # through its own perspective-derived delta. ``zone`` is the
+        # speaker's current zone; in γ dialogues require co-location so
+        # both participants share the same zone for ``last_interaction_zone``
+        # bookkeeping. The accessor returns ``None`` if the agent is
+        # transiently unregistered, which propagates harmlessly.
+        interaction_zone = runtime.get_agent_zone(turn.speaker_id)
         runtime.apply_affinity_delta(
             agent_id=turn.speaker_id,
             other_agent_id=turn.addressee_id,
             delta=delta_speaker,
             tick=turn.tick,
+            zone=interaction_zone,
         )
         runtime.apply_affinity_delta(
             agent_id=turn.addressee_id,
             other_agent_id=turn.speaker_id,
             delta=delta_addressee,
             tick=turn.tick,
+            zone=interaction_zone,
         )
 
     return _persist_relational_event
