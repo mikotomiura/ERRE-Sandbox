@@ -112,3 +112,12 @@ default_sampling:
   temperature: 0.60
   top_p: 0.85
   repeat_penalty: 1.12
+
+# M7ζ-3 behavior profile: deliberate-pace walker with regular cadence.
+# Linden-Allee gait (60-75 min sustained) → moderate factor + 14 s cognition
+# tick + 30 s dwell after each MoveMsg + standard 1.5 m bubble.
+behavior_profile:
+  movement_speed_factor: 0.85
+  cognition_period_s: 14.0
+  dwell_time_s: 30.0
+  separation_radius_m: 1.5

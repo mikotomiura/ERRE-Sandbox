@@ -1,5 +1,45 @@
 {
   "$defs": {
+    "BehaviorProfile": {
+      "additionalProperties": false,
+      "description": "Per-persona observable behavior knobs (M7ζ-3, additive).\n\nDrives runtime divergence between agents (movement speed, cognition tick\ncadence, post-MoveMsg dwell, separation radius) so that the same\ncognition cycle code can produce visibly different \"creatures\" in live\nobservation. Server-side only — never flows over the wire, so\n``SCHEMA_VERSION`` is not bumped when fields are added here.",
+      "properties": {
+        "cognition_period_s": {
+          "default": 10.0,
+          "description": "Base period of this agent's cognition tick. The 10 s global scheduler in ``world/tick.py`` runs unchanged, but each agent's ``next_cognition_due`` is advanced by this value (phase wheel) so Nietzsche-like bursts and Rikyū-like slow cadences emerge.",
+          "maximum": 120.0,
+          "minimum": 3.0,
+          "title": "Cognition Period S",
+          "type": "number"
+        },
+        "dwell_time_s": {
+          "default": 0.0,
+          "description": "Extra delay added once after a MoveMsg fires (seiza-like dwell). Suppresses cognition ticks for this duration before the phase wheel resumes — Rikyū's ≥20 min seiza is the headline use case.",
+          "maximum": 600.0,
+          "minimum": 0.0,
+          "title": "Dwell Time S",
+          "type": "number"
+        },
+        "movement_speed_factor": {
+          "default": 1.0,
+          "description": "Multiplier applied to ``CognitionCycle.DEFAULT_DESTINATION_SPEED`` (1.3 m/s) when emitting MoveMsg. Yields the persona's distinctive gait rhythm in the live ``MoveMsg.speed`` histogram.",
+          "maximum": 2.5,
+          "minimum": 0.3,
+          "title": "Movement Speed Factor",
+          "type": "number"
+        },
+        "separation_radius_m": {
+          "default": 1.5,
+          "description": "Pair distance (XZ plane) below which the backend nudges this agent and its peer apart by 0.4 m per physics tick. Stays well inside ``_PROXIMITY_THRESHOLD_M = 5.0`` so dialog scheduler proximity events keep firing.",
+          "maximum": 5.0,
+          "minimum": 0.0,
+          "title": "Separation Radius M",
+          "type": "number"
+        }
+      },
+      "title": "BehaviorProfile",
+      "type": "object"
+    },
     "CognitiveHabit": {
       "additionalProperties": false,
       "description": "One recurring cognitive-behavioural pattern of a historical figure.",
@@ -159,6 +199,9 @@
   "additionalProperties": false,
   "description": "Root schema for a persona YAML (one file per historical figure).",
   "properties": {
+    "behavior_profile": {
+      "$ref": "#/$defs/BehaviorProfile"
+    },
     "cognitive_habits": {
       "items": {
         "$ref": "#/$defs/CognitiveHabit"

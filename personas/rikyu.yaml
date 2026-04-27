@@ -129,3 +129,13 @@ default_sampling:
   temperature: 0.45
   top_p: 0.78
   repeat_penalty: 1.25
+
+# M7ζ-3 behavior profile: long seiza practitioner.
+# Slow gait (factor 0.70) + long 18 s cognition period + 90 s dwell ≈ ≥20 min
+# seiza compressed into observable timescale + tight 1.2 m bubble (close
+# proximity is part of the tea ritual).
+behavior_profile:
+  movement_speed_factor: 0.70
+  cognition_period_s: 18.0
+  dwell_time_s: 90.0
+  separation_radius_m: 1.2

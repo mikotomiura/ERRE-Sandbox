@@ -320,6 +320,62 @@ class SamplingDelta(BaseModel):
     repeat_penalty: float = Field(default=0.0, ge=-1.0, le=1.0)
 
 
+class BehaviorProfile(BaseModel):
+    """Per-persona observable behavior knobs (M7ζ-3, additive).
+
+    Drives runtime divergence between agents (movement speed, cognition tick
+    cadence, post-MoveMsg dwell, separation radius) so that the same
+    cognition cycle code can produce visibly different "creatures" in live
+    observation. Server-side only — never flows over the wire, so
+    ``SCHEMA_VERSION`` is not bumped when fields are added here.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    movement_speed_factor: float = Field(
+        default=1.0,
+        ge=0.3,
+        le=2.5,
+        description=(
+            "Multiplier applied to ``CognitionCycle.DEFAULT_DESTINATION_SPEED`` "
+            "(1.3 m/s) when emitting MoveMsg. Yields the persona's distinctive "
+            "gait rhythm in the live ``MoveMsg.speed`` histogram."
+        ),
+    )
+    cognition_period_s: float = Field(
+        default=10.0,
+        ge=3.0,
+        le=120.0,
+        description=(
+            "Base period of this agent's cognition tick. The 10 s global "
+            "scheduler in ``world/tick.py`` runs unchanged, but each agent's "
+            "``next_cognition_due`` is advanced by this value (phase wheel) "
+            "so Nietzsche-like bursts and Rikyū-like slow cadences emerge."
+        ),
+    )
+    dwell_time_s: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=600.0,
+        description=(
+            "Extra delay added once after a MoveMsg fires (seiza-like dwell). "
+            "Suppresses cognition ticks for this duration before the phase "
+            "wheel resumes — Rikyū's ≥20 min seiza is the headline use case."
+        ),
+    )
+    separation_radius_m: float = Field(
+        default=1.5,
+        ge=0.0,
+        le=5.0,
+        description=(
+            "Pair distance (XZ plane) below which the backend nudges this "
+            "agent and its peer apart by 0.4 m per physics tick. Stays well "
+            "inside ``_PROXIMITY_THRESHOLD_M = 5.0`` so dialog scheduler "
+            "proximity events keep firing."
+        ),
+    )
+
+
 class PersonaSpec(BaseModel):
     """Root schema for a persona YAML (one file per historical figure)."""
 
@@ -334,6 +390,7 @@ class PersonaSpec(BaseModel):
     cognitive_habits: list[CognitiveHabit]
     preferred_zones: list[Zone]
     default_sampling: SamplingBase = Field(default_factory=SamplingBase)
+    behavior_profile: BehaviorProfile = Field(default_factory=BehaviorProfile)
 
 
 class AgentSpec(BaseModel):

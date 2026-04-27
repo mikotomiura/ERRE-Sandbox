@@ -128,3 +128,12 @@ default_sampling:
   temperature: 0.85
   top_p: 0.80
   repeat_penalty: 0.95
+
+# M7ζ-3 behavior profile: 20-40 min migraine-burst writer.
+# Fast burst (factor 1.25) + short 7 s cognition period + minimal 5 s dwell
+# (he barely stops between aphorisms) + standard 1.5 m bubble.
+behavior_profile:
+  movement_speed_factor: 1.25
+  cognition_period_s: 7.0
+  dwell_time_s: 5.0
+  separation_radius_m: 1.5
