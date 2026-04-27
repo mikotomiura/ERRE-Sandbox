@@ -1,0 +1,21 @@
+{
+  "url": "ws://localhost:8000/ws/observe",
+  "out": ".steering\\20260426-m7-slice-epsilon\\run-01-epsilon\\run-01.jsonl",
+  "duration_s": 360.0,
+  "elapsed_s": 362.06,
+  "envelope_total": 449,
+  "envelope_per_kind": {
+    "world_layout": 1,
+    "agent_update": 51,
+    "speech": 49,
+    "move": 49,
+    "animation": 49,
+    "reasoning_trace": 49,
+    "world_tick": 170,
+    "reflection_event": 15,
+    "dialog_initiate": 2,
+    "dialog_turn": 12,
+    "dialog_close": 2
+  },
+  "schema_version": "0.8.0-m7e"
+}

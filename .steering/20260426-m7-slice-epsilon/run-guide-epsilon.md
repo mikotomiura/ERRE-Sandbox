@@ -104,12 +104,18 @@ uv run python .steering/20260426-m7-slice-delta/evidence/_db_summary_m7d.py \
   --out .steering/20260426-m7-slice-epsilon/run-01-epsilon/run-01.db_summary.json
 
 # M7ε scaling_metrics (M1/M2/M3 with the AUTONOMOUS-only filter active)
-uv run erre-scaling-metrics \
-  --db var/run-epsilon.db \
+PYTHONIOENCODING=utf-8 uv run erre-sandbox scaling-metrics \
+  --run-db var/run-epsilon.db \
   --journal .steering/20260426-m7-slice-epsilon/run-01-epsilon/run-01.jsonl \
   --run-id run-01-epsilon \
-  --output .steering/20260426-m7-slice-epsilon/run-01-epsilon/run-01.scaling_metrics.json
+  --out .steering/20260426-m7-slice-epsilon/run-01-epsilon/run-01.scaling_metrics.json
 ```
+
+> **Note**: M8 spike landed scaling-metrics as the ``erre-sandbox
+> scaling-metrics`` sub-command (``--run-db`` / ``--out``), not as a
+> standalone ``erre-scaling-metrics`` entry point. ``PYTHONIOENCODING``
+> is required on Windows / cp932 because the M8 CLI uses an
+> em-dash (—) in its description.
 
 ## Step 5 — Stop the orchestrator (terminal A)
 
