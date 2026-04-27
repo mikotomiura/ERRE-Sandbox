@@ -244,3 +244,253 @@ Next: ζ slice ``/finish-task`` closure — memory
 decisions.md D2 / D7v2 (`m9-lora-pre-plan` / `world-asset-blender-pipeline`
 / `event-boundary-observability` / `agent-presence-visualization` /
 `godot-viewport-layout`).
+
+---
+
+# Mac-side walking-tour & reconnect-loop finding (appended 2026-04-28)
+
+> The G-GEAR sections above are the canonical numeric verdict. The
+> sections below are the live Mac-side observation log — three
+> ReasoningPanel frames (tick=40 / 52 / 70) captured during the 1800 s
+> probe, plus the gateway-client ``idle_disconnect`` analysis that
+> surfaced the new ``godot-ws-keepalive`` deferred task.
+
+## Reconnect-loop investigation (2026-04-28)
+
+Orchestrator log showed reconnect attempts from `192.168.3.118` (Mac IP).
+Pre-flight check on Mac:
+
+- mDNS: `g-gear.local → 192.168.3.85` ✅
+- TCP/8000: `nc -zv g-gear.local 8000 → succeeded` ✅
+- ICMP ping: blocked (irrelevant, WS uses TCP)
+- `pgrep Godot` → no running Godot process at 17:??
+
+Reconnect loop most plausibly came from a **stale Godot session** the
+user had open during early G-GEAR bring-up; killing it (or its absence
+now) resolves it. New Godot launch from this branch should handshake
+cleanly because `CLIENT_SCHEMA_VERSION = "0.9.0-m7z"` matches the
+gateway's `SCHEMA_VERSION`.
+
+If the loop returns when the new Godot connects, capture:
+- Godot debug console output (look for `[WS]` lines)
+- orchestrator log around the reject (`HandshakeMsg` validation? schema
+  mismatch? rate-limit? AWAITING_HANDSHAKE timeout?)
+- WebSocketPeer state code at the moment of close
+
+### Update 2026-04-28 — root cause identified (NOT a ζ-3 regression)
+
+After Godot relaunch on `16c268b`, agent walking renders correctly and
+the ws handshake completes. The reconnect cycle is now confirmed to be
+a **pre-existing gateway/client mismatch**, not a ζ-3 issue:
+
+- Gateway (`src/erre_sandbox/integration/gateway.py:414`) wraps
+  `ws.receive_text()` in `asyncio.timeout(IDLE_DISCONNECT_S = 60.0)` and
+  emits `code="idle_disconnect"` + closes WS when no client frame
+  arrives in 60 s.
+- The same file's L407 comment states "For M2 clients may only
+  meaningfully send `HandshakeMsg`" — i.e. the client design is
+  passive listening after handshake, with no keepalive frames.
+- `godot_project/scripts/WebSocketClient.gd` confirms: `send_text` is
+  called only inside `_send_client_handshake` (L75); no heartbeat /
+  keepalive path exists.
+- Godot's `RECONNECT_DELAY = 2.0` (L31) auto-reconnects, the gateway
+  accepts a fresh handshake, agent state is rehydrated via the next
+  ``agent_update`` envelope. Loop period ≈ 62 s.
+
+**Impact on this run**: Z6 (体感) and Z1-Z5 (envelope-log derived) are
+unaffected — agent_update is replayed by the orchestrator after each
+reconnect, so movement / cognition / separation observation continues.
+**ζ-1+ζ-2 surfaces V8 (belief icon) and V9 (last-3 reflection list)
+may briefly show as empty between reconnect and the next promotion /
+reflection envelope** — note "PARTIAL — empty during reconnect window"
+in the V8/V9 boxes if observed, do not mark as a hard FAIL.
+
+**Defer follow-up** (added to /finish-task scaffolds — 6th deferred
+task): `godot-ws-keepalive` — Godot client should emit a 1 Hz
+keepalive frame (or use the ``protocol.HEARTBEAT_INTERVAL_S`` cadence)
+so the gateway's 60 s idle timeout never fires for an actively
+listening client. Out of scope for ζ-3.
+
+## Mid-run snapshot 2026-04-28 (Mac screenshot @ orchestrator tick=40, wall=15:40:18Z)
+
+User screenshot `~/Desktop/スクリーンショット 2026-04-28 0.40.19.png`
+captured at `[WS connected] tick=40 agents=3 clock=2026-04-27T15:40:18.764898Z`,
+showing the ReasoningPanel focused on `a_rikyu_001`.
+
+**Confirmed PASS from one frame**:
+
+- **V2** selector dropdown lists `a_rikyu_001` (and presumably the other
+  two via the OptionButton arrow); selection bound. ✅
+- **V3** JP labels render: 気づき / 判断 / 次の意図 / 最新の反省 / 関係性 +
+  モード / tick (≥ 5). No English LATEST REFLECTION. ✅
+- **V6** panel title `Reasoning Panel — a_rikyu_001 (千 利休)`. ✅
+- **V7** 1-line summary `静謐・侘び寂び — 沈黙と所作に意味を宿す`. ✅
+- **V9** 最新の反省 block shows ≥ 2 entries (`tick 7` 茶室の間…、
+  `tick 6` 朝霧の如し…) tick-desc. Persona-distinct vocabulary
+  (茶室 / 露地 / 茶碗 / 佗び寂び) confirms LLM is using rikyu's
+  cognitive habits in the prompt. ✅
+- **Z3** 3 agents visibly separated across zones (rikyu in chashitsu,
+  others in middle / right). No XZ collapse at this snapshot. ✅
+- **Z2 indirect signal**: `モード: chashitsu | tick: 9` for rikyu while
+  orchestrator world tick=40 → rikyu has stepped only ~9 times in ~40
+  s (allowing for orchestrator-tick / world-tick / cognition-tick
+  semantics differences, this matches the expected slow cadence with
+  `cognition_period_s=18 + dwell_time_s=90`). 🟡 needs probe-side
+  count to confirm Z2 numerically.
+- **Z5 indirect signal**: rikyu in `chashitsu` zone with mode marker
+  also chashitsu — consistent with seiza dwell / extended low-cadence
+  meditation phase. 🟡 confirm via dwell window in probe trace.
+
+**PARTIAL / pending**:
+
+- **V8** belief icon prefix (◯△✕？◇): bond row reads
+  `a_kant_001 親和度 +0.34 (6 回, 前回 chashitsu @ tick 3)` with **no
+  icon yet** at this frame. δ promotion threshold is `|affinity| × N`
+  gated; rikyu↔kant +0.34 × 6 below cutoff at tick 40. **Confirmed
+  PASS at tick 52** (next snapshot). 🟡→✅
+- **V1** day/night: scene appears lit (daytime). Single frame can't
+  show transition; accumulate over 30+ min observation.
+- **V4** camera tune: subjective, requires live interaction.
+- **Z1 / Z4 / Z6**: probe-side aggregation pending.
+
+## Mid-run snapshot 2026-04-28 (Mac screenshot @ orchestrator tick=52, wall=15:45:10Z)
+
+User screenshot `~/Desktop/スクリーンショット 2026-04-28 0.45.24.png`
+captured 5 min after the previous frame, with selector switched to
+`a_kant_001` (Immanuel Kant).
+
+**New PASS confirmed**:
+
+- **V8 ✅** belief icon prefix lands on the **kant↔nietzsche** bond
+  row: `△ a_nietzsche_001 親和度 -0.47 (6 回, 前回 study @ tick 27)`.
+  ``△`` = wary (negative-leaning, threshold-crossed). δ's
+  negative-affinity loop has produced a ζ-2 belief_kind promotion at
+  this point in the run. Rikyū side (+0.42) still un-iconed at this
+  frame, may follow.
+- **V10 ✅** selector switch resets the panel cleanly: kant has its
+  own mode (`peripatetic | tick: 26`), summary
+  (`勤勉・忍耐強 — 規律のリズムが思考を貫く`), reflection
+  (Latin/German philosophical: `Tempus / Peripatekum / Intellectus /
+  Claritas / Ratio`), and bond rows — completely distinct from rikyu
+  state at tick=40 frame.
+- **V4 ✅** camera tune confirmed by user direct report (orbit drag /
+  zoom / pan all work as expected).
+- **V6 ✅** for kant: `Reasoning Panel — a_kant_001 (Immanuel Kant)`.
+- **V7 ✅** for kant: `勤勉・忍耐強 — 規律のリズムが思考を貫く`.
+
+**Z2 cadence ratio (indirect, snapshot-derived)**:
+
+- rikyu @ tick=40: cognition tick = 9 → ratio 0.225
+- kant   @ tick=52: cognition tick = 26 → ratio 0.500
+- **kant fires at ~2.2 × rikyu's rate** — qualitatively matches
+  `period 14 s + dwell 30 s` vs `period 18 s + dwell 90 s` after
+  factoring in the 10 s global heap grid round-up effect documented
+  in commit B. ✅ semantic match; final numerical confirmation comes
+  from probe-side Z2 aggregation.
+
+**Persona-distinct cognitive vocabulary** (qualitative Z6 evidence):
+
+- rikyu: 茶室 / 露地 / 茶碗 / 佗び寂び — Japanese, tea-ceremony idiom
+- kant: 時間 (Tempus) / 循環 (Circulus) / 知性 (Intellectus) / 明晰さ
+  (Claritas) / 永遠 (Ewigkeit) / 比 (Ratio) — Latin/German critical-
+  philosophy idiom
+
+The two personas' reflections occupy different conceptual ontologies
+even though they share the same prompt assembler — the `cognitive_habits`
+plus YAML personality propagate cleanly into the LLM's chosen
+vocabulary. **Strong qualitative signal that the live `3 体が違う生物
+に見える` requirement is being met for at least 2 of 3 personas at
+this point in the run.** Nietzsche frame still pending.
+
+**Social graph healthy**:
+
+- kant ↔ nietzsche: −0.47 (敵対傾向)、wary 分類 (△ icon)、6 dialog
+  回 in study zone
+- kant ↔ rikyu: +0.42 (友好傾向)、6 dialog 回 in chashitsu zone
+- bond rows are multi-row per agent; no row corruption / empty rows
+  observed across the swap.
+
+## Mid-run snapshot 2026-04-28 (Mac screenshot @ orchestrator tick=70, wall=15:52:12Z)
+
+User screenshot `~/Desktop/スクリーンショット 2026-04-28 0.52.15.png`
+captured 7 min after the kant frame, with selector switched to
+`a_nietzsche_001` (Friedrich Nietzsche).
+
+**Z2 cadence ratio table now complete (3/3 personas)**:
+
+| persona | cognition tick | world tick | ratio | yaml period | yaml dwell |
+|---|---:|---:|---:|---:|---:|
+| nietzsche | 70 | 70 | **1.000** | 7 s | 5 s |
+| kant      | 26 | 52 | 0.500     | 14 s | 30 s |
+| rikyu     |  9 | 40 | 0.225     | 18 s | 90 s |
+
+**niet : kant : rikyu ≈ 4.4 : 2.2 : 1.0** — 3 modes are clearly
+separated, matching the design intent (Nietzsche bursts on every
+global tick, Kant fires every other, Rikyū strongly dampened by 90 s
+dwell). ✅ **Z2 indirect signal locked**, awaiting probe-side numerical
+confirmation in `scaling_metrics.json`.
+
+**V8 belief icon — both sides confirmed**:
+
+- kant view (tick=52): `△ a_nietzsche_001 親和度 -0.47 (6 回, 前回 study @ tick 27)`
+- niet view (tick=70): `△ a_kant_001 親和度 -0.58 (12 回, 前回 study @ tick 60)`
+
+Per-source affinity asymmetry (-0.47 vs -0.58) and growing dialog
+count (6 → 12 in 18 world ticks) prove the relational service is
+tracking the bond from each agent's perspective independently. Both
+sides crossed the negative-belief promotion threshold to ``wary``. ✅
+
+**V1 day/night cycle — PASS**:
+
+Comparison across the three frames:
+
+- tick=40 (15:40:18): bright lit, blue-grey ambient (daytime)
+- tick=52 (15:45:10): bright lit, blue-grey ambient (still daytime)
+- tick=70 (15:52:12): **warmer / dimmer ambient**, scene tinted toward
+  amber — visibly mid-transition
+
+The 1 Hz Timer-driven day/night step is progressing through the
+1800 s cycle. ✅
+
+**Z6 third persona vocabulary (3/3 confirmed distinct)**:
+
+- nietzsche: 永遠回帰 (Ewige Wiederkehr) / カントのRatio / Intra と Extra
+  / _cycles_ / 夜明けの刃 — German aphoristic, references Kant by name
+- kant: Tempus / Circulus / Peripatekum / Intellectus / Claritas / Ratio
+  — Latin/German critical-philosophy systematic
+- rikyu: 茶室 / 露地 / 茶碗 / 佗び寂び — Japanese tea-ceremony idiom
+
+Three personas, three conceptual ontologies. The same prompt assembler
++ same LLM produces visibly different "voices" because the persona
+YAML's ``cognitive_habits`` and ``personality`` fields propagate to
+the system prompt. ✅ **Z6 qualitative gate fundamentally cleared at
+this frame**; user can keep observing to confirm the impression
+holds for the rest of the run.
+
+**Dialog accumulation (D1 hard-gate signal)**:
+
+kant↔nietzsche: 6 → 12 dialog turns over 18 world ticks. δ run-02
+required ≥ 12 turns at 360 s; this run is on pace to exceed that
+comfortably by 1800 s end. 🟡→✅ pending probe-side `dialog_turns`
+count.
+
+**Cross-agent awareness in reflection**:
+
+Nietzsche's tick 68 reflection literally says
+``カントのRatio (Ratio) と Intellectus (Intellectus) と語る`` — the
+LLM has been told via the prompt that Kant is a relational peer and
+folds Kant's specific philosophical vocabulary into Nietzsche's own
+aphoristic frame. This is exactly the M7 γ + δ relationship loop
+working at the cognition layer.
+
+**Side observations (confirm pre-existing defer items)**:
+
+- **F3 viewport layout**: 3D canvas occupies ~50% of the window with
+  large black margins on all four sides. Reaffirms the
+  `godot-viewport-layout` deferral (F3 from D7v2).
+- **A2 world assets**: zone buildings (chashitsu floor, walking
+  surfaces) are primitive boxes / planes. Reaffirms
+  `world-asset-blender-pipeline` deferral (A2/A3 from D2).
+
+These are documented defer scope, not ζ-3 regressions.
+
