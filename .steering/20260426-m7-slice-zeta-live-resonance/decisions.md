@@ -171,3 +171,49 @@ scaffold する:
 バイアス。/reimagine が実際に結論を覆した (memory:plan_mode_gating の
 v1 バイアス典型形に該当)。
 
+## D8 — ζ-3 着手時 /reimagine: phase wheel + 3-commit split を採用、6 軸は v1 維持
+
+**判断**: ζ-3 着手前 (2026-04-27) の Plan mode で v1 (素直案 = Plan A
+hybrid を line 数字に正規化) と v2 (/reimagine ゼロ再生成、v1 不可視) を
+独立 Plan agent で並列 dispatch、5-8 軸比較の結果、**hybrid を採用**。
+v2 が 2 軸を覆し、6 軸は v1 維持の根拠が成立した。
+
+**根拠 (8 軸比較)**:
+
+| 軸 | v1 (Plan A hybrid) | v2 (re-imagined) | 採用 |
+|---|---|---|---|
+| A. field 集合 | 4 scalars | 5 fields (stride×cadence + phase + jitter + bubble) | **v1** — scalar speed の live histogram 直接観察、wire round 不要、test simple |
+| B. **cognition 実装** | per-agent ScheduledEvent heap n 個 + dialog tick 別 event 化 | **phase wheel** (heap 1 個維持、`next_cognition_due` per-agent select、asyncio.gather 並列性維持) | **v2 (覆る)** — heap 構造変更なし、ManualClock test 自然動作、dialog tick 分離リスク回避 |
+| C. movement speed | scalar `DEFAULT × factor` | derived `stride × cadence` + round(.,3) | **v1** — wire round hack 不要、test/live 直接観察 |
+| D. separation 数式 | 一様 0.4m 押し離し + 単位ベクトル | `(bubble−r)²/bubble² × cadence × 0.3` potential | **v1** — 初期実装は単純で十分、velocity-aligned/cadence 依存は m9-lora で persona 学習が入った後の自然な拡張 |
+| E. **split / commits** | 6 commits (c1-c6, split-A/B 分離) | **3 commits** (A schema / B cognition+speed / C separation) | **v2 (覆る)** — review 単位 clear、各 commit 独立 green、phase wheel 採用で heap 操作分離が不要に |
+| F. dwell 表現 | 明示 `dwell_time_s` + dwell_until slot | `burst_idle_phase` で動的延長 | **v1** — Rikyū seiza 90s が要件 §B で明示、phase 表現では解像度不足 |
+| G. yaml 数値 | (0.85/14/30/1.5) (1.25/7/5/1.5) (0.70/18/90/1.2) | (0.50/2.20/0.30/0.0/1.5) etc. 5 値 | **v1** — speed mode 0.91/1.625/0.910 が M5 fixture range 中央寄りで安全 |
+| H. risks | R3 (heap 侵襲) / R4 / R7 | R1 (burst 過密) / R2 (round) / R5 (golden) | phase wheel で R3 は本質的に解消 |
+
+**hybrid 結論**: v1 の field 集合 + speed scalar + dwell 明示 + 単純
+separation を保ちつつ、**v2 の phase wheel cognition と 3-commit split
+を採用**。覆ったのは B (cognition 実装) と E (split scheme) の 2 軸、
+6 軸は v1 維持の根拠が成立。
+
+**重要: v1 維持判断は /reimagine が validate**。「v1 が覆らなかった」=
+バイアス除去後も v1 の判断が成立する独立検証になっており、
+memory:plan_mode_gating の "1 発案バイアスは構造的に残る" を裏返した
+形で価値を出している (覆らないことで v1 confidence が上がる)。
+
+**実装結果との整合性**:
+- 実装中、phase wheel は global cognition heap 10s grid に lock される
+  挙動を test で確認 (kant 14s と rikyu 18s が同 20s 実効)。dwell 90s
+  で rikyu を更に dampen することで 3 mode 分離が live で確保される
+  見込み (test では cognition 周期分離 + dwell 単独抑制を別 test で
+  gate)。
+- 既存 `test_llm_fell_back_result_does_not_stop_loop` で `clock.advance(30.0)`
+  を 3 段階分割に変更が必要だった (phase wheel が `monotonic()` を
+  handler entry 毎に読むため、ManualClock advance の意味論が phase
+  wheel 採用で変わった)。これは v1 (per-agent heap) では起きなかった
+  regression で、v2 採用の trade-off。
+
+**参照**:
+- `~/.claude/plans/reflective-bouncing-bumblebee.md` (採用 plan、3 commits 構成)
+- main commits: cfc6449 (commit A) / 0f3727f (commit B) / c7eed76 (commit C) / 61671b4 (chore)
+

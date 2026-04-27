@@ -52,16 +52,30 @@
 
 ### PR-ζ-3 — `feat/m7-zeta-behavior-divergence` (no schema bump、persona YAML additive)
 
-ζ-2 merge 後に着手。
+着手 2026-04-27、Plan mode + /reimagine v1+v2 並列 dispatch、hybrid 採用
+(decisions.md D8 参照)。**v2 が 2 軸を覆した** (cognition 実装方式: heap →
+phase wheel、split scheme: 6 → 3 commits) ため、tasklist の元 6-commit
+構成は **3 commits + 1 chore** に再編。
 
-- [ ] c1: BehaviorProfile sub-document on PersonaSpec
-- [ ] c2: tune kant/nietzsche/rikyu behavior_profile in YAML
-- [ ] c3: cycle.py speed scaling via behavior_profile.movement_speed_factor
-- [ ] c4: per-agent cognition due-at scheduler (split-A)
-- [ ] c5: per-agent dwell + naive separation force (split-B)
-- [ ] c6: re-bake persona schema goldens for behavior_profile
-- [ ] G-GEAR live run-01-zeta with --duration 1800s
+- [x] **commit A** `feat(m7-ζ-3): PersonaSpec.behavior_profile sub-document` (`cfc6449`)
+  — BehaviorProfile sub-doc 追加 + 3 yaml 末尾追記 + persona_spec.schema.json 再 bake +
+  `tests/test_behavior_profile.py` 新規 (10 件)
+- [x] **commit B** `feat(m7-ζ-3): phase-wheel cognition + persona-scaled MoveMsg.speed + dwell` (`0f3727f`)
+  — `cycle.py:691-697` で `speed = DEFAULT × factor`、`tick.py` AgentRuntime に
+  `next_cognition_due` / `dwell_until` 追加、`_on_cognition_tick` を phase wheel に置換、
+  `_consume_result` で MoveMsg 検出時に dwell_until 更新。新規 test 5 件
+  (`test_per_agent_cognition_period.py` 2 件 + `test_movement_speed_persona_factor.py` 4 件
+  parametrized)。既存 `test_llm_fell_back_result_does_not_stop_loop` の advance を
+  3 段階分割に変更 (phase wheel 採用の trade-off)
+- [x] **commit C** `feat(m7-ζ-3): backend separation force prevents 3-agent collapse` (`c7eed76`)
+  — `_apply_separation_force` を `_on_physics_tick` に挿入、`_SEP_PUSH_M = 0.4`、
+  `max(radius_a, radius_b)` 基準。新規 test 6 件 (`test_separation_force.py`)
+- [x] **chore** PT013 hygiene (`61671b4`)
+- [x] full pytest green (1037 tests, 1 pre-existing failure unrelated)
+- [x] ruff/mypy delta clean (0 new violations、pre-existing 18 ruff / 7 mypy 維持)
 - [ ] code-reviewer agent dispatch
+- [ ] G-GEAR live run-01-zeta with --duration 1800s (実機実行はユーザー側、Mac では
+      MockCycle deterministic test で代替確認済)
 
 ## Verification
 
