@@ -74,12 +74,13 @@ phase wheel、split scheme: 6 → 3 commits) ため、tasklist の元 6-commit
 - [x] full pytest green (1037 tests, 1 pre-existing failure unrelated)
 - [x] ruff/mypy delta clean (0 new violations、pre-existing 18 ruff / 7 mypy 維持)
 - [ ] code-reviewer agent dispatch
-- [ ] G-GEAR live run-01-zeta with --duration 1800s (実機実行はユーザー側、Mac では
-      MockCycle deterministic test で代替確認済)
+- [x] G-GEAR live run-01-zeta with --duration 1800s — 2026-04-28 PASS, 5/5 numeric
+      (`.steering/20260426-m7-slice-zeta-live-resonance/run-01-zeta/`,
+      `observation.md` Live G-GEAR run-01-zeta section)
 
 ## Verification
 
-- [ ] live G-GEAR run-01-zeta — 5/5 gate 維持 (δ regression なし) — ζ-3 着手後
+- [x] live G-GEAR run-01-zeta — 5/5 gate 維持 (δ regression なし) — 2026-04-28 PASS (numeric)
 - [x] backend pytest green (ζ-2 commits)
 - [x] backend ruff/mypy delta clean
 - [ ] live UX acceptance: 「3 体が違う生物に見える」体感報告 (定性、ζ-3 後)

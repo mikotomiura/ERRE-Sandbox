@@ -1,0 +1,21 @@
+{
+  "url": "ws://localhost:8000/ws/observe",
+  "out": ".steering\\20260426-m7-slice-zeta-live-resonance\\run-01-zeta\\run-01.jsonl",
+  "duration_s": 1800.0,
+  "elapsed_s": 1802.1,
+  "envelope_total": 2493,
+  "envelope_per_kind": {
+    "world_layout": 1,
+    "world_tick": 1796,
+    "agent_update": 126,
+    "speech": 126,
+    "move": 126,
+    "animation": 126,
+    "reasoning_trace": 126,
+    "reflection_event": 47,
+    "dialog_turn": 14,
+    "dialog_close": 3,
+    "dialog_initiate": 2
+  },
+  "schema_version": "0.9.0-m7z"
+}

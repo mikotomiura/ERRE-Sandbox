@@ -1,0 +1,3 @@
+agents_observed: ['a_kant_001', 'a_nietzsche_001', 'a_rikyu_001']
+collapses (consecutive XZ<0.4m for >=2 ticks): 0
+sample (first 3): []

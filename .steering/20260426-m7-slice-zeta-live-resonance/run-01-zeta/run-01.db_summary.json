@@ -1,0 +1,136 @@
+{
+  "db": {
+    "table_counts": {
+      "episodic_memory": 201,
+      "semantic_memory": 50,
+      "procedural_memory": 0,
+      "relational_memory": 18,
+      "dialog_turns": 18
+    },
+    "belief_promotions": [
+      {
+        "id": "belief_a_kant_001__a_nietzsche_001",
+        "agent_id": "a_kant_001",
+        "belief_kind": "clash",
+        "confidence": 1.0,
+        "content": "belief: I clash with Friedrich Nietzsche"
+      },
+      {
+        "id": "belief_a_nietzsche_001__a_kant_001",
+        "agent_id": "a_nietzsche_001",
+        "belief_kind": "wary",
+        "confidence": 1.0,
+        "content": "belief: I feel wary of Immanuel Kant"
+      }
+    ],
+    "sample_dialog_turns": [
+      {
+        "speaker": "kant",
+        "addressee": "rikyu",
+        "turn_index": 0,
+        "utterance": "理性（Verstand）は現象の秩序を知るが、物自体（Ding an sich）はその枠を超えて存在する。"
+      },
+      {
+        "speaker": "rikyu",
+        "addressee": "kant",
+        "turn_index": 1,
+        "utterance": "理性は茶の湯の香りを知るが、侘び寂びの境地はその枠を超えて存在する。"
+      },
+      {
+        "speaker": "kant",
+        "addressee": "rikyu",
+        "turn_index": 2,
+        "utterance": "理性（Verstand）は現象の秩序を知るが、物自体（Ding an sich）はその枠を超えて存在する。"
+      },
+      {
+        "speaker": "rikyu",
+        "addressee": "kant",
+        "turn_index": 3,
+        "utterance": "侘びは無常なり、寂びは過ぎし時なり。理性はその限りなり。"
+      },
+      {
+        "speaker": "kant",
+        "addressee": "rikyu",
+        "turn_index": 4,
+        "utterance": "理性（Verstand）は現象の秩序を知るが、物自体（Ding an sich）はその枠を超えて存在する。"
+      },
+      {
+        "speaker": "rikyu",
+        "addressee": "kant",
+        "turn_index": 5,
+        "utterance": "侘びは空なり、寂びは風の音なり。理性はその限りなり。"
+      },
+      {
+        "speaker": "kant",
+        "addressee": "nietzsche",
+        "turn_index": 0,
+        "utterance": "哲学的歩行（Peripatetikum）は、理性（Ratio）の運動として、知性（Intellectus）の明晰さを保つための儀礼（Ritus）なり。"
+      },
+      {
+        "speaker": "nietzsche",
+        "addressee": "kant",
+        "turn_index": 1,
+        "utterance": "理性（Ratio）の歩行（Peripatetikum）は、知性（Intellectus）の鍵（Clavis）を軸（Axis）に、意志（Volo）の迷宮（Maze）を脱出（Exodus）する道なり。(Willenswelt)"
+      },
+      {
+        "speaker": "kant",
+        "addressee": "nietzsche",
+        "turn_index": 2,
+        "utterance": "理性（Ratio）の歩行（Peripatetikum）は、意志（Volo）の迷宮（Maze）を越えて、知性（Intellectus）の明晰さ（Claritas）を維持（Manutentio）するための儀礼（Ritus）なり。(Peripatetikum)"
+      },
+      {
+        "speaker": "nietzsche",
+        "addressee": "kant",
+        "turn_index": 3,
+        "utterance": "理性（Ratio）の歩行（Peripatetikum）は、意志（Volo）の迷宮（Maze）を越え、知性（Intellectus）の明晰さ（Claritas）を新たな地平（Horizontem）に移す（Transitus）。"
+      }
+    ]
+  },
+  "journal": {
+    "bonds_total_observed": 127,
+    "bonds_with_last_interaction_zone": 127,
+    "max_emotional_conflict_observed": 0.1954,
+    "affinity_sign_distribution": {
+      "positive": 52,
+      "zero": 0,
+      "negative": 75
+    },
+    "last_zone_examples": [
+      {
+        "agent_id": "a_kant_001",
+        "other_agent_id": "a_rikyu_001",
+        "affinity": 0.28629040197632,
+        "last_interaction_zone": "chashitsu",
+        "ichigo_ichie_count": 4
+      },
+      {
+        "agent_id": "a_kant_001",
+        "other_agent_id": "a_rikyu_001",
+        "affinity": 0.41522665762145927,
+        "last_interaction_zone": "chashitsu",
+        "ichigo_ichie_count": 6
+      },
+      {
+        "agent_id": "a_rikyu_001",
+        "other_agent_id": "a_kant_001",
+        "affinity": 0.33939208439772506,
+        "last_interaction_zone": "chashitsu",
+        "ichigo_ichie_count": 6
+      },
+      {
+        "agent_id": "a_kant_001",
+        "other_agent_id": "a_rikyu_001",
+        "affinity": 0.41522665762145927,
+        "last_interaction_zone": "chashitsu",
+        "ichigo_ichie_count": 6
+      },
+      {
+        "agent_id": "a_kant_001",
+        "other_agent_id": "a_rikyu_001",
+        "affinity": 0.41522665762145927,
+        "last_interaction_zone": "chashitsu",
+        "ichigo_ichie_count": 6
+      }
+    ]
+  }
+}

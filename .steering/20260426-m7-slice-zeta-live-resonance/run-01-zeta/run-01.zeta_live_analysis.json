@@ -1,0 +1,66 @@
+{
+  "schema": "zeta_live_analysis_v1",
+  "journal": ".steering\\20260426-m7-slice-zeta-live-resonance\\run-01-zeta\\run-01.jsonl",
+  "last_tick_seen": 76,
+  "move_speed_histogram": {
+    "0.91": 16,
+    "1.105": 36,
+    "1.625": 74
+  },
+  "move_speed_by_persona": {
+    "kant": {
+      "1.105": 36
+    },
+    "nietzsche": {
+      "1.625": 74
+    },
+    "rikyu": {
+      "0.91": 16
+    }
+  },
+  "persona_dominant_speed": {
+    "kant": 1.105,
+    "nietzsche": 1.625,
+    "rikyu": 0.91
+  },
+  "persona_speed_match_expected": {
+    "kant": true,
+    "nietzsche": true,
+    "rikyu": true
+  },
+  "expected_modes": {
+    "rikyu": 0.91,
+    "kant": 1.105,
+    "nietzsche": 1.625
+  },
+  "reasoning_trace_per_persona": {
+    "kant": 36,
+    "nietzsche": 74,
+    "rikyu": 16
+  },
+  "speech_per_persona": {
+    "kant": 36,
+    "nietzsche": 74,
+    "rikyu": 16
+  },
+  "move_per_persona": {
+    "kant": 36,
+    "nietzsche": 74,
+    "rikyu": 16
+  },
+  "cognition_ordering_ok_nietzsche_max": true,
+  "pair_min_distance_m": {
+    "a_kant_001<>a_nietzsche_001": 0.9,
+    "a_kant_001<>a_rikyu_001": 46.7457,
+    "a_nietzsche_001<>a_rikyu_001": 47.1405
+  },
+  "pair_distance_max_consecutive_run_below_threshold": {},
+  "pair_distance_below_threshold_count_total": 0,
+  "pair_distance_below_threshold_first_5": [],
+  "collapse_threshold_m": 0.4,
+  "agents_observed": [
+    "a_kant_001",
+    "a_nietzsche_001",
+    "a_rikyu_001"
+  ]
+}

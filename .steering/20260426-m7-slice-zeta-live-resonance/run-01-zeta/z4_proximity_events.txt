@@ -1,0 +1,16 @@
+# Derived from agent_update.position pair-distance crossing (5m threshold).
+# Wire schema does not emit a dedicated proximity kind (in-memory only in delta).
+# Format: tick pair action distance_m
+total_events: 11 (enter: 6, leave: 5)
+---
+   26 a_kant_001<>a_nietzsche_001              enter 0.9
+   27 a_kant_001<>a_nietzsche_001              leave 31.6
+   29 a_kant_001<>a_nietzsche_001              enter 4.86
+   30 a_kant_001<>a_nietzsche_001              leave 13.26
+   59 a_kant_001<>a_nietzsche_001              enter 3.1
+   60 a_kant_001<>a_nietzsche_001              leave 33.7
+   62 a_kant_001<>a_nietzsche_001              enter 2.0
+   63 a_kant_001<>a_nietzsche_001              leave 24.0
+   68 a_kant_001<>a_nietzsche_001              enter 2.6
+   72 a_kant_001<>a_nietzsche_001              leave 33.7
+   75 a_kant_001<>a_nietzsche_001              enter 2.0

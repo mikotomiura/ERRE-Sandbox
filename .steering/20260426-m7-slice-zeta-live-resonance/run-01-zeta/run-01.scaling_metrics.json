@@ -1,0 +1,18 @@
+{
+  "schema": "scaling_metrics_v1",
+  "run_id": "run-01-zeta",
+  "run_duration_s": 590.0,
+  "num_agents": 3,
+  "num_dialog_turns": 18,
+  "pair_information_gain_bits": 0.6862526019475037,
+  "pair_information_gain_max_bits": 1.584962500721156,
+  "late_turn_fraction": 0.3333333333333333,
+  "zone_kl_from_uniform_bits": 0.7985610865083145,
+  "zone_kl_max_bits": 2.321928094887362,
+  "thresholds": {
+    "pair_information_gain_min_bits": 0.4754887502163468,
+    "late_turn_fraction_max": 0.6,
+    "zone_kl_from_uniform_min_bits": 0.6965784284662087
+  },
+  "alerts": []
+}

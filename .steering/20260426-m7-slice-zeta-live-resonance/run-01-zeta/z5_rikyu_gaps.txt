@@ -1,0 +1,26 @@
+# Rikyū consecutive-MoveMsg wall-clock gap (s).
+# move.tick is the cognition/physics tick (slow); each consecutive move corresponds to one cognition step.
+# dwell_time_s = 90 should manifest as gaps >= 90s.
+rikyu_move_count: 16
+gap_count: 15
+min_gap_s: 102.6
+max_gap_s: 124.8
+median_gap_s: 110.0
+gaps_>=90s: 15/15
+---
+all_gaps_seconds:
+    111.1
+    112.4
+    114.4
+    124.8
+    118.0
+    110.0
+    102.6
+    108.6
+    108.5
+    111.8
+    114.3
+    105.2
+    109.8
+    110.0
+    109.5
