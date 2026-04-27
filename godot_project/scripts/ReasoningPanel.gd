@@ -21,6 +21,10 @@
 # avatar click events.
 extends Control
 
+# M7-ζ-1: route all user-facing labels through the locale dict so the
+# JP/EN flip (and the future ``tr()`` migration) needs only the dict edit.
+const Strings = preload("res://scripts/i18n/Strings.gd")
+
 @export var router_path: NodePath
 
 var _focused_agent: String = ""
@@ -32,6 +36,14 @@ var _intent_label: Label
 var _reflection_label: Label
 var _relationships_label: Label
 var _last_reflection_tick: int = -1
+# M7-ζ-1: multi-agent selector. ``_known_agents`` mirrors the OptionButton
+# items 1..N (item 0 stays the placeholder) so SelectionManager click-focus
+# and selector changes can sync without iterating the OptionButton each
+# update. ``_syncing_selector`` is a re-entry guard so set_focused_agent →
+# selector.select() does not re-trigger ``item_selected`` and recurse.
+var _agent_selector: OptionButton
+var _known_agents: Array[String] = []
+var _syncing_selector: bool = false
 
 
 func _ready() -> void:
@@ -88,23 +100,32 @@ func _build_tree() -> void:
 	vbox.add_theme_constant_override("separation", 10)
 	margin.add_child(vbox)
 
-	_title_label = _make_label(vbox, "Reasoning Panel", 18, Color(0.9, 0.92, 0.95, 1.0))
-	_mode_label = _make_label(vbox, "(no agent selected)", 12, Color(0.65, 0.75, 0.9, 1.0))
+	# M7-ζ-1: agent selector at the top. Lives inside the vbox so it scrolls
+	# with the panel content. Boots disabled with the placeholder item;
+	# becomes selectable as soon as ``_on_agent_updated`` registers an id.
+	_agent_selector = OptionButton.new()
+	_agent_selector.add_item(Strings.LABELS["SELECTOR_PROMPT"])
+	_agent_selector.disabled = true
+	_agent_selector.item_selected.connect(_on_agent_selector_item_selected)
+	vbox.add_child(_agent_selector)
+
+	_title_label = _make_label(vbox, Strings.LABELS["PANEL_TITLE"], 18, Color(0.9, 0.92, 0.95, 1.0))
+	_mode_label = _make_label(vbox, Strings.LABELS["AGENT_NONE"], 12, Color(0.65, 0.75, 0.9, 1.0))
 	vbox.add_child(_make_divider())
 
-	_make_label(vbox, "SALIENT", 11, Color(0.8, 0.7, 0.4, 1.0))
-	_salient_label = _make_label(vbox, "—", 14, Color(0.95, 0.95, 0.95, 1.0))
+	_make_label(vbox, Strings.LABELS["SALIENT"], 11, Color(0.8, 0.7, 0.4, 1.0))
+	_salient_label = _make_label(vbox, Strings.LABELS["VALUE_DASH"], 14, Color(0.95, 0.95, 0.95, 1.0))
 
-	_make_label(vbox, "DECISION", 11, Color(0.8, 0.5, 0.5, 1.0))
-	_decision_label = _make_label(vbox, "—", 14, Color(0.95, 0.95, 0.95, 1.0))
+	_make_label(vbox, Strings.LABELS["DECISION"], 11, Color(0.8, 0.5, 0.5, 1.0))
+	_decision_label = _make_label(vbox, Strings.LABELS["VALUE_DASH"], 14, Color(0.95, 0.95, 0.95, 1.0))
 
-	_make_label(vbox, "NEXT INTENT", 11, Color(0.4, 0.8, 0.6, 1.0))
-	_intent_label = _make_label(vbox, "—", 14, Color(0.95, 0.95, 0.95, 1.0))
+	_make_label(vbox, Strings.LABELS["NEXT_INTENT"], 11, Color(0.4, 0.8, 0.6, 1.0))
+	_intent_label = _make_label(vbox, Strings.LABELS["VALUE_DASH"], 14, Color(0.95, 0.95, 0.95, 1.0))
 
 	vbox.add_child(_make_divider())
 
-	_make_label(vbox, "LATEST REFLECTION", 11, Color(0.6, 0.7, 0.9, 1.0))
-	_reflection_label = _make_label(vbox, "(none yet)", 13, Color(0.85, 0.85, 0.9, 1.0))
+	_make_label(vbox, Strings.LABELS["LATEST_REFLECTION"], 11, Color(0.6, 0.7, 0.9, 1.0))
+	_reflection_label = _make_label(vbox, Strings.LABELS["REFLECTION_NONE"], 13, Color(0.85, 0.85, 0.9, 1.0))
 
 	vbox.add_child(_make_divider())
 
@@ -113,9 +134,9 @@ func _build_tree() -> void:
 	# researcher can read partner-specific affinity drift without opening the
 	# DB. Header colour mirrors the SALIENT block's amber to keep the
 	# affective surfaces visually coherent.
-	_make_label(vbox, "RELATIONSHIPS", 11, Color(0.85, 0.65, 0.45, 1.0))
+	_make_label(vbox, Strings.LABELS["RELATIONSHIPS"], 11, Color(0.85, 0.65, 0.45, 1.0))
 	_relationships_label = _make_label(
-		vbox, "(no peer turns yet)", 13, Color(0.92, 0.88, 0.82, 1.0),
+		vbox, Strings.LABELS["RELATIONSHIPS_NONE"], 13, Color(0.92, 0.88, 0.82, 1.0),
 	)
 
 
@@ -146,14 +167,18 @@ func set_focused_agent(agent_id: String, _agent_node: Node3D = null) -> void:
 	if agent_id == _focused_agent:
 		return
 	_focused_agent = agent_id
-	_salient_label.text = "—"
-	_decision_label.text = "—"
-	_intent_label.text = "—"
-	_reflection_label.text = "(none yet)"
-	_relationships_label.text = "(no peer turns yet)"
+	_salient_label.text = Strings.LABELS["VALUE_DASH"]
+	_decision_label.text = Strings.LABELS["VALUE_DASH"]
+	_intent_label.text = Strings.LABELS["VALUE_DASH"]
+	_reflection_label.text = Strings.LABELS["REFLECTION_NONE"]
+	_relationships_label.text = Strings.LABELS["RELATIONSHIPS_NONE"]
 	_last_reflection_tick = -1
-	_title_label.text = "Reasoning Panel — %s" % agent_id if agent_id != "" else "Reasoning Panel"
-	_mode_label.text = "(waiting for trace)"
+	if agent_id != "":
+		_title_label.text = Strings.LABELS["PANEL_TITLE_FOR_AGENT"] % agent_id
+	else:
+		_title_label.text = Strings.LABELS["PANEL_TITLE"]
+	_mode_label.text = Strings.LABELS["AGENT_WAITING"]
+	_sync_selector_to_focus(agent_id)
 
 
 # ---- EnvelopeRouter signal handlers ----
@@ -168,10 +193,10 @@ func _on_reasoning_trace_received(agent_id: String, tick: int, trace: Dictionary
 	if agent_id != _focused_agent:
 		return
 	var mode: String = trace.get("mode", "")
-	_mode_label.text = "mode: %s   |   tick: %d" % [mode, tick]
-	_salient_label.text = _coalesce(trace.get("salient"), "—")
-	_decision_label.text = _coalesce(trace.get("decision"), "—")
-	_intent_label.text = _coalesce(trace.get("next_intent"), "—")
+	_mode_label.text = Strings.LABELS["AGENT_MODE_TICK"] % [mode, tick]
+	_salient_label.text = _coalesce(trace.get("salient"), Strings.LABELS["VALUE_DASH"])
+	_decision_label.text = _coalesce(trace.get("decision"), Strings.LABELS["VALUE_DASH"])
+	_intent_label.text = _coalesce(trace.get("next_intent"), Strings.LABELS["VALUE_DASH"])
 
 
 func _on_reflection_event_received(
@@ -189,7 +214,7 @@ func _on_reflection_event_received(
 	if tick < _last_reflection_tick:
 		return
 	_last_reflection_tick = tick
-	_reflection_label.text = summary_text if summary_text != "" else "(empty summary)"
+	_reflection_label.text = summary_text if summary_text != "" else Strings.LABELS["REFLECTION_EMPTY_SUMMARY"]
 
 
 func _coalesce(value: Variant, fallback: String) -> String:
@@ -205,6 +230,10 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 	# mirrors ``_on_reasoning_trace_received`` so the panel becomes useful
 	# even when the run only emits ``agent_update`` envelopes (e.g. before
 	# the first reasoning_trace tick).
+	# M7-ζ-1: register every agent we see into the selector so the researcher
+	# can switch focus without clicking the avatar (live verification C4:
+	# "ほかの agent たちの Reasoning パネルも見れるように").
+	_register_agent_in_selector(agent_id)
 	if _focused_agent == "":
 		set_focused_agent(agent_id)
 	if agent_id != _focused_agent:
@@ -213,6 +242,51 @@ func _on_agent_updated(agent_id: String, agent_state: Dictionary) -> void:
 	if not (raw is Array):
 		return
 	_relationships_label.text = _format_relationships(raw)
+
+
+# ---- M7-ζ-1 selector helpers ----
+
+
+func _register_agent_in_selector(agent_id: String) -> void:
+	if agent_id == "" or _agent_selector == null:
+		return
+	if _known_agents.has(agent_id):
+		return
+	_known_agents.append(agent_id)
+	_agent_selector.add_item(agent_id)
+	if _agent_selector.disabled:
+		_agent_selector.disabled = false
+	# If the SelectionManager focused this agent before any update arrived,
+	# the selector has been stuck on the placeholder. Sync it now.
+	if agent_id == _focused_agent:
+		_sync_selector_to_focus(agent_id)
+
+
+func _on_agent_selector_item_selected(idx: int) -> void:
+	if _syncing_selector:
+		return
+	# Item 0 is the placeholder ``SELECTOR_PROMPT``; agent items start at 1.
+	if idx <= 0 or idx > _known_agents.size():
+		return
+	var agent_id := _known_agents[idx - 1]
+	if agent_id == _focused_agent:
+		return
+	set_focused_agent(agent_id)
+
+
+func _sync_selector_to_focus(agent_id: String) -> void:
+	if _agent_selector == null:
+		return
+	var target_idx: int = 0
+	if agent_id != "":
+		var found := _known_agents.find(agent_id)
+		if found >= 0:
+			target_idx = found + 1
+	if _agent_selector.selected == target_idx:
+		return
+	_syncing_selector = true
+	_agent_selector.select(target_idx)
+	_syncing_selector = false
 
 
 func _format_relationships(bonds: Array) -> String:
@@ -230,7 +304,7 @@ func _format_relationships(bonds: Array) -> String:
 	# the researcher's observability priority (Slice γ design D5 / R4 +
 	# Slice δ Axis 5).
 	if bonds.is_empty():
-		return "(no peer turns yet)"
+		return Strings.LABELS["RELATIONSHIPS_NONE"]
 	var ranked: Array = []
 	for raw_bond: Variant in bonds:
 		if not (raw_bond is Dictionary):
@@ -253,7 +327,7 @@ func _format_relationships(bonds: Array) -> String:
 			"abs_affinity": abs(affinity),
 		})
 	if ranked.is_empty():
-		return "(no peer turns yet)"
+		return Strings.LABELS["RELATIONSHIPS_NONE"]
 	ranked.sort_custom(_compare_relationship_rank)
 	var lines: Array[String] = []
 	for entry_value: Variant in ranked.slice(0, 2):
@@ -263,13 +337,13 @@ func _format_relationships(bonds: Array) -> String:
 		var tail: String
 		if last_tick != null:
 			if last_zone != null and str(last_zone) != "":
-				tail = "last in %s @ tick %d" % [str(last_zone), int(last_tick)]
+				tail = Strings.LABELS["BOND_LAST_IN_ZONE"] % [str(last_zone), int(last_tick)]
 			else:
-				tail = "last @ tick %d" % int(last_tick)
+				tail = Strings.LABELS["BOND_LAST_TICK"] % int(last_tick)
 		else:
-			tail = "no tick yet"
+			tail = Strings.LABELS["BOND_NO_TICK"]
 		lines.append(
-			"%s affinity %+.2f (%d turns, %s)" % [
+			Strings.LABELS["BOND_LINE"] % [
 				entry.get("persona", ""),
 				entry.get("affinity", 0.0),
 				entry.get("turns", 0),

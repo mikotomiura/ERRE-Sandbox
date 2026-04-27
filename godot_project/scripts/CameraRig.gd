@@ -24,9 +24,18 @@ extends Node3D
 enum Mode { OVERVIEW, FOLLOW_AGENT, MIND_PEEK, TOP_DOWN }
 
 @export var mode: Mode = Mode.OVERVIEW
-@export var orbit_speed: float = 0.006
-@export var zoom_speed: float = 2.5
-@export var pan_speed: float = 12.0
+# M7-ζ-1: live verification (2026-04-21) reported "マウスなどで操作してから
+# world 内を俯瞰して全体などが見れたり、world を寄せてからもっと近くで
+# 見れるように" — the researcher wanted snappier framing without spinning
+# the wheel for several seconds. The original M6-B-1 values (orbit_speed
+# 0.006 / zoom_speed 2.5 / pan_speed 12.0) were tuned for subtle
+# inspection; ζ doubles orbit / pan and bumps zoom by ~60% so that
+# rotating around an avatar or panning across the 100 m world only takes a
+# couple of mouse-flicks. Compound shortcuts (shift+drag, double-click
+# focus) stay deferred to a later UX slice.
+@export var orbit_speed: float = 0.012
+@export var zoom_speed: float = 4.0
+@export var pan_speed: float = 18.0
 @export var min_distance: float = 3.0
 @export var max_distance: float = 100.0
 @export var default_distance_overview: float = 28.0

@@ -49,6 +49,12 @@ const ZONE_MAP: Dictionary = {
 # via HBoxContainer split. Path is long but stable — the next refactor
 # should introduce a WorldViewport scene so this path stays short again.
 @onready var _zone_manager: Node = $UILayer/Split/WorldView/WorldViewport/ZoneManager
+# M7-ζ-1: day/night cycle targets. Live verification (2026-04-26) flagged
+# the always-night SOLID COLOR background as an immersion blocker; this
+# manager now drives the WorldEnvironment colour and DirectionalLight3D
+# basis on a Timer (1 Hz) so the world wall-clock visibly cycles.
+@onready var _world_environment: WorldEnvironment = $UILayer/Split/WorldView/WorldViewport/Environment
+@onready var _directional_light: DirectionalLight3D = $UILayer/Split/WorldView/WorldViewport/Environment/DirectionalLight3D
 
 # M6-B-2b: live overlay state for whether the WS connected and whether any
 # world_tick has arrived. Combined by ``_refresh_overlay`` so "disconnected"
@@ -57,6 +63,31 @@ const ZONE_MAP: Dictionary = {
 var _ws_connected: bool = false
 var _last_tick: int = -1
 var _last_active_agents: int = 0
+
+# M7-ζ-1: full-day length in wall-clock seconds. Default 1800 (30 min) so a
+# typical live run cycles dawn → noon → dusk → midnight at least once.
+@export var day_cycle_seconds: float = 1800.0
+var _day_phase_s: float = 0.0
+var _day_timer: Timer = null
+# Captured from the authored DirectionalLight3D position at boot (review M2)
+# so we only spin the light's basis around its tscn-defined origin — if the
+# scene moves the light, this code follows without code edit.
+var _light_origin: Vector3 = Vector3.ZERO
+# Palette keyed at midnight / dawn / noon / dusk. The day cycle linearly
+# interpolates between adjacent keys so 1 Hz steps produce a smooth (not
+# step-quantised) sky transition without per-frame work.
+const _PALETTE_BG: Dictionary = {
+	"midnight": Color(0.04, 0.06, 0.12, 1.0),
+	"dawn":     Color(0.45, 0.32, 0.30, 1.0),
+	"noon":     Color(0.55, 0.68, 0.82, 1.0),
+	"dusk":     Color(0.42, 0.28, 0.24, 1.0),
+}
+const _PALETTE_AMB: Dictionary = {
+	"midnight": 0.10,
+	"dawn":     0.35,
+	"noon":     0.65,
+	"dusk":     0.32,
+}
 
 
 func _ready() -> void:
@@ -76,6 +107,7 @@ func _ready() -> void:
 		_websocket_client.connection_status_changed.connect(_on_connection_status_changed)
 
 	_spawn_initial_zones()
+	_setup_day_cycle()
 	_refresh_overlay()
 
 
@@ -127,3 +159,82 @@ func _on_error_reported(code: String, detail: String) -> void:
 	# not polluted with ``ERROR:`` lines that existing boot tests guard against.
 	push_warning("[WorldManager] gateway error code=%s detail=%s" % [code, detail])
 	print("[WorldManager] error_reported code=%s detail=%s" % [code, detail])
+
+
+# ---- M7-ζ-1 day/night cycle ----
+
+
+func _setup_day_cycle() -> void:
+	# Disable gracefully when the SubViewport tree is missing (FixtureHarness
+	# or unit-test scenes can omit the WorldEnvironment). The boot keeps
+	# functioning, just without sky/light progression.
+	if _world_environment == null or _directional_light == null:
+		push_warning("[WorldManager] day/night targets missing; cycle disabled")
+		return
+	if day_cycle_seconds <= 0.0:
+		push_warning("[WorldManager] day_cycle_seconds <= 0; cycle disabled")
+		return
+	# Capture the authored light position so phase paints rotate around the
+	# tscn-defined origin (review M2 — was hard-coded to (0, 10, 0) before).
+	_light_origin = _directional_light.position
+	_day_timer = Timer.new()
+	_day_timer.name = "DayCycleTimer"
+	_day_timer.wait_time = 1.0
+	_day_timer.autostart = true
+	_day_timer.one_shot = false
+	_day_timer.timeout.connect(_step_day_phase)
+	add_child(_day_timer)
+	# Boot at noon (phase π) so the first frame is not the worst-lit slice
+	# (live observation: starting at midnight makes the world look broken on
+	# entry).
+	_day_phase_s = day_cycle_seconds * 0.5
+	_paint_phase()
+
+
+func _step_day_phase() -> void:
+	if day_cycle_seconds <= 0.0:
+		return
+	_day_phase_s = fmod(_day_phase_s + 1.0, day_cycle_seconds)
+	_paint_phase()
+
+
+func _paint_phase() -> void:
+	var phase: float = TAU * _day_phase_s / day_cycle_seconds
+	if _directional_light != null:
+		# Phase 0 puts the sun below the horizon (midnight); phase π places
+		# it overhead (noon). The ``+ PI / 2.0`` offset rotates the X-axis
+		# basis so the time-of-day semantics align with the palette: phase=0
+		# midnight → π/2 dawn → π noon → 3π/2 dusk → 2π midnight.
+		_directional_light.transform = Transform3D(
+			Basis(Vector3.RIGHT, phase + PI / 2.0),
+			_light_origin,
+		)
+	_apply_palette_for_phase(phase)
+
+
+func _apply_palette_for_phase(phase: float) -> void:
+	if _world_environment == null or _world_environment.environment == null:
+		return
+	var bg: Color
+	var amb: float
+	# Four equal-length quarters: midnight → dawn → noon → dusk → midnight.
+	if phase < PI / 2.0:
+		var t: float = phase / (PI / 2.0)
+		bg = _PALETTE_BG["midnight"].lerp(_PALETTE_BG["dawn"], t)
+		amb = lerp(float(_PALETTE_AMB["midnight"]), float(_PALETTE_AMB["dawn"]), t)
+	elif phase < PI:
+		var t: float = (phase - PI / 2.0) / (PI / 2.0)
+		bg = _PALETTE_BG["dawn"].lerp(_PALETTE_BG["noon"], t)
+		amb = lerp(float(_PALETTE_AMB["dawn"]), float(_PALETTE_AMB["noon"]), t)
+	elif phase < 3.0 * PI / 2.0:
+		var t: float = (phase - PI) / (PI / 2.0)
+		bg = _PALETTE_BG["noon"].lerp(_PALETTE_BG["dusk"], t)
+		amb = lerp(float(_PALETTE_AMB["noon"]), float(_PALETTE_AMB["dusk"]), t)
+	else:
+		var t: float = (phase - 3.0 * PI / 2.0) / (PI / 2.0)
+		bg = _PALETTE_BG["dusk"].lerp(_PALETTE_BG["midnight"], t)
+		amb = lerp(float(_PALETTE_AMB["dusk"]), float(_PALETTE_AMB["midnight"]), t)
+	var env := _world_environment.environment
+	env.background_color = bg
+	env.ambient_light_color = bg.lightened(0.35)
+	env.ambient_light_energy = amb
