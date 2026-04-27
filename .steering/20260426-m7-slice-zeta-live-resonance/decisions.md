@@ -108,3 +108,31 @@ sed 1 発で済む (一元管理されているため)。
 additive (no bump、SCHEMA_VERSION 据え置き)。直列なら schema 衝突なし。
 並列で進めるとリベース手戻りが発生する。
 
+## D7 — 追加 issue F1〜F3 (2026-04-27) は ζ scope 外、新タスク 3 本に分割
+
+**判断**: ζ-1 部分マージ後の live 観察で浮上した F1 (agent 同士の直接会話
+可視化) / F2 (FPS-style 歩行) / F3 (world viewport 拡張) は **いずれも ζ
+scope 外** とし、以下 3 本の新タスクに切り出して `/finish-task` 時に
+scaffold する:
+
+- `dialog-visualization` (F1) — Label3D 吹き出し + dialog ticker。
+  ζ-2 で wire される persona_id / dialog_turn payload を消費する後続。
+- `agent-locomotion-animation` (F2) — AnimationTree state machine +
+  humanoid rigged mesh。`world-asset-blender-pipeline` と共依存。
+- `godot-viewport-layout` (F3) — project window size / ReasoningPanel
+  split ratio / MainScene root anchor の見直し。
+
+**根拠**:
+1. F1〜F3 はいずれも **既存 ζ-1〜3 PR が想定する diff 範囲を逸脱**
+   (新規 Label3D シーン / AnimationTree / project.godot window 設定変更)。
+   進行中 PR に詰めると review burden 急増 + schema bump 0.9.0-m7z の
+   land が遅延する。
+2. F2 は humanoid mesh 制作時間が読めず (B2 と同種の理由)、ζ の
+   live-体感 delivery を阻害する。
+3. F3 は単独で 1 PR の方が anchor 設計の判断 (1280×720 固定 vs
+   adaptive 全画面 + ReasoningPanel オーバーレイ) を /reimagine
+   対象にしやすい。
+
+**根拠の根拠**: D2 で同じ defer 理由 (PR 肥大 + 時間読めない) で A2/A3
+を `world-asset-blender-pipeline` に切り出した先例と同形。
+

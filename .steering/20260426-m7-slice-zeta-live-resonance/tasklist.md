@@ -48,6 +48,9 @@
 
 - [ ] `m9-lora-pre-plan` (D1+D2)
 - [ ] `world-asset-blender-pipeline` (A2+A3)
+- [ ] `dialog-visualization` (F1 — agent 同士の直接会話を吹き出し / 字幕で可視化、2026-04-27 追加)
+- [ ] `agent-locomotion-animation` (F2 — FPS 風 humanoid walk cycle、2026-04-27 追加)
+- [ ] `godot-viewport-layout` (F3 — world viewport を画面いっぱいに拡張、2026-04-27 追加)
 
 ## /finish-task
 
