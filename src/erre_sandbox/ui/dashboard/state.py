@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
-from erre_sandbox.integration import M2_THRESHOLDS, Thresholds
+from erre_sandbox.contracts import M2_THRESHOLDS, Thresholds
 from erre_sandbox.ui.dashboard.messages import AlertRecord, MetricsView
 
 if TYPE_CHECKING:

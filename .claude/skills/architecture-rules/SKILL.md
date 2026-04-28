@@ -26,18 +26,26 @@ ERRE-Sandbox のアーキテクチャは 2 拠点 (G-GEAR + MacBook) × 5 レイ
 world/ → cognition/ → inference/
                     → memory/
                           ↓
-ui/ ──────────→ schemas.py ← (全モジュールが参照)
+ui/ ──────→ schemas.py + contracts/ ← (全モジュールが参照)
 ```
 
 | モジュール | 依存先 | 依存禁止 |
 |---|---|---|
 | `schemas.py` | なし (最下層) | すべての src モジュール |
-| `inference/` | `schemas.py` のみ | `memory/`, `cognition/`, `world/`, `ui/` |
-| `memory/` | `schemas.py` のみ | `inference/`, `cognition/`, `world/`, `ui/` |
-| `cognition/` | `inference/`, `memory/`, `schemas.py`, `erre/` | `world/`, `ui/` |
-| `world/` | `cognition/`, `schemas.py` | `ui/`, `erre/` |
-| `ui/` | `schemas.py` のみ | `inference/`, `memory/`, `cognition/`, `world/` |
-| `erre/` | `schemas.py`, `inference/`, `memory/` | `cognition/`, `world/`, `ui/` |
+| `contracts/` | `schemas.py`, pydantic, stdlib のみ | `inference/`, `memory/`, `cognition/`, `world/`, `ui/`, `integration/`, `erre/` |
+| `inference/` | `schemas.py`, `contracts/` | `memory/`, `cognition/`, `world/`, `ui/` |
+| `memory/` | `schemas.py`, `contracts/` | `inference/`, `cognition/`, `world/`, `ui/` |
+| `cognition/` | `inference/`, `memory/`, `schemas.py`, `contracts/`, `erre/` | `world/`, `ui/` |
+| `world/` | `cognition/`, `schemas.py`, `contracts/` | `ui/`, `erre/` |
+| `ui/` | `schemas.py`, `contracts/` のみ | `inference/`, `memory/`, `cognition/`, `world/`, `integration/` |
+| `erre/` | `schemas.py`, `contracts/`, `inference/`, `memory/` | `cognition/`, `world/`, `ui/` |
+| `integration/` | `schemas.py`, `contracts/`, `inference/`, `memory/`, `cognition/`, `world/` | `ui/` |
+
+**`contracts/` レイヤーについて (2026-04-28 codex review F5)**: 複数レイヤーから参照される
+軽量な Pydantic 設定値・閾値定数は `contracts/` に置く。`integration/` の重い `__init__.py`
+を経由せず `ui/` から直接 import できる。具体例: `M2_THRESHOLDS` (`Thresholds`) は
+`contracts/thresholds.py` に置き、`integration/metrics.py` は shim 経由で
+re-export して既存 import を破壊しない。
 
 ### 依存方向の確認方法
 
