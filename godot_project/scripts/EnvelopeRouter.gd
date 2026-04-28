@@ -28,6 +28,12 @@ signal dialog_close_received(dialog_id: String, reason: String)
 signal reasoning_trace_received(agent_id: String, tick: int, trace: Dictionary)
 signal reflection_event_received(agent_id: String, tick: int, summary_text: String, event: Dictionary)
 signal world_layout_received(zones: Array, props: Array)
+## M9-A event-boundary-observability. Emitted **only** for spatial trigger
+## kinds (zone_transition / affordance / proximity) when ReasoningTrace
+## carries a ``trigger_event`` with a non-empty ``zone``. The
+## ``BoundaryLayer`` consumes this to pulse the originating zone for the
+## currently-focused agent (filter logic lives in the consumer).
+signal zone_pulse_requested(agent_id: String, kind: String, zone: String, tick: int)
 
 
 func on_envelope_received(envelope: Dictionary) -> void:
@@ -90,11 +96,22 @@ func on_envelope_received(envelope: Dictionary) -> void:
 			)
 		"reasoning_trace":
 			var trace: Dictionary = envelope.get("trace", {})
-			reasoning_trace_received.emit(
-				trace.get("agent_id", ""),
-				int(envelope.get("tick", 0)),
-				trace,
-			)
+			var rt_tick: int = int(envelope.get("tick", 0))
+			var rt_agent: String = trace.get("agent_id", "")
+			reasoning_trace_received.emit(rt_agent, rt_tick, trace)
+			# M9-A: spatial-kind triggers also emit a zone pulse request.
+			# Non-spatial kinds (temporal/biorhythm/internal/speech/perception/
+			# erre_mode_shift) leave ``zone`` null per cognition cycle, so the
+			# null guard below short-circuits without a kind whitelist here —
+			# BoundaryLayer additionally filters by spatial-kind set + focus.
+			var trigger: Variant = trace.get("trigger_event")
+			if trigger is Dictionary:
+				var trigger_zone: String = trigger.get("zone", "")
+				var trigger_kind: String = trigger.get("kind", "")
+				if not trigger_zone.is_empty() and not trigger_kind.is_empty():
+					zone_pulse_requested.emit(
+						rt_agent, trigger_kind, trigger_zone, rt_tick,
+					)
 		"reflection_event":
 			var event: Dictionary = envelope.get("event", {})
 			reflection_event_received.emit(

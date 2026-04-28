@@ -74,6 +74,7 @@ from erre_sandbox.schemas import (
     ReflectionEvent,
     ReflectionEventMsg,
     SpeechMsg,
+    TriggerEventTag,
     Zone,
     ZoneTransitionEvent,
 )
@@ -719,6 +720,7 @@ class CognitionCycle:
         nearby_agents = _trace_nearby_agents(observations)
         retrieved_memories = _trace_retrieved_memories(memories)
         decision = _decision_with_affinity(plan.decision, new_state)
+        trigger_event = _pick_trigger_event(observations, new_state.position.zone)
         if (
             plan.salient is not None
             or decision is not None
@@ -726,6 +728,7 @@ class CognitionCycle:
             or observed_objects
             or nearby_agents
             or retrieved_memories
+            or trigger_event is not None
         ):
             trace = ReasoningTrace(
                 agent_id=new_state.agent_id,
@@ -738,6 +741,7 @@ class CognitionCycle:
                 observed_objects=observed_objects,
                 nearby_agents=nearby_agents,
                 retrieved_memories=retrieved_memories,
+                trigger_event=trigger_event,
             )
             envelopes.append(
                 ReasoningTraceMsg(tick=new_state.tick, trace=trace),
@@ -1097,6 +1101,140 @@ def _trace_retrieved_memories(memories: Sequence[RankedMemory]) -> list[str]:
     field then degrades to ``[]`` rather than papering over the gap.
     """
     return [m.entry.id for m in memories[:_TRACE_RETRIEVED_MEMORIES_LIMIT]]
+
+
+_TRIGGER_PRIORITY: Final[tuple[str, ...]] = (
+    "zone_transition",
+    "affordance",
+    "proximity",
+    "biorhythm",
+    "erre_mode_shift",
+    "temporal",
+    "internal",
+    "speech",
+    "perception",
+)
+"""Priority order for :func:`_pick_trigger_event` (M9-A).
+
+Spatial triggers (zone_transition / affordance / proximity) come first
+because the user's question "どの zone でどの reasoning が発火したか" is
+fundamentally spatial. Biorhythm and erre_mode_shift outrank temporal
+because they signal qualitative state shifts in the agent. Internal /
+speech / perception sink to the bottom — they are usually background
+chatter unless they are the only event that fired."""
+
+_TRIGGER_SECONDARY_LIMIT: Final[int] = 8
+"""Cap on :attr:`TriggerEventTag.secondary_kinds` (M9-A).
+
+Bounded to match the schema-side ``max_length=8`` — far above the typical
+strong-event count per tick (1-3) but below pathological saturation."""
+
+
+def _resolve_trigger_zone_and_ref(
+    winner_kind: str,
+    winners: Sequence[Observation],
+    current_zone: Zone,
+) -> tuple[Zone | None, str | None]:
+    """Resolve ``(zone, ref_id)`` for the winning trigger kind (M9-A helper).
+
+    Spatial kinds (zone_transition / affordance / proximity) populate both;
+    non-spatial kinds return ``(None, None)``. Affordance ties break by
+    salience desc; proximity prefers ``crossing="enter"`` then falls back
+    to the first occurrence (``leave`` crossings won't normally win the
+    priority vote, but the helper stays total).
+    """
+    if winner_kind == "zone_transition":
+        first = winners[0]
+        if isinstance(first, ZoneTransitionEvent):
+            return first.to_zone, first.to_zone.value
+        return None, None
+    if winner_kind == "affordance":
+        affords = sorted(
+            (o for o in winners if isinstance(o, AffordanceEvent)),
+            key=lambda o: o.salience,
+            reverse=True,
+        )
+        if affords:
+            top = affords[0]
+            return top.zone, top.prop_id
+        return None, None
+    if winner_kind == "proximity":
+        enters = [
+            o
+            for o in winners
+            if isinstance(o, ProximityEvent) and o.crossing == "enter"
+        ]
+        chosen: ProximityEvent | None = (
+            enters[0]
+            if enters
+            else (winners[0] if isinstance(winners[0], ProximityEvent) else None)
+        )
+        if chosen is not None:
+            return current_zone, chosen.other_agent_id
+    return None, None
+
+
+def _pick_trigger_event(
+    observations: Sequence[Observation],
+    current_zone: Zone,
+) -> TriggerEventTag | None:
+    """Pick the winning event boundary tag from this tick's observations (M9-A).
+
+    Returns ``None`` only when ``observations`` is empty — every tick with
+    *any* observation produces a tag so the panel always has a 1-line
+    causal hint. Priority order is :data:`_TRIGGER_PRIORITY`; ties within
+    the same priority class break to insertion order from the observation
+    stream (``AffordanceEvent`` ties additionally break by salience).
+
+    ``ref_id`` mapping: zone_transition → ``to_zone`` (string-equal to
+    ``zone``); affordance → highest-salience ``prop_id``; proximity →
+    first ``crossing="enter"`` ``other_agent_id``; otherwise ``None``.
+
+    ``zone`` mapping: zone_transition → ``to_zone``; affordance →
+    ``AffordanceEvent.zone``; proximity → ``current_zone`` (initiator
+    side, since :class:`ProximityEvent` is observed from the receiver's
+    POV in :func:`world.tick._fire_proximity_events`); other kinds →
+    ``None`` (non-spatial). The Godot ``BoundaryLayer`` only pulses when
+    ``zone`` is set *and* ``kind`` is in the spatial set.
+
+    ``secondary_kinds`` lists same-tick observation kinds that lost the
+    priority vote, in priority order, deduplicated, capped at 8. Lets the
+    UI render a "+N more" hint without overloading ``ref_id``.
+    """
+    if not observations:
+        return None
+
+    by_kind: dict[str, list[Observation]] = {}
+    for obs in observations:
+        by_kind.setdefault(obs.event_type, []).append(obs)
+
+    winner_kind: str | None = next(
+        (k for k in _TRIGGER_PRIORITY if by_kind.get(k)),
+        None,
+    )
+    if winner_kind is None:
+        # Defensive: an observation with an event_type outside the nine
+        # known kinds would land here. Prefer None over a phantom tag.
+        return None
+
+    zone, ref_id = _resolve_trigger_zone_and_ref(
+        winner_kind,
+        by_kind[winner_kind],
+        current_zone,
+    )
+
+    secondaries = [
+        candidate
+        for candidate in _TRIGGER_PRIORITY
+        if candidate != winner_kind and by_kind.get(candidate)
+    ][:_TRIGGER_SECONDARY_LIMIT]
+
+    return TriggerEventTag(
+        kind=winner_kind,  # type: ignore[arg-type]
+        zone=zone,
+        ref_id=ref_id,
+        secondary_kinds=secondaries,  # type: ignore[arg-type]
+    )
 
 
 def _decision_with_affinity(

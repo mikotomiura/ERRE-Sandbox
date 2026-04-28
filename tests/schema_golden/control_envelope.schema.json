@@ -32,7 +32,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -71,7 +71,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -117,7 +117,7 @@
           "type": "boolean"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -247,7 +247,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -285,7 +285,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -335,7 +335,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -450,7 +450,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -500,7 +500,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -537,7 +537,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -833,6 +833,18 @@
           "minimum": 0,
           "title": "Tick",
           "type": "integer"
+        },
+        "trigger_event": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TriggerEventTag"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M9-A: the event-boundary tag picked from this tick's observations by priority. Lets the Godot ``ReasoningPanel`` show the trigger 1-liner and the ``BoundaryLayer`` pulse the originating zone for the focused agent. Older M7ζ producers (pre-0.10.0-m7h) deserialise as ``None``; consumers must tolerate the missing case."
         }
       },
       "required": [
@@ -854,7 +866,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -933,7 +945,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1100,7 +1112,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1131,6 +1143,79 @@
       "title": "SpeechMsg",
       "type": "object"
     },
+    "TriggerEventTag": {
+      "additionalProperties": false,
+      "description": "1-line \"起点 event\" tag attached to a :class:`ReasoningTrace` (M9-A).\n\nLets the Godot ``ReasoningPanel`` show \"this trace was a reaction to X\"\nand the ``BoundaryLayer`` pulse the originating zone, without forcing\nconsumers to scan the raw observation stream. Cognition cycle picks one\nwinner per tick by priority (zone_transition > affordance > proximity >\nbiorhythm > erre_mode_shift > temporal > internal > speech > perception);\nsame-tick losers in the spatial set are surfaced as ``secondary_kinds``\nfor a \"+N more\" UI hint.\n\nWire contract: ``ref_id`` is structured (zone_transition→``to_zone``,\naffordance→``prop_id``, proximity→``other_agent_id``, otherwise ``None``).\nDisplay text (e.g. \"Linden-Allee に入った\") is composed *client-side* in\n``godot_project/scripts/i18n/Strings.gd`` so backend stays free of i18n.",
+      "properties": {
+        "kind": {
+          "description": "Event_type of the winning observation that triggered this trace. Must match one of the nine :class:`Observation` discriminator values.",
+          "enum": [
+            "zone_transition",
+            "affordance",
+            "proximity",
+            "temporal",
+            "biorhythm",
+            "erre_mode_shift",
+            "internal",
+            "speech",
+            "perception"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Structured reference id of the trigger. Mapping by kind: zone_transition→``to_zone`` (string-equal to ``zone``), affordance→``prop_id``, proximity→``other_agent_id``. None for kinds without a stable reference.",
+          "title": "Ref Id"
+        },
+        "secondary_kinds": {
+          "description": "Same-tick strong losers (kinds that were observed but did not win the priority vote). UI may render as '+N more'. Order follows priority descending; bounded to 8 to cap envelope size.",
+          "items": {
+            "enum": [
+              "zone_transition",
+              "affordance",
+              "proximity",
+              "temporal",
+              "biorhythm",
+              "erre_mode_shift",
+              "internal",
+              "speech",
+              "perception"
+            ],
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Secondary Kinds",
+          "type": "array"
+        },
+        "zone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Zone"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Zone where the trigger occurred. None for non-spatial kinds (temporal / biorhythm / internal / speech / perception / erre_mode_shift). The Godot ``BoundaryLayer`` only pulses when zone is set AND kind is in the spatial set {zone_transition, affordance, proximity}."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "TriggerEventTag",
+      "type": "object"
+    },
     "WorldLayoutMsg": {
       "additionalProperties": false,
       "description": "Per-session single-shot world layout snapshot (M7γ, on-connect).\n\nCarries the static zone centroids and prop coordinates that the Godot\n:class:`BoundaryLayer` and ``BaseTerrain`` need to draw the world. In γ\nthe layout is immutable per run, so the gateway emits exactly one\n:class:`WorldLayoutMsg` immediately before the handshake-completing\n``registry.add(...)`` call; differential updates are out of scope until\na runtime mutates :data:`~erre_sandbox.world.zones.ZONE_CENTERS`.\n\n``tick=0`` is conventional (the snapshot logically belongs to session\nsetup, not to any in-progress tick) and is asserted by the\n``test_envelope_fixtures.py`` shared-invariant test.",
@@ -1150,7 +1235,7 @@
           "type": "array"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },
@@ -1195,7 +1280,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "0.9.0-m7z",
+          "default": "0.10.0-m7h",
           "title": "Schema Version",
           "type": "string"
         },

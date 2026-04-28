@@ -44,7 +44,7 @@ def test_schema_version_is_m6() -> None:
     # compatible with those additions — this file exercises the M6 surface
     # against whatever the current SCHEMA_VERSION happens to be, so we track
     # the active milestone pin here too.
-    assert SCHEMA_VERSION == "0.9.0-m7z"
+    assert SCHEMA_VERSION == "0.10.0-m7h"
 
 
 # ---------- §2 TimeOfDay enum ------------------------------------------------
