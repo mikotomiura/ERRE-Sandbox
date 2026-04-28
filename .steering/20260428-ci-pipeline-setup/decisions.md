@@ -80,11 +80,22 @@
 | # | 条件 | 結果 |
 |---|---|---|
 | 1 | `.pre-commit-config.yaml` 存在、`pre-commit run --all-files` で全 hook pass | ✅ ローカル確認 (2 hooks Passed) |
-| 2 | `.github/workflows/ci.yml` 存在、PR トリガーで実行成功 | 📋 PR push 後の実 CI run で確認 |
-| 3 | CI run の実行時間 < 5 分 (uv キャッシュ活用) | 📋 PR push 後の実 CI run で確認 |
+| 2 | `.github/workflows/ci.yml` 存在、PR トリガーで実行成功 | ✅ PR #113 で 3/3 jobs SUCCESS (run 25036170643) |
+| 3 | CI run の実行時間 < 5 分 (uv キャッシュ活用) | ✅ wall-clock ~19s (lint 14s / mypy 16s / pytest 19s 並列、95% マージン) |
 | 4 | `docs/development-guidelines.md` の "現状 manual" 注記が CI 化後に削除 | ✅ L25-26 / L90-93 / L107 全て更新 |
 | 5 | `docs/architecture.md` L86 の CI 行が `[planned]` ではなく実態に | ✅ 実装済 entry に書換え |
 | 6 | README の verification command に注記追加 | ✅ English L54-72 + 日本語 L132-152 両方 |
+
+### Live CI 受け入れ (2026-04-28T05:46Z, PR #113 / merge commit de641de)
+
+| Job | start | end | duration | conclusion |
+|---|---|---|---|---|
+| ruff (check + format) | 05:45:58 | 05:46:12 | 14s | SUCCESS |
+| mypy | 05:45:58 | 05:46:14 | 16s | SUCCESS |
+| pytest (non-godot) | 05:45:58 | 05:46:17 | 19s | SUCCESS |
+| **wall-clock 並列** | — | — | **~19s** | — |
+
+merge: 2026-04-28T05:53:18Z, main = `de641de`
 
 機械検証ログ:
 - `uv run ruff check src tests` → exit=0
