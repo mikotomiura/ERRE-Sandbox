@@ -15,6 +15,17 @@
 class_name EnvelopeRouter
 extends Node
 
+# M9-A hotfix: spatial trigger kinds for zone_pulse_requested gating.
+# Defense-in-depth — cognition cycle already sets zone=null for non-spatial
+# kinds, but the renderer guards against malformed / future payloads that
+# accidentally carry a zone for a non-spatial kind. Mirrors the same const
+# in BoundaryLayer.gd so the whitelist lives in two enforcement points.
+const SPATIAL_TRIGGER_KINDS: PackedStringArray = [
+	"zone_transition",
+	"affordance",
+	"proximity",
+]
+
 signal handshake_received(peer: String, capabilities: Array)
 signal agent_updated(agent_id: String, agent_state: Dictionary)
 signal speech_delivered(agent_id: String, utterance: String, zone: String)
@@ -99,16 +110,27 @@ func on_envelope_received(envelope: Dictionary) -> void:
 			var rt_tick: int = int(envelope.get("tick", 0))
 			var rt_agent: String = trace.get("agent_id", "")
 			reasoning_trace_received.emit(rt_agent, rt_tick, trace)
-			# M9-A: spatial-kind triggers also emit a zone pulse request.
-			# Non-spatial kinds (temporal/biorhythm/internal/speech/perception/
-			# erre_mode_shift) leave ``zone`` null per cognition cycle, so the
-			# null guard below short-circuits without a kind whitelist here —
-			# BoundaryLayer additionally filters by spatial-kind set + focus.
+			# M9-A hotfix: ``trigger_event`` carries explicit JSON ``null`` for
+			# zone/ref_id when the winning kind is non-spatial (temporal /
+			# biorhythm / internal / speech / perception / erre_mode_shift).
+			# ``Dictionary.get(key, default)`` returns the actual ``null`` —
+			# default kicks in only on missing keys — so we route through
+			# ``Variant`` and coerce. Empty result + spatial-kind whitelist
+			# together gate the pulse signal.
 			var trigger: Variant = trace.get("trigger_event")
 			if trigger is Dictionary:
-				var trigger_zone: String = trigger.get("zone", "")
-				var trigger_kind: String = trigger.get("kind", "")
-				if not trigger_zone.is_empty() and not trigger_kind.is_empty():
+				var kind_value: Variant = trigger.get("kind")
+				var zone_value: Variant = trigger.get("zone")
+				var trigger_kind: String = (
+					"" if kind_value == null else str(kind_value)
+				)
+				var trigger_zone: String = (
+					"" if zone_value == null else str(zone_value)
+				)
+				if (
+					SPATIAL_TRIGGER_KINDS.has(trigger_kind)
+					and not trigger_zone.is_empty()
+				):
 					zone_pulse_requested.emit(
 						rt_agent, trigger_kind, trigger_zone, rt_tick,
 					)

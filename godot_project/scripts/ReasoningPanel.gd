@@ -312,14 +312,22 @@ func _on_reasoning_trace_received(agent_id: String, tick: int, trace: Dictionary
 	_decision_label.text = _coalesce(trace.get("decision"), Strings.LABELS["VALUE_DASH"])
 	_intent_label.text = _coalesce(trace.get("next_intent"), Strings.LABELS["VALUE_DASH"])
 	# M9-A: trigger event row. Pre-0.10.0-m7h producers send no
-	# ``trigger_event`` field — the dict.get() yields null and we render the
-	# dash placeholder. Spatial kinds carry zone+ref_id; non-spatial may
-	# leave both empty (Strings.format_trigger handles every shape).
+	# ``trigger_event`` field; M9-A producers send a Dictionary that may
+	# carry explicit JSON ``null`` for ``zone`` / ``ref_id`` when the kind
+	# is non-spatial. ``Dictionary.get(key, default)`` returns the actual
+	# ``null`` for present-but-null entries (default only kicks in for
+	# missing keys) — so we route through ``Variant`` and coerce, matching
+	# the existing ``persona_value`` pattern below and ``_coalesce`` for
+	# the salient / decision / intent rows. ``Strings.format_trigger``
+	# handles empty zone / empty ref_id internally.
 	var trigger: Variant = trace.get("trigger_event")
 	if trigger is Dictionary:
-		var t_kind: String = trigger.get("kind", "")
-		var t_zone: String = trigger.get("zone", "")
-		var t_ref: String = trigger.get("ref_id", "")
+		var kind_value: Variant = trigger.get("kind")
+		var zone_value: Variant = trigger.get("zone")
+		var ref_value: Variant = trigger.get("ref_id")
+		var t_kind: String = "" if kind_value == null else str(kind_value)
+		var t_zone: String = "" if zone_value == null else str(zone_value)
+		var t_ref: String = "" if ref_value == null else str(ref_value)
 		_trigger_label.text = Strings.format_trigger(t_kind, t_zone, t_ref)
 	else:
 		_trigger_label.text = Strings.LABELS["TRIGGER_NONE"]
