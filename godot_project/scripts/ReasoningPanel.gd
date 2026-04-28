@@ -48,6 +48,10 @@ var _decision_label: Label
 var _intent_label: Label
 var _reflection_label: Label
 var _relationships_label: Label
+# M9-A event-boundary-observability. 1-line "気づきの起点" header above
+# SALIENT, populated from ``ReasoningTrace.trigger_event`` (the cognition
+# cycle's per-tick priority pick). Cleared on focus change.
+var _trigger_label: Label
 var _last_reflection_tick: int = -1
 # M7-ζ-2: keep up to ``_RECENT_REFLECTIONS_CAP`` of the most-recent reflection
 # events in tick-descending order. ``_last_reflection_tick`` still stamps the
@@ -175,6 +179,13 @@ func _build_tree() -> void:
 	)
 	vbox.add_child(_make_divider())
 
+	# M9-A: trigger event row appears above SALIENT to anchor "what did I
+	# react to" before the agent's own narrative ("what I noticed").
+	_make_label(vbox, Strings.LABELS["TRIGGER"], 11, Color(0.55, 0.4, 0.85, 1.0))
+	_trigger_label = _make_label(
+		vbox, Strings.LABELS["TRIGGER_NONE"], 13, Color(0.92, 0.9, 1.0, 1.0),
+	)
+
 	_make_label(vbox, Strings.LABELS["SALIENT"], 11, Color(0.8, 0.7, 0.4, 1.0))
 	_salient_label = _make_label(vbox, Strings.LABELS["VALUE_DASH"], 14, Color(0.95, 0.95, 0.95, 1.0))
 
@@ -236,6 +247,9 @@ func set_focused_agent(agent_id: String, _agent_node: Node3D = null) -> void:
 	_reflection_label.text = Strings.LABELS["REFLECTION_NONE"]
 	_relationships_label.text = Strings.LABELS["RELATIONSHIPS_NONE"]
 	_persona_summary_label.text = Strings.LABELS["PERSONA_SUMMARY_UNKNOWN"]
+	# M9-A: trigger row clears with the rest so a focus switch never shows
+	# the previous agent's stale "起点" line.
+	_trigger_label.text = Strings.LABELS["TRIGGER_NONE"]
 	_last_reflection_tick = -1
 	_recent_reflections.clear()
 	if agent_id != "":
@@ -297,6 +311,18 @@ func _on_reasoning_trace_received(agent_id: String, tick: int, trace: Dictionary
 	_salient_label.text = _coalesce(trace.get("salient"), Strings.LABELS["VALUE_DASH"])
 	_decision_label.text = _coalesce(trace.get("decision"), Strings.LABELS["VALUE_DASH"])
 	_intent_label.text = _coalesce(trace.get("next_intent"), Strings.LABELS["VALUE_DASH"])
+	# M9-A: trigger event row. Pre-0.10.0-m7h producers send no
+	# ``trigger_event`` field — the dict.get() yields null and we render the
+	# dash placeholder. Spatial kinds carry zone+ref_id; non-spatial may
+	# leave both empty (Strings.format_trigger handles every shape).
+	var trigger: Variant = trace.get("trigger_event")
+	if trigger is Dictionary:
+		var t_kind: String = trigger.get("kind", "")
+		var t_zone: String = trigger.get("zone", "")
+		var t_ref: String = trigger.get("ref_id", "")
+		_trigger_label.text = Strings.format_trigger(t_kind, t_zone, t_ref)
+	else:
+		_trigger_label.text = Strings.LABELS["TRIGGER_NONE"]
 	# M7-ζ-2: persona_id is optional on the wire (None for pre-0.9.0-m7z
 	# producers). Only upgrade the title when the field resolves to a
 	# non-empty string.
