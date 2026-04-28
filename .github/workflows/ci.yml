@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Avoid duplicate runs: feature branches go through pull_request only;
+# main gets push runs (post-merge). Concurrency cancels stale in-flight
+# runs of the same ref (PR re-pushes / consecutive main pushes).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ruff (check + format)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version-file: .python-version
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: ruff check
+        run: uv run ruff check src tests
+      - name: ruff format --check
+        run: uv run ruff format --check src tests
+
+  typecheck:
+    name: mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version-file: .python-version
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: mypy src
+        run: uv run mypy src
+
+  test:
+    name: pytest (non-godot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version-file: .python-version
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: pytest -m "not godot"
+        run: uv run pytest -m "not godot"

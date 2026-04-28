@@ -105,8 +105,9 @@ erre-sandbox/
 ├── .steering/                  # タスク単位の作業記録
 │   ├── _setup-progress.md      # 構築進捗
 │   └── _template/              # タスク用テンプレート
-├── .github/                    # [planned] CI/governance、現存しない
-│   └── workflows/ci.yml        # [planned] uv sync --frozen → ruff → pytest (`.steering/20260428-ci-pipeline-setup/` で起票予定)
+├── .github/                    # CI/governance
+│   └── workflows/ci.yml        # uv sync --frozen --all-groups → ruff / mypy / pytest を lint/typecheck/test の 3 並列 jobs で実行
+├── .pre-commit-config.yaml     # local hook (ruff check + ruff format --check) — uv run で uv.lock 固定版を呼ぶ SSoT 構成
 ├── pyproject.toml              # uv + ruff + pytest + mypy 設定
 ├── uv.lock                     # 依存ロックファイル
 ├── .python-version             # 3.11 pin

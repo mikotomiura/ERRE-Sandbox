@@ -29,6 +29,8 @@ from tests._godot_helpers import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+pytestmark = pytest.mark.godot
+
 
 @pytest.fixture(scope="module")
 def harness_result() -> Iterator[subprocess.CompletedProcess[str] | None]:

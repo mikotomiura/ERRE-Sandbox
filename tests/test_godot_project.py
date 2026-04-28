@@ -48,6 +48,7 @@ def test_godot_project_contains_no_python() -> None:
     assert py_files == [], f"Python files found under godot_project/: {py_files}"
 
 
+@pytest.mark.godot
 def test_godot_project_boots_headless() -> None:
     godot = resolve_godot()
     if godot is None:

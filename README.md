@@ -61,6 +61,20 @@ uv run mypy src
 uv run pytest
 ```
 
+The pre-commit hook runs `ruff check` and `ruff format --check` on staged
+`src/` / `tests/` Python files at commit time. The GitHub Actions CI
+workflow (`.github/workflows/ci.yml`, on push to main and on every PR)
+runs all four checks (`ruff check`, `ruff format --check`, `mypy src`,
+`pytest -m "not godot"`) in parallel jobs. All four can also be invoked
+manually with the commands shown above. Requires
+[uv](https://docs.astral.sh/uv/). To enable the local hook once after
+cloning:
+
+```bash
+uv tool install pre-commit
+pre-commit install
+```
+
 ### Layout
 
 See `docs/repository-structure.md` for the authoritative layout and
@@ -127,6 +141,19 @@ uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy src
 uv run pytest
+```
+
+pre-commit hook はコミット時にステージされた `src/` / `tests/` の Python
+ファイルに対して `ruff check` と `ruff format --check` の 2 つを実行します。
+GitHub Actions CI (`.github/workflows/ci.yml`、main への push 時と PR 時)
+は 4 つのチェック (`ruff check` / `ruff format --check` / `mypy src` /
+`pytest -m "not godot"`) を並列 jobs で実行します。いずれも手動実行可能です。
+[uv](https://docs.astral.sh/uv/) が必要です。クローン直後にローカル hook を
+有効化するには:
+
+```bash
+uv tool install pre-commit
+pre-commit install
 ```
 
 ### ディレクトリ構成

@@ -22,8 +22,11 @@
 ### Lint / Format
 - ruff で lint + format を一元化
 - `pyproject.toml` の `[tool.ruff]` セクションで設定
-- 現状 manual: `uv run ruff check src tests` + `uv run ruff format --check src tests` を commit 前に実行
-- 自動化 (pre-commit hook + GitHub Actions CI) は未導入、`.steering/20260428-ci-pipeline-setup/` で起票予定 (codex addendum D7)
+- pre-commit hook (commit 時) と GitHub Actions CI (push / PR 時) で
+  `uv run ruff check src tests` + `uv run ruff format --check src tests` を自動実行
+- 手動でも `uv run` で同コマンドを実行可能
+- 設定: `.pre-commit-config.yaml` (local hook、`uv run ruff` で uv.lock 固定版を呼び出す SSoT 構成) /
+  `.github/workflows/ci.yml` (lint / typecheck / test の 3 並列 jobs)
 
 ### Python 固有
 - Python 3.11 を使用 (``.python-version`` で pin)
@@ -80,17 +83,20 @@ Refs: .steering/20260420-reflection-window/
 
 ### テストの種類
 
-| 種類 | 範囲 | フレームワーク | 実行頻度 (現状) |
+| 種類 | 範囲 | フレームワーク | 実行頻度 |
 |---|---|---|---|
-| 単体テスト | 個々の関数・クラス | pytest | manual (`uv run pytest`)、コミット前推奨 |
-| 統合テスト | モジュール間連携 (memory + cognition 等) | pytest-asyncio | manual、PR レビュー前 |
-| E2E テスト | 1体エージェントの認知サイクル完走 | pytest-asyncio | manual |
-| 埋め込みプレフィックステスト | 検索/文書プレフィックスの正確性 | pytest | manual |
+| 単体テスト | 個々の関数・クラス | pytest | CI (push/PR、`pytest -m "not godot"`) + 手動 (`uv run pytest`) |
+| 統合テスト | モジュール間連携 (memory + cognition 等) | pytest-asyncio | CI (push/PR) + 手動 |
+| E2E テスト | 1体エージェントの認知サイクル完走 | pytest-asyncio | CI (push/PR) + 手動 |
+| 埋め込みプレフィックステスト | 検索/文書プレフィックスの正確性 | pytest | CI (push/PR) + 手動 |
+| Godot 連携テスト | `@pytest.mark.godot` 付与のテスト | pytest | 手動のみ (CI では `-m "not godot"` で deselect) |
 
-> **現状実装スナップショット (last verified 2026-04-28)**: pre-commit hook と
-> GitHub Actions CI は未導入。`.steering/20260428-ci-pipeline-setup/` で導入を
-> 起票予定 (codex addendum D7)。導入完了後は本表の「実行頻度」列を "pre-commit"
-> "CI (push/PR)" に戻す。
+> **現状実装スナップショット (last verified 2026-04-28)**: pre-commit hook
+> (`.pre-commit-config.yaml`) と GitHub Actions CI (`.github/workflows/ci.yml`、
+> lint / typecheck / test の 3 並列 jobs) を導入済。Godot binary 必須テストは
+> `pyproject.toml` の `markers = ["godot: ..."]` 登録 + 対象テストへの
+> `@pytest.mark.godot` 付与で CI から `pytest -m "not godot"` により明示的に
+> deselect する policy。
 
 ### テストの書き方
 - テストファイルは `tests/` 配下に `src/` のミラー構造で配置
@@ -104,11 +110,11 @@ Refs: .steering/20260420-reflection-window/
 
 ## 4. レビュー基準
 
-### 必須チェック (現状 manual、`.steering/20260428-ci-pipeline-setup/` で CI 化予定)
-- [ ] `uv run ruff check src tests` が通る
-- [ ] `uv run ruff format --check src tests` が通る
-- [ ] `uv run mypy src` が通る
-- [ ] `uv run pytest` が通る
+### 必須チェック (pre-commit / CI で自動実行、手動でも `uv run` で実行可)
+- [ ] `uv run ruff check src tests` が通る (pre-commit + CI lint job)
+- [ ] `uv run ruff format --check src tests` が通る (pre-commit + CI lint job)
+- [ ] `uv run mypy src` が通る (CI typecheck job)
+- [ ] `uv run pytest -m "not godot"` が通る (CI test job、Godot 連携除く)
 - [ ] 型ヒントが付与されている
 
 ### 手動チェック (セルフレビュー / Claude Code `/review`)

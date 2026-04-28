@@ -1,0 +1,35 @@
+# pre-commit hooks for ERRE-Sandbox
+#
+# Runs the project's ruff via `uv run` so the same binary fixed by uv.lock is
+# used both locally (this hook) and in GitHub Actions CI. This avoids version
+# drift between a hosted ruff-pre-commit mirror and the project's lock file.
+#
+# Setup:
+#   uv tool install pre-commit
+#   pre-commit install
+#
+# Manual run:
+#   pre-commit run --all-files
+#
+# mypy and pytest are intentionally *not* run here (slow); CI handles them.
+
+# Scope is limited to src/ and tests/ via `files:` to mirror CI which runs
+# `uv run ruff check src tests`. .steering/, erre-sandbox-blender/, etc. live
+# outside the lint perimeter (also excluded in pyproject.toml [tool.ruff]).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        files: ^(src|tests)/.*\.py$
+        require_serial: true
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run ruff format --check
+        language: system
+        types: [python]
+        files: ^(src|tests)/.*\.py$
+        require_serial: true

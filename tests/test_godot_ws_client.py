@@ -44,6 +44,7 @@ _EXPECTED_PLAYBACK_ORDER: tuple[str, ...] = (
 _DISPATCH_LINE_TEMPLATE = "[FixturePlayer] dispatching {filename} kind={kind}"
 
 
+@pytest.mark.godot
 def test_fixture_harness_dispatches_seven_kinds_in_order() -> None:
     godot = resolve_godot()
     if godot is None:

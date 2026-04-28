@@ -83,7 +83,7 @@
 | ダッシュボード | Streamlit / FastAPI + HTMX | [planned] | ブラウザから直接可視化、現状は ui/dashboard/ 内 server-side aggregation のみ実装 |
 | 研究ツール | Jupyter | 最新 | リプレイ・指標計算 |
 | ドキュメント | MkDocs Material + mkdocstrings | 最新 | JA/EN 併記対応 |
-| CI | (現状なし) | [planned] | `.steering/20260428-ci-pipeline-setup/` で起票予定。manual で `uv run ruff check src tests / ruff format --check src tests / mypy src / pytest` を実行 (README §Getting started 参照) |
+| CI | GitHub Actions + pre-commit | 最新 | `.github/workflows/ci.yml` で `uv sync --frozen --all-groups` → ruff check / ruff format --check / mypy src / pytest -m "not godot" を lint / typecheck / test の 3 並列 jobs で実行。`.pre-commit-config.yaml` で commit 時にも ruff を自動実行 (uv.lock 固定の SSoT 構成) |
 
 ## 3. レイヤー構成
 
