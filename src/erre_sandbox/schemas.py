@@ -41,7 +41,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.9.0-m7z"
+SCHEMA_VERSION: Final[str] = "0.10.0-m7h"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
@@ -116,6 +116,26 @@ wire-compatible. The new ``EpochPhase`` name is deliberately distinct from
 the gateway-layer ``SessionPhase`` at ``integration/protocol.py`` so the two
 orthogonal state machines cannot be confused. See
 ``.steering/20260425-m8-session-phase-model/`` for the rationale.
+
+M9-A bump (0.9.0-m7z → 0.10.0-m7h): one additive nested field tied to the
+event-boundary-observability work. :class:`ReasoningTrace` gains
+``trigger_event: TriggerEventTag | None`` so the Godot ``ReasoningPanel``
+can render a 1-line "気づきの起点" (kind + zone + ref_id) and the
+``BoundaryLayer`` can pulse the originating zone for the focused agent.
+The new :class:`TriggerEventTag` carries ``kind`` (Literal of the 9
+:class:`Observation` event_types), ``zone: Zone | None``, ``ref_id: str |
+None`` (zone_transition→to_zone / affordance→prop_id /
+proximity→other_agent_id), and ``secondary_kinds`` ("+N more" hint for
+same-tick strong losers). It pins ``model_config =
+ConfigDict(extra="forbid")`` so unknown nested keys are rejected at the
+wire boundary. Default-None on :class:`ReasoningTrace` keeps M7ζ
+producers wire-compatible. The bump from 0.9.0-m7z is required because
+``HandshakeMsg`` does a strict version match and the Godot client's
+``CLIENT_SCHEMA_VERSION`` must move in lockstep. The minor version is
+named ``0.10.0-m7h`` (M7-η) rather than ``0.10.0-m9`` to keep the M7
+chronology readable; the M9 namespace is reserved for the LoRA work.
+See ``.steering/20260428-event-boundary-observability/design-final.md``
+and the Codex review log (``codex-review.md``) for the rationale.
 
 M7ζ bump (0.8.0-m7e → 0.9.0-m7z): two additive fields tied to the Slice ζ
 "Live Resonance" panel-context work. :class:`ReasoningTrace` gains
@@ -817,6 +837,86 @@ class ReflectionEvent(BaseModel):
     created_at: datetime = Field(default_factory=_utc_now)
 
 
+class TriggerEventTag(BaseModel):
+    """1-line "起点 event" tag attached to a :class:`ReasoningTrace` (M9-A).
+
+    Lets the Godot ``ReasoningPanel`` show "this trace was a reaction to X"
+    and the ``BoundaryLayer`` pulse the originating zone, without forcing
+    consumers to scan the raw observation stream. Cognition cycle picks one
+    winner per tick by priority (zone_transition > affordance > proximity >
+    biorhythm > erre_mode_shift > temporal > internal > speech > perception);
+    same-tick losers in the spatial set are surfaced as ``secondary_kinds``
+    for a "+N more" UI hint.
+
+    Wire contract: ``ref_id`` is structured (zone_transition→``to_zone``,
+    affordance→``prop_id``, proximity→``other_agent_id``, otherwise ``None``).
+    Display text (e.g. "Linden-Allee に入った") is composed *client-side* in
+    ``godot_project/scripts/i18n/Strings.gd`` so backend stays free of i18n.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal[
+        "zone_transition",
+        "affordance",
+        "proximity",
+        "temporal",
+        "biorhythm",
+        "erre_mode_shift",
+        "internal",
+        "speech",
+        "perception",
+    ] = Field(
+        ...,
+        description=(
+            "Event_type of the winning observation that triggered this "
+            "trace. Must match one of the nine :class:`Observation` "
+            "discriminator values."
+        ),
+    )
+    zone: Zone | None = Field(
+        default=None,
+        description=(
+            "Zone where the trigger occurred. None for non-spatial kinds "
+            "(temporal / biorhythm / internal / speech / perception / "
+            "erre_mode_shift). The Godot ``BoundaryLayer`` only pulses "
+            "when zone is set AND kind is in the spatial set "
+            "{zone_transition, affordance, proximity}."
+        ),
+    )
+    ref_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "Structured reference id of the trigger. Mapping by kind: "
+            "zone_transition→``to_zone`` (string-equal to ``zone``), "
+            "affordance→``prop_id``, proximity→``other_agent_id``. "
+            "None for kinds without a stable reference."
+        ),
+    )
+    secondary_kinds: list[
+        Literal[
+            "zone_transition",
+            "affordance",
+            "proximity",
+            "temporal",
+            "biorhythm",
+            "erre_mode_shift",
+            "internal",
+            "speech",
+            "perception",
+        ]
+    ] = Field(
+        default_factory=list,
+        max_length=8,
+        description=(
+            "Same-tick strong losers (kinds that were observed but did not "
+            "win the priority vote). UI may render as '+N more'. Order "
+            "follows priority descending; bounded to 8 to cap envelope size."
+        ),
+    )
+
+
 class ReasoningTrace(BaseModel):
     """One tick of structured reasoning rationale (M6-A-3).
 
@@ -881,6 +981,17 @@ class ReasoningTrace(BaseModel):
             "Top-3 ``MemoryEntry.id`` values surfaced by recall calls during "
             "this tick (M7γ). Lets the xAI panel link the decision back to the "
             "specific memory rows it leaned on."
+        ),
+    )
+    trigger_event: TriggerEventTag | None = Field(
+        default=None,
+        description=(
+            "M9-A: the event-boundary tag picked from this tick's "
+            "observations by priority. Lets the Godot ``ReasoningPanel`` "
+            "show the trigger 1-liner and the ``BoundaryLayer`` pulse the "
+            "originating zone for the focused agent. Older M7ζ producers "
+            "(pre-0.10.0-m7h) deserialise as ``None``; consumers must "
+            "tolerate the missing case."
         ),
     )
     created_at: datetime = Field(default_factory=_utc_now)
@@ -1398,6 +1509,7 @@ __all__ = [
     "SpeechMsg",
     "TemporalEvent",
     "TimeOfDay",
+    "TriggerEventTag",
     "WorldLayoutMsg",
     "WorldTickMsg",
     "Zone",

@@ -25,7 +25,7 @@ extends Node
 ## Schema version this client advertises in its client HandshakeMsg. Must match the
 ## gateway's :data:`erre_sandbox.schemas.SCHEMA_VERSION` or the gateway closes with
 ## ``ErrorMsg code="schema_mismatch"``.
-const CLIENT_SCHEMA_VERSION: String = "0.9.0-m7z"
+const CLIENT_SCHEMA_VERSION: String = "0.10.0-m7h"
 ## Reconnect delay in seconds. Set to 2.0s to satisfy MVP M2 acceptance criterion
 ## "WS 切断で 3 秒以内自動再接続" (MASTER-PLAN §4.4). See godot-gdscript patterns.md §1.
 const RECONNECT_DELAY: float = 2.0

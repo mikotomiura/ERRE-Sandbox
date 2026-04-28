@@ -35,6 +35,7 @@ from erre_sandbox.schemas import (
     ReasoningTrace,
     ReasoningTraceMsg,
     RelationshipBond,
+    TriggerEventTag,
     WorldLayoutMsg,
     Zone,
     ZoneLayout,
@@ -48,13 +49,14 @@ def test_schema_version_is_m7g() -> None:
 
     M7γ introduced WorldLayoutMsg + the three ReasoningTrace observability
     fields. M7δ added belief promotion fields, M7ε bumps for the internal
-    ``dialog_turns.epoch_phase`` column, and M7ζ bumps for additive panel
+    ``dialog_turns.epoch_phase`` column, M7ζ bumps for additive panel
     context (``ReasoningTrace.persona_id`` /
-    ``RelationshipBond.latest_belief_kind``). The surface this file exercises
+    ``RelationshipBond.latest_belief_kind``), and M9-A adds
+    ``ReasoningTrace.trigger_event``. The surface this file exercises
     remains valid against the current SCHEMA_VERSION pin
-    (``0.9.0-m7z``).
+    (``0.10.0-m7h``).
     """
-    assert SCHEMA_VERSION == "0.9.0-m7z"
+    assert SCHEMA_VERSION == "0.10.0-m7h"
 
 
 # ---------- §7 WorldLayoutMsg discriminator ----------------------------------
@@ -270,3 +272,143 @@ def test_world_layout_fixture_round_trips_against_envelope_union() -> None:
     payload = json.loads(fixture.read_text(encoding="utf-8"))
     assert payload["schema_version"] == SCHEMA_VERSION
     assert payload["tick"] == 0
+
+
+# ---------- M9-A TriggerEventTag + ReasoningTrace.trigger_event --------------
+
+
+def test_trigger_event_tag_round_trip_minimal() -> None:
+    """``TriggerEventTag`` round-trips with required ``kind`` only."""
+    tag = TriggerEventTag(kind="zone_transition")
+    re_loaded = TriggerEventTag.model_validate_json(tag.model_dump_json())
+    assert re_loaded == tag
+    assert re_loaded.zone is None
+    assert re_loaded.ref_id is None
+    assert re_loaded.secondary_kinds == []
+
+
+def test_trigger_event_tag_round_trip_full() -> None:
+    """All fields populated, including ``secondary_kinds`` ordering."""
+    tag = TriggerEventTag(
+        kind="affordance",
+        zone=Zone.CHASHITSU,
+        ref_id="bowl_01",
+        secondary_kinds=["proximity", "biorhythm"],
+    )
+    re_loaded = TriggerEventTag.model_validate_json(tag.model_dump_json())
+    assert re_loaded == tag
+    assert re_loaded.zone is Zone.CHASHITSU
+    assert re_loaded.ref_id == "bowl_01"
+    assert re_loaded.secondary_kinds == ["proximity", "biorhythm"]
+
+
+def test_trigger_event_tag_rejects_extra_fields() -> None:
+    """``model_config = ConfigDict(extra="forbid")`` must reject unknown nested keys."""
+    with pytest.raises(ValidationError):
+        TriggerEventTag.model_validate(
+            {
+                "kind": "affordance",
+                "rogue_nested_field": "should be rejected",
+            },
+        )
+
+
+def test_trigger_event_tag_rejects_unknown_kind() -> None:
+    """Only the nine :class:`Observation` event_types are accepted as ``kind``."""
+    with pytest.raises(ValidationError):
+        TriggerEventTag.model_validate({"kind": "unknown"})
+
+
+def test_trigger_event_tag_ref_id_max_length_64() -> None:
+    """``ref_id`` over 64 chars must fail validation."""
+    with pytest.raises(ValidationError):
+        TriggerEventTag.model_validate(
+            {"kind": "affordance", "ref_id": "x" * 65},
+        )
+
+
+def test_trigger_event_tag_secondary_kinds_max_length_8() -> None:
+    """``secondary_kinds`` over 8 entries must fail validation."""
+    with pytest.raises(ValidationError):
+        TriggerEventTag.model_validate(
+            {
+                "kind": "zone_transition",
+                "secondary_kinds": ["affordance"] * 9,
+            },
+        )
+
+
+def test_reasoning_trace_trigger_event_defaults_to_none() -> None:
+    """M9-A additive: pre-0.10.0-m7h traces deserialise without the field."""
+    trace = ReasoningTrace(
+        agent_id="a_kant_001",
+        tick=42,
+        mode="peripatetic",
+    )
+    assert trace.trigger_event is None
+
+
+def test_reasoning_trace_round_trip_with_trigger_event() -> None:
+    """``trigger_event`` round-trips through ReasoningTrace serialization."""
+    trace = ReasoningTrace(
+        agent_id="a_kant_001",
+        tick=42,
+        mode="peripatetic",
+        trigger_event=TriggerEventTag(
+            kind="zone_transition",
+            zone=Zone.PERIPATOS,
+            ref_id="peripatos",
+        ),
+    )
+    re_loaded = ReasoningTrace.model_validate_json(trace.model_dump_json())
+    assert re_loaded == trace
+    assert re_loaded.trigger_event is not None
+    assert re_loaded.trigger_event.kind == "zone_transition"
+    assert re_loaded.trigger_event.zone is Zone.PERIPATOS
+
+
+def test_reasoning_trace_msg_carries_trigger_event() -> None:
+    """The :class:`ReasoningTraceMsg` envelope passes ``trigger_event`` untouched."""
+    adapter: TypeAdapter[ControlEnvelope] = TypeAdapter(ControlEnvelope)
+    payload: dict[str, object] = {
+        "kind": "reasoning_trace",
+        "tick": 42,
+        "trace": {
+            "agent_id": "a_kant_001",
+            "tick": 42,
+            "mode": "peripatetic",
+            "trigger_event": {
+                "kind": "affordance",
+                "zone": "chashitsu",
+                "ref_id": "bowl_01",
+                "secondary_kinds": ["proximity"],
+            },
+        },
+    }
+    envelope = adapter.validate_python(payload)
+    assert isinstance(envelope, ReasoningTraceMsg)
+    assert envelope.trace.trigger_event is not None
+    assert envelope.trace.trigger_event.kind == "affordance"
+    assert envelope.trace.trigger_event.ref_id == "bowl_01"
+    assert envelope.trace.trigger_event.secondary_kinds == ["proximity"]
+
+
+def test_reasoning_trace_legacy_payload_without_trigger_event_is_valid() -> None:
+    """Pre-0.10.0-m7h payload (no ``trigger_event`` key) deserialises cleanly."""
+    legacy_payload: dict[str, object] = {
+        "agent_id": "a_kant_001",
+        "tick": 42,
+        "mode": "peripatetic",
+        "observed_objects": ["chawan_01"],
+        "nearby_agents": [],
+        "retrieved_memories": [],
+    }
+    trace = ReasoningTrace.model_validate(legacy_payload)
+    assert trace.trigger_event is None
+
+
+def test_trigger_event_tag_in_public_surface() -> None:
+    """``TriggerEventTag`` is exported via ``__all__`` for downstream consumers."""
+    from erre_sandbox import schemas as schemas_module
+
+    assert "TriggerEventTag" in schemas_module.__all__
