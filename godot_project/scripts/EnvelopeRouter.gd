@@ -118,6 +118,11 @@ func on_envelope_received(envelope: Dictionary) -> void:
 			# ``Variant`` and coerce. Empty result + spatial-kind whitelist
 			# together gate the pulse signal.
 			var trigger: Variant = trace.get("trigger_event")
+			# DEBUG (event-boundary-pulse-trace): trace.get("trigger_event")
+			# が Dictionary か / null か / 全く存在しないかを毎回 print。
+			# wire→signal 経路のどこで切れているかを切り分けるため。
+			var _trig_str: String = str(trigger).substr(0, 200)
+			print("[EnvelopeRouter.DEBUG] reasoning_trace agent=%s tick=%d trigger_event_type=%s trigger=%s" % [rt_agent, rt_tick, typeof(trigger), _trig_str])
 			if trigger is Dictionary:
 				var kind_value: Variant = trigger.get("kind")
 				var zone_value: Variant = trigger.get("zone")
@@ -127,10 +132,12 @@ func on_envelope_received(envelope: Dictionary) -> void:
 				var trigger_zone: String = (
 					"" if zone_value == null else str(zone_value)
 				)
+				print("[EnvelopeRouter.DEBUG] unpacked kind=%s zone=%s is_spatial=%s zone_empty=%s" % [trigger_kind, trigger_zone, SPATIAL_TRIGGER_KINDS.has(trigger_kind), trigger_zone.is_empty()])
 				if (
 					SPATIAL_TRIGGER_KINDS.has(trigger_kind)
 					and not trigger_zone.is_empty()
 				):
+					print("[EnvelopeRouter.DEBUG] EMIT zone_pulse_requested agent=%s kind=%s zone=%s tick=%d" % [rt_agent, trigger_kind, trigger_zone, rt_tick])
 					zone_pulse_requested.emit(
 						rt_agent, trigger_kind, trigger_zone, rt_tick,
 					)
