@@ -364,10 +364,14 @@ def _parse_envelope(raw: str) -> ControlEnvelope | None:
     Callers are expected to follow a ``None`` with an
     :class:`ErrorMsg` ``invalid_envelope`` (one-shot warning, not a close).
     """
-    # Cheap char-length upper bound first (UTF-8 bytes >= codepoint count).
-    # The precise byte check only fires on near-limit frames, sparing us
-    # the encode() copy on every typical frame.
+    # Cheap char-length upper bound first (chars >= bytes for ASCII;
+    # rejects ASCII-only DoS payloads without paying for an encode() copy).
     if len(raw) > _MAX_RAW_FRAME_BYTES:
+        return None
+    # Multibyte safety (codex F1 followup, 2026-04-28): chars <= limit but
+    # UTF-8 bytes can still exceed it (e.g. 3-byte CJK characters), so a
+    # precise byte check enforces what _MAX_RAW_FRAME_BYTES actually claims.
+    if len(raw.encode("utf-8")) > _MAX_RAW_FRAME_BYTES:
         return None
     try:
         return _ENVELOPE_ADAPTER.validate_json(raw)

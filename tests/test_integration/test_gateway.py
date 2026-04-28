@@ -110,6 +110,62 @@ class TestParseEnvelope:
         )
         assert _parse_envelope(raw) is None
 
+    def test_oversize_multibyte_frame_rejected(self) -> None:
+        # F6 regression (codex review 2026-04-28): ``len(raw)`` counts
+        # codepoints, not UTF-8 bytes. A payload with chars ≤ limit but
+        # encoded bytes > limit must still be rejected so the
+        # _MAX_RAW_FRAME_BYTES name actually constrains bytes.
+        from erre_sandbox.integration.gateway import _MAX_RAW_FRAME_BYTES
+
+        char_count = (_MAX_RAW_FRAME_BYTES // 3) + 100
+        utterance = "あ" * char_count
+        raw = json.dumps(
+            {
+                "kind": "speech",
+                "tick": 0,
+                "agent_id": "a",
+                "utterance": utterance,
+                "zone": "peripatos",
+            },
+            ensure_ascii=False,
+        )
+        assert len(raw) <= _MAX_RAW_FRAME_BYTES
+        assert len(raw.encode("utf-8")) > _MAX_RAW_FRAME_BYTES
+        assert _parse_envelope(raw) is None
+
+    def test_frame_exactly_at_byte_limit_is_accepted(self) -> None:
+        # F6 boundary: a frame whose UTF-8 encoded size equals the limit
+        # (not exceeds) must still parse. Guards against off-by-one regression
+        # where the byte check turns into ``>=`` instead of ``>``.
+        from erre_sandbox.integration.gateway import _MAX_RAW_FRAME_BYTES
+
+        # Build the JSON envelope first, then pad ``utterance`` so the encoded
+        # frame is exactly at the limit.
+        scaffold = json.dumps(
+            {
+                "kind": "speech",
+                "tick": 0,
+                "agent_id": "a",
+                "utterance": "",
+                "zone": "peripatos",
+            }
+        )
+        # Each ASCII char added to utterance adds exactly 1 byte to the JSON.
+        padding = _MAX_RAW_FRAME_BYTES - len(scaffold.encode("utf-8"))
+        raw = json.dumps(
+            {
+                "kind": "speech",
+                "tick": 0,
+                "agent_id": "a",
+                "utterance": "x" * padding,
+                "zone": "peripatos",
+            }
+        )
+        assert len(raw.encode("utf-8")) == _MAX_RAW_FRAME_BYTES
+        env = _parse_envelope(raw)
+        assert env is not None
+        assert isinstance(env, SpeechMsg)
+
 
 class TestRegistry:
     def test_add_remove_len(self) -> None:
@@ -365,10 +421,7 @@ class TestActivePhaseRobustness:
 
         # Allow the server task to finish logging.
         for _ in range(50):
-            if any(
-                "peer disconnected" in r.message
-                for r in caplog.records
-            ):
+            if any("peer disconnected" in r.message for r in caplog.records):
                 break
             client.portal.call(asyncio.sleep, 0.01)
 
