@@ -25,6 +25,13 @@ extends Control
 # JP/EN flip (and the future ``tr()`` migration) needs only the dict edit.
 const Strings = preload("res://scripts/i18n/Strings.gd")
 
+# 2026-04-28 godot-viewport-layout (v2.1, codex review). The panel lives on
+# the right side of an ``HSplitContainer`` and toggles between two widths:
+# expanded shows the full content, collapsed hides the body and only the
+# header (with the toggle button) remains visible as a 60-pixel strip.
+const PANEL_EXPANDED_WIDTH := 340
+const PANEL_COLLAPSED_WIDTH := 60
+
 @export var router_path: NodePath
 
 var _focused_agent: String = ""
@@ -57,9 +64,29 @@ var _agent_selector: OptionButton
 var _known_agents: Array[String] = []
 var _syncing_selector: bool = false
 
+# 2026-04-28 godot-viewport-layout (v2.1). HSplitContainer-driven collapse:
+# ``_split`` is the parent ``HSplitContainer`` (resolved in ``_ready``).
+# ``_last_expanded_offset`` remembers the latest splitter position the user
+# dragged to while expanded, so collapse → expand restores the chosen width
+# instead of snapping back to the default ``-PANEL_EXPANDED_WIDTH`` (codex
+# review MEDIUM-5).
+var _split: HSplitContainer
+var _collapsed: bool = false
+var _last_expanded_offset: int = -PANEL_EXPANDED_WIDTH
+var _collapse_button: Button
+var _body_container: VBoxContainer
+
 
 func _ready() -> void:
 	_build_tree()
+	_split = get_parent() as HSplitContainer
+	if _split != null:
+		if _split.has_signal("dragged"):
+			_split.dragged.connect(_on_split_dragged)
+		# Defer the initial offset until after the first layout frame:
+		# ``clamp_split_offset`` reads ``dragger_positions`` which the engine
+		# only fills in once the children have been measured.
+		call_deferred("_apply_initial_split_offset")
 	var router := _resolve_router()
 	if router == null:
 		push_error("[ReasoningPanel] EnvelopeRouter not found at %s" % router_path)
@@ -86,11 +113,11 @@ func _resolve_router() -> Node:
 
 
 func _build_tree() -> void:
-	# M6-B-2b: MainScene now hosts the panel inside an ``HBoxContainer`` split,
-	# so positioning is handled by the parent container. We only set the
-	# minimum width here to stay defensive when the scene is reused in a
-	# non-HBox context (e.g. the FixtureHarness or a future inspector mode).
-	custom_minimum_size = Vector2(320, 0)
+	# 2026-04-28 godot-viewport-layout (v2.1). The panel now sits inside an
+	# ``HSplitContainer``; the expanded width matches the parent container's
+	# minimum, while the collapsed state hides ``_body_container`` and only
+	# leaves the toggle button visible.
+	custom_minimum_size = Vector2(PANEL_EXPANDED_WIDTH, 0)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.06, 0.07, 0.10, 1.0)
@@ -108,9 +135,27 @@ func _build_tree() -> void:
 	margin.add_theme_constant_override("margin_bottom", 12)
 	add_child(margin)
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	margin.add_child(vbox)
+	# Outer container holds the always-visible Header and the collapsible
+	# Body, in that order. Header is added first so it survives when Body is
+	# hidden during the collapsed state (codex HIGH-3).
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 8)
+	margin.add_child(outer)
+
+	_build_header(outer)
+
+	_body_container = VBoxContainer.new()
+	_body_container.add_theme_constant_override("separation", 10)
+	_body_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(_body_container)
+
+	# Existing children below are now appended to ``_body_container`` so the
+	# whole content can be hidden in one toggle without losing layout.
+	# ALIAS: ``vbox`` and ``_body_container`` reference the same node; the
+	# alias keeps the diff small for the existing ``vbox.add_child(...)``
+	# calls. Future refactors can drop ``vbox`` and reference the field
+	# directly.
+	var vbox := _body_container
 
 	# M7-ζ-1: agent selector at the top. Lives inside the vbox so it scrolls
 	# with the panel content. Boots disabled with the placeholder item;
@@ -514,3 +559,72 @@ func _persona_from_agent_id(agent_id: String) -> String:
 	if parts.size() >= 2 and parts[1] != "":
 		return parts[1]
 	return agent_id
+
+
+# ---- 2026-04-28 godot-viewport-layout (v2.1, codex review) ----
+
+
+func _build_header(parent: Node) -> void:
+	# Header contains the collapse/expand toggle button. Lives outside
+	# ``_body_container`` so it stays visible when the body is hidden
+	# (codex HIGH-3 + LOW-6: button must not be added to the panel root).
+	var header := HBoxContainer.new()
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(header)
+
+	_collapse_button = Button.new()
+	_collapse_button.text = "▶"
+	_collapse_button.tooltip_text = "Collapse / expand reasoning panel"
+	_collapse_button.focus_mode = Control.FOCUS_NONE
+	_collapse_button.pressed.connect(_toggle_collapse)
+	header.add_child(_collapse_button)
+
+
+func _toggle_collapse() -> void:
+	# Two-stage collapse (codex HIGH-3): hide the body so the 60px-wide strip
+	# does not show squashed labels, *and* shrink ``custom_minimum_size`` so
+	# the parent ``HSplitContainer`` can actually narrow the panel that far.
+	# Persistence (codex MEDIUM-5): expand restores the last user-dragged
+	# splitter offset rather than the hard-coded default.
+	_collapsed = not _collapsed
+	if _body_container != null:
+		_body_container.visible = not _collapsed
+	if _collapse_button != null:
+		_collapse_button.text = "◀" if _collapsed else "▶"
+	var target_min_width := PANEL_COLLAPSED_WIDTH if _collapsed else PANEL_EXPANDED_WIDTH
+	custom_minimum_size = Vector2(target_min_width, 0)
+	if _split != null:
+		var target_offset: int = -PANEL_COLLAPSED_WIDTH if _collapsed else _last_expanded_offset
+		_apply_split_offset(target_offset)
+
+
+func _on_split_dragged(offset: int) -> void:
+	# Persist the splitter position only while expanded so the next collapse
+	# round-trip restores the user's chosen width (codex MEDIUM-5).
+	if not _collapsed:
+		_last_expanded_offset = offset
+
+
+func _apply_initial_split_offset() -> void:
+	# Deferred from ``_ready`` so the parent ``HSplitContainer`` has had a
+	# chance to compute ``dragger_positions`` before we clamp.
+	if _split == null:
+		return
+	_apply_split_offset(_last_expanded_offset)
+
+
+func _apply_split_offset(offset: int) -> void:
+	# 2026-04-28 codex review HIGH-1 + code-reviewer HIGH: Godot 4.6 added
+	# ``split_offsets`` (PackedInt32Array, one entry per dragger) as the
+	# canonical replacement for the singular ``split_offset``. We try the
+	# array form first so a future deprecation does not break us, and fall
+	# back to ``split_offset`` for older runtimes (4.4/4.5) that ship in
+	# CI / the user's developer machine. ``clamp_split_offset`` exists in
+	# both API generations so it is always safe to call last.
+	if _split == null:
+		return
+	if "split_offsets" in _split:
+		_split.split_offsets = PackedInt32Array([offset])
+	else:
+		_split.split_offset = offset
+	_split.clamp_split_offset()
