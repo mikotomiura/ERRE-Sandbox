@@ -139,8 +139,6 @@ func _ready() -> void:
 	_proximity_instance.material_override = _proximity_material
 	add_child(_proximity_instance)
 	_redraw()
-	# DEBUG: confirm per-zone material map is populated with expected keys.
-	print("[BoundaryLayer.DEBUG] _ready: _zone_materials.keys()=%s" % [_zone_materials.keys()])
 	_wire_router()
 
 
@@ -271,16 +269,11 @@ func _drop_zone_instance(zone_name: String) -> void:
 func pulse_zone(zone_name: String, duration: float = -1.0) -> void:
 	var material: StandardMaterial3D = _zone_materials.get(zone_name)
 	if material == null:
-		# DEBUG: lookup mismatch — zone name not in our material map.
-		print("[BoundaryLayer.DEBUG] pulse_zone NO MATERIAL for zone=%s, available_keys=%s" % [zone_name, _zone_materials.keys()])
 		return
 	var d: float = pulse_duration if duration < 0.0 else duration
 	var pending: Tween = _active_tweens.get(zone_name)
 	if pending != null and pending.is_valid():
 		pending.kill()
-	# DEBUG: confirm the tween actually starts. If this prints but no visual
-	# change occurs, the bug is in shading / line width / camera.
-	print("[BoundaryLayer.DEBUG] pulse_zone START zone=%s duration=%.2fs pulse_color=%s line_color=%s" % [zone_name, d, pulse_color, line_color])
 	material.albedo_color = pulse_color
 	var tween := create_tween()
 	tween.tween_property(material, "albedo_color", line_color, d)
@@ -293,10 +286,11 @@ func pulse_zone(zone_name: String, duration: float = -1.0) -> void:
 func _wire_router() -> void:
 	var router := _resolve_router()
 	if router == null:
-		# DEBUG: BoundaryLayer is alive but no router → no pulse possible.
-		print("[BoundaryLayer.DEBUG] _wire_router: NO ROUTER FOUND")
+		# No router in the tree (e.g. FixtureHarness loads BoundaryLayer
+		# without a Main scene). The hard-coded ``zone_rects`` /
+		# ``prop_coords`` defaults stay in effect — the layer remains
+		# functional, just without server-authored coordinates.
 		return
-	print("[BoundaryLayer.DEBUG] _wire_router: router=%s has_zone_pulse_requested=%s" % [router.name, router.has_signal("zone_pulse_requested")])
 	if not router.has_signal("world_layout_received"):
 		push_warning("[BoundaryLayer] router lacks world_layout_received signal")
 		return
@@ -305,16 +299,12 @@ func _wire_router() -> void:
 	# routers without it stay functional with WorldLayoutMsg only.
 	if router.has_signal("zone_pulse_requested"):
 		router.zone_pulse_requested.connect(_on_zone_pulse_requested)
-		print("[BoundaryLayer.DEBUG] connected zone_pulse_requested")
-	else:
-		print("[BoundaryLayer.DEBUG] router does NOT have zone_pulse_requested signal — pulse path is broken")
-	# Selection-driven focus filter.
+	# Selection-driven focus filter. SelectionManager is optional (FixtureHarness
+	# may load this layer without one) — when absent, ``_focused_agent_id``
+	# stays empty and pulses fire for every agent (single-agent fallback).
 	var selector := _resolve_selection_manager()
 	if selector != null and selector.has_signal("selected_agent_id"):
 		selector.selected_agent_id.connect(_on_agent_selected)
-		print("[BoundaryLayer.DEBUG] connected to SelectionManager")
-	else:
-		print("[BoundaryLayer.DEBUG] SelectionManager not found / no signal — focus filter inactive (all pulses fire as fallback)")
 
 
 func _resolve_selection_manager() -> Node:
@@ -344,15 +334,11 @@ func _on_agent_selected(agent_id: String, _agent_node: Node3D) -> void:
 func _on_zone_pulse_requested(
 	agent_id: String, kind: String, zone: String, _tick: int,
 ) -> void:
-	# DEBUG: log every incoming pulse request before any filter.
-	print("[BoundaryLayer.DEBUG] _on_zone_pulse_requested agent=%s kind=%s zone=%s focused=%s" % [agent_id, kind, zone, _focused_agent_id])
 	if kind not in _SPATIAL_TRIGGER_KINDS:
-		print("[BoundaryLayer.DEBUG] DROP: kind=%s not in spatial set" % kind)
 		return
 	# Empty focus = single-agent fallback (pulse for every agent). Set
 	# focus = strict match (no pulses for other agents).
 	if _focused_agent_id != "" and agent_id != _focused_agent_id:
-		print("[BoundaryLayer.DEBUG] DROP: focused=%s != incoming=%s (focus filter)" % [_focused_agent_id, agent_id])
 		return
 	pulse_zone(zone)
 
