@@ -1,0 +1,77 @@
+# Godot Output capture — debug/event-boundary-pulse-trace (535f5eb) live G-GEAR run
+#
+# 採取日時: 2026-04-29 (JST) ~15:26:48 → ~15:27:32 (約 44 秒)
+# Godot host: g-gear.local (= G-GEAR 実行機)
+# backend: uv run erre-sandbox --personas kant,nietzsche,rikyu --db var/run-m9a-debug.db --log-level debug (PID 1454)
+# 観察者目視結果:
+#   - cyan 境界線: YES (常時表示)
+#   - violet pulse: YES (zone transition / proximity の瞬間に該当 zone 枠線が紫フラッシュ)
+#   - Debugger > Errors: 0 件
+#
+# 採取意図: PR #119 後 V3 violet pulse が pixel 解析で 0 検出 (false negative 疑い) → live 視認 + DEBUG 行で実装到達点を確定。
+# 結論: BoundaryLayer._zone_materials 5 zone 全完備、router 接続 OK、focused="" 時に全 spatial pulse を通す挙動も期待通り、
+#       spatial 3/3 で pulse_zone START 到達、temporal 2/2 は正しく drop。視覚目視も OK。**M9-A V3/V4 全 PASS**。
+
+[BoundaryLayer.DEBUG] _ready: _zone_materials.keys()=["study", "peripatos", "chashitsu", "agora", "garden"]
+[BoundaryLayer.DEBUG] _wire_router: router=EnvelopeRouter has_zone_pulse_requested=true
+[BoundaryLayer.DEBUG] connected zone_pulse_requested
+[BoundaryLayer.DEBUG] connected to SelectionManager
+[WS] connecting to ws://g-gear.local:8000/ws/observe
+[WorldManager] ERRE-Sandbox booted (tick 0, T17 peripatos online)
+[WorldManager] zone spawned name=base_terrain
+[WorldManager] zone spawned name=peripatos
+[WorldManager] zone spawned name=chashitsu
+[WorldManager] zone spawned name=zazen
+[WorldManager] zone spawned name=study
+[WorldManager] zone spawned name=agora
+[WorldManager] zone spawned name=garden
+[WS] connected to ws://g-gear.local:8000/ws/observe
+[WS] client HandshakeMsg sent
+[AgentManager] avatar spawned agent_id=a_nietzsche_001
+[AgentController] agent_update agent_id=a_nietzsche_001 tick=15 pos=(-33.33, 0.00, -33.33)
+[BodyTinter] mode=deep_work color=(0.98, 0.98, 0.98)
+[AgentController] apply_erre_mode agent_id=a_nietzsche_001 mode=deep_work
+[AgentController] speech agent_id=a_nietzsche_001 zone=study len=48
+[AgentController] animation agent_id=a_nietzsche_001 name=sit_seiza
+[EnvelopeRouter.DEBUG] reasoning_trace agent=a_nietzsche_001 tick=15 trigger_event_type=27 trigger={ "kind": "zone_transition", "zone": "study", "ref_id": "study", "secondary_kinds": ["proximity", "erre_mode_shift"] }
+[EnvelopeRouter.DEBUG] unpacked kind=zone_transition zone=study is_spatial=true zone_empty=false
+[EnvelopeRouter.DEBUG] EMIT zone_pulse_requested agent=a_nietzsche_001 kind=zone_transition zone=study tick=15
+[BoundaryLayer.DEBUG] _on_zone_pulse_requested agent=a_nietzsche_001 kind=zone_transition zone=study focused=
+[BoundaryLayer.DEBUG] pulse_zone START zone=study duration=0.60s pulse_color=(0.55, 0.4, 0.85, 1.0) line_color=(0.2, 0.9, 1.0, 0.9)
+[AgentManager] avatar spawned agent_id=a_rikyu_001
+[AgentController] agent_update agent_id=a_rikyu_001 tick=4 pos=(33.33, 0.00, -33.33)
+[BodyTinter] mode=chashitsu color=(0.70, 0.88, 0.70)
+[AgentController] apply_erre_mode agent_id=a_rikyu_001 mode=chashitsu
+[AgentController] speech agent_id=a_rikyu_001 zone=chashitsu len=26
+[AgentController] animation agent_id=a_rikyu_001 name=sit_seiza
+[EnvelopeRouter.DEBUG] reasoning_trace agent=a_rikyu_001 tick=4 trigger_event_type=27 trigger={ "kind": "temporal", "zone": <null>, "ref_id": <null>, "secondary_kinds": [] }
+[EnvelopeRouter.DEBUG] unpacked kind=temporal zone= is_spatial=false zone_empty=true
+[AgentManager] avatar spawned agent_id=a_kant_001
+[AgentController] agent_update agent_id=a_kant_001 tick=9 pos=(-34.46, 0.00, -34.47)
+[BodyTinter] mode=deep_work color=(0.98, 0.98, 0.98)
+[AgentController] apply_erre_mode agent_id=a_kant_001 mode=deep_work
+[AgentController] speech agent_id=a_kant_001 zone=study len=18
+[AgentController] animation agent_id=a_kant_001 name=idle
+[EnvelopeRouter.DEBUG] reasoning_trace agent=a_kant_001 tick=9 trigger_event_type=27 trigger={ "kind": "proximity", "zone": "study", "ref_id": "a_nietzsche_001", "secondary_kinds": ["temporal"] }
+[EnvelopeRouter.DEBUG] unpacked kind=proximity zone=study is_spatial=true zone_empty=false
+[EnvelopeRouter.DEBUG] EMIT zone_pulse_requested agent=a_kant_001 kind=proximity zone=study tick=9
+[BoundaryLayer.DEBUG] _on_zone_pulse_requested agent=a_kant_001 kind=proximity zone=study focused=
+[BoundaryLayer.DEBUG] pulse_zone START zone=study duration=0.60s pulse_color=(0.55, 0.4, 0.85, 1.0) line_color=(0.2, 0.9, 1.0, 0.9)
+[AgentController] agent_update agent_id=a_nietzsche_001 tick=16 pos=(-33.33, 0.00, -33.33)
+[AgentController] speech agent_id=a_nietzsche_001 zone=study len=39
+[AgentController] move agent_id=a_nietzsche_001 target=(0.00, 0.00, 0.00) speed=1.62
+[AgentController] animation agent_id=a_nietzsche_001 name=walk
+[EnvelopeRouter.DEBUG] reasoning_trace agent=a_nietzsche_001 tick=16 trigger_event_type=27 trigger={ "kind": "temporal", "zone": <null>, "ref_id": <null>, "secondary_kinds": [] }
+[EnvelopeRouter.DEBUG] unpacked kind=temporal zone= is_spatial=false zone_empty=true
+[AgentController] agent_update agent_id=a_nietzsche_001 tick=17 pos=(-10.35, 0.00, -10.35)
+[BodyTinter] mode=peripatetic color=(0.95, 0.90, 0.55)
+[AgentController] apply_erre_mode agent_id=a_nietzsche_001 mode=peripatetic
+[AgentController] speech agent_id=a_nietzsche_001 zone=peripatos len=65
+[AgentController] animation agent_id=a_nietzsche_001 name=walk
+[EnvelopeRouter.DEBUG] reasoning_trace agent=a_nietzsche_001 tick=17 trigger_event_type=27 trigger={ "kind": "zone_transition", "zone": "peripatos", "ref_id": "peripatos", "secondary_kinds": ["proximity", "erre_mode_shift"] }
+[EnvelopeRouter.DEBUG] unpacked kind=zone_transition zone=peripatos is_spatial=true zone_empty=false
+[EnvelopeRouter.DEBUG] EMIT zone_pulse_requested agent=a_nietzsche_001 kind=zone_transition zone=peripatos tick=17
+[BoundaryLayer.DEBUG] _on_zone_pulse_requested agent=a_nietzsche_001 kind=zone_transition zone=peripatos focused=
+[BoundaryLayer.DEBUG] pulse_zone START zone=peripatos duration=0.60s pulse_color=(0.55, 0.4, 0.85, 1.0) line_color=(0.2, 0.9, 1.0, 0.9)
+[WS] disconnected: code=1000 reason=
+--- Debugging process stopped ---

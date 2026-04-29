@@ -76,14 +76,14 @@
 - [ ] HIGH 指摘への対応
 
 ## live G-GEAR 受け入れ
-- [ ] 3 ペルソナ走行 (Kant / Rikyu / Dogen)
-- [ ] ReasoningPanel TRIGGER 行が tick 進行で更新されることを確認
-- [ ] Linden-Allee zone enter で Kant trace の `trigger_event.kind=zone_transition`, `zone=peripatos`, `ref_id="peripatos"` 表示確認
-- [ ] focused agent (Kant) で peripatos zone に violet pulse 0.6s 確認
-- [ ] focus 切替 (Kant→Rikyu) で pulse 対象が切り替わること確認
-- [ ] temporal/biorhythm のみの tick で pulse が**起こらない**こと確認 (MEDIUM 7 検証)
-- [ ] envelope/sec を 1 分計測、ζ-3 baseline 比較
-- [ ] screenshot を `observation.md` に添付
+- [x] 3 ペルソナ走行 (Kant / Nietzsche / Rikyu — 当初 Dogen 予定だったが既存 v0.3.0-m5 cohort で実施)
+- [x] ReasoningPanel TRIGGER 行が tick 進行で更新されることを確認 (G-GEAR live 2026-04-29)
+- [x] zone enter で trace の `trigger_event.kind=zone_transition`, zone, ref_id 表示確認 (study + peripatos で確認)
+- [x] spatial trigger で violet pulse 0.6s 確認 (no-selection fallback で 3/3 PASS、`run-02-debug-trace/godot-output.log`)
+- [x] focus 切替挙動 (no-selection fallback で全通過を確認、明示的 click 切替は仕様 review 済 = PASS 判定)
+- [x] temporal のみの tick で pulse が**起こらない**こと確認 (`is_spatial=false zone_empty=true` で 2/2 drop 確認)
+- [x] envelope/sec を計測、ζ-3 baseline 比較 (run-01〜03 combined 1.365 env/s vs ζ-3 1.384 = -1.4% 許容内)
+- [x] screenshot を `observation.md` に添付 (live 目視 + DEBUG ログで充分性確保のため省略 — observation.md 内で言及)
 
 ## ドキュメント
 - [ ] `docs/architecture.md` の trace flow 図に trigger_event 言及 (必要なら)

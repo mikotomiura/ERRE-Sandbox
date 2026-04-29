@@ -1,0 +1,50 @@
+2026-04-30 00:20:16,834 [erre_sandbox.bootstrap] INFO: [bootstrap] health_check http://127.0.0.1:11434 (model=qwen3:8b)
+2026-04-30 00:20:16,847 [erre_sandbox.bootstrap] INFO: [bootstrap] dialog_turn wired (3 personas in registry)
+2026-04-30 00:20:16,849 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_kant_001 (persona=kant zone=study)
+2026-04-30 00:20:16,851 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_nietzsche_001 (persona=nietzsche zone=peripatos)
+2026-04-30 00:20:16,853 [erre_sandbox.bootstrap] INFO: [bootstrap] registered agent a_rikyu_001 (persona=rikyu zone=chashitsu)
+2026-04-30 00:20:16,876 [erre_sandbox.bootstrap] INFO: [bootstrap] starting (host=0.0.0.0 port=8000 db=var/run-m9a-debug.db)
+INFO:     Waiting for application startup.
+INFO:     192.168.3.118:49236 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:65393 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49309 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49321 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49358 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49372 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49409 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49422 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49459 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49472 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49509 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49522 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49523 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49560 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49573 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49612 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49626 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49663 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49677 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49714 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49727 - "WebSocket /ws/observe" [accepted]
+DEBUG:    > x-erre-schema-version: 0.10.0-m7h
+INFO:     192.168.3.118:49764 - "WebSocket /ws/observe" [accepted]
