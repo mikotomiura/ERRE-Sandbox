@@ -79,6 +79,43 @@ Claude Code がセッション開始時に自動で読み込む指示書。
 | リネーム・フォーマット | Haiku |
 | 大規模変更 (10ファイル以上) | Sonnet[1m] |
 
+## Codex との連携 (independent review / high-difficulty 設計)
+
+複数案ありうる設計判断・公開 API・難バグ・大 PR merge 前は **Claude `/reimagine` 単独で
+確定させず Codex (`gpt-5.5` / `xhigh`) の independent review を挟む**。同一モデル 1 発案
+の構造的バイアスを別モデルで閉じる。`feedback_active_codex_use` Skill を参照。
+
+### 呼び出す場面
+- アーキテクチャ判断 / 公開 API 設計 / 難しいバグ / 複数案ありうる設計
+- `/reimagine` 発動レベルのタスク (= 高難度判定と同じ閾値)
+- 大きな PR の merge 前最終チェック / セキュリティ・互換性変更
+- 自分の判断に確信が持てない瞬間
+
+### 呼ばない場面
+- 単純実装 / タイポ修正 / 既存パターン踏襲 / 一回限りの使い捨てプロンプト
+- `.codex/budget.json` の `daily_token_budget` を超過する見込みのとき (warn 出る)
+
+### 起動パターン (標準)
+1. `.steering/<task>/codex-review-prompt.md` に依頼内容 + 参照ファイル + 報告フォーマット
+   (HIGH/MEDIUM/LOW 等) を書く
+2. `cat .steering/<task>/codex-review-prompt.md | codex exec --skip-git-repo-check` で起動
+3. 出力を `.steering/<task>/codex-review.md` に **verbatim 保存** (要約しない)
+4. PR description で `codex-review.md` をリンク参照
+
+### 反映ルール
+- **HIGH**: 実装前に必ず反映 (godot-viewport-layout で HIGH 3 件事前検出の empirical 実績)
+- **MEDIUM**: 判断 (`decisions.md` に採否を記録)
+- **LOW**: `blockers.md` 持ち越し可 (defer 理由を明示)
+
+### Codex 資産の所在 (Claude からも参照可能)
+- 設定: `.codex/config.toml` (model / sandbox / network)
+- 予算ガード: `.codex/budget.json` (日次トークン予算 + per-invocation max、超過時 warn)
+- Custom agents: `.codex/agents/*.toml` (explorer / impact-analyzer / reviewer /
+  security-checker / test-runner)
+- Hooks: `.codex/hooks/*.py` + `.codex/hooks.json`
+- Workflow Skill: `.agents/skills/erre-workflow/SKILL.md`
+- セッション指示: `AGENTS.md` (Codex 側の CLAUDE.md 相当)
+
 ## 禁止事項
 
 - 既存テストを無断で削除しない

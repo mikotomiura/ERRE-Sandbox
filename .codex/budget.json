@@ -1,0 +1,14 @@
+{
+  "daily_token_budget": 1000000,
+  "per_invocation_max": 200000,
+  "today": {
+    "date": "2026-04-30",
+    "used": 0,
+    "invocations": 0
+  },
+  "policy": {
+    "on_overrun": "warn",
+    "rationale": "個人プロジェクトのため block ではなく warn。チーム運用に拡大する場合は 'block' へ昇格を検討"
+  },
+  "history": []
+}
