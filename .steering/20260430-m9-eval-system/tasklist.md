@@ -276,11 +276,35 @@ P3a-decide が追加され、合計 16 phase + closure。
 
 ### P3 — Pilot then Golden Baseline (Codex HIGH-3 順序修正)
 
-- [ ] [GG] **P3a** — Pilot run **200 turn × 両形式 × 3 persona** isolated 採取
-      (fresh scheduler/store/seed、carry-over 防止、6-8h)
-  - [ ] stimulus 主体 (200 stimulus turn 縮小版): 200 turn × 3 persona
-  - [ ] 自然対話 主体: 200 turn × 3 persona
-  - [ ] 両形式の DuckDB を Mac へ rsync (CHECKPOINT + temp+rename + read_only=True、ME-2)
+- [x] [GG] **P3a** — Pilot run **stimulus 200 + natural (≤30) × 3 persona** isolated 採取
+      (fresh scheduler/store/seed、carry-over 防止、**完了 2026-05-01**、wall ~35 min)
+      - **CLI 起草** (Step 1): commit `3e511e1` の `cli/eval_run_golden.py` で
+        Codex `gpt-5.5 xhigh` review HIGH 6 件 (stratified slice / focal-turn budget /
+        fail-fast sink / staged-rename / seeded RNG / drain timeout) を全反映、
+        12 mock test PASS — 本セッションで実機検証
+      - **採取側 wall budget reality**: stimulus は 200 focal を 2-3 min で完走、
+        natural は M5/M6 runtime の "初動 burst → 以降停止" 挙動で 13 min 内に
+        focal 0-6 (詳細は P3a-decide で別途 root-cause analyze、現状の dialog
+        scheduler の admit 回路に gating bug の可能性)
+      - **Codex HIGH 6 全反映実機検証**: stimulus 3 cell で
+        focal_rows=198 / dialogs=168 / atomic_temp_rename 全成功 / fatal_error なし
+      - **Mac → Windows OS シフト**: 設計 4090 24GB → 実機 RTX 5060 Ti 16GB +
+        qwen3:8b Q4_K_M (5.2GB tag) で VRAM 余裕、Ollama 0.22.0
+  - [x] stimulus 主体 (200 stimulus focal × 3 persona): **3 cell 全完走、各 focal=198 / total=342 / dialogs=168 / median utterance ~28-68 chars**
+        - kant_stimulus_run0:      focal=198 / total=342 / dialogs=168 / wall ~2 min / median 68 chars / max 199
+        - nietzsche_stimulus_run0: focal=198 / total=342 / dialogs=168 / wall ~3 min (concurrent w/ kant_natural) / median 45 chars / max 163
+        - rikyu_stimulus_run0:     focal=198 / total=342 / dialogs=168 / wall ~3.5 min (concurrent w/ kant_natural) / median 28 chars / max 597
+  - [x] 自然対話 主体 (target 30 focal × 3 persona、--wall-timeout-min 90 で並列): **partial**
+        - kant_natural_run0:      focal=6 / total=12 / dialogs=2 / wall ~13 min (kill — 0 progress past initial burst)
+        - nietzsche_natural_run0: focal=0 / total=0 / dialogs=0 / wall ~13 min (starved — 0 admissions)
+        - rikyu_natural_run0:     focal=6 / total=18 / dialogs=3 / wall ~13 min (kill — 0 progress past initial burst)
+        - **判断**: Mac 側 P3a-decide で M5/M6 dialog scheduler の admit 回路を
+          inspect、`AUTO_FIRE_PROB_PER_TICK 0.25 + COOLDOWN_TICKS 30 + cognition_period_s
+          7-18s` の組合せが期待した turn 量を生まない原因を特定。bootstrap CI 計算は
+          stimulus side のみで実施可、natural side は次 G-GEAR セッションで再採取
+  - [ ] [GG→Mac] 両形式の DuckDB を Mac へ rsync (CHECKPOINT + temp+rename + read_only=True、ME-2)
+        — **本 PR では skip**、user が手動 rsync を後日実施 (`data/eval/pilot/_rsync_receipt.txt` placeholder commit)
+        — Mac 側 atomic rename + acceptance + read_only 開封確認は P3a-decide セッションで実施
 - [ ] [Mac] **P3a-decide** — bootstrap CI width 比較で ratio 確定 (1h):
   - [ ] Burrows Delta / Vendi / Big5 ICC の CI width 計算
   - [ ] ME-4 ADR を Edit (placeholder → 確定値)

@@ -1,0 +1,39 @@
+# P3a rsync receipt — placeholder
+
+status: pending — manual rsync from G-GEAR (Windows / RTX 5060 Ti) to Mac (master)
+rsync_at: not yet — to be performed by user out-of-band
+mac_destination: ~/ERRE-Sand_Box/data/eval/pilot/
+
+# Capture host
+host_name: G-GEAR
+os: Windows 11 Home
+gpu: NVIDIA RTX 5060 Ti 16GB
+ollama_version: 0.22.0
+ollama_models: qwen3:8b (Q4_K_M, 5.2GB), nomic-embed-text:latest (274MB)
+
+# Source files (all .gitignored, never committed; checksums fill in once rsync executes)
+# data/eval/pilot/kant_stimulus_run0.duckdb
+# data/eval/pilot/kant_natural_run0.duckdb
+# data/eval/pilot/nietzsche_stimulus_run0.duckdb
+# data/eval/pilot/nietzsche_natural_run0.duckdb
+# data/eval/pilot/rikyu_stimulus_run0.duckdb
+# data/eval/pilot/rikyu_natural_run0.duckdb
+
+# ME-2 protocol (manual run instructions)
+#
+# G-GEAR side:
+#   mkdir -p /tmp/p3a_rsync
+#   for f in data/eval/pilot/*.duckdb; do
+#     cp "$f" "/tmp/p3a_rsync/$(basename $f).snapshot.duckdb"
+#   done
+#   md5sum /tmp/p3a_rsync/*.duckdb > /tmp/p3a_rsync/_checksums.txt
+#   rsync -av /tmp/p3a_rsync/ <MAC_HOST>:~/ERRE-Sand_Box/data/eval/pilot/
+#
+# Mac side (P3a-decide session):
+#   for f in ~/ERRE-Sand_Box/data/eval/pilot/*.snapshot.duckdb; do
+#     mv -- "$f" "${f%.snapshot.duckdb}"
+#   done
+#   md5sum ~/ERRE-Sand_Box/data/eval/pilot/*.duckdb  # compare with _checksums.txt
+#
+# Once rsync is done, this file is overwritten with the actual receipt
+# (transferred bytes + per-file checksum + completion timestamp).
