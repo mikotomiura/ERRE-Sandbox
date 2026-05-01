@@ -311,3 +311,27 @@ def test_arg_parser_rejects_unknown_persona() -> None:
                 "x.duckdb",
             ]
         )
+
+
+def test_wall_timeout_min_default_is_120() -> None:
+    """``--wall-timeout-min`` default is 120 minutes (m9-eval-system P3a-decide v2).
+
+    ME-8 amendment 2026-05-01: G-GEAR Phase A re-capture (PR #131) measured
+    cognition_period ≈ 120 s/tick, so the prior 90 min default left only
+    ~3 effective cycles per cell. Codex review v2 (Q3) selected 120 min as
+    the conservative-estimate floor that targets focal ≈ 24/cell.
+    """
+    parser = _build_arg_parser()
+    args = parser.parse_args(
+        [
+            "--persona",
+            "kant",
+            "--run-idx",
+            "0",
+            "--condition",
+            "natural",
+            "--output",
+            "x.duckdb",
+        ]
+    )
+    assert args.wall_timeout_min == 120.0

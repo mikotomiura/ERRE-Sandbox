@@ -87,7 +87,27 @@ class InMemoryDialogScheduler:
     """
 
     COOLDOWN_TICKS: ClassVar[int] = 30
-    """Ticks that must elapse after a close before the same pair may reopen."""
+    """Ticks that must elapse after a close before the same pair may reopen
+    in live multi-agent runs. Calibrated for the live-natural cadence where
+    cognition_period_s is in the 7-18 s range and ``ManualClock`` advances
+    ticks at roughly real-time speed.
+    """
+
+    COOLDOWN_TICKS_EVAL: ClassVar[int] = 5
+    """Reduced cooldown applied when ``eval_natural_mode=True`` (eval cadence
+    calibration, distinct from live natural cadence).
+
+    m9-eval-system P3a-decide v2 (ME-8 amendment 2026-05-01): empirical
+    G-GEAR re-capture (PR #131) measured ``cognition_period`` ≈ 120 s/tick on
+    qwen3:8b Q4_K_M / RTX 5060 Ti / Ollama 0.22.0 — the live-mode 30-tick
+    cooldown translates to ~60 min wall, making same-pair re-admission
+    physically impossible inside a 10 min sanity wall. dialog_turn_budget=6
+    enforces a 6-tick occupancy on each open dialog, so close-to-close gap
+    in eval mode is ``5 + 6 = 11 ticks`` ≈ 22 min wall — that is the eval
+    cadence calibration, not live natural cadence. Re-evaluate when the
+    inference backend changes such that cognition_period falls below ~60 s
+    or rises above ~240 s per tick (ME-8 amendment 2026-05-01 §re-open).
+    """
 
     TIMEOUT_TICKS: ClassVar[int] = 6
     """Inactivity window after which an open dialog is auto-closed."""
@@ -200,12 +220,16 @@ class InMemoryDialogScheduler:
         last_close = self._last_close_tick.get(key)
         if (
             last_close is not None
-            and tick - last_close < self.COOLDOWN_TICKS
+            and tick - last_close < self._effective_cooldown()
             and not self.golden_baseline_mode
         ):
             # m9-eval-system P2b: 70 stimulus × 3 cycles drives the same pair
             # repeatedly; cooldown would otherwise serialize them across
             # ≥ 30-tick gaps and inflate baseline tick range artificially.
+            # m9-eval-system P3a-decide v2: ``_effective_cooldown()`` returns
+            # ``COOLDOWN_TICKS_EVAL`` (5) when ``eval_natural_mode=True`` so
+            # same-pair re-admission stays physically reachable inside the
+            # 60-120 min wall budget under the empirical 120 s/tick rate.
             return None
 
         dialog_id = _allocate_dialog_id()
@@ -334,7 +358,10 @@ class InMemoryDialogScheduler:
             if key in self._pair_to_id:
                 continue
             last_close = self._last_close_tick.get(key)
-            if last_close is not None and world_tick - last_close < self.COOLDOWN_TICKS:
+            if (
+                last_close is not None
+                and world_tick - last_close < self._effective_cooldown()
+            ):
                 continue
             if self._rng.random() > self.AUTO_FIRE_PROB_PER_TICK:
                 continue
@@ -367,6 +394,21 @@ class InMemoryDialogScheduler:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    def _effective_cooldown(self) -> int:
+        """Return the cooldown threshold appropriate for the active mode.
+
+        m9-eval-system P3a-decide v2 (ME-8 amendment 2026-05-01): live mode
+        keeps ``COOLDOWN_TICKS=30`` calibrated for cognition_period in the
+        7-18 s range, while ``eval_natural_mode=True`` switches to
+        ``COOLDOWN_TICKS_EVAL=5`` calibrated for the empirical
+        cognition_period ≈ 120 s/tick observed on qwen3:8b Q4_K_M.
+        ``golden_baseline_mode`` bypasses cooldown entirely upstream — this
+        helper is only consulted on the live / eval natural code paths.
+        """
+        return (
+            self.COOLDOWN_TICKS_EVAL if self.eval_natural_mode else self.COOLDOWN_TICKS
+        )
 
     def _close_timed_out(self, world_tick: int) -> None:
         if self.golden_baseline_mode:

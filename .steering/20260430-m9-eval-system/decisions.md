@@ -422,18 +422,97 @@ ID prefix: `ME` (m9-Eval-system) で M9-B `DB` と区別。
     緩和ルールを ADR child で起票 (cooldown/timeout の "両 flag union" semantics
     定義)
 
+### ME-8 amendment 2026-05-01 (P3a-decide v2 — cooldown × cognition_period)
+
+**Trigger**: 上記 §re-open 条件 第 1 項「fix 後も admit が初動 burst で停止する
+場合」が PR #131 G-GEAR Phase A 再採取で **発火** (kant_natural sanity:
+focal=6/30、wall 10 min timeout)。
+
+**Empirical evidence**: 600 s wall で max(world_tick)=5 → cognition_period
+≈ 120 s/tick (qwen3:8b Q4_K_M on RTX 5060 Ti / Ollama 0.22.0)。
+実効 cooldown = `COOLDOWN_TICKS=30` × 120 s = **60 min wall** ⇒ 10 min wall 内で
+再 admit 物理的不可能。design v1 §2 で「△ 補助」として棄却した仮説 B
+(cooldown × cognition_period の wall 換算) を empirical で **◎ 主因に格上げ**。
+v1 fix の効果範囲: nietzsche starve 解消 (zone bypass 機能、3 pair 全 admit) は
+確認済。残存 gate は cooldown のみ。
+
+**Amendment to §決定**: `eval_natural_mode=True` のときの cooldown threshold を
+`COOLDOWN_TICKS=30` flat から `COOLDOWN_TICKS_EVAL=5` に分離。`_effective_cooldown()`
+helper を `InMemoryDialogScheduler` に導入し、`schedule_initiate` / `tick()` の
+cooldown check を経由化。live mode (`eval_natural_mode=False`) の `COOLDOWN_TICKS=30`
+は完全不変。
+
+**Amendment to §構築時防御**: `eval_natural_mode=True` × `golden_baseline_mode=True`
+の同時指定 reject (v1 LOW-1 反映) は維持。`COOLDOWN_TICKS_EVAL` の semantics は
+eval mode 内のみで意味を持つので、両 flag union ケースを将来許可する場合は別 ADR
+child で union semantics を定義する (v1 §re-open 条件 第 3 項を引き継ぎ)。
+
+**Amendment to §影響 (semantic naming)**: eval mode の cooldown=5 を live
+multi-agent の "natural cadence" と区別し、**"eval cadence calibration"** として
+位置付け (Codex Q6 反映)。dialog_turn_budget=6 が 6 ticks 占有を強制し、5 ticks
+cooldown と合わせて 11 ticks/cycle (≈ 22 min wall) の effective cycle を作る。
+これは empirical な G-GEAR cognition_period に校正された値であり、別 backend
+環境では再校正必要。
+
+**Amendment to §再採取での観測ターゲット**:
+- focal=30 / total=90 / dialogs ~15 を **120 min wall** で完走 (`_DEFAULT_WALL_TIMEOUT_MIN`
+  default 90 → 120 min に拡張、Codex Q3 verdict 反映)
+- conservative estimate (design-v2.md §5.1): wall=120 min × cognition_period 120 s/tick
+  → 60 ticks → 60 / 11 ticks-per-cycle ≈ 5 cycle (per pair)、3 pair で
+  4 cycle × 18 utt × (1/3 share) ≈ **focal 24/cell が下限期待値**
+- `last_close_tick` の cluster spread が 5 tick + 6 tick = 11 tick 間隔で並ぶことを
+  logs で確認 (cooldown が effective に活きていれば admit が均等分散)
+
+**Amendment to §re-open 条件 (三度目)**:
+- **fix v2 後も focal<25 で stop** → 別 dominant gate (prob 0.25 variance / 推論
+  deadlock / world_tick 進行停止) を再特定。Codex Q7 反映で γ (prob=1.0) を新規
+  ADR child で起票
+- **推論 backend が変わって cognition_period が 60s 以下 / 240s 以上に変動** →
+  COOLDOWN_TICKS_EVAL=5 の妥当性を再評価 (60s なら cooldown=10 候補、240s なら
+  cooldown=3 候補、empirical 再採取で確定)
+- **wall=120 min × 3 cell parallel で run-time が 6h overnight に伸びた場合** →
+  ι (1 cell 逐次) への切り替え検討 (Codex Q1 reference、conceptually clean だが
+  運用コスト trade-off)
+
+**Codex `gpt-5.5 xhigh` independent review v2**: `codex-review-natural-gating-v2.md`
+(145,717 tokens) verbatim 保存。Verdict: **revise** → HIGH 2 / MEDIUM 2 / LOW 1
+全反映後 ship 相当。HIGH-1 (wall default 不整合) と HIGH-2 (既存 cooldown test
+rewrite) は本 PR の改訂で解消、MEDIUM-1 (ME-8 explicit amendment) は本 amendment
+block 自体、MEDIUM-2 (conservative estimate primary 化) は design-v2.md §5.1。
+LOW-1 は cosmetic、prompt artifact は historical record として保持。
+
+**Test 影響**: `test_dialog_eval_natural_mode.py` 既存 12 件のうち
+`test_eval_natural_mode_preserves_cooldown_via_tick` と
+`test_eval_natural_mode_sustains_admission_after_initial_burst` の 2 件は
+`COOLDOWN_TICKS_EVAL=5` 参照に rewrite (test 件数不変)。新規 3 件
+(`test_effective_cooldown_returns_eval_value_when_flag_true` /
+`test_effective_cooldown_returns_live_value_when_flag_false` /
+`test_live_mode_cooldown_unchanged_via_tick`) を `test_dialog_eval_natural_mode.py`
+に追加。CLI test 1 件 (`test_wall_timeout_min_default_is_120`) を
+`tests/test_cli/test_eval_run_golden.py` に追加 (このファイルは
+`pytestmark = pytest.mark.eval` でモジュール全体が default CI から deselect される
+既存規約、`-m eval` で個別実行可)。
+
+**Full suite 数値** (baseline = origin/main 491db4b: 1248 passed / 31 skipped /
+26 deselected): 本 PR では **1251 passed (+3)** / 31 skipped / 27 deselected (+1、
+CLI test の eval marker 経由)。dialog test 3 件は default CI に組み込まれ、CLI
+test 1 件は `-m eval` で別途検証 (single-shot 実測 PASS 確認済)。
+
 ---
 
 ## ME-summary
 
-- 本 ADR **8 件** で Codex `gpt-5.5 xhigh` 3 回 review (2026-04-30 design.md MEDIUM 6 +
+- 本 ADR **8 件** で Codex `gpt-5.5 xhigh` **4 回** review (2026-04-30 design.md MEDIUM 6 +
   LOW 1 / 2026-05-01 LOW-1 RoleEval MEDIUM 5 + LOW 2 / 2026-05-01 P3a-decide gating
-  fix LOW 2) 全件に対応
+  fix LOW 2 / 2026-05-01 P3a-decide v2 cooldown × cognition_period HIGH 2 / MEDIUM 2 /
+  LOW 1) 全件に対応
 - ME-4 は P3a-decide セッションで **partial update**、natural 再採取後に **二度目の
   Edit が必要** (current state = bug fix done + script ready, ratio 確定は次回)
 - ME-7 は本タスク P2a で確定、stimulus YAML schema と MCQ scoring protocol を規定
-- ME-8 (本セッション新規) は m9-eval-system P3a-decide gating bug fix の確定 ADR、
-  Codex Verdict: ship
+- ME-8 は **二度目の partial update** (2026-05-01 amendment block):
+  v1 fix (zone bypass) は ship 済だが G-GEAR Phase A 再採取で cooldown × cognition_period
+  の wall 換算が dominant gate と判明。`COOLDOWN_TICKS_EVAL=5` 別定数化 + wall default
+  90→120 min で v2 fix。Codex v2 review で revise → HIGH/MEDIUM 全反映済
 - LOW-1 (RoleEval wording) は ME-7 で close、本 ADR set 範囲内に取り込み済
 - 既存 M9-B DB1-DB10 ADR との衝突: 無し
 - M2_THRESHOLDS / SCHEMA_VERSION / DialogTurnMsg / RunLifecycleState への破壊変更: 無し

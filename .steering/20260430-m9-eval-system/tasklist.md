@@ -337,10 +337,39 @@ P3a-decide が追加され、合計 16 phase + closure。
     - [x] `decisions.md` ME-4 ADR partial update + 新規 ME-8 ADR 追加
     - [x] `g-gear-p3a-rerun-prompt.md` 起草 (次 G-GEAR セッション用、re-capture
           手順 + 期待値 + DB rsync protocol)
-  - [ ] **next G-GEAR セッション** (rerun-prompt.md を貼り付けて起動):
-    - [ ] eval_natural_mode 修正版で natural 3 cell 再採取 (focal 30 target、
-          30-60 min wall 想定)
-    - [ ] DuckDB rsync via `/tmp/p3a_rsync/` snapshot + ME-2 protocol
+  - [x] **2026-05-01 Mac セッション v2 (本 P3a-decide v2 セッション)**:
+    - [x] G-GEAR Phase A 失敗レポート (`g-gear-phase-a-failure.md`、PR #131) を Read、
+          empirical cognition_period ≈ 120 s/tick を確定
+    - [x] design v1 §2 で △ 補助棄却した仮説 B (cooldown × cognition_period の wall
+          換算) を ◎ 主因に再格上げ確定
+    - [x] `design-natural-gating-fix-v2.md` 起草 (G-GEAR 5 案 + Mac /reimagine 3 案 =
+          8 案比較、α+β ハイブリッド採用、ζ/θ/ι 棄却理由明記)
+    - [x] Codex `gpt-5.5 xhigh` independent review v2 完了
+          (`codex-review-prompt-natural-gating-v2.md` → `codex-review-natural-gating-v2.md`
+          145,717 tokens、Verdict: revise)
+    - [x] HIGH-1 (wall default 不整合) / HIGH-2 (既存 cooldown test rewrite) /
+          MEDIUM-1 (ME-8 explicit amendment) / MEDIUM-2 (conservative estimate
+          primary 化) / Q5 (sentinel test 削除) / Q6 (eval cadence calibration
+          命名) すべて反映
+    - [x] 修正実装: `InMemoryDialogScheduler.COOLDOWN_TICKS_EVAL: ClassVar[int] = 5` +
+          `_effective_cooldown()` helper、`schedule_initiate` / `tick()` の cooldown
+          check 経由化。`_DEFAULT_WALL_TIMEOUT_MIN`: 90.0 → 120.0
+    - [x] test rewrite 2 件 (`test_eval_natural_mode_uses_reduced_cooldown` /
+          `test_eval_natural_mode_sustains_admission_after_initial_burst`) +
+          新規 4 件 (`test_effective_cooldown_returns_eval_value_when_flag_true` /
+          `test_effective_cooldown_returns_live_value_when_flag_false` /
+          `test_live_mode_cooldown_unchanged_via_tick` / 
+          `test_wall_timeout_min_default_is_120`) 全 PASS
+    - [x] full suite **1251 passed** / 31 skipped / 27 deselected (baseline 1248 から
+          default CI に +3、CLI test 1 件は eval marker で deselect)
+    - [x] `decisions.md` ME-8 amendment 2026-05-01 ブロック追加 (二度目の partial
+          update、explicit amendment with PR #131 empirical data)
+    - [x] `g-gear-p3a-rerun-prompt-v2.md` 起草 (Phase A 期待値桁再校正、wall 120 min)
+    - [x] `.codex/budget.json` 145,717 tokens 記録 (per_invocation_max=200K 内)
+  - [ ] **next G-GEAR セッション v2** (rerun-prompt-v2.md を貼り付けて起動):
+    - [ ] fix v2 適用版 (`COOLDOWN_TICKS_EVAL=5` + wall default 120) で natural
+          3 cell 再々採取 (focal>=25 target、Phase A 単独 sanity → Phase B 3 並列)
+    - [ ] DuckDB rsync via `/tmp/p3a_rsync_v2/` snapshot + ME-2 protocol
   - [ ] **next Mac セッション** (rsync 完了後):
     - [ ] `uv run python scripts/p3a_decide.py` で両 condition の CI 計算
     - [ ] Burrows Delta / Vendi / Big5 ICC の CI width 比較

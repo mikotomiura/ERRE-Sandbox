@@ -223,9 +223,16 @@ def test_eval_natural_mode_preserves_double_open_reject() -> None:
     assert second is None
 
 
-def test_eval_natural_mode_preserves_cooldown_via_tick() -> None:
-    """Cooldown still applies after a close — tick() must not re-admit
-    the same pair within ``COOLDOWN_TICKS`` even with the zone bypass."""
+def test_eval_natural_mode_uses_reduced_cooldown() -> None:
+    """Cooldown still applies after a close — eval mode uses
+    ``COOLDOWN_TICKS_EVAL=5`` instead of the live ``COOLDOWN_TICKS=30``.
+
+    m9-eval-system P3a-decide v2 (ME-8 amendment 2026-05-01): the empirical
+    cognition_period ≈ 120 s/tick on qwen3:8b Q4_K_M makes the live 30-tick
+    cooldown translate to ~60 min wall; reducing to 5 ticks brings the
+    cooldown to ~10 min wall so multiple admit cycles fit inside a 120 min
+    wall budget.
+    """
     _captured, sink = _collector()
     scheduler = InMemoryDialogScheduler(
         envelope_sink=sink, rng=_always_fire(), eval_natural_mode=True
@@ -239,16 +246,16 @@ def test_eval_natural_mode_preserves_cooldown_via_tick() -> None:
     [(did, _i, _t, _z)] = list(scheduler.iter_open_dialogs())
     scheduler.close_dialog(did, reason="exhausted", tick=0)
 
-    # Within cooldown window — no re-admit.
-    for w in range(1, scheduler.COOLDOWN_TICKS):
+    # Within eval cooldown window — no re-admit.
+    for w in range(1, scheduler.COOLDOWN_TICKS_EVAL):
         scheduler.tick(world_tick=w, agents=agents)
         assert scheduler.open_count == 0, (
-            f"cooldown breached at tick {w}: same pair re-admitted within "
-            f"{scheduler.COOLDOWN_TICKS} ticks"
+            f"eval cooldown breached at tick {w}: same pair re-admitted "
+            f"within {scheduler.COOLDOWN_TICKS_EVAL} ticks"
         )
 
-    # Past cooldown — admit again.
-    scheduler.tick(world_tick=scheduler.COOLDOWN_TICKS, agents=agents)
+    # Past eval cooldown — admit again.
+    scheduler.tick(world_tick=scheduler.COOLDOWN_TICKS_EVAL, agents=agents)
     assert scheduler.open_count == 1
 
 
@@ -329,15 +336,76 @@ def test_eval_natural_mode_sustains_admission_after_initial_burst() -> None:
         scheduler.close_dialog(did, reason="exhausted", tick=6)
     assert scheduler.open_count == 0
 
-    # Now agents scatter. Drive ticks past cooldown and check admit resumes.
+    # Now agents scatter. Drive ticks past the eval cooldown and check
+    # admit resumes. m9-eval-system P3a-decide v2: eval mode uses
+    # ``COOLDOWN_TICKS_EVAL=5`` so far_tick is anchored at 11 (= turn_index
+    # close at tick 6 + 5-tick eval cooldown), not at 36 like live mode.
     scattered = [
-        AgentView(agent_id="kant", zone=Zone.STUDY, tick=40),
-        AgentView(agent_id="nietzsche", zone=Zone.PERIPATOS, tick=40),
-        AgentView(agent_id="rikyu", zone=Zone.CHASHITSU, tick=40),
+        AgentView(agent_id="kant", zone=Zone.STUDY, tick=11),
+        AgentView(agent_id="nietzsche", zone=Zone.PERIPATOS, tick=11),
+        AgentView(agent_id="rikyu", zone=Zone.CHASHITSU, tick=11),
     ]
-    far_tick = 6 + scheduler.COOLDOWN_TICKS  # 36
+    far_tick = 6 + scheduler.COOLDOWN_TICKS_EVAL  # 11
     scheduler.tick(world_tick=far_tick, agents=scattered)
     assert scheduler.open_count == 3, (
-        "after cooldown expires, all three pairs should re-admit even "
+        "after eval cooldown expires, all three pairs should re-admit even "
         "though every agent is in a different zone"
     )
+
+
+# ---------------------------------------------------------------------------
+# v2 additions: _effective_cooldown helper + live-mode parity behavior tests
+# ---------------------------------------------------------------------------
+
+
+def test_effective_cooldown_returns_eval_value_when_flag_true() -> None:
+    """``_effective_cooldown()`` returns ``COOLDOWN_TICKS_EVAL=5`` in eval mode."""
+    _captured, sink = _collector()
+    scheduler = InMemoryDialogScheduler(envelope_sink=sink, eval_natural_mode=True)
+    assert scheduler._effective_cooldown() == scheduler.COOLDOWN_TICKS_EVAL
+    assert scheduler.COOLDOWN_TICKS_EVAL == 5
+
+
+def test_effective_cooldown_returns_live_value_when_flag_false() -> None:
+    """``_effective_cooldown()`` returns ``COOLDOWN_TICKS=30`` in live mode.
+
+    Guards against accidental regression where the eval-mode reduced threshold
+    leaks into live multi-agent runs and shortens the live natural cadence.
+    """
+    _captured, sink = _collector()
+    scheduler = InMemoryDialogScheduler(envelope_sink=sink, eval_natural_mode=False)
+    assert scheduler._effective_cooldown() == scheduler.COOLDOWN_TICKS
+    assert scheduler.COOLDOWN_TICKS == 30
+
+
+def test_live_mode_cooldown_unchanged_via_tick() -> None:
+    """Live mode (``eval_natural_mode=False``) keeps the 30-tick cooldown.
+
+    m9-eval-system P3a-decide v2 invariant test: the v2 ``_effective_cooldown()``
+    refactor must not regress live-mode behaviour. Reject re-admit at tick 29,
+    admit again at tick 30. Co-located in AGORA so the only gate left after
+    close is cooldown itself.
+    """
+    _captured, sink = _collector()
+    scheduler = InMemoryDialogScheduler(
+        envelope_sink=sink, rng=_always_fire(), eval_natural_mode=False
+    )
+    agents = [
+        AgentView(agent_id="kant", zone=Zone.AGORA, tick=0),
+        AgentView(agent_id="rikyu", zone=Zone.AGORA, tick=0),
+    ]
+    scheduler.tick(world_tick=0, agents=agents)
+    assert scheduler.open_count == 1
+    [(did, _i, _t, _z)] = list(scheduler.iter_open_dialogs())
+    scheduler.close_dialog(did, reason="exhausted", tick=0)
+
+    # Tick 29 — still inside live-mode cooldown.
+    scheduler.tick(world_tick=scheduler.COOLDOWN_TICKS - 1, agents=agents)
+    assert scheduler.open_count == 0, (
+        "live-mode cooldown breached: same pair re-admitted before "
+        f"COOLDOWN_TICKS={scheduler.COOLDOWN_TICKS}"
+    )
+
+    # Tick 30 — cooldown expired, re-admit.
+    scheduler.tick(world_tick=scheduler.COOLDOWN_TICKS, agents=agents)
+    assert scheduler.open_count == 1

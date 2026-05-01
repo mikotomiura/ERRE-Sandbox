@@ -3,8 +3,8 @@
   "per_invocation_max": 200000,
   "today": {
     "date": "2026-05-01",
-    "used": 337503,
-    "invocations": 2
+    "used": 483220,
+    "invocations": 3
   },
   "policy": {
     "on_overrun": "warn",
@@ -34,6 +34,14 @@
       "tokens": 228055,
       "per_invocation_max_overrun": 28055,
       "policy_action": "warn (個人プロジェクト規定どおり)"
+    },
+    {
+      "date": "2026-05-01",
+      "task": "20260430-m9-eval-system",
+      "purpose": "P3a-decide v2 cooldown × cognition_period review (HIGH 2 / MEDIUM 2 / LOW 1 / Verdict: revise)",
+      "tokens": 145717,
+      "per_invocation_max_overrun": 0,
+      "policy_action": "ok (per_invocation_max=200K 内)"
     }
   ]
 }

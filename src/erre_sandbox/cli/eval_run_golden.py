@@ -119,7 +119,17 @@ _DEFAULT_TURN_COUNT: Final[int] = 200
 _DEFAULT_CYCLE_COUNT: Final[int] = 3
 """Stimulus battery cycle count — matches design-final.md P3 production."""
 
-_DEFAULT_WALL_TIMEOUT_MIN: Final[float] = 90.0
+_DEFAULT_WALL_TIMEOUT_MIN: Final[float] = 120.0
+"""Default wall budget (minutes) for the natural capture phase.
+
+m9-eval-system P3a-decide v2 (ME-8 amendment 2026-05-01): G-GEAR re-capture
+PR #131 measured cognition_period ≈ 120 s/tick on qwen3:8b Q4_K_M. With the
+v2 ``COOLDOWN_TICKS_EVAL=5`` and ``dialog_turn_budget=6``, one effective
+cycle is ~11 ticks ≈ 22 min wall, so 120 min wall yields ~5 cycles ⇒
+focal ≈ 24/cell as a conservative lower bound (design-natural-gating-fix-v2.md
+§5.1). 60 min was rejected by Codex review (Q3) as below the conservative
+margin; operators may still override via ``--wall-timeout-min``.
+"""
 """Hard wall-clock cap for one capture, primarily natural condition."""
 
 _RUNTIME_DRAIN_GRACE_S: Final[float] = 30.0
