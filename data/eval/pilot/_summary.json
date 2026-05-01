@@ -3,21 +3,21 @@
   "cells": [
     {
       "condition": "natural",
-      "dialog_count": 2,
+      "dialog_count": 15,
       "file": "kant_natural_run0.duckdb",
-      "focal_rows": 6,
+      "focal_rows": 30,
       "persona_id": "kant",
       "run_id": "kant_natural_run0",
       "run_idx": 0,
       "speaker_persona_breakdown": {
-        "kant": 6,
-        "nietzsche": 3,
-        "rikyu": 3
+        "kant": 30,
+        "nietzsche": 30,
+        "rikyu": 30
       },
-      "total_rows": 12,
-      "utterance_chars_max": 98,
-      "utterance_chars_mean": 65.25,
-      "utterance_chars_median": 73.5
+      "total_rows": 90,
+      "utterance_chars_max": 161,
+      "utterance_chars_mean": 53.24,
+      "utterance_chars_median": 52.0
     },
     {
       "condition": "stimulus",
@@ -38,17 +38,21 @@
     },
     {
       "condition": "natural",
-      "dialog_count": 0,
+      "dialog_count": 15,
       "file": "nietzsche_natural_run0.duckdb",
-      "focal_rows": 0,
+      "focal_rows": 30,
       "persona_id": "nietzsche",
       "run_id": "nietzsche_natural_run0",
       "run_idx": 0,
-      "speaker_persona_breakdown": {},
-      "total_rows": 0,
-      "utterance_chars_max": null,
-      "utterance_chars_mean": null,
-      "utterance_chars_median": null
+      "speaker_persona_breakdown": {
+        "kant": 30,
+        "nietzsche": 30,
+        "rikyu": 30
+      },
+      "total_rows": 90,
+      "utterance_chars_max": 161,
+      "utterance_chars_mean": 47.2,
+      "utterance_chars_median": 41.0
     },
     {
       "condition": "stimulus",
@@ -69,21 +73,21 @@
     },
     {
       "condition": "natural",
-      "dialog_count": 3,
+      "dialog_count": 14,
       "file": "rikyu_natural_run0.duckdb",
-      "focal_rows": 6,
+      "focal_rows": 30,
       "persona_id": "rikyu",
       "run_id": "rikyu_natural_run0",
       "run_idx": 0,
       "speaker_persona_breakdown": {
-        "kant": 6,
-        "nietzsche": 6,
-        "rikyu": 6
+        "kant": 27,
+        "nietzsche": 27,
+        "rikyu": 30
       },
-      "total_rows": 18,
-      "utterance_chars_max": 84,
-      "utterance_chars_mean": 43.06,
-      "utterance_chars_median": 47.5
+      "total_rows": 84,
+      "utterance_chars_max": 161,
+      "utterance_chars_mean": 52.13,
+      "utterance_chars_median": 40.0
     },
     {
       "condition": "stimulus",

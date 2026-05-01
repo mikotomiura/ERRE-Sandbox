@@ -1,7 +1,7 @@
-# P3a rsync receipt — placeholder
+# P3a-decide v2 rerun rsync receipt
 
-status: pending — manual rsync from G-GEAR (Windows / RTX 5060 Ti) to Mac (master)
-rsync_at: not yet — to be performed by user out-of-band
+status: ready — natural re-capture after fix v2 completed; rsync to Mac pending (manual)
+captured_at: 2026-05-02T00:50:11Z
 mac_destination: ~/ERRE-Sand_Box/data/eval/pilot/
 
 # Capture host
@@ -11,29 +11,49 @@ gpu: NVIDIA RTX 5060 Ti 16GB
 ollama_version: 0.22.0
 ollama_models: qwen3:8b (Q4_K_M, 5.2GB), nomic-embed-text:latest (274MB)
 
-# Source files (all .gitignored, never committed; checksums fill in once rsync executes)
-# data/eval/pilot/kant_stimulus_run0.duckdb
-# data/eval/pilot/kant_natural_run0.duckdb
-# data/eval/pilot/nietzsche_stimulus_run0.duckdb
-# data/eval/pilot/nietzsche_natural_run0.duckdb
-# data/eval/pilot/rikyu_stimulus_run0.duckdb
-# data/eval/pilot/rikyu_natural_run0.duckdb
+# Cell results (natural re-capture under fix v2; stimulus carried from PR #129)
+# persona    condition  focal  total  dialogs
+# kant       natural       30     90       15
+# nietzsche  natural       30     90       15
+# rikyu      natural       30     84       14
+# kant       stimulus     198    342      168
+# nietzsche  stimulus     198    342      168
+# rikyu      stimulus     198    342      168
+# All 3 natural cells passed Phase A guard (focal>=25 conservative lower bound).
 
-# ME-2 protocol (manual run instructions)
+# Fix v2 verification (post COOLDOWN_TICKS_EVAL=5 + wall default 120)
+prior_phase_a_v1: kant=6/18/3 (cooldown gated, wall 10 min sanity timeout, PR #131)
+phase_a_v2_sanity: kant=30/90/15 (single cell, wall=120 min budget, completed in ~16 min)
+phase_b_v2_parallel: nietzsche=30/90/15 + rikyu=30/84/14 (3 cell parallel, wall 22 min)
+  - kant Phase B parallel hit drain timeout (focal=30 reached internally, total=88,
+    runtime drain exceeded 30.0s under Ollama queue contention) → re-ran kant alone
+    sequentially (post-parallel, 16 min, focal=30/total=90 clean)
+empirical_cognition_period: ~120 s/tick on qwen3:8b Q4_K_M / RTX 5060 Ti single cell
+  (under 3-cell Ollama parallelism, per-tick latency stretched but total throughput
+  improved due to concurrent batching)
+
+# DuckDB snapshot checksums (md5; produced from /tmp/p3a_rsync_v2/)
+# All 6 files are 524K; .duckdb format from duckdb v1.x via eval_run_golden CLI.
+# These files are .gitignored — only this receipt + _summary.json are committed.
+# Mac side restores by stripping .snapshot.duckdb suffix.
+945d1e2301ecf2765c9dcce559a00a21  kant_natural_run0.duckdb.snapshot.duckdb
+ba3c88d5a857cffdaf855473131aba3b  kant_stimulus_run0.duckdb.snapshot.duckdb
+cb89df94a89a675aedfe0ec56d651fdb  nietzsche_natural_run0.duckdb.snapshot.duckdb
+a512d5a99dab33ea769e6ff1e966bcfe  nietzsche_stimulus_run0.duckdb.snapshot.duckdb
+6276767c9f5ca05f70fb4973adcc334b  rikyu_natural_run0.duckdb.snapshot.duckdb
+1bf72395f43f20019d66673f2ded8666  rikyu_stimulus_run0.duckdb.snapshot.duckdb
+
+# ME-2 manual rsync protocol (user runs out-of-band, MAC_HOST not in repo)
 #
-# G-GEAR side:
-#   mkdir -p /tmp/p3a_rsync
-#   for f in data/eval/pilot/*.duckdb; do
-#     cp "$f" "/tmp/p3a_rsync/$(basename $f).snapshot.duckdb"
-#   done
-#   md5sum /tmp/p3a_rsync/*.duckdb > /tmp/p3a_rsync/_checksums.txt
-#   rsync -av /tmp/p3a_rsync/ <MAC_HOST>:~/ERRE-Sand_Box/data/eval/pilot/
+# G-GEAR side (snapshots already staged at /tmp/p3a_rsync_v2/):
+#   ls -lh /tmp/p3a_rsync_v2/        # 6 files + _checksums.txt
+#   rsync -av /tmp/p3a_rsync_v2/ <MAC_HOST>:~/ERRE-Sand_Box/data/eval/pilot/
 #
-# Mac side (P3a-decide session):
+# Mac side (P3a-decide finalization session):
 #   for f in ~/ERRE-Sand_Box/data/eval/pilot/*.snapshot.duckdb; do
 #     mv -- "$f" "${f%.snapshot.duckdb}"
 #   done
-#   md5sum ~/ERRE-Sand_Box/data/eval/pilot/*.duckdb  # compare with _checksums.txt
-#
-# Once rsync is done, this file is overwritten with the actual receipt
-# (transferred bytes + per-file checksum + completion timestamp).
+#   md5sum ~/ERRE-Sand_Box/data/eval/pilot/*.duckdb
+#   # compare against the checksums in this receipt
+#   uv run python scripts/p3a_decide.py
+#   # → data/eval/pilot/_p3a_decide.json + ME-4 ADR second Edit (ratio finalization)
