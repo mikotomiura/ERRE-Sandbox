@@ -209,18 +209,14 @@ def test_eval_natural_mode_admits_two_study_agents() -> None:
 
 def test_eval_natural_mode_preserves_self_dialog_reject() -> None:
     _captured, sink = _collector()
-    scheduler = InMemoryDialogScheduler(
-        envelope_sink=sink, eval_natural_mode=True
-    )
+    scheduler = InMemoryDialogScheduler(envelope_sink=sink, eval_natural_mode=True)
     result = scheduler.schedule_initiate("kant", "kant", Zone.AGORA, tick=0)
     assert result is None
 
 
 def test_eval_natural_mode_preserves_double_open_reject() -> None:
     _captured, sink = _collector()
-    scheduler = InMemoryDialogScheduler(
-        envelope_sink=sink, eval_natural_mode=True
-    )
+    scheduler = InMemoryDialogScheduler(envelope_sink=sink, eval_natural_mode=True)
     first = scheduler.schedule_initiate("kant", "rikyu", Zone.AGORA, tick=0)
     assert isinstance(first, DialogInitiateMsg)
     second = scheduler.schedule_initiate("kant", "rikyu", Zone.AGORA, tick=1)

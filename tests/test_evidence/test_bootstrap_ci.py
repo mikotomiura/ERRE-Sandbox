@@ -146,9 +146,7 @@ def test_hierarchical_bootstrap_widens_ci_on_ar1_correlation() -> None:
             x[t] = rho * x[t - 1] + eps[t]
         clusters.append(x.tolist())
 
-    iid = bootstrap_ci(
-        [v for c in clusters for v in c], n_resamples=1000, seed=0
-    )
+    iid = bootstrap_ci([v for c in clusters for v in c], n_resamples=1000, seed=0)
     block = hierarchical_bootstrap_ci(
         clusters, block_length=20, n_resamples=1000, seed=0
     )

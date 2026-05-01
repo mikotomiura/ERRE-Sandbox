@@ -223,9 +223,7 @@ def _nli_block(utterances: list[str]) -> dict[str, Any]:
         compute_nli_contradiction,
     )
 
-    pairs = [
-        (utterances[i], utterances[i + 1]) for i in range(len(utterances) - 1)
-    ]
+    pairs = [(utterances[i], utterances[i + 1]) for i in range(len(utterances) - 1)]
     if not pairs:
         return {"skipped": "fewer than 2 utterances"}
     point = compute_nli_contradiction(pairs)
@@ -237,8 +235,7 @@ def _nli_block(utterances: list[str]) -> dict[str, Any]:
     return {
         "point": float(point),
         "ci_status": (
-            "point_estimate_only — "
-            "per-pair vector not exposed by tier_a.nli yet"
+            "point_estimate_only — per-pair vector not exposed by tier_a.nli yet"
         ),
     }
 
@@ -254,8 +251,7 @@ def _novelty_block(utterances: list[str]) -> dict[str, Any]:
     return {
         "point": float(point),
         "ci_status": (
-            "point_estimate_only — "
-            "per-step vector not exposed by tier_a.novelty yet"
+            "point_estimate_only — per-step vector not exposed by tier_a.novelty yet"
         ),
     }
 
