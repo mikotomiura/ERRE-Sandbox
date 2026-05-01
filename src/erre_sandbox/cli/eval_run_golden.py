@@ -938,6 +938,11 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         rng=scheduler_rng,
         turn_sink=duckdb_sink,
         golden_baseline_mode=False,
+        # P3a-decide gating fix: bypass zone-equality so the 3 personas can
+        # sustain dialog after LLM destination_zone scatters them out of
+        # AGORA. See .steering/20260430-m9-eval-system/design-natural-gating-fix.md
+        # for root-cause analysis.
+        eval_natural_mode=True,
     )
     runtime.attach_dialog_scheduler(scheduler)
 

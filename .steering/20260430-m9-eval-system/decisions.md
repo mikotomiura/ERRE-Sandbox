@@ -123,28 +123,56 @@ ID prefix: `ME` (m9-Eval-system) で M9-B `DB` と区別。
 
 ## ME-4 — Hybrid baseline ratio: P3a 完了後に確定 (Codex HIGH-3 系の defer ADR)
 
-- **決定**: 200 (stimulus battery) / 300 (自然対話) を **default** とし、P3a (200 turn
-  × 両形式 × 3 persona の isolated pilot) で測定した bootstrap CI width に基づき
-  P3a-decide で **本 ADR を更新する**。更新後の ratio で P3 (golden baseline 採取) 入り。
-- **判定基準**:
-  - Burrows Delta CI width / Vendi CI width / Big5 ICC CI width を両 condition
-    (stimulus 主体 / 自然対話 主体) で測定
+- **決定 (元案)**: 200 (stimulus battery) / 300 (自然対話) を **default** とし、P3a で
+  両 condition × 3 persona の isolated pilot を採取し、bootstrap CI width で
+  ratio を確定する。
+- **2026-05-01 partial update (P3a-decide Mac セッション、Task 1+2 完了)**:
+  - **stimulus 3 cell**: G-GEAR 採取 focal=198 / total=342 / dialogs=168 で 3 persona
+    すべて完走済 (data/eval/pilot/_summary.json)。
+  - **natural 3 cell**: G-GEAR 採取は M5/M6 zone-drift bug で **partial**
+    (kant=6 focal / nietzsche=0 focal / rikyu=6 focal、~13 min wall で kill)。
+    本セッションで `InMemoryDialogScheduler.eval_natural_mode=True` を導入して bug
+    を解決 (PR `feature/m9-eval-p3a-decide`、ME-8 ADR 参照)。修正後の natural cell は
+    G-GEAR 再採取が必要 (本 Mac セッションでは LLM 不在で実機検証不可)。
+  - **bootstrap CI 計算**: `src/erre_sandbox/evidence/bootstrap_ci.py` を P5 prep として
+    drafted (本来 P5 phase 着手分の前倒し)、`scripts/p3a_decide.py` で stimulus side の
+    Burrows Delta + MATTR (lightweight) の CI を計算する経路を整備 (G-GEAR DuckDB の
+    rsync 待ち)。NLI / novelty / Empath は `[eval]` extras 必須なので Mac default では
+    skip + clear log line で degrade。
+  - **判定**: stimulus side のみで ratio を確定するのは統計的に invalid
+    (元 ADR の "両 condition で測定" 要件未充足)。**ratio 200/300 default は留保**、
+    natural 再採取後に再判定。
+- **判定基準 (元案維持)**:
+  - Burrows Delta CI width / Vendi CI width / Big5 ICC CI width を両 condition で測定
   - 両条件で sub-metric の **mean CI width が小さい比率** を採用
-  - 両者が同等 (差 <10%) なら 200/300 default を維持 (operational simplicity)
+  - 両者が同等 (差 <10%) なら 200/300 default を維持
 - **根拠**:
   - Codex HIGH-3: 元案の「P3 採取後 P3b で 50 turn pilot」は順序 invert + 統計力不足
   - 200 turn は Vendi の 200-turn window を 1 cycle 満たす最小値
   - bootstrap CI width が直接的な測定対象 (DB9 quorum の信頼性)
 - **棄却**:
-  - 200/300 を data なしで freeze → arbitrary
-  - P3 後の P3b 50 turn pilot → invalidation リスク
+  - 200/300 を data なしで freeze → arbitrary (元案のまま)
+  - **stimulus 側 CI のみで ratio 確定**: natural side との **比較**が ratio 決定の
+    本質 (元 ADR §判定基準 1) で、片側 CI のみでは比較できない → 棄却
 - **影響**:
-  - P3a 完了後、本 ADR を Edit で更新 (現 placeholder を実測値で置換)
-  - 採用 ratio が P3 に flow
-  - blockers.md の "Hybrid baseline 比率 defer" 項目を close
+  - P3a-decide セッションで **partial 完了**: gating bug fix + bootstrap_ci module +
+    p3a_decide script は ready、natural 再採取後に最終 ratio 確定
+  - ratio 確定までは P3 (golden baseline 採取) 入り保留 — 本来 24h × overnight×2 の
+    G-GEAR 採取を、ratio 不確定で着手すると invalidation リスク
 - **re-open 条件**:
+  - **本 ADR は再採取後に二度目の Edit を要する** (current state = partial):
+    1. G-GEAR 再採取で natural side が完走 (focal 30 / total 90 / dialogs ~15)
+    2. Mac で `scripts/p3a_decide.py` を両 condition の duckdb に対し run
+    3. ratio default 200/300 vs alternative の bootstrap CI width 比較
+    4. 確定値で本 ADR を **再 Edit**
   - golden baseline 採取後に DB9 quorum の sub-metric が persona discriminative でない
-    と判明 → ratio 再調整 + 再採取検討
+    と判明 → ratio 再調整 + 再採取検討 (元案維持)
+- **partial-close 状態の文脈**:
+  - 本 ADR は **2 段階 close**: (1) bug fix + script ready (本セッション)、
+    (2) 再採取データで実測値 ratio (次 G-GEAR セッション + 次 Mac セッション)
+  - tasklist.md §P3a-decide はチェック項目を分割: "scheduler fix [x]" / "bootstrap CI
+    modules ready [x]" / "stimulus-side CI computed (rsync 待ち) [pending]" /
+    "ratio ADR 確定 (natural 再採取待ち) [pending]"
 
 ---
 
@@ -324,12 +352,88 @@ ID prefix: `ME` (m9-Eval-system) で M9-B `DB` と区別。
 
 ---
 
+## ME-8 — eval natural condition の zone gate bypass (P3a-decide gating bug fix)
+
+- **決定**: `InMemoryDialogScheduler.__init__` に **`eval_natural_mode: bool = False`**
+  flag を追加。`True` のとき:
+  1. `tick()` 内で `_iter_colocated_pairs` の代わりに新規ヘルパ
+     `_iter_all_distinct_pairs` を使い、3 persona の **全 distinct pair** を
+     zone equality 制約なしで反復
+  2. `tick()` 内の `_REFLECTIVE_ZONES` skip を bypass
+  3. `schedule_initiate` 内の zone-not-reflective reject を bypass
+  4. **cooldown / probability / timeout / 自己 dialog reject / 二重 open reject の
+     invariant は両 mode で active のまま** — natural cadence は維持、proximity
+     制約のみ削除
+- **構築時防御**: `golden_baseline_mode=True` と `eval_natural_mode=True` の同時指定は
+  `ValueError` で reject (Codex review LOW-1 反映、両 flag は互いに disjoint な
+  capture phase をカバー、組合せの semantics は未定義)
+- **CLI opt-in**: `cli/eval_run_golden.py:capture_natural` の scheduler 構築に
+  `eval_natural_mode=True` を 1 引数追加 (planning purity 違反は最小)
+- **根拠**:
+  - **観測**: G-GEAR P3a pilot で natural 3 cell が初動 burst 2-3 dialogs (= 12-18
+    utterances) で完全停止。stimulus 3 cell は同条件で focal=198 完走 → natural 専用の
+    gating 挙動が発火していた
+  - **root-cause**: `personas/{nietzsche,rikyu}.yaml` の `preferred_zones` が AGORA を
+    含まない (Nietzsche=[peripatos,study,garden], Rikyu=[chashitsu,garden,study])。
+    LLM が `destination_zone` を選び、`_resample_destination_to_persona_zone`
+    (cognition/cycle.py:828) は `os.environ.get("ERRE_ZONE_BIAS_P", "0.2")` で
+    20% でしか preferred bias を発火させない。**80% は LLM choice を honor** →
+    数 tick 後に AGORA から散る → `_iter_colocated_pairs` が 0 pair → admit 停止
+  - **計算根拠**: per-tick zone change rate ≈ (4/6) × (1 - 0.2) = 53%、
+    3-tick 後 1 名以上 scatter 確率 = 1 - 0.47^3 ≈ 89% (観測症状と一致)
+  - **代案比較**: `decisions.md` 関連の `design-natural-gating-fix.md` §5 で
+    4 案比較。代案 B (preferred_zones=[AGORA] override) は bias_p=0.2 で 53% leak、
+    代案 A (world/ 層で MoveMsg drop) は planning purity 違反、代案 C (pair set API)
+    は boolean flag より重い。**初回案 (scheduler flag) を採用**
+  - **Codex `gpt-5.5 xhigh` independent review** (`codex-review-natural-gating.md`):
+    HIGH=0 / MEDIUM=0 / LOW=2 で **Verdict: ship**。LOW-1 (両 flag 組合せ防御) と
+    LOW-2 (docstring "ordered" → "unordered") は本 ADR commit 前に反映済
+- **棄却**:
+  - 代案 A (world/ 層 MoveMsg drop): planning purity 違反、M5/M6/M7ζ dwell+phase
+    wheel との相互作用リスク
+  - 代案 B (preferred_zones=[AGORA] override CLI 単独): `ERRE_ZONE_BIAS_P=0.2`
+    default で 53% leak 残存
+  - 代案 B+ (env var 強制 1.0 + preferred override): env mutation hack で
+    diagnosability 低
+  - 代案 C (explicit pair set API): boolean flag より重い、conceptual gain なし
+  - persona zone 制約の default 緩和: M4 frozen Protocol contract 違反
+- **影響**:
+  - `src/erre_sandbox/integration/dialog.py`: flag 追加 + 構築時 reject + tick()/
+    schedule_initiate() の bypass + `_iter_all_distinct_pairs` ヘルパ
+  - `src/erre_sandbox/cli/eval_run_golden.py`: capture_natural の scheduler 構築に
+    `eval_natural_mode=True` を 1 引数追加 (CLI ロジックは不変)
+  - `tests/test_integration/test_dialog_eval_natural_mode.py`: 12 unit test
+    (Red→Green 転換 + 5 invariant + 構築時 reject)、既存 1221 PASS は default
+    False で完全互換 (本セッション full suite 1248 PASS)
+  - 次 G-GEAR セッションで natural 再採取時に修正効果を実機検証
+- **再採取での観測ターゲット**:
+  - focal=30 / total=90 / dialogs ~15 を **30-60 min wall** で完走
+  - 既存 dialog の utterance 内容に大きな変化はない見込み (LLM prompt は同一、
+    physical zone のみ自由化)
+  - `last_close_tick` のクラスタ的な spread を logs で確認 (cooldown が effective
+    に活きていれば 30+ tick 間隔で admit が分散)
+- **re-open 条件**:
+  - **fix 後も admit が初動 burst で停止する場合** → root cause の他要因を再特定
+    (仮説 B/C を再評価)。ERRE_ZONE_BIAS_P 周りの cognition / runtime 側に追加 bug
+    がある可能性
+  - **逆に admit 過多で natural cadence が壊れる場合** → AUTO_FIRE_PROB_PER_TICK
+    の 0.25 を eval 用に低めに調整、または cooldown 延長
+  - **golden_baseline_mode と組合せたいケースが将来発生** → 構築時 reject の
+    緩和ルールを ADR child で起票 (cooldown/timeout の "両 flag union" semantics
+    定義)
+
+---
+
 ## ME-summary
 
-- 本 ADR **7 件** で Codex `gpt-5.5 xhigh` 2 回 review (2026-04-30 design.md MEDIUM 6 +
-  LOW 1 / 2026-05-01 LOW-1 RoleEval MEDIUM 5 + LOW 2) 全件に対応
-- ME-4 のみ P3a 結果次第で **再 Edit 確定** が必要 (placeholder ADR)
+- 本 ADR **8 件** で Codex `gpt-5.5 xhigh` 3 回 review (2026-04-30 design.md MEDIUM 6 +
+  LOW 1 / 2026-05-01 LOW-1 RoleEval MEDIUM 5 + LOW 2 / 2026-05-01 P3a-decide gating
+  fix LOW 2) 全件に対応
+- ME-4 は P3a-decide セッションで **partial update**、natural 再採取後に **二度目の
+  Edit が必要** (current state = bug fix done + script ready, ratio 確定は次回)
 - ME-7 は本タスク P2a で確定、stimulus YAML schema と MCQ scoring protocol を規定
+- ME-8 (本セッション新規) は m9-eval-system P3a-decide gating bug fix の確定 ADR、
+  Codex Verdict: ship
 - LOW-1 (RoleEval wording) は ME-7 で close、本 ADR set 範囲内に取り込み済
 - 既存 M9-B DB1-DB10 ADR との衝突: 無し
 - M2_THRESHOLDS / SCHEMA_VERSION / DialogTurnMsg / RunLifecycleState への破壊変更: 無し

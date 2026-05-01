@@ -305,10 +305,50 @@ P3a-decide が追加され、合計 16 phase + closure。
   - [ ] [GG→Mac] 両形式の DuckDB を Mac へ rsync (CHECKPOINT + temp+rename + read_only=True、ME-2)
         — **本 PR では skip**、user が手動 rsync を後日実施 (`data/eval/pilot/_rsync_receipt.txt` placeholder commit)
         — Mac 側 atomic rename + acceptance + read_only 開封確認は P3a-decide セッションで実施
-- [ ] [Mac] **P3a-decide** — bootstrap CI width 比較で ratio 確定 (1h):
-  - [ ] Burrows Delta / Vendi / Big5 ICC の CI width 計算
-  - [ ] ME-4 ADR を Edit (placeholder → 確定値)
-  - [ ] M9-B `blockers.md` の "Hybrid baseline 比率 200/300" 項目を close
+- [ ] [Mac] **P3a-decide** — bootstrap CI width 比較で ratio 確定 (本来 1h、実際は
+      gating bug fix 込みで 4-6h、natural 再採取後に二度目の Mac セッションで
+      最終 close):
+  - [x] **2026-05-01 Mac セッション (本セッション)**:
+    - [x] M5/M6 natural runtime gating bug の root-cause analysis 完了:
+          `personas/{nietzsche,rikyu}.yaml` preferred_zones に AGORA 不在 +
+          `ERRE_ZONE_BIAS_P=0.2` default で 53% per-tick zone drift →
+          `_iter_colocated_pairs` 0 pair → admit 停止
+    - [x] `.steering/20260430-m9-eval-system/design-natural-gating-fix.md` 起草
+          (Plan + /reimagine 4 案比較 + 採用判断)
+    - [x] 修正実装: `InMemoryDialogScheduler.eval_natural_mode: bool = False` flag、
+          `_iter_all_distinct_pairs` ヘルパ追加、両 flag 同時 True を reject
+    - [x] `cli/eval_run_golden.py:capture_natural` で `eval_natural_mode=True` opt-in
+    - [x] `tests/test_integration/test_dialog_eval_natural_mode.py` 12 件
+          (Red→Green 転換 + 5 invariant + 構築時 reject) 全 PASS
+    - [x] **Codex `gpt-5.5 xhigh` independent review** 完了
+          (`codex-review-prompt-natural-gating.md` → `codex-review-natural-gating.md`、
+          76,961 tokens、Verdict: **ship**、HIGH=0 MEDIUM=0 LOW=2 全反映)
+    - [x] 既存 1221 PASS 維持 (full suite **1248 passed** = 1221 + 12 new + 15
+          bootstrap_ci tests)
+    - [x] `src/erre_sandbox/evidence/bootstrap_ci.py` drafted (P5 prep を前倒し):
+          `bootstrap_ci()` percentile + `hierarchical_bootstrap_ci()` cluster+block
+          (Codex HIGH-2 の AR(1) 想定、N(0,1) 解析解 ± 5% / AR(1) 合成データで
+          iid vs block CI width 差を assert)
+    - [x] `tests/test_evidence/test_bootstrap_ci.py` 15 件全 PASS
+    - [x] `scripts/p3a_decide.py` drafted: stimulus 3 cell の Burrows Delta + MATTR
+          + (eval extras 任意で) NLI / novelty / Empath を CI 計算、
+          `data/eval/pilot/_p3a_decide.json` 出力。**rsync 待ち**で missing files
+          を検出した場合 exit 2 + ME-2 protocol 案内
+    - [x] `decisions.md` ME-4 ADR partial update + 新規 ME-8 ADR 追加
+    - [x] `g-gear-p3a-rerun-prompt.md` 起草 (次 G-GEAR セッション用、re-capture
+          手順 + 期待値 + DB rsync protocol)
+  - [ ] **next G-GEAR セッション** (rerun-prompt.md を貼り付けて起動):
+    - [ ] eval_natural_mode 修正版で natural 3 cell 再採取 (focal 30 target、
+          30-60 min wall 想定)
+    - [ ] DuckDB rsync via `/tmp/p3a_rsync/` snapshot + ME-2 protocol
+  - [ ] **next Mac セッション** (rsync 完了後):
+    - [ ] `uv run python scripts/p3a_decide.py` で両 condition の CI 計算
+    - [ ] Burrows Delta / Vendi / Big5 ICC の CI width 比較
+    - [ ] ME-4 ADR を **二度目の Edit** で実測値 ratio 確定 (200/300 default vs
+          alternative)
+    - [ ] M9-B `blockers.md` の "Hybrid baseline 比率 200/300" 項目を close
+          (現状 M9-B blockers.md には該当項目なし。本セッションでは追加せず、
+          ratio 確定時に M9-B 側へ通知 / 必要なら起票)
 - [ ] [GG] **P3** — Golden baseline 採取 (3 persona × 5 run × 500 turn、確定 ratio 投入、
       ~24h wall × overnight×2):
   - [ ] qwen3:8b FP16 ~16GB / RTX 4090 24GB

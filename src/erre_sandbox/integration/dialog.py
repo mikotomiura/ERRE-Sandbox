@@ -107,6 +107,7 @@ class InMemoryDialogScheduler:
         rng: Random | None = None,
         turn_sink: Callable[[DialogTurnMsg], None] | None = None,
         golden_baseline_mode: bool = False,
+        eval_natural_mode: bool = False,
     ) -> None:
         self._sink = envelope_sink
         self._rng = rng if rng is not None else Random()  # noqa: S311 — non-crypto
@@ -124,6 +125,34 @@ class InMemoryDialogScheduler:
         # (200 turn, mode=True) and natural-dialog phase (300 turn,
         # mode=False) within the same scheduler instance / MemoryStore.
         self.golden_baseline_mode: bool = golden_baseline_mode
+        # m9-eval-system P3a-decide (design-natural-gating-fix.md): when True
+        # the eval natural-condition pilot bypasses zone-equality and
+        # reflective-zone gates inside ``tick()`` and ``schedule_initiate()``
+        # so 3 personas can sustain dialog after LLM-driven destination_zone
+        # scatters them across study/peripatos/chashitsu. Cooldown / probability
+        # / timeout / self-dialog reject / double-open reject all remain active
+        # so admission cadence is still natural — only the spatial constraint
+        # is dropped. Orthogonal to ``golden_baseline_mode``: stimulus phase
+        # uses ``golden_baseline_mode=True`` (driver controls everything),
+        # natural phase uses ``eval_natural_mode=True`` (proximity-free
+        # logical co-location). Default False keeps M4-frozen Protocol
+        # behaviour for live multi-agent runs.
+        self.eval_natural_mode: bool = eval_natural_mode
+        if eval_natural_mode and golden_baseline_mode:
+            # Codex review LOW-1 (2026-05-01): the invariant claims for
+            # ``eval_natural_mode`` (cooldown / timeout active) only hold
+            # when ``golden_baseline_mode`` is False — combining the two is
+            # a programming error because golden_baseline overrides cooldown
+            # and timeout independently. Reject construction up-front rather
+            # than letting the two flags interleave silently.
+            msg = (
+                "InMemoryDialogScheduler does not support enabling both "
+                "golden_baseline_mode and eval_natural_mode on the same "
+                "instance — they cover disjoint capture phases (stimulus "
+                "vs natural). Construct two schedulers if both phases are "
+                "needed in the same run."
+            )
+            raise ValueError(msg)
         self._open: dict[str, _OpenDialog] = {}
         self._pair_to_id: dict[frozenset[str], str] = {}
         # Bounded by C(N, 2) for N agents — M4 targets N≤3 so this cannot
@@ -153,10 +182,17 @@ class InMemoryDialogScheduler:
         """
         if initiator_id == target_id:
             return None
-        if zone not in _REFLECTIVE_ZONES and not self.golden_baseline_mode:
+        if (
+            zone not in _REFLECTIVE_ZONES
+            and not self.golden_baseline_mode
+            and not self.eval_natural_mode
+        ):
             # m9-eval-system P2b: golden baseline stimulus battery includes
             # ``Zone.STUDY`` (Kant Wachsmuth/RoleEval, Nietzsche aphoristic
             # bursts) — bypass the natural-dialog cultural restriction.
+            # m9-eval-system P3a-decide: eval natural condition lets agents
+            # wander out of reflective zones (LLM-driven destination_zone)
+            # and we still want them to dialog — bypass zone gate too.
             return None
         key = _pair_key(initiator_id, target_id)
         if key in self._pair_to_id:
@@ -278,10 +314,21 @@ class InMemoryDialogScheduler:
         1. close any dialogs whose last_activity_tick is older than TIMEOUT
         2. for each co-located pair in reflective zones, probabilistically
            admit (if not already open and past cooldown)
+
+        m9-eval-system P3a-decide: when ``eval_natural_mode`` is True the
+        spatial gates are dropped. ``_iter_all_distinct_pairs`` enumerates
+        every distinct agent pair regardless of zone, and the reflective-zone
+        skip below is bypassed. Cooldown / probability / timeout invariants
+        remain active so admission cadence is still natural — only proximity
+        is removed.
         """
         self._close_timed_out(world_tick)
-        for a, b in _iter_colocated_pairs(agents):
-            if a.zone not in _REFLECTIVE_ZONES:
+        if self.eval_natural_mode:
+            pair_iter = _iter_all_distinct_pairs(agents)
+        else:
+            pair_iter = _iter_colocated_pairs(agents)
+        for a, b in pair_iter:
+            if not self.eval_natural_mode and a.zone not in _REFLECTIVE_ZONES:
                 continue
             key = _pair_key(a.agent_id, b.agent_id)
             if key in self._pair_to_id:
@@ -372,6 +419,27 @@ def _iter_colocated_pairs(
         for b in sorted_agents[i + 1 :]:
             if a.zone == b.zone:
                 yield a, b
+
+
+def _iter_all_distinct_pairs(
+    agents: Iterable[AgentView],
+) -> Iterator[tuple[AgentView, AgentView]]:
+    """Yield every distinct unordered pair regardless of zone, exactly once.
+
+    Each unordered pair surfaces with a stable ``a.agent_id`` < ``b.agent_id``
+    ordering (mirroring :func:`_iter_colocated_pairs`), so callers can use
+    the first entry as the canonical initiator without extra sorting.
+
+    m9-eval-system P3a-decide: used by ``tick()`` when
+    ``eval_natural_mode=True``. The zone field on the leading element is
+    still meaningful (it becomes the dialog's recorded zone via the
+    ``schedule_initiate`` envelope), but pair eligibility itself does not
+    depend on zone equality.
+    """
+    sorted_agents = sorted(agents, key=lambda v: v.agent_id)
+    for i, a in enumerate(sorted_agents):
+        for b in sorted_agents[i + 1 :]:
+            yield a, b
 
 
 __all__ = [
