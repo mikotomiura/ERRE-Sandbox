@@ -174,6 +174,69 @@ ID prefix: `ME` (m9-Eval-system) で M9-B `DB` と区別。
     modules ready [x]" / "stimulus-side CI computed (rsync 待ち) [pending]" /
     "ratio ADR 確定 (natural 再採取待ち) [pending]"
 
+- **2026-05-05 partial update #3 (P3a-finalize Mac セッション、lightweight ratio 確定)**:
+  - **2 段階 close は不正確だった**: 当初想定の「(2) で最終 close」は Vendi + Big5 ICC
+    が P4 territory であることを見落としていた。本 ADR は **3 段階 partial close**
+    に再構造化される: (1) bug fix + script ready (2026-05-01 #1) / (2) lightweight
+    ratio 実測 (本 update、Burrows + MATTR のみ) / (3) full ratio 実測 (P4 完了後、
+    Vendi + Big5 ICC を含めて再判定)。
+  - **empirical 実測値** (`data/eval/pilot/_p3a_decide.json`、schema `p3a_decide/v3`):
+    - **6 cell rsync 完了** (G-GEAR PR #133 → Mac、md5 6/6 hash 一致)
+    - **target-extrapolated ratio** (n_target_stim=200, n_target_nat=300、
+      `width × sqrt(n / n_target)` で sample-size 効果除去 — Codex P3a-finalize HIGH-1):
+      | metric | stim extrap | nat extrap | nat/stim | n_cells |
+      |---|---|---|---|---|
+      | Burrows Delta | 6.09 | 2.49 | **0.41** | 2 (kant+nietzsche) |
+      | MATTR | 0.0131 | 0.0130 | **0.992** | 3 (全 persona) |
+      | combined (mean) | 3.05 | 1.25 | **0.41** | — |
+    - **verdict**: `stimulus_wider_at_target_alternative_recommended` (combined ratio
+      0.41 → natural が target 換算で 59% 狭い、10% tolerance 大幅超過)
+    - **方向性は両 metric で一致** (Burrows 0.41、MATTR 0.992 ≤ 1.0): natural narrower
+      or equal at deployed scale → verdict は scale-domination の影響を受けず robust
+    - **scale dominance caveat**: Burrows (~6.0 scale) が MATTR (~0.013 scale) を
+      ~470x で支配しているため、combined ratio は実質 Burrows 単独の判定。per-metric
+      breakdown は `by_condition` で個別公開。
+  - **judgment for ratio default (200/300) — provisional**:
+    - **lightweight verdict**: 200/300 default を **暫定維持** (適用条件付き、下記)
+    - 根拠 1: target-extrapolated で natural が 41% (Burrows) / 99% (MATTR) — natural
+      は default budget 300 turn で十分な CI 精度を達成見込み、widen 不要
+    - 根拠 2: stimulus が natural より大幅に wider at target → stimulus 200 turn は
+      tighter CI 達成のため **追加 turn が望ましい可能性**。ただし 200 turn は
+      Vendi 200-turn window 1 cycle の最小値 (元 ADR §根拠 2) で下限制約あり、
+      固定維持。
+    - 根拠 3: 元 ADR §判定基準 3 「両者が同等 (差 <10%) なら default 維持」は
+      本 lightweight 結果では適用不能 (差 59% で同等ではない)、ただし方向性は
+      「natural を増やす必要なし」+「stimulus を増やしたいが下限制約」なので
+      **default 200/300 が最良の lightweight 判定**となる。
+    - 暫定性の根拠: Vendi + Big5 ICC が P4 完了後に異なる方向性を示す可能性あり、
+      Rikyu Burrows は Japanese tokenizer 未実装で 2/3 persona のみ寄与 (n_cells=2)。
+  - **適用条件 (provisional → final 移行のための再開条件)**:
+    - **P4 deliverable**: Vendi Score + Big5 ICC を全 6 cell に対し計算 → ratio
+      verdict を再算出。**P4 結果が方向反転** (natural が stimulus より wider at
+      target) または **lightweight ratio から 10%超のズレ** → 本 ADR を **partial
+      update #4** で再 Edit、ratio default を再評価。
+    - **m9-eval-corpus expansion**: rikyu Japanese tokenizer 実装 → Rikyu Burrows
+      が 3/3 persona で寄与可能に → ratio 再算出。**ratio が現在値 (0.41) から
+      10%超のズレ** → partial update #5 で再 Edit。
+    - **DB9 quorum sub-metric 不足**: golden baseline 採取後に persona-discriminative
+      が不十分 → ratio 再調整 + 再採取検討 (元案維持)。
+  - **追加 caveat (Codex P3a-finalize 反映)**:
+    - 本 ADR は ME-4 §判定基準が指す **3 metric (Burrows / Vendi / Big5 ICC)**
+      のうち 1/3 metric (Burrows、Rikyu 除く 2/3 persona) + lightweight proxy 1
+      metric (MATTR、3/3 persona) のみで判断している。**Vendi + Big5 ICC を含む
+      full verdict は P4 territory** で、本 update は lightweight proxy update。
+    - 数値の生 source は `data/eval/pilot/_p3a_decide.json` を verbatim 参照する
+      (re-derive 防止)。
+    - Codex review trail: `codex-review-prompt-p3a-finalize.md` →
+      `codex-review-p3a-finalize.md` (Verdict block、HIGH 3 / MEDIUM 4 / LOW 4 全反映)。
+  - **partial-close 状態の文脈の改訂**:
+    - 本 ADR は **3 段階 partial close** (上記)、本 update で **段階 (2) close**
+    - tasklist.md §P3a-decide は段階 (2) のチェック項目すべて [x] 化、段階 (3) を
+      M9-D / M9-E (P4) のタスクリスト側で受け継ぐ
+    - main 側 implementation: branch `feature/m9-eval-p3a-finalize` (本 PR で merge)、
+      script schema bump v1 → v3、`_KNOWN_LIMITATIONS` 経由で rikyu Burrows を
+      validation warning routing
+
 ---
 
 ## ME-5 — RNG seed: hashlib.blake2b で uint64 stable seed (Codex MEDIUM-5)

@@ -367,17 +367,50 @@ P3a-decide が追加され、合計 16 phase + closure。
     - [x] `g-gear-p3a-rerun-prompt-v2.md` 起草 (Phase A 期待値桁再校正、wall 120 min)
     - [x] `.codex/budget.json` 145,717 tokens 記録 (per_invocation_max=200K 内)
   - [ ] **next G-GEAR セッション v2** (rerun-prompt-v2.md を貼り付けて起動):
-    - [ ] fix v2 適用版 (`COOLDOWN_TICKS_EVAL=5` + wall default 120) で natural
+    - [x] fix v2 適用版 (`COOLDOWN_TICKS_EVAL=5` + wall default 120) で natural
           3 cell 再々採取 (focal>=25 target、Phase A 単独 sanity → Phase B 3 並列)
-    - [ ] DuckDB rsync via `/tmp/p3a_rsync_v2/` snapshot + ME-2 protocol
-  - [ ] **next Mac セッション** (rsync 完了後):
-    - [ ] `uv run python scripts/p3a_decide.py` で両 condition の CI 計算
-    - [ ] Burrows Delta / Vendi / Big5 ICC の CI width 比較
-    - [ ] ME-4 ADR を **二度目の Edit** で実測値 ratio 確定 (200/300 default vs
-          alternative)
+          — PR #133 で完了 (kant=30/90/15、nietzsche=30/90/15、rikyu=30/84/14)
+    - [x] DuckDB rsync via `/tmp/p3a_rsync_v2/` snapshot + ME-2 protocol
+          — 2026-05-05 G-GEAR HTTP server (192.168.3.85:8765) 経由で 6 snapshot
+          pull + md5 6/6 一致確認 + atomic rename 完了
+  - [x] **2026-05-05 Mac セッション (P3a-finalize、本 update で段階 (2) close)**:
+    - [x] `scripts/p3a_decide.py` を v1 (stimulus_only) → v3 (stimulus_and_natural
+          + target-extrapolated verdict + validation gate + known-limitation
+          warning routing) に拡張 (16 unit test + 1 synthetic DuckDB E2E test 追加)
+    - [x] **Codex `gpt-5.5 xhigh` independent review** 完了
+          (`codex-review-prompt-p3a-finalize.md` → `codex-review-p3a-finalize.md`、
+          80,837 tokens、Verdict: **block**、HIGH 3 / MEDIUM 4 / LOW 4 全反映)
+    - [x] HIGH-1 (sample-size-confounded raw ratio): target-extrapolated widths
+          (`width × sqrt(n / n_target)`、n_target_stim=200, n_target_nat=300) で
+          verdict 計算するよう書き換え。raw / per-sample-variability / extrapolated
+          の 3 view を payload に同居、verdict は extrapolated 一択
+    - [x] HIGH-2 (Rikyu silent abort): `BurrowsTokenizationUnsupportedError` を
+          `_per_utterance_burrows()` で per-utterance catch、cell 全体 error 化を
+          回避。real run で発覚した「Rikyu Burrows 完全 skip」シナリオは
+          `_KNOWN_LIMITATIONS` 経由で validation **warning** routing (errors では
+          ない) → ratio は (kant, nietzsche) で算出可能、MATTR は 3/3 persona
+    - [x] HIGH-3 (validation gate): `_validate_cells_for_ratio()` で 6 cell 全揃 /
+          no errors / focal floor (stim>=150, nat>=25) / required metric 全揃を
+          enforce、違反時は ratio 抑止 + exit 3
+    - [x] MEDIUM 4 件 + LOW 4 件すべて反映 (proxy_metrics block / `_try_optional_metric`
+          broad except / synthetic E2E test / partial cell rejection / 等)
+    - [x] `uv run python scripts/p3a_decide.py` 実行 → `_p3a_decide.json` 生成
+          (schema p3a_decide/v3、validation_errors=[]、validation_warnings=2)
+    - [x] **empirical 実測値**:
+          - Burrows Delta extrap: stim=6.09 / nat=2.49 / **ratio=0.41** (n_cells=2)
+          - MATTR extrap: stim=0.0131 / nat=0.0130 / **ratio=0.992** (n_cells=3)
+          - combined extrap ratio: 0.41 (Burrows scale-dominant、方向性は両 metric 一致)
+          - **verdict**: `stimulus_wider_at_target_alternative_recommended`
+    - [x] **ME-4 ADR partial update #3** (2 段階 close → 3 段階 partial close に
+          再構造化、Vendi + Big5 ICC が P4 territory のため): ratio default 200/300
+          を **暫定維持** + P4 / m9-eval-corpus tokenizer / DB9 quorum の 3 つの
+          re-open 条件を明示。生 source `_p3a_decide.json` を verbatim 参照
     - [ ] M9-B `blockers.md` の "Hybrid baseline 比率 200/300" 項目を close
           (現状 M9-B blockers.md には該当項目なし。本セッションでは追加せず、
           ratio 確定時に M9-B 側へ通知 / 必要なら起票)
+    - **段階 (3) 移行**: P4 完了後に Vendi + Big5 ICC を含む full ratio を再算出、
+      ME-4 ADR partial update #4 (段階 (3) close) で最終確定する。tasklist は
+      P4 phase (P4a / P4b) のチェックリストで受け継ぐ。
 - [ ] [GG] **P3** — Golden baseline 採取 (3 persona × 5 run × 500 turn、確定 ratio 投入、
       ~24h wall × overnight×2):
   - [ ] qwen3:8b FP16 ~16GB / RTX 4090 24GB
