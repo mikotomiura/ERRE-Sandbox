@@ -193,14 +193,15 @@ def test_ratio_summary_skipped_when_validation_errors_present(p3a_decide):
 
 def test_validate_cells_for_ratio_clean_six_returns_no_errors(p3a_decide):
     blocks = _six_clean_blocks()
-    assert p3a_decide._validate_cells_for_ratio(blocks) == []
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert out == {"errors": [], "warnings": []}
 
 
 def test_validate_cells_for_ratio_flags_missing_cell(p3a_decide):
     blocks = _six_clean_blocks()
     blocks.pop()  # remove rikyu natural
-    errors = p3a_decide._validate_cells_for_ratio(blocks)
-    assert any("rikyu" in e and "natural" in e and "absent" in e for e in errors)
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert any("rikyu" in e and "natural" in e and "absent" in e for e in out["errors"])
 
 
 def test_validate_cells_for_ratio_flags_errored_cell(p3a_decide):
@@ -210,32 +211,52 @@ def test_validate_cells_for_ratio_flags_errored_cell(p3a_decide):
         "condition": "stimulus",
         "error": "BoomError: kaboom",
     }
-    errors = p3a_decide._validate_cells_for_ratio(blocks)
-    assert any("kant" in e and "stimulus" in e and "errored" in e for e in errors)
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert any(
+        "kant" in e and "stimulus" in e and "errored" in e for e in out["errors"]
+    )
 
 
 def test_validate_cells_for_ratio_flags_under_sampled_cell(p3a_decide):
     # natural floor is 25; stimulus floor is 150
     blocks = _six_clean_blocks(stim_n=120)  # below stimulus floor
-    errors = p3a_decide._validate_cells_for_ratio(blocks)
-    assert any("under-sampled" in e and "stimulus" in e for e in errors)
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert any("under-sampled" in e and "stimulus" in e for e in out["errors"])
 
 
 def test_validate_cells_for_ratio_flags_missing_metric(p3a_decide):
-    # Drop MATTR from one cell
+    # Drop MATTR from one cell (kant; not a known limitation → real error).
     blocks = _six_clean_blocks()
     del blocks[0]["metrics"]["mattr_per_utterance"]
-    errors = p3a_decide._validate_cells_for_ratio(blocks)
-    assert any("missing required metric" in e and "mattr" in e for e in errors)
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert any(
+        "kant" in e and "mattr" in e and "missing required metric" in e
+        for e in out["errors"]
+    )
 
 
 def test_validate_cells_for_ratio_flags_unexpected_persona(p3a_decide):
     blocks = _six_clean_blocks()
-    blocks.append(
-        _make_block("aristotle", "natural", 0.5, 0.5, n=30),
-    )
-    errors = p3a_decide._validate_cells_for_ratio(blocks)
-    assert any("unexpected cell tag" in e for e in errors)
+    blocks.append(_make_block("aristotle", "natural", 0.5, 0.5, n=30))
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert any("unexpected cell tag" in e for e in out["errors"])
+
+
+def test_validate_routes_rikyu_burrows_to_warnings_not_errors(p3a_decide):
+    """Codex HIGH-3 vs HIGH-2 reconciliation: rikyu Burrows missing is a
+    documented library limitation (Japanese tokenizer absent) so the gate
+    must route it to ``warnings`` rather than blocking the ratio verdict.
+    """
+    blocks = _six_clean_blocks()
+    # Drop Burrows from both rikyu cells (mirrors real Mac run output).
+    for block in blocks:
+        if block["persona_id"] == "rikyu":
+            del block["metrics"]["burrows_delta_per_utterance"]
+    out = p3a_decide._validate_cells_for_ratio(blocks)
+    assert out["errors"] == []
+    assert len(out["warnings"]) == 2
+    assert all("rikyu" in w and "burrows" in w for w in out["warnings"])
+    assert all("BurrowsTokenizationUnsupportedError" in w for w in out["warnings"])
 
 
 def _build_synthetic_pilot(

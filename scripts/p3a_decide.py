@@ -101,6 +101,26 @@ _PERSONA_LANGUAGE: Final[dict[str, str]] = {
     "rikyu": "ja",
 }
 
+# Known (persona, metric) pairs that the validation gate accepts as
+# **warnings** rather than errors because they reflect a documented
+# library limitation, not a data-quality problem. The first entry
+# captures the Burrows Delta Japanese tokenizer gap: ``compute_burrows_delta``
+# raises ``BurrowsTokenizationUnsupportedError`` for any rikyu utterance
+# (see ``erre_sandbox.evidence.tier_a.burrows`` line ~127). Pre-tokenizing
+# Japanese is m9-eval-corpus expansion work; this Mac session ships a
+# lightweight partial update of ME-4 with Burrows scoped to (kant,
+# nietzsche) and MATTR scoped to all three personas.
+_KNOWN_LIMITATIONS: Final[dict[tuple[str, str], str]] = {
+    ("rikyu", "burrows_delta_per_utterance"): (
+        "BurrowsTokenizationUnsupportedError — Japanese tokenizer not "
+        "implemented in tier_a.burrows; pre-tokenizing 青空文庫/国文大観 "
+        "deferred to m9-eval-corpus expansion. ratio for this metric is "
+        "computed on (kant, nietzsche) only; rikyu contribution comes "
+        "from MATTR alone. ME-4 must remain re-openable on tokenizer "
+        "delivery."
+    ),
+}
+
 
 def _pilot_path(persona: str, condition: str) -> Path:
     return _PILOT_DIR / f"{persona}_{condition}_run{_RUN_IDX}.duckdb"
@@ -445,15 +465,25 @@ def _mean_widths_by_condition(
 
 def _validate_cells_for_ratio(
     blocks: list[dict[str, Any]],
-) -> list[str]:
-    """Return a list of validation errors that block the ratio verdict.
+) -> dict[str, list[str]]:
+    """Validate that the 6 expected cells are fit to feed the ratio verdict.
 
-    Codex HIGH-3: a partial / errored / under-sampled cell must not feed
-    the ME-4 ratio decision. The verdict is only emitted if all 6 expected
-    (persona, condition) cells are present, error-free, meet a minimum
-    focal floor, and carry both lightweight metrics with a finite ``width``.
+    Returns ``{"errors": [...], "warnings": [...]}``:
+
+    - **errors** block the verdict (Codex P3a-finalize HIGH-3): missing
+      cell, errored cell, under-sampled cell, or a missing required
+      metric whose absence is **not** documented in
+      ``_KNOWN_LIMITATIONS``.
+    - **warnings** are documented library/data limitations that the
+      script accepts as a known partial-coverage trade-off (e.g., rikyu
+      Burrows is known-skipped because the Japanese tokenizer is not
+      implemented). Aggregation already drops warned cells per metric
+      via the ``"width" in entry`` check, so the per-metric mean simply
+      reports a smaller ``n_cells``. The ME-4 Edit must surface the
+      warning so a future tokenizer delivery can re-open the ADR.
     """
     errors: list[str] = []
+    warnings: list[str] = []
     expected_pairs = {(p, c) for p in _PERSONAS for c in _CONDITIONS}
     seen_pairs: set[tuple[str, str]] = set()
     # Phase A floor used during G-GEAR re-capture (PR #131 + PR #133):
@@ -481,20 +511,25 @@ def _validate_cells_for_ratio(
         for metric in _REQUIRED_METRICS:
             entry = metrics.get(metric)
             if not isinstance(entry, dict) or "width" not in entry:
-                errors.append(
-                    f"cell ({persona}, {condition}) missing required metric "
-                    f"'{metric}' (or width field absent)"
-                )
+                limitation = _KNOWN_LIMITATIONS.get((persona, metric))
+                msg_loc = f"cell ({persona}, {condition}) metric '{metric}'"
+                if limitation is not None:
+                    warnings.append(f"{msg_loc} known limitation: {limitation}")
+                else:
+                    errors.append(
+                        f"{msg_loc} missing required metric (or width field absent)"
+                    )
     missing_pairs = expected_pairs - seen_pairs
     for missing_persona, missing_condition in sorted(missing_pairs):
         errors.append(f"cell ({missing_persona}, {missing_condition}) absent")
-    return errors
+    return {"errors": errors, "warnings": warnings}
 
 
 def _ratio_summary(
     by_condition: dict[str, dict[str, Any]],
     *,
     validation_errors: list[str] | None = None,
+    validation_warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     """Compute the ME-4 ratio verdict on **target-extrapolated** widths.
 
@@ -503,10 +538,14 @@ def _ratio_summary(
     pilot widths are retained as ``raw_descriptive_only`` for audit but
     are explicitly **not** the basis of the verdict.
 
-    Codex HIGH-3 requires that any validation error suppresses the
-    verdict — the JSON instead carries ``ratio_summary.skipped`` plus the
-    list of errors so the ADR Edit can refuse to advance.
+    Codex HIGH-3 requires that any validation **error** suppresses the
+    verdict — the JSON instead carries ``ratio_summary.skipped`` plus
+    the list of errors so the ADR Edit can refuse to advance. Validation
+    **warnings** (documented library limitations such as rikyu Burrows
+    Japanese tokenizer absence) are surfaced inline so the ADR Edit can
+    note partial coverage but do not block the verdict.
     """
+    warnings_list = list(validation_warnings or [])
     if validation_errors:
         return {
             "skipped": (
@@ -514,6 +553,7 @@ def _ratio_summary(
                 "see validation_errors"
             ),
             "validation_errors": validation_errors,
+            "validation_warnings": warnings_list,
             "deferred_metrics": list(_DEFERRED_METRICS),
             "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
         }
@@ -561,6 +601,7 @@ def _ratio_summary(
         "verdict_method": "target_extrapolated_width_ratio",
         "verdict": verdict,
         "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
+        "validation_warnings": warnings_list,
         "n_target_by_condition": dict(_N_TARGET_BY_CONDITION),
         "target_extrapolated": {
             "stimulus_combined_width": stim_extrap_w,
@@ -656,8 +697,14 @@ def main() -> int:
 
     blocks = _collect_blocks()
     by_condition = _mean_widths_by_condition(blocks)
-    validation_errors = _validate_cells_for_ratio(blocks)
-    ratio_summary = _ratio_summary(by_condition, validation_errors=validation_errors)
+    validation = _validate_cells_for_ratio(blocks)
+    validation_errors = validation["errors"]
+    validation_warnings = validation["warnings"]
+    ratio_summary = _ratio_summary(
+        by_condition,
+        validation_errors=validation_errors,
+        validation_warnings=validation_warnings,
+    )
 
     payload: dict[str, Any] = {
         "schema": "p3a_decide/v3",
@@ -670,7 +717,11 @@ def main() -> int:
             "is computed on target-extrapolated widths (ME-4 default budgets, "
             "stimulus=200, natural=300) per Codex P3a-finalize HIGH-1. The "
             "ME-4 ADR Edit is the authority for the final ratio decision; "
-            "this script provides the empirical inputs."
+            "this script provides the empirical inputs. Documented library "
+            "limitations (e.g. rikyu Burrows Japanese tokenizer absence) "
+            "surface under validation_warnings rather than blocking the "
+            "verdict — ME-4 must remain re-openable on m9-eval-corpus "
+            "tokenizer delivery."
         ),
         "proxy_metrics": {
             "computed_lightweight": list(_REQUIRED_METRICS),
@@ -683,6 +734,7 @@ def main() -> int:
             ),
         },
         "validation_errors": validation_errors,
+        "validation_warnings": validation_warnings,
         "cells": blocks,
         "by_condition": by_condition,
         "ratio_summary": ratio_summary,
