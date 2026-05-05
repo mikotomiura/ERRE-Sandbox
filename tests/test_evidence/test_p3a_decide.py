@@ -348,7 +348,7 @@ def test_end_to_end_against_synthetic_pilots(p3a_decide, tmp_path, monkeypatch):
     rc = p3a_decide.main()
     assert rc == 0, "expected success when 6 valid cells are present"
     assert out_path.is_file()
-    payload = json.loads(out_path.read_text())
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
     assert payload["schema"] == "p3a_decide/v3"
     assert payload["scope"] == "stimulus_and_natural"
     assert payload["validation_errors"] == []
@@ -404,7 +404,7 @@ def test_main_returns_3_when_validation_fails(p3a_decide, tmp_path, monkeypatch)
 
     rc = p3a_decide.main()
     assert rc == 3
-    payload = json.loads(out_path.read_text())
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
     assert payload["validation_errors"]
     assert "skipped" in payload["ratio_summary"]
     assert any(

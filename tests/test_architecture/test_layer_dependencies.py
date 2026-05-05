@@ -44,7 +44,9 @@ def test_ui_does_not_import_integration() -> None:
     """
     offenders: list[tuple[Path, int, str]] = []
     for path in _src_files("ui"):
-        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        for lineno, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             stripped = line.lstrip()
             if stripped.startswith(
                 ("from erre_sandbox.integration", "import erre_sandbox.integration"),
@@ -72,7 +74,9 @@ def test_contracts_layer_depends_only_on_schemas_and_pydantic() -> None:
     )
     offenders: list[tuple[Path, int, str]] = []
     for path in _src_files("contracts"):
-        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        for lineno, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             stripped = line.lstrip()
             if stripped.startswith(forbidden_prefixes):
                 offenders.append((path.relative_to(REPO_ROOT), lineno, stripped))
