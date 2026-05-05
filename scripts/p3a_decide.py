@@ -21,13 +21,22 @@ The script:
    and continues with the lightweight set.
 4. Bootstraps a 95% CI per (persona, condition, metric) via
    :mod:`erre_sandbox.evidence.bootstrap_ci`.
-5. Aggregates mean CI width per condition across personas (Burrows + MATTR)
-   and emits a ``ratio_summary`` block. **The script does not finalize the
-   ME-4 ratio decision** — it surfaces empirical widths so the ADR Edit can
-   weigh them. The naïve ``natural / stimulus`` width ratio is included with
-   an explicit ``caveats`` field about N asymmetry (stimulus ~198, natural
-   ~30 focal utterances by design).
-6. Writes ``data/eval/pilot/_p3a_decide.json`` with schema ``p3a_decide/v2``.
+5. Validates that all 6 expected (persona × condition) cells are present,
+   error-free, meet a focal-row floor (stimulus>=150, natural>=25), and
+   carry both lightweight metrics with finite ``width`` fields. Any
+   validation error suppresses the verdict and the script exits with code
+   3. (Codex P3a-finalize HIGH-3 — partial / error / under-sampled cells
+   must not feed an ME-4 ADR Edit.)
+6. Aggregates per-cell widths into three views per (condition, metric):
+   raw mean, per-sample variability (``width * sqrt(n)``), and
+   target-extrapolated width (``width * sqrt(n / n_target)``) where
+   ``n_target_stimulus = 200`` and ``n_target_natural = 300`` are the
+   ME-4 default golden-baseline turn budgets. The ratio verdict is
+   computed on target-extrapolated widths so the comparison reflects
+   projected variability at deployed scale rather than pilot N
+   asymmetry. Raw widths are kept as ``raw_descriptive_only`` for audit.
+   (Codex P3a-finalize HIGH-1.)
+7. Writes ``data/eval/pilot/_p3a_decide.json`` with schema ``p3a_decide/v3``.
 
 Pre-condition: the operator must rsync the G-GEAR DuckDB files into
 ``data/eval/pilot/`` first. The script exits non-zero with an explicit
@@ -63,6 +72,7 @@ from erre_sandbox.evidence.tier_a import (
     compute_burrows_delta,
     compute_mattr,
 )
+from erre_sandbox.evidence.tier_a.burrows import BurrowsTokenizationUnsupportedError
 
 _PILOT_DIR: Final[Path] = Path("data/eval/pilot")
 _OUT_PATH: Final[Path] = _PILOT_DIR / "_p3a_decide.json"
@@ -70,7 +80,20 @@ _PERSONAS: Final[tuple[str, ...]] = ("kant", "nietzsche", "rikyu")
 _CONDITIONS: Final[tuple[str, ...]] = ("stimulus", "natural")
 _RUN_IDX: Final[int] = 0
 _DEFERRED_METRICS: Final[tuple[str, ...]] = ("vendi_score", "big5_icc")
+_REQUIRED_METRICS: Final[tuple[str, ...]] = (
+    "burrows_delta_per_utterance",
+    "mattr_per_utterance",
+)
 _RATIO_TOLERANCE_PCT: Final[float] = 10.0
+# ME-4 default golden-baseline turn counts (the "200/300 default" in ADR text).
+# Used as `n_target` for extrapolating CI widths from the asymmetric pilot
+# (stimulus focal ≈ 198, natural focal ≈ 30) to the planned baseline turn
+# budgets, so the verdict reflects projected variability at the deployed
+# scale rather than raw pilot widths confounded with sample-size effects.
+_N_TARGET_BY_CONDITION: Final[dict[str, int]] = {
+    "stimulus": 200,
+    "natural": 300,
+}
 
 _PERSONA_LANGUAGE: Final[dict[str, str]] = {
     "kant": "de",
@@ -127,7 +150,14 @@ def _per_utterance_burrows(persona: str, utterances: list[str]) -> list[float | 
     for utt in utterances:
         try:
             value = compute_burrows_delta(utt, reference, language=language)
-        except BurrowsLanguageMismatchError:
+        except (BurrowsLanguageMismatchError, BurrowsTokenizationUnsupportedError):
+            # Codex HIGH-2: Japanese tokenization (rikyu) raises
+            # BurrowsTokenizationUnsupportedError; previously only
+            # BurrowsLanguageMismatchError was caught, so the exception
+            # propagated and aborted the whole rikyu cell — losing MATTR
+            # too. We map both to a per-utterance None so MATTR survives
+            # and the validation gate can still see the cell as "burrows
+            # skipped, mattr present" rather than "cell errored".
             out.append(None)
             continue
         if math.isnan(value):
@@ -141,7 +171,15 @@ def _try_optional_metric(
     name: str,
     fn: Callable[[], dict[str, Any]],
 ) -> dict[str, Any] | None:
-    """Call ``fn()`` and surface a clean skip line on any ImportError."""
+    """Call ``fn()`` and surface a clean skip line on optional metric failure.
+
+    Codex MEDIUM-4: previously caught only ``ImportError`` so that any
+    downstream failure (model load timeout, runtime error inside the eval
+    extras) propagated to ``main()`` and erased the entire cell — Burrows
+    + MATTR included. We now catch ``Exception`` here so optional
+    diagnostics can never invalidate the decision-critical lightweight
+    metrics. The cell still surfaces the skip reason for transparency.
+    """
     try:
         return fn()
     except ImportError as exc:
@@ -151,6 +189,12 @@ def _try_optional_metric(
             file=sys.stderr,
         )
         return None
+    except Exception as exc:  # noqa: BLE001 — see docstring: lightweight metrics must survive
+        print(  # noqa: T201
+            f"[skip] tier_a {name}: {type(exc).__name__}: {exc!s}",
+            file=sys.stderr,
+        )
+        return {"skipped": f"{type(exc).__name__}: {exc!s}"}
 
 
 def _persona_block(persona: str, condition: str) -> dict[str, Any]:
@@ -293,22 +337,64 @@ def _empath_block(utterances: list[str]) -> dict[str, Any]:
     }
 
 
+def _normalize_width(raw_width: float, n: int, n_target: int) -> float:
+    """Project a raw bootstrap CI width from sample size ``n`` to ``n_target``.
+
+    Codex HIGH-1: with stimulus n≈198 and natural n=30, equal per-sample
+    variability would still produce raw natural widths ≈ sqrt(198/30) ≈ 2.57x
+    the stimulus widths. The ME-4 verdict must use a width that has been
+    extrapolated to the planned baseline turn budget so the comparison
+    reflects projected variability at deployed scale, not pilot N asymmetry.
+
+    Uses the standard ``CI_width ∝ 1/sqrt(n)`` scaling — exact for sample-
+    mean bootstrap CIs on iid data, an approximation otherwise but the best
+    closed-form available without per-utterance vectors.
+    """
+    if n <= 0 or n_target <= 0:
+        return float("nan")
+    return float(raw_width) * math.sqrt(n / n_target)
+
+
+def _per_sample_variability(raw_width: float, n: int) -> float:
+    """Return ``raw_width * sqrt(n)`` as a per-sample variability proxy.
+
+    Codex HIGH-1 also asks for an ``n``-invariant variability measure so a
+    reader can see whether one condition is intrinsically more variable
+    per utterance, separate from the target-extrapolated comparison.
+    """
+    if n <= 0:
+        return float("nan")
+    return float(raw_width) * math.sqrt(n)
+
+
 def _mean_widths_by_condition(
     blocks: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
-    """Aggregate per-cell widths into mean widths per condition.
+    """Aggregate per-cell widths into per-condition mean widths.
+
+    Emits three views per metric per condition:
+
+    - ``mean_width`` — raw mean of per-cell bootstrap CI widths.
+    - ``mean_per_sample_variability`` — mean of ``width * sqrt(n)``, an
+      ``n``-invariant per-sample variability proxy (Codex HIGH-1).
+    - ``mean_extrapolated_width`` — mean of ``width * sqrt(n / n_target)``,
+      projecting each pilot CI to the ME-4 default golden-baseline turn
+      budget (stimulus 200, natural 300). The ME-4 verdict must use this
+      view, not the raw widths.
 
     Only the lightweight Tier A metrics (Burrows Delta + MATTR) are
     aggregated here — Vendi Score and Big5 ICC are P4 deliverables and are
     listed under ``deferred_metrics`` in the payload.
     """
-    metric_keys = ("burrows_delta_per_utterance", "mattr_per_utterance")
     summary: dict[str, dict[str, Any]] = {}
     for condition in _CONDITIONS:
+        n_target = _N_TARGET_BY_CONDITION[condition]
         per_metric: dict[str, dict[str, Any]] = {}
-        for metric in metric_keys:
+        for metric in _REQUIRED_METRICS:
             widths: list[float] = []
             ns: list[int] = []
+            per_sample: list[float] = []
+            extrapolated: list[float] = []
             for block in blocks:
                 if block.get("condition") != condition:
                     continue
@@ -316,77 +402,204 @@ def _mean_widths_by_condition(
                 entry = metrics.get(metric)
                 if not isinstance(entry, dict) or "width" not in entry:
                     continue
-                widths.append(float(entry["width"]))
-                ns.append(int(entry.get("n", 0)))
+                width = float(entry["width"])
+                n = int(entry.get("n", 0))
+                widths.append(width)
+                ns.append(n)
+                per_sample.append(_per_sample_variability(width, n))
+                extrapolated.append(_normalize_width(width, n, n_target))
             if widths:
                 per_metric[metric] = {
                     "mean_width": sum(widths) / len(widths),
+                    "mean_per_sample_variability": (sum(per_sample) / len(per_sample)),
+                    "mean_extrapolated_width": (sum(extrapolated) / len(extrapolated)),
+                    "n_target": n_target,
                     "n_cells": len(widths),
                     "per_cell_widths": widths,
                     "per_cell_n": ns,
+                    "per_cell_per_sample_variability": per_sample,
+                    "per_cell_extrapolated_widths": extrapolated,
                 }
             else:
                 per_metric[metric] = {"skipped": "no finite widths in this condition"}
-        finite = [
-            entry["mean_width"]
-            for entry in per_metric.values()
-            if "mean_width" in entry
-        ]
-        per_metric["mean_combined_width"] = (
-            {"value": sum(finite) / len(finite), "n_metrics": len(finite)}
-            if finite
-            else {"skipped": "no finite metric widths"}
-        )
+        for view in (
+            "mean_width",
+            "mean_per_sample_variability",
+            "mean_extrapolated_width",
+        ):
+            finite = [
+                entry[view]
+                for entry in per_metric.values()
+                if isinstance(entry, dict) and view in entry
+            ]
+            combined_key = f"combined_{view}"
+            per_metric[combined_key] = (
+                {"value": sum(finite) / len(finite), "n_metrics": len(finite)}
+                if finite
+                else {"skipped": f"no finite {view} values"}
+            )
+        per_metric["n_target"] = n_target
         summary[condition] = per_metric
     return summary
 
 
+def _validate_cells_for_ratio(
+    blocks: list[dict[str, Any]],
+) -> list[str]:
+    """Return a list of validation errors that block the ratio verdict.
+
+    Codex HIGH-3: a partial / errored / under-sampled cell must not feed
+    the ME-4 ratio decision. The verdict is only emitted if all 6 expected
+    (persona, condition) cells are present, error-free, meet a minimum
+    focal floor, and carry both lightweight metrics with a finite ``width``.
+    """
+    errors: list[str] = []
+    expected_pairs = {(p, c) for p in _PERSONAS for c in _CONDITIONS}
+    seen_pairs: set[tuple[str, str]] = set()
+    # Phase A floor used during G-GEAR re-capture (PR #131 + PR #133):
+    # natural focal>=25, stimulus focal>=150 (allowing buffer below the
+    # 200-turn target).
+    min_focal_by_condition = {"stimulus": 150, "natural": 25}
+    for block in blocks:
+        persona = block.get("persona_id")
+        condition = block.get("condition")
+        if persona not in _PERSONAS or condition not in _CONDITIONS:
+            errors.append(f"unexpected cell tag: {block!r}")
+            continue
+        seen_pairs.add((persona, condition))
+        if "error" in block:
+            errors.append(f"cell ({persona}, {condition}) errored: {block['error']}")
+            continue
+        n_utt = int(block.get("n_utterances", 0))
+        floor = min_focal_by_condition[condition]
+        if n_utt < floor:
+            errors.append(
+                f"cell ({persona}, {condition}) under-sampled: "
+                f"n_utterances={n_utt} < floor={floor}"
+            )
+        metrics = block.get("metrics", {})
+        for metric in _REQUIRED_METRICS:
+            entry = metrics.get(metric)
+            if not isinstance(entry, dict) or "width" not in entry:
+                errors.append(
+                    f"cell ({persona}, {condition}) missing required metric "
+                    f"'{metric}' (or width field absent)"
+                )
+    missing_pairs = expected_pairs - seen_pairs
+    for missing_persona, missing_condition in sorted(missing_pairs):
+        errors.append(f"cell ({missing_persona}, {missing_condition}) absent")
+    return errors
+
+
 def _ratio_summary(
     by_condition: dict[str, dict[str, Any]],
+    *,
+    validation_errors: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Compute the naïve natural/stimulus mean width ratio with caveats.
+    """Compute the ME-4 ratio verdict on **target-extrapolated** widths.
 
-    The pilot N is asymmetric by design (stimulus ~198 focal, natural ~30
-    focal). CI width scales with 1/sqrt(n), so a direct width ratio is
-    confounded with sample-size effects — callers (i.e. the ME-4 ADR Edit)
-    must interpret this number with that caveat in mind, not finalize the
-    ratio decision on naïve width alone.
+    Codex HIGH-1 requires the verdict to use widths normalized to the
+    ME-4 default golden-baseline budget (stimulus 200, natural 300). Raw
+    pilot widths are retained as ``raw_descriptive_only`` for audit but
+    are explicitly **not** the basis of the verdict.
+
+    Codex HIGH-3 requires that any validation error suppresses the
+    verdict — the JSON instead carries ``ratio_summary.skipped`` plus the
+    list of errors so the ADR Edit can refuse to advance.
     """
-    stim = by_condition.get("stimulus", {}).get("mean_combined_width", {})
-    nat = by_condition.get("natural", {}).get("mean_combined_width", {})
-    if "value" not in stim or "value" not in nat:
+    if validation_errors:
         return {
-            "skipped": "one or both conditions missing mean_combined_width",
+            "skipped": (
+                "validation gate failed; refusing to emit ratio verdict — "
+                "see validation_errors"
+            ),
+            "validation_errors": validation_errors,
             "deferred_metrics": list(_DEFERRED_METRICS),
             "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
         }
-    stim_w = float(stim["value"])
-    nat_w = float(nat["value"])
-    ratio = nat_w / stim_w if stim_w > 0 else float("inf")
-    diff_pct = abs(ratio - 1.0) * 100.0
+    stim = by_condition.get("stimulus", {})
+    nat = by_condition.get("natural", {})
+    stim_extrap = stim.get("combined_mean_extrapolated_width", {})
+    nat_extrap = nat.get("combined_mean_extrapolated_width", {})
+    if "value" not in stim_extrap or "value" not in nat_extrap:
+        return {
+            "skipped": "one or both conditions missing combined extrapolated width",
+            "deferred_metrics": list(_DEFERRED_METRICS),
+            "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
+        }
+    stim_extrap_w = float(stim_extrap["value"])
+    nat_extrap_w = float(nat_extrap["value"])
+    extrap_ratio = nat_extrap_w / stim_extrap_w if stim_extrap_w > 0 else float("inf")
+    diff_pct = abs(extrap_ratio - 1.0) * 100.0
     if diff_pct < _RATIO_TOLERANCE_PCT:
         verdict = "within_tolerance_default_200_300_maintainable"
-    elif ratio > 1.0:
-        verdict = "natural_wider_alternative_recommended_subject_to_n_caveat"
+    elif extrap_ratio > 1.0:
+        verdict = "natural_wider_at_target_alternative_recommended"
     else:
-        verdict = "stimulus_wider_alternative_recommended_subject_to_n_caveat"
+        verdict = "stimulus_wider_at_target_alternative_recommended"
+
+    stim_raw = stim.get("combined_mean_width", {}).get("value")
+    nat_raw = nat.get("combined_mean_width", {}).get("value")
+    raw_ratio = (
+        (float(nat_raw) / float(stim_raw))
+        if isinstance(stim_raw, (int, float))
+        and stim_raw > 0
+        and isinstance(nat_raw, (int, float))
+        else None
+    )
+    stim_var = stim.get("combined_mean_per_sample_variability", {}).get("value")
+    nat_var = nat.get("combined_mean_per_sample_variability", {}).get("value")
+    variability_ratio = (
+        (float(nat_var) / float(stim_var))
+        if isinstance(stim_var, (int, float))
+        and stim_var > 0
+        and isinstance(nat_var, (int, float))
+        else None
+    )
+
     return {
-        "stimulus_mean_combined_width": stim_w,
-        "natural_mean_combined_width": nat_w,
-        "width_ratio_natural_over_stimulus": ratio,
-        "abs_diff_from_unity_pct": diff_pct,
-        "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
+        "verdict_method": "target_extrapolated_width_ratio",
         "verdict": verdict,
+        "verdict_threshold_pct": _RATIO_TOLERANCE_PCT,
+        "n_target_by_condition": dict(_N_TARGET_BY_CONDITION),
+        "target_extrapolated": {
+            "stimulus_combined_width": stim_extrap_w,
+            "natural_combined_width": nat_extrap_w,
+            "ratio_natural_over_stimulus": extrap_ratio,
+            "abs_diff_from_unity_pct": diff_pct,
+        },
+        "per_sample_variability_descriptive": {
+            "stimulus_combined": stim_var,
+            "natural_combined": nat_var,
+            "ratio_natural_over_stimulus": variability_ratio,
+        },
+        "raw_descriptive_only": {
+            "stimulus_combined_width": stim_raw,
+            "natural_combined_width": nat_raw,
+            "ratio_natural_over_stimulus": raw_ratio,
+            "warning": (
+                "raw ratio is sample-size-confounded (stimulus n≈198, natural "
+                "n=30); not a decision input — see target_extrapolated."
+            ),
+        },
         "deferred_metrics": list(_DEFERRED_METRICS),
         "caveats": [
             (
-                "Pilot N is asymmetric by design (stimulus ~198 focal, natural "
-                "~30 focal). CI width scales with 1/sqrt(n); a direct width "
-                "ratio is confounded with sample-size effects."
+                "Verdict is computed on widths normalized to ME-4 default "
+                "n_target (stimulus=200, natural=300). The raw width ratio "
+                "is sample-size-confounded and is exposed only for audit."
             ),
             (
-                "Vendi Score and Big5 ICC are deferred to P4. ME-4 cannot be "
-                "fully closed until P4 supplies those CI widths."
+                "Vendi Score and Big5 ICC are deferred to P4. This Mac "
+                "session can therefore only deliver a **lightweight partial "
+                "update** of ME-4 (Burrows Delta + MATTR), not a final close."
+            ),
+            (
+                "MATTR is a P3a-decide proxy for the lightweight metric set; "
+                "the ADR-named metrics (Vendi + Big5 ICC) may yield a "
+                "different ratio when computed in P4. ME-4 must remain "
+                "re-openable on P4 disagreement (>=10% extrapolated ratio "
+                "diff or sign reversal)."
             ),
             (
                 "NLI / novelty / Empath are point estimates only in this "
@@ -396,29 +609,17 @@ def _ratio_summary(
     }
 
 
-def main() -> int:
-    if not _PILOT_DIR.is_dir():
-        print(f"pilot directory not found: {_PILOT_DIR}", file=sys.stderr)  # noqa: T201
-        return 1
+def _check_pilot_files_present() -> list[str]:
     missing: list[str] = []
     for persona in _PERSONAS:
         for condition in _CONDITIONS:
             candidate = _pilot_path(persona, condition)
             if not candidate.is_file():
                 missing.append(str(candidate))
-    if missing:
-        print(  # noqa: T201
-            "missing pilot DuckDB files — rsync from G-GEAR first:",
-            file=sys.stderr,
-        )
-        for missing_path in missing:
-            print(f"  {missing_path}", file=sys.stderr)  # noqa: T201
-        print(  # noqa: T201
-            f"\nsee {_PILOT_DIR}/_rsync_receipt.txt for the ME-2 protocol",
-            file=sys.stderr,
-        )
-        return 2
+    return missing
 
+
+def _collect_blocks() -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = []
     for persona in _PERSONAS:
         for condition in _CONDITIONS:
@@ -432,20 +633,56 @@ def main() -> int:
                         "error": f"{type(exc).__name__}: {exc!s}",
                     }
                 )
+    return blocks
 
+
+def main() -> int:
+    if not _PILOT_DIR.is_dir():
+        print(f"pilot directory not found: {_PILOT_DIR}", file=sys.stderr)  # noqa: T201
+        return 1
+    missing = _check_pilot_files_present()
+    if missing:
+        print(  # noqa: T201
+            "missing pilot DuckDB files — rsync from G-GEAR first:",
+            file=sys.stderr,
+        )
+        for missing_path in missing:
+            print(f"  {missing_path}", file=sys.stderr)  # noqa: T201
+        print(  # noqa: T201
+            f"\nsee {_PILOT_DIR}/_rsync_receipt.txt for the ME-2 protocol",
+            file=sys.stderr,
+        )
+        return 2
+
+    blocks = _collect_blocks()
     by_condition = _mean_widths_by_condition(blocks)
-    ratio_summary = _ratio_summary(by_condition)
+    validation_errors = _validate_cells_for_ratio(blocks)
+    ratio_summary = _ratio_summary(by_condition, validation_errors=validation_errors)
 
     payload: dict[str, Any] = {
-        "schema": "p3a_decide/v2",
+        "schema": "p3a_decide/v3",
         "scope": "stimulus_and_natural",
         "note": (
             "Both conditions present: natural side re-captured after the M5/M6 "
             "zone-drift bug fix (eval_natural_mode flag, ME-8 ADR) and the "
             "COOLDOWN_TICKS_EVAL=5 + wall default 120 amendment. CI widths are "
-            "surfaced per (persona, condition); the ME-4 ADR Edit is the "
-            "authority for the final ratio decision."
+            "surfaced per (persona, condition); the verdict in ratio_summary "
+            "is computed on target-extrapolated widths (ME-4 default budgets, "
+            "stimulus=200, natural=300) per Codex P3a-finalize HIGH-1. The "
+            "ME-4 ADR Edit is the authority for the final ratio decision; "
+            "this script provides the empirical inputs."
         ),
+        "proxy_metrics": {
+            "computed_lightweight": list(_REQUIRED_METRICS),
+            "deferred_to_p4": list(_DEFERRED_METRICS),
+            "warning": (
+                "lightweight_ratio_is_not_final_me4_ratio: ME-4 references "
+                "Vendi + Big5 ICC; this Mac session computes Burrows Delta + "
+                "MATTR as a lightweight proxy. P4 must re-run the verdict "
+                "with the ADR-named metrics before ME-4 can be fully closed."
+            ),
+        },
+        "validation_errors": validation_errors,
         "cells": blocks,
         "by_condition": by_condition,
         "ratio_summary": ratio_summary,
@@ -458,6 +695,15 @@ def main() -> int:
         f"wrote {_OUT_PATH} ({len(blocks)} cells; "
         f"{len(_PERSONAS)} personas × {len(_CONDITIONS)} conditions)"
     )
+    if validation_errors:
+        print(  # noqa: T201
+            f"validation gate failed ({len(validation_errors)} errors); "
+            f"ratio verdict suppressed — see {_OUT_PATH}.validation_errors",
+            file=sys.stderr,
+        )
+        for err in validation_errors:
+            print(f"  - {err}", file=sys.stderr)  # noqa: T201
+        return 3
     return 0
 
 
