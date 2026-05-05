@@ -2,9 +2,9 @@
   "daily_token_budget": 1000000,
   "per_invocation_max": 200000,
   "today": {
-    "date": "2026-05-01",
-    "used": 483220,
-    "invocations": 3
+    "date": "2026-05-05",
+    "used": 80837,
+    "invocations": 1
   },
   "policy": {
     "on_overrun": "warn",
@@ -40,6 +40,14 @@
       "task": "20260430-m9-eval-system",
       "purpose": "P3a-decide v2 cooldown × cognition_period review (HIGH 2 / MEDIUM 2 / LOW 1 / Verdict: revise)",
       "tokens": 145717,
+      "per_invocation_max_overrun": 0,
+      "policy_action": "ok (per_invocation_max=200K 内)"
+    },
+    {
+      "date": "2026-05-05",
+      "task": "20260430-m9-eval-system",
+      "purpose": "P3a-finalize script v2 extension review (HIGH 3 / MEDIUM 4 / LOW 4 / Verdict: block — all HIGH reflected before run)",
+      "tokens": 80837,
       "per_invocation_max_overrun": 0,
       "policy_action": "ok (per_invocation_max=200K 内)"
     }
