@@ -69,6 +69,14 @@ data/eval/pilot/*.duckdb.tmp
 data/eval/pilot/*.log
 data/eval/pilot/*.snapshot.duckdb
 
+# m9-eval-system P3 production Golden baseline (30 cells × ~1MB).
+# Only `_rsync_receipt.txt` and `_audit.json` are committed; DuckDB binaries
+# stay local + rsync via ME-2 (HTTP server pattern validated 2026-05-05).
+data/eval/golden/*.duckdb
+data/eval/golden/*.duckdb.tmp
+data/eval/golden/*.log
+data/eval/golden/*.snapshot.duckdb
+
 # Codex independent review raw logs (large transcripts of model reasoning;
 # the verbatim final answer is saved separately in `codex-review-*.md`).
 .steering/**/codex-review-*.raw.log
