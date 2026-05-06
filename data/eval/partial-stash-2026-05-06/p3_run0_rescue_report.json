@@ -1,0 +1,140 @@
+{
+  "verified_at": "2026-05-06T13:13:08.033634+00:00",
+  "host": "mikoto-g-gear",
+  "cells": [
+    {
+      "persona": "kant",
+      "path": "data/eval/golden/kant_natural_run0.duckdb.tmp",
+      "size_bytes": 536576,
+      "wal_exists": false,
+      "expected_focal": 381,
+      "expected_total": 1158,
+      "read_ok": true,
+      "actual_total": 1158,
+      "actual_focal": 381,
+      "dialog_count": 193,
+      "max_tick": 484,
+      "run_ids": [
+        "kant_natural_run0"
+      ],
+      "zones": [
+        [
+          "peripatos",
+          421
+        ],
+        [
+          "study",
+          377
+        ],
+        [
+          "chashitsu",
+          186
+        ],
+        [
+          "garden",
+          157
+        ],
+        [
+          "agora",
+          17
+        ]
+      ],
+      "focal_match": true,
+      "total_match": true
+    },
+    {
+      "persona": "nietzsche",
+      "path": "data/eval/golden/nietzsche_natural_run0.duckdb.tmp",
+      "size_bytes": 536576,
+      "wal_exists": false,
+      "expected_focal": 390,
+      "expected_total": 1169,
+      "read_ok": true,
+      "actual_total": 1169,
+      "actual_focal": 390,
+      "dialog_count": 195,
+      "max_tick": 491,
+      "run_ids": [
+        "nietzsche_natural_run0"
+      ],
+      "zones": [
+        [
+          "study",
+          471
+        ],
+        [
+          "peripatos",
+          354
+        ],
+        [
+          "chashitsu",
+          189
+        ],
+        [
+          "garden",
+          144
+        ],
+        [
+          "agora",
+          11
+        ]
+      ],
+      "focal_match": true,
+      "total_match": true
+    },
+    {
+      "persona": "rikyu",
+      "path": "data/eval/golden/rikyu_natural_run0.duckdb.tmp",
+      "size_bytes": 536576,
+      "wal_exists": false,
+      "expected_focal": 399,
+      "expected_total": 1182,
+      "read_ok": true,
+      "actual_total": 1182,
+      "actual_focal": 399,
+      "dialog_count": 197,
+      "max_tick": 493,
+      "run_ids": [
+        "rikyu_natural_run0"
+      ],
+      "zones": [
+        [
+          "peripatos",
+          423
+        ],
+        [
+          "study",
+          329
+        ],
+        [
+          "chashitsu",
+          209
+        ],
+        [
+          "garden",
+          178
+        ],
+        [
+          "agora",
+          43
+        ]
+      ],
+      "focal_match": true,
+      "total_match": true
+    }
+  ],
+  "memory_sqlite": [
+    {
+      "path": "data/eval/_natural_memory/p3_natural_kant_run0.sqlite",
+      "size_bytes": 10612736
+    },
+    {
+      "path": "data/eval/_natural_memory/p3_natural_nietzsche_run0.sqlite",
+      "size_bytes": 10543104
+    },
+    {
+      "path": "data/eval/_natural_memory/p3_natural_rikyu_run0.sqlite",
+      "size_bytes": 10502144
+    }
+  ]
+}

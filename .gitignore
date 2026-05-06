@@ -77,6 +77,20 @@ data/eval/golden/*.duckdb.tmp
 data/eval/golden/*.log
 data/eval/golden/*.snapshot.duckdb
 
+# m9-eval-system P3 dry-run artifacts (Phase 0 sanity capture).
+data/eval/_dryrun/
+
+# m9-eval-system P3 natural memory sqlite (per-cell agent memory backing
+# store, ~10MB each). Only the rescue verify report is committed; sqlite
+# binaries stay local.
+data/eval/_natural_memory/
+
+# m9-eval-system Phase 2 run0 rescue stash (.duckdb copies from .tmp).
+# Only `_rescue_*` text artifacts are committed; the duckdb binaries are
+# excluded same as data/eval/golden/ policy.
+data/eval/partial-stash-*/*.duckdb
+data/eval/partial-stash-*/*.duckdb.wal
+
 # Codex independent review raw logs (large transcripts of model reasoning;
 # the verbatim final answer is saved separately in `codex-review-*.md`).
 .steering/**/codex-review-*.raw.log
