@@ -17,6 +17,7 @@ They explicitly cover the Codex review HIGH fixes:
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Any
 
@@ -335,3 +336,305 @@ def test_wall_timeout_min_default_is_120() -> None:
         ]
     )
     assert args.wall_timeout_min == 120.0
+
+
+# ---------------------------------------------------------------------------
+# m9-eval-cli-partial-fix — sidecar / partial / rescue (ME-9 ADR + Codex 2026-05-06)
+# ---------------------------------------------------------------------------
+
+
+def _make_publish_args(
+    *,
+    persona: str = "kant",
+    condition: str = "natural",
+    run_idx: int = 0,
+    turn_count: int = 500,
+    wall_timeout_min: float = 360.0,
+) -> argparse.Namespace:
+    """Build an ``argparse.Namespace`` shaped like ``_async_main``'s caller."""
+    return argparse.Namespace(
+        persona=persona,
+        condition=condition,
+        run_idx=run_idx,
+        turn_count=turn_count,
+        wall_timeout_min=wall_timeout_min,
+    )
+
+
+def test_publish_capture_complete_writes_sidecar_and_renames(
+    tmp_path: Path,
+) -> None:
+    """Status=complete → sidecar status=complete + atomic rename + return 0."""
+    from erre_sandbox.cli.eval_run_golden import (
+        CaptureResult,
+        _publish_capture,
+    )
+    from erre_sandbox.evidence.capture_sidecar import read_sidecar, sidecar_path_for
+
+    final = tmp_path / "kant_natural_run0.duckdb"
+    temp = final.with_suffix(final.suffix + ".tmp")
+    temp.write_bytes(b"deadbeef")  # placeholder DuckDB-shaped bytes
+
+    result = CaptureResult(
+        run_id="kant_natural_run0",
+        output_path=temp,
+        total_rows=1500,
+        focal_rows=500,
+    )
+    args = _make_publish_args()
+
+    code = _publish_capture(args, result, temp, final)
+    assert code == 0
+    assert final.exists()
+    assert not temp.exists()
+    side = read_sidecar(sidecar_path_for(final))
+    assert side.status == "complete"
+    assert side.stop_reason == "complete"
+    assert side.focal_observed == 500
+    assert side.focal_target == 500
+    assert side.persona == "kant"
+    assert side.condition == "natural"
+
+
+def test_publish_capture_partial_returns_3_renames_and_writes_partial_sidecar(
+    tmp_path: Path,
+) -> None:
+    """Soft timeout → status=partial sidecar + rename allow + return 3."""
+    from erre_sandbox.cli.eval_run_golden import (
+        CaptureResult,
+        _publish_capture,
+    )
+    from erre_sandbox.evidence.capture_sidecar import read_sidecar, sidecar_path_for
+
+    final = tmp_path / "kant_natural_run0.duckdb"
+    temp = final.with_suffix(final.suffix + ".tmp")
+    temp.write_bytes(b"deadbeef")
+
+    result = CaptureResult(
+        run_id="kant_natural_run0",
+        output_path=temp,
+        total_rows=1158,
+        focal_rows=381,
+        soft_timeout="wall timeout (360 min) exceeded",
+        partial_capture=True,
+        stop_reason="wall_timeout",
+    )
+    code = _publish_capture(_make_publish_args(), result, temp, final)
+    assert code == 3
+    assert final.exists()
+    assert not temp.exists()
+    side = read_sidecar(sidecar_path_for(final))
+    assert side.status == "partial"
+    assert side.stop_reason == "wall_timeout"
+    assert side.focal_observed == 381
+
+
+def test_publish_capture_fatal_keeps_tmp_no_rename(tmp_path: Path) -> None:
+    """Fatal_error → sidecar status=fatal, .tmp preserved, return 2."""
+    from erre_sandbox.cli.eval_run_golden import (
+        CaptureResult,
+        _publish_capture,
+    )
+    from erre_sandbox.evidence.capture_sidecar import read_sidecar, sidecar_path_for
+
+    final = tmp_path / "kant_natural_run0.duckdb"
+    temp = final.with_suffix(final.suffix + ".tmp")
+    temp.write_bytes(b"halfwritten")
+
+    result = CaptureResult(
+        run_id="kant_natural_run0",
+        output_path=temp,
+        total_rows=42,
+        focal_rows=10,
+        fatal_error="duckdb insert failed: deadlock",
+        stop_reason="fatal_duckdb_insert",
+    )
+    code = _publish_capture(_make_publish_args(), result, temp, final)
+    assert code == 2
+    assert temp.exists()
+    assert not final.exists()
+    side = read_sidecar(sidecar_path_for(final))
+    assert side.status == "fatal"
+    assert side.stop_reason == "fatal_duckdb_insert"
+
+
+def test_publish_capture_complete_below_target_becomes_fatal(
+    tmp_path: Path,
+) -> None:
+    """Codex H2: complete + focal<turn_count → fatal_incomplete_before_target."""
+    from erre_sandbox.cli.eval_run_golden import (
+        CaptureResult,
+        _publish_capture,
+    )
+    from erre_sandbox.evidence.capture_sidecar import read_sidecar, sidecar_path_for
+
+    final = tmp_path / "kant_natural_run0.duckdb"
+    temp = final.with_suffix(final.suffix + ".tmp")
+    temp.write_bytes(b"under_budget")
+
+    result = CaptureResult(
+        run_id="kant_natural_run0",
+        output_path=temp,
+        total_rows=900,
+        focal_rows=300,
+        # No fatal_error, no soft_timeout — looks complete on its face.
+    )
+    code = _publish_capture(_make_publish_args(turn_count=500), result, temp, final)
+    assert code == 2  # escalated to fatal
+    assert temp.exists()
+    assert not final.exists()
+    side = read_sidecar(sidecar_path_for(final))
+    assert side.status == "fatal"
+    assert side.stop_reason == "fatal_incomplete_before_target"
+
+
+def test_resolve_output_paths_refuses_stale_tmp_with_partial_sidecar(
+    tmp_path: Path,
+) -> None:
+    """Codex HIGH-4 + M4: stale .tmp + valid sidecar requires --allow-partial-rescue."""
+    from erre_sandbox.cli.eval_run_golden import _resolve_output_paths
+    from erre_sandbox.evidence.capture_sidecar import (
+        SidecarV1,
+        sidecar_path_for,
+        write_sidecar_atomic,
+    )
+
+    output = tmp_path / "kant_natural_run0.duckdb"
+    stale_temp = output.with_suffix(output.suffix + ".tmp")
+    stale_temp.write_bytes(b"unfinished")
+    payload = SidecarV1.model_validate(
+        {
+            "schema_version": "1",
+            "status": "partial",
+            "stop_reason": "wall_timeout",
+            "focal_target": 500,
+            "focal_observed": 381,
+            "total_rows": 1158,
+            "wall_timeout_min": 360.0,
+            "drain_completed": True,
+            "runtime_drain_timeout": False,
+            "git_sha": "stale",
+            "captured_at": "2026-05-06T12:00:00Z",
+            "persona": "kant",
+            "condition": "natural",
+            "run_idx": 0,
+            "duckdb_path": str(output),
+        },
+    )
+    write_sidecar_atomic(sidecar_path_for(output), payload)
+
+    with pytest.raises(FileExistsError) as exc_info:
+        _resolve_output_paths(output, overwrite=False)
+    assert "allow-partial-rescue" in str(exc_info.value)
+    assert stale_temp.exists()  # not unlinked
+
+    # With the flag, both temp + sidecar are removed.
+    _resolve_output_paths(output, overwrite=False, allow_partial_rescue=True)
+    assert not stale_temp.exists()
+    assert not sidecar_path_for(output).exists()
+
+
+def test_resolve_output_paths_refuses_stale_tmp_with_corrupted_sidecar(
+    tmp_path: Path,
+) -> None:
+    """Codex M4: corrupted sidecar requires the stricter --force-rescue flag."""
+    from erre_sandbox.cli.eval_run_golden import _resolve_output_paths
+    from erre_sandbox.evidence.capture_sidecar import sidecar_path_for
+
+    output = tmp_path / "kant_natural_run0.duckdb"
+    stale_temp = output.with_suffix(output.suffix + ".tmp")
+    stale_temp.write_bytes(b"unfinished")
+    sidecar = sidecar_path_for(output)
+    sidecar.write_text("{this is not valid json", encoding="utf-8")
+
+    # --allow-partial-rescue is NOT enough.
+    with pytest.raises(FileExistsError) as exc_info:
+        _resolve_output_paths(
+            output,
+            overwrite=False,
+            allow_partial_rescue=True,
+        )
+    assert "force-rescue" in str(exc_info.value)
+    assert stale_temp.exists()
+
+    # --force-rescue does the job.
+    _resolve_output_paths(output, overwrite=False, force_rescue=True)
+    assert not stale_temp.exists()
+    assert not sidecar.exists()
+
+
+def test_capture_natural_runtime_task_exception_becomes_fatal() -> None:
+    """Codex H2: an exception inside ``runtime.run()`` must surface as fatal.
+
+    The previous implementation re-raised through ``asyncio.wait_for`` and
+    dropped the trace on the floor, so the capture appeared complete with
+    no sidecar trail. The new finally block converts it via
+    :meth:`_SinkState.set_fatal`.
+    """
+    from erre_sandbox.cli.eval_run_golden import _derive_stop_reason, _SinkState
+
+    state = _SinkState()
+    state.drain_completed = False
+    state.set_fatal("runtime_task raised: RuntimeError('boom')")
+    assert state.fatal_error is not None
+    assert _derive_stop_reason(state) == "fatal_runtime_exception"
+
+
+def test_sink_state_set_soft_timeout_after_fatal_raises() -> None:
+    """fatal-precedence policy: soft timeout must refuse once fatal landed.
+
+    Code reviewer 2026-05-06 MEDIUM: this is the core invariant of
+    :class:`_SinkState`; a regression silently allows wall budget to mask
+    a fatal capture and publish status=partial.
+    """
+    from erre_sandbox.cli.eval_run_golden import _SinkState
+
+    state = _SinkState()
+    state.set_fatal("duckdb insert failed: deadlock")
+    with pytest.raises(AssertionError):
+        state.set_soft_timeout("wall timeout (360 min) exceeded")
+    # State stays consistent: fatal preserved, soft_timeout untouched.
+    assert state.fatal_error == "duckdb insert failed: deadlock"
+    assert state.soft_timeout is None
+
+
+def test_sink_state_drain_timeout_after_wall_escalates_to_fatal() -> None:
+    """Codex Q1: wall timeout + drain timeout → fatal precedence wins.
+
+    Mirrors the ``capture_natural`` finally block: the watchdog records a
+    soft_timeout, then ``runtime.stop()`` + ``wait_for(...)`` raises
+    ``TimeoutError`` which sets ``fatal_error`` even though
+    ``soft_timeout`` is already non-None. ``_resolve_publish_outcome``
+    must then publish ``status=fatal`` (refuse rename, return 2).
+    """
+    from erre_sandbox.cli.eval_run_golden import (
+        CaptureResult,
+        _resolve_publish_outcome,
+        _SinkState,
+    )
+
+    state = _SinkState()
+    state.set_soft_timeout("wall timeout (360 min) exceeded")
+    state.drain_completed = False
+    state.runtime_drain_timeout = True
+    # Simulate the drain finally calling set_fatal: ``set_fatal`` writes
+    # ``fatal_error`` regardless of soft_timeout (fatal precedence).
+    state.set_fatal("runtime drain exceeded 60.0s")
+    assert state.fatal_error is not None
+    assert state.soft_timeout is not None  # both fields preserved
+
+    result = CaptureResult(
+        run_id="kant_natural_run0",
+        output_path=Path("/tmp/kant_natural_run0.duckdb.tmp"),  # noqa: S108
+        total_rows=42,
+        focal_rows=10,
+        fatal_error=state.fatal_error,
+        soft_timeout=state.soft_timeout,
+        partial_capture=False,
+        stop_reason="fatal_drain_timeout",
+        drain_completed=False,
+        runtime_drain_timeout=True,
+    )
+    status, stop_reason = _resolve_publish_outcome(result, focal_target=500)
+    assert status == "fatal"
+    assert stop_reason == "fatal_drain_timeout"

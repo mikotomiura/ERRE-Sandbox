@@ -56,19 +56,26 @@ import asyncio
 import contextlib
 import logging
 import random
+import subprocess
 import sys
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, assert_never, cast
 
 import duckdb
 import yaml
 
 from erre_sandbox.cognition import CognitionCycle, Reflector
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
+from erre_sandbox.evidence.capture_sidecar import (
+    SidecarV1,
+    read_sidecar,
+    sidecar_path_for,
+    write_sidecar_atomic,
+)
 from erre_sandbox.evidence.eval_store import (
     atomic_temp_rename,
     bootstrap_schema,
@@ -106,6 +113,9 @@ from erre_sandbox.world import WorldRuntime
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Literal
+
+    from erre_sandbox.evidence.capture_sidecar import CaptureStatus, StopReason
 
 logger = logging.getLogger(__name__)
 
@@ -128,12 +138,18 @@ v2 ``COOLDOWN_TICKS_EVAL=5`` and ``dialog_turn_budget=6``, one effective
 cycle is ~11 ticks ≈ 22 min wall, so 120 min wall yields ~5 cycles ⇒
 focal ≈ 24/cell as a conservative lower bound (design-natural-gating-fix-v2.md
 §5.1). 60 min was rejected by Codex review (Q3) as below the conservative
-margin; operators may still override via ``--wall-timeout-min``.
+margin; operators may still override via ``--wall-timeout-min``. Hard
+wall-clock cap for one capture, primarily natural condition.
 """
-"""Hard wall-clock cap for one capture, primarily natural condition."""
 
-_RUNTIME_DRAIN_GRACE_S: Final[float] = 30.0
-"""Seconds to await ``runtime_task`` after ``runtime.stop()`` (Codex HIGH-6)."""
+_RUNTIME_DRAIN_GRACE_S: Final[float] = 60.0
+"""Seconds to await ``runtime_task`` after ``runtime.stop()`` (Codex HIGH-6).
+
+m9-eval-cli-partial-fix (Codex M2, 2026-05-06) raised this from 30.0 to 60.0
+because the natural-condition cognition tick is ≈ 120 s/tick on qwen3:8b
+Q4_K_M; a 30 s grace promotes too many in-flight ticks to fatal. The cost
+is +30 s × N(cell) ≈ +15 min over a 30-cell P3 sweep — negligible against
+the run1 wall budget (≈ 10 h)."""
 
 _AGENT_ID_FMT: Final[str] = "a_{persona_id}_001"
 """Mirrors :func:`erre_sandbox.bootstrap._build_initial_state` agent id shape."""
@@ -192,7 +208,26 @@ class CaptureResult:
     """Returned from :func:`capture_stimulus` / :func:`capture_natural`.
 
     Used by the unit tests to assert row counts and selection metadata
-    without re-opening the DuckDB file.
+    without re-opening the DuckDB file. The post-ME-9 fields encode the
+    partial / fatal / complete trichotomy the sidecar persists:
+
+    ``soft_timeout``
+        Set when the watchdog hit ``--wall-timeout-min`` without reaching
+        ``focal_target``. Mutually exclusive with ``fatal_error``.
+    ``partial_capture``
+        True iff ``soft_timeout is not None`` (cached for callers).
+    ``stop_reason``
+        Concrete reason the run terminated; pinned to
+        :data:`erre_sandbox.evidence.capture_sidecar.StopReason`.
+    ``drain_completed`` / ``runtime_drain_timeout``
+        Whether ``runtime.stop()`` finished within
+        ``_RUNTIME_DRAIN_GRACE_S``; ``True / False`` is the normal pair,
+        ``False / True`` indicates a drain timeout (= fatal).
+    ``selected_stimulus_ids``
+        **Planned** stratified slice ids (Codex L1, 2026-05-06). Records
+        what the run *intended* to consume so a partial run is replay-
+        reproducible; the actually-observed subset is left to the audit
+        layer / future ``event_log`` field.
     """
 
     run_id: str
@@ -200,6 +235,11 @@ class CaptureResult:
     total_rows: int
     focal_rows: int
     fatal_error: str | None = None
+    soft_timeout: str | None = None
+    partial_capture: bool = False
+    stop_reason: StopReason = "complete"
+    drain_completed: bool = True
+    runtime_drain_timeout: bool = False
     selected_stimulus_ids: list[str] = field(default_factory=list)
 
 
@@ -210,12 +250,75 @@ class _SinkState:
     The DuckDB sink owns the writes; counters here let async watchers /
     sync assertions reach the same numbers without poking at DuckDB
     mid-flight.
+
+    ``fatal_error`` and ``soft_timeout`` follow a **fatal-precedence**
+    policy (Codex Q1 / M1, 2026-05-06): a fatal can land after a soft
+    timeout (e.g. drain-grace expired after the wall budget already
+    fired), and the capture must then refuse atomic rename. Conversely,
+    once a fatal is recorded, ``set_soft_timeout`` is treated as a logic
+    bug. :meth:`set_fatal` / :meth:`set_soft_timeout` are the canonical
+    write paths and keep the policy machine-checked rather than relying
+    on review of every assignment.
+
+    ``drain_completed`` / ``runtime_drain_timeout`` mirror the names used
+    on :class:`CaptureResult` for the sidecar payload; a clean drain is
+    the default and the finally block flips them on TimeoutError.
     """
 
     total: int = 0
     focal: int = 0
     fatal_error: str | None = None
+    soft_timeout: str | None = None
+    drain_completed: bool = True
+    runtime_drain_timeout: bool = False
     last_zone_by_speaker: dict[str, str] = field(default_factory=dict)
+
+    def set_fatal(self, reason: str) -> None:
+        """Record a fatal failure (first call wins; later calls are ignored)."""
+        if self.fatal_error is None:
+            self.fatal_error = reason
+
+    def set_soft_timeout(self, reason: str) -> None:
+        """Record a wall (soft) timeout; refuses if a fatal already landed.
+
+        First call wins for soft timeouts as well — re-entry from a noisy
+        watchdog loop is a bug but does not corrupt state.
+        """
+        if self.fatal_error is not None:
+            msg = (
+                f"set_soft_timeout({reason!r}) called after fatal_error"
+                f" ({self.fatal_error!r}); fatal must take precedence"
+            )
+            raise AssertionError(msg)
+        if self.soft_timeout is None:
+            self.soft_timeout = reason
+
+
+def _derive_stop_reason(state: _SinkState) -> StopReason:  # noqa: PLR0911
+    """Map the in-process ``_SinkState`` to a canonical ``StopReason``.
+
+    Pure helper so :func:`capture_stimulus` / :func:`capture_natural` and
+    the CLI driver agree on how a fatal_error string maps to the published
+    Literal. ``fatal_incomplete_before_target`` is *not* derivable here —
+    that branch needs ``args.turn_count`` and is decided by
+    :func:`_async_main` after the run returns.
+    """
+    if state.fatal_error is not None:
+        msg = state.fatal_error
+        if "duckdb insert" in msg:
+            return "fatal_duckdb_insert"
+        if "ollama unreachable" in msg:
+            return "fatal_ollama"
+        if "runtime drain exceeded" in msg:
+            return "fatal_drain_timeout"
+        if "runtime_task raised" in msg:
+            return "fatal_runtime_exception"
+        # Default fatal bucket — keeps the Literal closed without losing
+        # the actual error text (sidecar persists ``fatal_error`` verbatim).
+        return "fatal_runtime_exception"
+    if state.soft_timeout is not None:
+        return "wall_timeout"
+    return "complete"
 
 
 # ---------------------------------------------------------------------------
@@ -467,7 +570,7 @@ def _make_duckdb_sink(
                 ),
             )
         except duckdb.Error as exc:
-            state.fatal_error = f"duckdb insert failed: {exc!r}"
+            state.set_fatal(f"duckdb insert failed: {exc!r}")
             raise CaptureFatalError(state.fatal_error) from exc
 
         state.total += 1
@@ -596,12 +699,28 @@ def _initial_state_for_natural(persona: PersonaSpec) -> AgentState:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_output_paths(output: Path, *, overwrite: bool) -> tuple[Path, Path]:
+def _resolve_output_paths(
+    output: Path,
+    *,
+    overwrite: bool,
+    allow_partial_rescue: bool = False,
+    force_rescue: bool = False,
+) -> tuple[Path, Path]:
     """Return ``(temp_path, final_path)`` for the staged write protocol.
 
     Refuses to clobber a pre-existing final file unless ``--overwrite`` is
     explicit. The ``.tmp`` sibling is removed up-front so a stale temp from
-    a previous failed run cannot poison this capture's CHECKPOINT.
+    a previous failed run cannot poison this capture's CHECKPOINT, **but**
+    only after the operator acknowledges what is being discarded:
+
+    * stale ``.tmp`` with a *valid* sidecar (status=partial / fatal):
+      requires ``--allow-partial-rescue`` (Codex HIGH-4, 2026-05-06).
+    * stale ``.tmp`` with a *corrupted* sidecar (Pydantic ValidationError
+      or unreadable JSON): requires ``--force-rescue`` (Codex M4); the
+      sidecar represents an unknown state and ``--allow-partial-rescue``
+      alone is too weak.
+    * stale ``.tmp`` with no sidecar (legacy or pre-ME-9 capture): unlinks
+      silently, matching the pre-ADR behaviour.
     """
     output = output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -610,6 +729,39 @@ def _resolve_output_paths(output: Path, *, overwrite: bool) -> tuple[Path, Path]
         raise FileExistsError(msg)
     temp = output.with_suffix(output.suffix + ".tmp")
     if temp.exists():
+        sidecar = sidecar_path_for(output)
+        if sidecar.exists():
+            try:
+                payload = read_sidecar(sidecar)
+            except Exception as exc:
+                if not force_rescue:
+                    msg = (
+                        f"stale {temp!s} found with corrupted sidecar"
+                        f" {sidecar!s} ({exc!r}); pass --force-rescue to"
+                        " unlink, or recover the sidecar manually first"
+                    )
+                    raise FileExistsError(msg) from exc
+                logger.warning(
+                    "force-rescue: discarding %s + corrupted sidecar %s (%s)",
+                    temp,
+                    sidecar,
+                    exc,
+                )
+            else:
+                if not allow_partial_rescue:
+                    msg = (
+                        f"stale {temp!s} found with sidecar"
+                        f" status={payload.status!r};"
+                        " pass --allow-partial-rescue to unlink, or"
+                        " rescue/audit the partial capture manually first"
+                    )
+                    raise FileExistsError(msg)
+                logger.warning(
+                    "allow-partial-rescue: discarding %s (sidecar status=%s)",
+                    temp,
+                    payload.status,
+                )
+            sidecar.unlink()
         temp.unlink()
     return temp, output
 
@@ -802,6 +954,11 @@ async def capture_stimulus(  # noqa: C901, PLR0915 — composition glue mirrors 
         total_rows=state.total,
         focal_rows=state.focal,
         fatal_error=state.fatal_error,
+        soft_timeout=state.soft_timeout,
+        partial_capture=False,  # stimulus has no wall-timeout path
+        stop_reason=_derive_stop_reason(state),
+        drain_completed=True,  # stimulus has no async runtime drain
+        runtime_drain_timeout=False,
         selected_stimulus_ids=selected_ids,
     )
 
@@ -873,13 +1030,16 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         await inference.health_check()
     except OllamaUnavailableError as exc:
         logger.exception("ollama health check failed for natural capture")
-        state.fatal_error = f"ollama unreachable: {exc!r}"
+        state.set_fatal(f"ollama unreachable: {exc!r}")
         return CaptureResult(
             run_id=run_id,
             output_path=temp_path,
             total_rows=0,
             focal_rows=0,
             fatal_error=state.fatal_error,
+            stop_reason="fatal_ollama",
+            drain_completed=state.drain_completed,
+            runtime_drain_timeout=state.runtime_drain_timeout,
         )
 
     retriever = Retriever(memory, embedding)
@@ -990,8 +1150,12 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
                 logger.info("runtime task exited before focal budget")
                 return
             if time.monotonic() >= wall_deadline:
-                state.fatal_error = f"wall timeout ({wall_timeout_min} min) exceeded"
-                logger.error(state.fatal_error)
+                # ME-9 / Codex HIGH-3 (2026-05-06): wall budget = soft timeout,
+                # not fatal. The capture publishes as ``status=partial`` while
+                # the audit gate keeps it out of complete-runs aggregation.
+                msg = f"wall timeout ({wall_timeout_min} min) exceeded"
+                state.set_soft_timeout(msg)
+                logger.warning(msg)
                 return
             await asyncio.sleep(0.5)
 
@@ -1002,12 +1166,21 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         try:
             await asyncio.wait_for(runtime_task, timeout=_RUNTIME_DRAIN_GRACE_S)
         except TimeoutError:
-            state.fatal_error = (
-                state.fatal_error or f"runtime drain exceeded {_RUNTIME_DRAIN_GRACE_S}s"
-            )
+            # Codex Q1 (2026-05-06): drain incomplete = fatal regardless of
+            # wall budget — checkpoint/close cannot be guaranteed, so silent
+            # publish of a torn DuckDB file is unsafe.
+            state.drain_completed = False
+            state.runtime_drain_timeout = True
+            state.set_fatal(f"runtime drain exceeded {_RUNTIME_DRAIN_GRACE_S}s")
             runtime_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await runtime_task
+        except Exception as exc:  # noqa: BLE001 — Codex H2: capture unhandled
+            # Codex H2 (2026-05-06): an exception inside ``runtime.run()`` was
+            # previously re-raised by ``wait_for`` and dropped on the floor,
+            # so the capture appeared complete with no sidecar trail.
+            state.drain_completed = False
+            state.set_fatal(f"runtime_task raised: {exc!r}")
 
     write_with_checkpoint(con)
 
@@ -1023,6 +1196,11 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         total_rows=state.total,
         focal_rows=state.focal,
         fatal_error=state.fatal_error,
+        soft_timeout=state.soft_timeout,
+        partial_capture=(state.fatal_error is None and state.soft_timeout is not None),
+        stop_reason=_derive_stop_reason(state),
+        drain_completed=state.drain_completed,
+        runtime_drain_timeout=state.runtime_drain_timeout,
     )
 
 
@@ -1085,6 +1263,25 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Replace an existing --output file (default: refuse).",
     )
     parser.add_argument(
+        "--allow-partial-rescue",
+        action="store_true",
+        help=(
+            "Permit unlinking a stale <output>.tmp whose sidecar reports a"
+            " known partial / fatal status (default: refuse — protects"
+            " against silent loss of an in-progress rescue)."
+        ),
+    )
+    parser.add_argument(
+        "--force-rescue",
+        action="store_true",
+        help=(
+            "Permit unlinking a stale <output>.tmp whose sidecar is"
+            " corrupted or unreadable (default: refuse). Strictly stronger"
+            " than --allow-partial-rescue; reserved for unknown-state"
+            " recovery."
+        ),
+    )
+    parser.add_argument(
         "--ollama-host",
         default="http://127.0.0.1:11434",
         help="Ollama HTTP endpoint (default %(default)s).",
@@ -1133,7 +1330,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 async def _async_main(args: argparse.Namespace) -> int:
-    temp_path, final_path = _resolve_output_paths(args.output, overwrite=args.overwrite)
+    temp_path, final_path = _resolve_output_paths(
+        args.output,
+        overwrite=args.overwrite,
+        allow_partial_rescue=args.allow_partial_rescue,
+        force_rescue=args.force_rescue,
+    )
     logger.info(
         "capture begin persona=%s condition=%s run_idx=%d turn_count=%d "
         "temp=%s final=%s",
@@ -1173,31 +1375,132 @@ async def _async_main(args: argparse.Namespace) -> int:
             personas_dir=args.personas_dir,
         )
 
-    if result.fatal_error is not None:
-        logger.error(
-            "capture FAILED persona=%s condition=%s run_idx=%d "
-            "total=%d focal=%d reason=%s",
-            args.persona,
-            args.condition,
-            args.run_idx,
-            result.total_rows,
-            result.focal_rows,
-            result.fatal_error,
-        )
-        # Leave temp_path on disk for inspection; refuse the atomic rename.
-        return 2
+    return _publish_capture(args, result, temp_path, final_path)
 
-    atomic_temp_rename(temp_path, final_path)
-    logger.info(
-        "capture OK persona=%s condition=%s run_idx=%d total=%d focal=%d output=%s",
-        args.persona,
-        args.condition,
-        args.run_idx,
-        result.total_rows,
-        result.focal_rows,
-        final_path,
+
+def _publish_capture(
+    args: argparse.Namespace,
+    result: CaptureResult,
+    temp_path: Path,
+    final_path: Path,
+) -> int:
+    """Pick status / stop_reason, write sidecar, and atomically publish.
+
+    The 3-way split (complete / partial / fatal) is encoded as a Python
+    ``match`` so :func:`typing.assert_never` flags any future
+    ``CaptureStatus`` Literal addition that misses a branch (Codex L3,
+    2026-05-06).
+    """
+    status, stop_reason = _resolve_publish_outcome(result, args.turn_count)
+    sidecar_path = sidecar_path_for(final_path)
+    payload = SidecarV1(
+        status=status,
+        stop_reason=stop_reason,
+        focal_target=int(args.turn_count),
+        focal_observed=int(result.focal_rows),
+        total_rows=int(result.total_rows),
+        wall_timeout_min=float(args.wall_timeout_min),
+        drain_completed=result.drain_completed,
+        runtime_drain_timeout=result.runtime_drain_timeout,
+        git_sha=_git_sha_short(),
+        captured_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        persona=str(args.persona),
+        # argparse ``choices=("stimulus", "natural")`` narrows this at
+        # runtime; the cast tells the static checker the same thing.
+        condition=cast("Literal['stimulus', 'natural']", args.condition),
+        run_idx=int(args.run_idx),
+        duckdb_path=str(final_path),
     )
-    return 0
+    write_sidecar_atomic(sidecar_path, payload)
+
+    typed_status: CaptureStatus = status
+    match typed_status:
+        case "complete":
+            atomic_temp_rename(temp_path, final_path)
+            logger.info(
+                "capture OK persona=%s condition=%s run_idx=%d"
+                " total=%d focal=%d sidecar=%s output=%s",
+                args.persona,
+                args.condition,
+                args.run_idx,
+                result.total_rows,
+                result.focal_rows,
+                sidecar_path,
+                final_path,
+            )
+            return 0
+        case "partial":
+            atomic_temp_rename(temp_path, final_path)
+            logger.warning(
+                "capture PARTIAL (%s) persona=%s condition=%s run_idx=%d"
+                " total=%d focal=%d/%d sidecar=%s output=%s",
+                stop_reason,
+                args.persona,
+                args.condition,
+                args.run_idx,
+                result.total_rows,
+                result.focal_rows,
+                args.turn_count,
+                sidecar_path,
+                final_path,
+            )
+            return 3
+        case "fatal":
+            logger.error(
+                "capture FAILED (%s) persona=%s condition=%s run_idx=%d"
+                " total=%d focal=%d reason=%s sidecar=%s",
+                stop_reason,
+                args.persona,
+                args.condition,
+                args.run_idx,
+                result.total_rows,
+                result.focal_rows,
+                result.fatal_error,
+                sidecar_path,
+            )
+            # Leave temp_path on disk for inspection; refuse atomic rename.
+            return 2
+        case _:  # pragma: no cover — Literal exhaustiveness guard
+            assert_never(typed_status)
+
+
+def _resolve_publish_outcome(
+    result: CaptureResult,
+    focal_target: int,
+) -> tuple[CaptureStatus, StopReason]:
+    """Decide ``(status, stop_reason)`` from a returned :class:`CaptureResult`.
+
+    Encodes Codex H2 (2026-05-06): a complete branch with focal_rows below
+    target is escalated to ``fatal_incomplete_before_target`` so the
+    runtime-task path cannot publish a silent under-budget run.
+    """
+    if result.fatal_error is not None:
+        return "fatal", result.stop_reason
+    if result.soft_timeout is not None:
+        return "partial", "wall_timeout"
+    if result.focal_rows < focal_target:
+        return "fatal", "fatal_incomplete_before_target"
+    return "complete", "complete"
+
+
+def _git_sha_short() -> str:
+    """Return the current short git SHA, or ``"unknown"`` if unavailable.
+
+    Same-process invocation keeps the sidecar runtime independent of any
+    external env var (CI / launch wrapper). Failures (no repo, missing
+    git binary) degrade to ``"unknown"`` rather than blocking publish.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        return "unknown"
+    return out.stdout.strip() or "unknown"
 
 
 def main(argv: list[str] | None = None) -> int:

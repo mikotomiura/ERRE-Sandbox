@@ -38,6 +38,15 @@
 >
 > 本 prompt 全体の改訂は CLI fix PR merge 後の Mac セッションで実施
 > (`g-gear-p3-launch-prompt-v2.md` 起票予定)。
+>
+> ## 🛠 2026-05-06 追記 #2 — Phase 3 audit セクションは本 PR で更新済
+>
+> `m9-eval-cli-partial-fix` PR は `eval_audit` CLI を新設し、`eval_run_golden`
+> の return code 体系 (0/2/3) と sidecar `<output>.duckdb.capture.json` v1
+> を実装した。本 prompt §Phase 3 のコマンド例とフラグは新 contract に書き換え
+> 済 (旧 `--golden-dir` / `--expected-personas` 等は廃止、`--duckdb-glob` +
+> `--focal-target` + `--report-json` の 3 flag に集約)。Phase 1 / Phase 2 採取
+> 部分の wall budget / parallel 戦略の改訂は v2 prompt で扱う。
 
 ---
 
@@ -185,20 +194,53 @@ uv run python -m erre_sandbox.cli.eval_run_golden \
   --output "data/eval/golden/kant_natural_run${RUN}.duckdb" --overwrite
 ```
 
-### Phase 3 — eval_audit 完全性確認 (15 min、各 cell)
+### Phase 3 — eval_audit 完全性確認 (10 min、batch mode)
+
+`m9-eval-cli-partial-fix` (ME-9 ADR、CLI fix PR 適用後) で実装された
+`eval_audit` CLI は以下を機械検証する:
+
+- **sidecar `<output>.duckdb.capture.json` の存在** (return 4 = legacy 互換区別)
+- **DuckDB row 数 vs sidecar の整合性** (return 5 = `total_rows` /
+  `focal_observed` mismatch)
+- **同一 run 性** (return 5 = `SELECT DISTINCT run_id` が
+  `f"{persona}_{condition}_run{run_idx}"` と不一致、Codex H1 反映)
+- **status × focal_target** (return 0 = PASS、return 6 = incomplete または
+  partial without `--allow-partial`)
 
 ```bash
-# 全 30 cell に対し row 数完全性確認 (3 persona × 5 run × 500 turn = 7500 focal)
+# 全 30 cell batch audit (新 contract)
 uv run python -m erre_sandbox.cli.eval_audit \
-  --golden-dir data/eval/golden \
-  --expected-personas kant nietzsche rikyu \
-  --expected-runs 0 1 2 3 4 \
-  --expected-conditions stimulus natural \
-  --min-focal-per-cell 500 \
-  --report data/eval/golden/_audit.json
-# 全 cell focal>=500、total>=focal、dialog_count > 0 を期待
-# 失敗時は当該 cell を再採取
+  --duckdb-glob 'data/eval/golden/*_run*.duckdb' \
+  --focal-target 500 \
+  --report-json data/eval/golden/_audit.json
+# overall_exit_code = max(single-cell exit code) を返す。
+# 0 → 全 cell PASS、再採取不要
+# 4 → どこかに sidecar 欠損 (legacy 経由?)、当該 cell を再採取
+# 5 → row count / run_id mismatch、当該 cell を再採取
+# 6 → focal<500 または partial 残り、当該 cell を `--wall-timeout-min` 拡張で再採取
 ```
+
+**partial cell の diagnostic mode**:
+
+```bash
+# Phase 2 run0 incident のような partial 群を別運用したい場合
+uv run python -m erre_sandbox.cli.eval_audit \
+  --duckdb-glob 'data/eval/partial/*_run0.duckdb' \
+  --focal-target 500 \
+  --allow-partial \
+  --report-json data/eval/partial/_audit.json
+# partial を return 0 として通すが primary 5-runs matrix からは外す。
+# `data/eval/partial/` 隔離の運用は ME-9 ADR どおり。
+```
+
+`eval_run_golden` 側の return code 体系 (新):
+
+| code | 意味 | rename | sidecar |
+|---|---|---|---|
+| 0 | complete (focal_target 到達) | allow | status=complete |
+| 2 | fatal (DuckDB INSERT / Ollama / drain timeout / runtime exception / focal 未達) | refuse | status=fatal |
+| 3 | partial (wall timeout、focal < target) | allow | status=partial |
+| 130 | Ctrl-C | (現状維持) | (現状維持) |
 
 ### Phase 4 — Mac へ rsync (ME-2 protocol、~5 min)
 
