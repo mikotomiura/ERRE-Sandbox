@@ -2,8 +2,8 @@
   "daily_token_budget": 1000000,
   "per_invocation_max": 200000,
   "today": {
-    "date": "2026-05-05",
-    "used": 80837,
+    "date": "2026-05-06",
+    "used": 281778,
     "invocations": 1
   },
   "policy": {
@@ -50,6 +50,14 @@
       "tokens": 80837,
       "per_invocation_max_overrun": 0,
       "policy_action": "ok (per_invocation_max=200K 内)"
+    },
+    {
+      "date": "2026-05-06",
+      "task": "20260430-m9-eval-system",
+      "purpose": "Phase 2 run0 wall-timeout incident review (HIGH 4 / MEDIUM 3 / Verdict: revise — Claude 4 HIGH 全反映必須)",
+      "tokens": 281778,
+      "per_invocation_max_overrun": 81778,
+      "policy_action": "warn (個人プロジェクト規定どおり、4 HIGH 切出のため value 大)"
     }
   ]
 }
