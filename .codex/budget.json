@@ -3,8 +3,8 @@
   "per_invocation_max": 200000,
   "today": {
     "date": "2026-05-06",
-    "used": 281778,
-    "invocations": 1
+    "used": 433631,
+    "invocations": 2
   },
   "policy": {
     "on_overrun": "warn",
@@ -58,6 +58,14 @@
       "tokens": 281778,
       "per_invocation_max_overrun": 81778,
       "policy_action": "warn (個人プロジェクト規定どおり、4 HIGH 切出のため value 大)"
+    },
+    {
+      "date": "2026-05-06",
+      "task": "20260506-m9-eval-cli-partial-fix",
+      "purpose": "案 A' (案 A + Pydantic validator) 着手前 review (HIGH 2 / MEDIUM 4 / LOW 3 / Verdict: Adopt-with-changes)",
+      "tokens": 151853,
+      "per_invocation_max_overrun": 0,
+      "policy_action": "ok (per_invocation_max=200K 内)"
     }
   ]
 }
