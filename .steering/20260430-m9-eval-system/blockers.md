@@ -214,22 +214,52 @@ MEDIUM (詳細 `codex-review-phase2-run0-timeout.md`):
 
 ### 確定アクション (ME-9 ADR で確定、本 incident block 期間中)
 
-1. **G-GEAR rescue verify** — `*.tmp` + `*.tmp.wal` 存在 + read 可確認
-2. **CLI fix + audit CLI PR** (Phase B、別セッションで `/start-task
+1. ✅ **G-GEAR rescue verify** — `*.tmp` + `*.tmp.wal` 存在 + read 可確認
+   (2026-05-06 完了、結果は下記)
+2. ⏳ **CLI fix + audit CLI PR** (Phase B、別セッションで `/start-task
    m9-eval-cli-partial-fix` 等で新規 task 化)
-3. **run1 calibration** — 600 min single (kant のみ 1 cell)、120/240/360/480 min
+3. ⏳ **run1 calibration** — 600 min single (kant のみ 1 cell)、120/240/360/480 min
    時点で focal/total/sqlite/Ollama latency 記録
-4. **run2-4 budget 確定** — calibration 結果で確定後 3-parallel × 2-3 overnight
-5. **run0 再採取** — 500 focal target、partial は `data/eval/partial/` 隔離
+4. ⏳ **run2-4 budget 確定** — calibration 結果で確定後 3-parallel × 2-3 overnight
+5. ⏳ **run0 再採取** — 500 focal target、partial は `data/eval/partial/` 隔離
    保存 (primary に昇格しない)
+
+### G-GEAR rescue verify 結果 (2026-05-06)
+
+**判定**: **PASS** (3/3 cells full match)
+**source path**: `data/eval/golden/` (Phase 2 採取時の output 先)
+**stash path**: `data/eval/partial-stash-2026-05-06/` (G-GEAR local、cp で非破壊保全)
+**証跡**: PR #138 (commit `e474f5a`)、`scripts/p3_run0_rescue_verify.py` +
+`data/eval/partial-stash-2026-05-06/p3_run0_rescue_report.{json,md5}`
+
+| persona | .tmp | .tmp.wal | read_ok | actual_focal | actual_total | match | dialog_count | max_tick |
+|---|---|---|---|---|---|---|---|---|
+| kant      | ✓ | ✗ | ✓ | 381  | 1158  | ✓ | 193 | 484 |
+| nietzsche | ✓ | ✗ | ✓ | 390  | 1169  | ✓ | 195 | 491 |
+| rikyu     | ✓ | ✗ | ✓ | 399  | 1182  | ✓ | (報告同梱) | (報告同梱) |
+
+**`.tmp.wal` 不在の解釈**: graceful wall-timeout path 通過時 `finally` で
+`runtime.stop()` + drain + `write_with_checkpoint(con)` が完走、CHECKPOINT で
+WAL を main file に統合済。Codex H4 が懸念した SIGKILL/OOM 経路は今回回避された
+(Codex H4 の確率分析 PASS シナリオ ~70% に該当)。
+
+**zone 分布の empirical 観測** (kant 例、本タスク本筋外だが Phase 4 解析素材):
+peripatos 421 / study 377 / chashitsu 186 / garden 157 / agora 17。3 persona
+が AGORA spawn 後に zone 散布、各々の認知傾向で偏りを形成している。
+`p3_run0_rescue_report.json` 全文に nietzsche / rikyu 含む。
+
+**partial の取り扱い**: ME-9 ADR の通り primary 5 runs matrix から外す
+(Codex H2: prefix censoring で late-run signal 系統欠落)。CLI fix merge 後に
+`data/eval/partial/` (正式 path) へ移動 + `partial_capture=true` sidecar 付与、
+`partial/censored` diagnostic 専用として `M9-A audit` 等に活用候補。
 
 ### status
 
+- ✅ **track condition (1/2)**: G-GEAR rescue 結果 (PR #138 で PASS 証跡 commit)
+- ⏳ **track condition (2/2)**: CLI fix PR merge (別タスク `m9-eval-cli-partial-fix`)
 - **本タスク内 reopen 不要**: ME-9 ADR で確定、CLI fix は別タスクに切り出し
 - **defer 先**: `m9-eval-cli-partial-fix` (新規予定)、CLI fix 完了後
   本 incident は close
-- **track condition**: G-GEAR rescue 結果 (`.tmp` 救出可否) と CLI fix PR merge
-  完了の 2 条件で incident close
 
 ## 設計上の不確実性 (記録のみ、defer ではない)
 
