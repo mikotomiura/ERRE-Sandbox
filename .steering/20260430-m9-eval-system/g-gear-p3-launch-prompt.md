@@ -14,6 +14,33 @@
 
 ---
 
+> ## ⚠️ 2026-05-06 追記 — Phase 2 run0 incident で本 prompt は SUPERSEDED
+>
+> 2026-05-06 の Phase 2 run0 (3-parallel natural、wall=360 min) は 3 cell 全て
+> wall budget で FAILED 終了 (focal=381/390/399、prefix censoring)。Codex
+> `gpt-5.5 xhigh` 6 回目 review が Claude 単独案の HIGH 4 件を切出
+> (`codex-review-phase2-run0-timeout.md` verbatim)。
+>
+> **本 prompt の §Phase 2 採取と §ブロッカー予測 item 2 は不正確** (wall=360 を
+> 既定値、480 へ拡張で対応可と記載) のため、現状では **そのまま使わない**。
+> 正しい運用は ME-9 ADR (`decisions.md`) と `cli-fix-and-audit-design.md` を
+> 参照:
+>
+> 1. **CLI fix + `eval_audit` CLI** を別タスク (`m9-eval-cli-partial-fix`) で
+>    実装・merge してから本 launch を再開
+> 2. CLI fix merge 後、まず **run1 を 600 min single calibration** (kant のみ
+>    1 cell、3-parallel でない 1-only)、120/240/360/480 min で focal/total
+>    を sample。これで run2-4 の wall budget を empirical 確定
+> 3. run0 partial は **primary 5 runs matrix から外す**、`data/eval/partial/`
+>    隔離 + `partial_capture=true` sidecar 付き diagnostic 専用
+> 4. run0 を 500 focal で **再採取**、CLI fix の return code 0 を audit gate
+>    の必須条件に
+>
+> 本 prompt 全体の改訂は CLI fix PR merge 後の Mac セッションで実施
+> (`g-gear-p3-launch-prompt-v2.md` 起票予定)。
+
+---
+
 ## 本セッションで実行すること
 
 タスク `20260430-m9-eval-system` Phase **P3 — Golden baseline 採取** を G-GEAR で
@@ -256,9 +283,14 @@ grep -E "data/eval/(pilot|golden)" .gitignore
 
 1. **natural parallel kant drain timeout** (~50% 確率): pilot 既知。fallback は
    kant のみ sequential 再採取。
-2. **Ollama queue contention で per-tick latency 延長** (~30% 確率): 3-persona
-   parallel で qwen3:8b が共有されるため、wall=360 min でも focal=500 に届かない
-   ケース。対処: 該当 cell の `--wall-timeout-min` を 480 に拡張して再採取。
+2. **Ollama queue contention で per-tick latency 延長** (~~30%~~ **2026-05-06
+   実測 100% 発生**): 3-persona parallel で qwen3:8b が共有されるため、
+   wall=360 min でも focal=500 に届かない (run0 で 3/3 cell が focal=381-399
+   prefix censoring)。**~~480 拡張~~ も Codex H1 で計算根拠が破綻** (`65*8*0.85=442`
+   < 500)、**600 min 最低ライン**。対処は ME-9 ADR の通り CLI fix + run1
+   calibration → run2-4 budget empirical 確定の 3 段で進める。
+   詳細: `decisions.md` ME-9 / `blockers.md` "active incident: Phase 2 run0
+   wall-timeout (2026-05-06)" / `cli-fix-and-audit-design.md`
 3. **memory db corruption** (~5%): natural cell の sqlite が異常終了で破損。
    対処: `--memory-db` を新規パスに切り替えて再採取。
 4. **disk full** (~5%): G-GEAR 側 Ollama cache + 30 DuckDB (1MB × 30) +

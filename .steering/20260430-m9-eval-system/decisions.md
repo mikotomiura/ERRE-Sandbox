@@ -563,12 +563,101 @@ test 1 件は `-m eval` で別途検証 (single-shot 実測 PASS 確認済)。
 
 ---
 
+## ME-9 — Phase 2 run0 wall-timeout incident: CLI partial-publish contract + run1 calibration (Codex 2026-05-06 HIGH 4)
+
+- **決定**:
+  1. **CLI fix scope** (別タスク `m9-eval-cli-partial-fix` で実装、Plan +
+     /reimagine 必須):
+     - `_SinkState` に `soft_timeout: str | None` 追加 (現 `fatal_error` と分離)
+     - `CaptureResult` に `partial_capture: bool` + `stop_reason: str` +
+       `drain_completed: bool` 追加
+     - wall timeout path で `<output>.capture.json` sidecar 永続化 (schema:
+       `{status, stop_reason, focal_target, focal_observed, total_rows,
+       wall_timeout_min, drain_completed, runtime_drain_timeout, git_sha,
+       captured_at}`)
+     - `_async_main` return code: 0 (complete) / 2 (fatal、現状維持) /
+       **3 (partial_publish 新設)**
+     - `eval_audit` CLI 新設 (`src/erre_sandbox/cli/eval_audit.py`):
+       `focal >= target` AND `sidecar.status == "complete"` を機械的に gate、
+       partial は別 exit code で audit fail
+     - `_resolve_output_paths` の stale `.tmp` unlink 前に sidecar 存在 + status
+       チェック、partial salvage の意図を明示する flag (`--allow-partial-rescue`)
+       追加検討
+  2. **Phase 2 採取戦略**:
+     - run1 を **600 min single calibration cell** (kant のみ 1 cell、3-parallel
+       でない 1-only) で先行実行、120/240/360/480 min 時点で focal / total /
+       memory sqlite row count / Ollama latency を記録
+     - 結果から run2-4 の wall budget を empirical 確定 (Codex H1: 600 min が
+       最低ライン、安全率 0.85 で計算)
+     - run0 partial は **primary 5 runs matrix から外す** (Codex H2: prefix
+       censoring で memory growth / fatigue / prompt-length の late-run signal
+       系統欠落)、`data/eval/partial/` 隔離 + `partial_capture=true` sidecar 付き
+       diagnostic 専用
+     - run0 を 500 focal で **再採取** (CLI fix + audit CLI merge 完了後)
+  3. **G-GEAR rescue verify (Phase A、本 ADR 確定後即時)**: `.tmp` +
+     `.tmp.wal` 存在 + DuckDB read/count 検証を CLI fix 完了前に実施、結果を
+     `.steering/20260430-m9-eval-system/blockers.md` の incident block に記録
+
+- **根拠**:
+  - empirical 観測: 3 cell wall=360 min で focal=381/390/399 (76-80% prefix
+    censoring)、focal/hour ≈65、3-parallel contention 2.0x+ (事前推計 1.5x の
+    1.33x 過小評価)
+  - Codex `gpt-5.5 xhigh` review (`codex-review-phase2-run0-timeout.md`、
+    281,778 tokens、Verdict: revise) で Claude 単独案の 4 HIGH 級欠陥切出:
+    - H1 (480 min 不足): `65*8*0.85=442 < 500`、600 min 最低ライン
+    - H2 (run0 primary 採用 NG): wall-time prefix censoring は random missing
+      では無く、`width * sqrt(n / n_target)` (`scripts/p3a_decide.py:360` の
+      iid sample-mean 近似) の前提崩壊
+    - H3 (return 0 + canonical NG): HIGH-6 contract 違反、audit/analytics/
+      training egress が誤採用するリスク
+    - H4 (salvage-first NG): SIGKILL/OOM では `.tmp` も消失、stale `.tmp` は
+      次回起動で `unlink()`
+  - DuckDB doc: CHECKPOINT は WAL を main file 同期、CLI close も persistent
+    DB を checkpoint/close (Python `finally` 到達時のみ保証)
+
+- **棄却**:
+  - **Claude 単独案の 480 min budget continuation** (Codex H1) — 500 未達
+    濃厚で再 timeout 連鎖
+  - **Claude 単独案の sample-size correction で run0 primary 採用** (Codex H2) —
+    censoring 構造を無視した補正で late-run signal が体系的欠落
+  - **Claude 単独案の return 0 + canonical publish** (Codex H3) — partial と
+    complete の機械的区別不能、HIGH-6 contract 違反
+  - **salvage-first hybrid** (Codex H4) — `.tmp` は graceful path 限定保証で
+    SIGKILL/OOM 時に消失、CLI fix 完了前の run1 launch は同じ事故再発リスク
+  - **C 案 (turn=400 spec 下方修正)** — P3 spec stage 2 close 済 (PR #134) を
+    本 incident で覆すのは不適切、IPIP-NEO ICC sample size に余分な影響
+  - **D 案 (sequential 直列 wall=480)** — 1 cell 4.35h × 15 = 65h、2 overnight
+    で収まらず M9 milestone 全体延伸過大
+
+- **影響**:
+  - 新規タスク `m9-eval-cli-partial-fix` (`/start-task` で起票) で CLI fix +
+    `eval_audit` CLI を実装、本タスクから独立 PR 化
+  - 本タスク内では G-GEAR rescue verify (Phase A) のみ実施、run1 calibration
+    と run2-4 採取は CLI fix merge 後に再開
+  - `g-gear-p3-launch-prompt.md` 更新: wall budget guidance + run1 calibration
+    step 追加
+  - `data/eval/partial/` directory 新設 (run0 partial 隔離保存先)
+  - Phase 2 deadline 延伸 (推定 1-2 week、CLI fix PR + run1 calibration +
+    run0 再採取の累積)
+
+- **re-open 条件**:
+  - G-GEAR で `.tmp` 全消失 → run0 partial 救出不可、`partial/censored` 解析
+    自体を skip (本 incident close 条件のみ満たして次へ)
+  - run1 calibration で 120-min 単位 focal/hour rate が 65 を大きく外れる
+    (例: ≤55 / ≥80) → COOLDOWN_TICKS_EVAL や cognition_period の再調整 ADR
+    起票 (本 ADR の child)
+  - CLI fix 実装中に Codex の追加 HIGH 切出 → fix 設計の Plan + /reimagine で
+    再収束、本 ADR 改訂
+
+---
+
 ## ME-summary
 
-- 本 ADR **8 件** で Codex `gpt-5.5 xhigh` **4 回** review (2026-04-30 design.md MEDIUM 6 +
+- 本 ADR **9 件** で Codex `gpt-5.5 xhigh` **6 回** review (2026-04-30 design.md MEDIUM 6 +
   LOW 1 / 2026-05-01 LOW-1 RoleEval MEDIUM 5 + LOW 2 / 2026-05-01 P3a-decide gating
   fix LOW 2 / 2026-05-01 P3a-decide v2 cooldown × cognition_period HIGH 2 / MEDIUM 2 /
-  LOW 1) 全件に対応
+  LOW 1 / 2026-05-05 P3a-finalize HIGH 3 / MEDIUM 4 / LOW 4 / 2026-05-06 Phase 2
+  run0 wall-timeout HIGH 4 / MEDIUM 3) 全件に対応
 - ME-4 は P3a-decide セッションで **partial update**、natural 再採取後に **二度目の
   Edit が必要** (current state = bug fix done + script ready, ratio 確定は次回)
 - ME-7 は本タスク P2a で確定、stimulus YAML schema と MCQ scoring protocol を規定
