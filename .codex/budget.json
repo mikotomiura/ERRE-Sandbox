@@ -2,9 +2,9 @@
   "daily_token_budget": 1000000,
   "per_invocation_max": 200000,
   "today": {
-    "date": "2026-05-06",
-    "used": 433631,
-    "invocations": 2
+    "date": "2026-05-07",
+    "used": 176193,
+    "invocations": 1
   },
   "policy": {
     "on_overrun": "warn",
@@ -64,6 +64,14 @@
       "task": "20260506-m9-eval-cli-partial-fix",
       "purpose": "案 A' (案 A + Pydantic validator) 着手前 review (HIGH 2 / MEDIUM 4 / LOW 3 / Verdict: Adopt-with-changes)",
       "tokens": 151853,
+      "per_invocation_max_overrun": 0,
+      "policy_action": "ok (per_invocation_max=200K 内)"
+    },
+    {
+      "date": "2026-05-07",
+      "task": "20260507-m9-eval-phase2-run1-calibration-prompt",
+      "purpose": "run1 calibration v2 prompt 起票前 review (HIGH 3 / MEDIUM 3 / LOW 1 / Verdict: Adopt-with-changes、H1=stimulus cycle_count=3 で focal=264 fatal 発覚)",
+      "tokens": 176193,
       "per_invocation_max_overrun": 0,
       "policy_action": "ok (per_invocation_max=200K 内)"
     }

@@ -47,6 +47,17 @@
 > 済 (旧 `--golden-dir` / `--expected-personas` 等は廃止、`--duckdb-glob` +
 > `--focal-target` + `--report-json` の 3 flag に集約)。Phase 1 / Phase 2 採取
 > 部分の wall budget / parallel 戦略の改訂は v2 prompt で扱う。
+>
+> ## 🚦 2026-05-07 追記 #3 — v2 prompt が active、本 prompt は legacy reference
+>
+> **active prompt**: [`g-gear-p3-launch-prompt-v2.md`](g-gear-p3-launch-prompt-v2.md)
+>
+> v2 は ME-9 ADR の run1 calibration (kant only × 5 wall sequential、
+> run_idx=100..104) を §Phase A として組込み、§Phase B stimulus は Codex 7
+> 回目 review (HIGH 1) で発覚した `cycle_count=3` → focal=264 fatal 化問題に
+> 対し `cycle_count=6` を default 化、§Phase D audit/rsync は production と
+> calibration を exact glob で分離 + sidecar md5 を receipt に追加。本 v1 は
+> 履歴保存目的で残置、**新規 G-GEAR セッションは v2 を使うこと**。
 
 ---
 
