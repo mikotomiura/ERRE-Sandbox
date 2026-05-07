@@ -649,6 +649,49 @@ test 1 件は `-m eval` で別途検証 (single-shot 実測 PASS 確認済)。
   - CLI fix 実装中に Codex の追加 HIGH 切出 → fix 設計の Plan + /reimagine で
     再収束、本 ADR 改訂
 
+### Amendment 2026-05-07 — trigger zone の rate basis 明示 (擬陽性 trigger 修正)
+
+**根拠**: PR #141 merge 後の G-GEAR run1 calibration が cell 100 (wall=120 min、
+focal=195、rate=1.625/min ≈ 97.5/h) と cell 101 (wall=240 min、focal=383、
+rate=1.596/min ≈ 95.75/h) で **ME-9 trigger ≥80/h に該当**し、G-GEAR Claude が
+正規 STOP した。しかし Codex 9 回目 review (`.steering/20260507-m9-eval-
+cooldown-readjust-adr/codex-review-trigger-interpretation.md` verbatim、
+81,541 tok、Verdict: hybrid A/C) で **擬陽性 trigger** と判定:
+
+- 65/h trigger は **run0 incident の 3-parallel rate basis** 由来 (Codex H1 の
+  `65 × 8 × 0.85 = 442` 算出時の文脈)
+- run1 calibration は **kant single** で実行のため、observation の rate basis
+  が違う。本 amendment で明示する
+- pilot single (1.875/min) と run100/101 (1.625/1.596/min) は wall-duration
+  効果 (memory pressure 累積) で説明可能、`COOLDOWN_TICKS_EVAL=5` の失敗証拠
+  ではない
+
+**修正後の trigger zone**:
+
+| context | rate basis | central zone | trigger zone |
+|---|---|---|---|
+| **single calibration** (kant のみ、run_idx=100..104) | direct observation | 1.55-1.87 /min (= 93-112 /h) | < 1.20 /min or > 2.20 /min (= < 72 /h or > 132 /h) |
+| **3-parallel production** (kant+nietzsche+rikyu、run_idx=0..4) | direct observation | 0.92-1.20 /min (= 55-72 /h) | < 0.55-0.92 /min or > 1.20-1.33 /min (= < 33-55 /h or > 72-80 /h) |
+
+single → parallel 換算の contention factor は **暫定 1.5-1.76× の bracket**
+(pilot 16 min vs run0 360 min の mixed effect が含まれる、wall-aligned 校正は
+run102 (360 min single) 採取後に確定)。
+
+**run100/101 の評価 (amendment 適用後)**:
+- single calibration central zone (1.55-1.87/min) の **下限内**、擬陽性ではない
+- v2 prompt §Phase A.4 の linear 期待値 table は saturation model に更新
+  (Codex M1)、600 min single は 1.55-1.59/min が central 予測
+
+**新 child ADR の起票要否**: COOLDOWN_TICKS_EVAL や cognition_period の再調整は
+**不要** (Codex Q3 棄却)。run102 採取で contention factor を再校正、run2-4 wall
+budget を確定する流れで M9 Phase 2 を継続。
+
+**反映先**:
+- v2 prompt (`g-gear-p3-launch-prompt-v2.md`) の §Phase A.4 期待値 table と
+  §ブロッカー予測 B-1 を本 amendment に整合させて修正 (同 PR で同時 merge)
+- 旧 re-open 条件 (上記、≤55 / ≥80) は **本 amendment の trigger zone table で
+  上書き**、condition-aware に再定義
+
 ---
 
 ## ME-summary

@@ -175,18 +175,36 @@ uv run python -m erre_sandbox.cli.eval_audit \
 # 全 5 cell return 0 を期待 (run_id 整合性 + sidecar consistency)
 ```
 
-### A.4 期待値 table (1.87 focal/min single-rate 仮定)
+### A.4 期待値 table (saturation model、ME-9 Amendment 2026-05-07 反映)
 
-| run_idx | wall (min) | expected focal | sidecar status |
-|---|---|---|---|
-| 100 | 120 | 224 ± 15% (190-258) | partial |
-| 101 | 240 | 449 ± 15% (382-516) | partial |
-| 102 | 360 | 673 ± 15% (572-774) | partial |
-| 103 | 480 | 898 ± 15% (763-1033) | partial |
-| 104 | 600 | 1122 ± 15% (954-1290) | partial (turn-count=2000 で early stop しない) |
+旧版の linear 仮定 (`1.87/min × wall`) は 600 min まで外挿で過剰だった
+(Codex 9 回目 review M1)。run100/101 empirical で wall-duration 効果による
+rate decay が確認されたため、**saturation model** (exponential approach to
+asymptote、または `a + b/wall`) で再定義:
 
-実観測値が ±15% を大きく外れる場合は **§Phase A 結果解析** (下記) で
-計算する `focal_per_min_observed` を使って run2-4 wall budget を再決定する。
+| run_idx | wall (min) | central rate (/min) | central focal | range (focal、±15%) | sidecar status |
+|---|---|---|---|---|---|
+| 100 | 120 | 1.625 (run100 既観測) | 195 (確定) | — | partial |
+| 101 | 240 | 1.596 (run101 既観測) | 383 (確定) | — | partial |
+| 102 | 360 | 1.58-1.62 | 569-583 | 484-670 | partial |
+| 103 | 480 | 1.57-1.60 | 754-768 | 641-883 | partial |
+| 104 | 600 | 1.55-1.59 | 930-954 | 791-1097 | partial (turn-count=2000 で early stop しない) |
+
+`focal_per_min_observed` が central range を **大きく外れる場合のみ** §結果
+解析で wall budget 再決定。range 内なら default 600 min wall budget を採用。
+
+**ME-9 trigger zone の rate basis は context-dependent** (ME-9 Amendment
+2026-05-07):
+
+| context | central zone | trigger zone (STOP 該当) |
+|---|---|---|
+| **single calibration** (本 §Phase A、kant のみ) | 1.55-1.87 /min ≈ 93-112 /h | < 1.20 /min or > 2.20 /min ≈ < 72 /h or > 132 /h |
+| **3-parallel production** (§Phase C、kant+nietzsche+rikyu) | 0.92-1.20 /min ≈ 55-72 /h | < 0.55-0.92 /min or > 1.20-1.33 /min ≈ < 33-55 /h or > 72-80 /h |
+
+**run100/101 の解釈**: 1.625/1.596 /min は **single calibration central zone
+内** (1.55-1.87 /min)、擬陽性 trigger ではない。本 prompt 旧版 §ブロッカー
+予測 B-1 の `≥1.33/min` trigger は parallel rate basis を single rate に直接
+適用してしまった設計欠陥のため修正済 (下記 §ブロッカー予測 B-1)。
 
 ## Phase A 結果解析 (Mac 側、~30 min)
 
@@ -455,18 +473,54 @@ gh pr create --title "feat(eval): m9 — P3 golden baseline + run1 calibration" 
 
 ## ブロッカー予測 + fallback
 
-### B-1. run1 calibration で observed focal/min が ME-9 re-open trigger に該当 (≤55/h ≈ 0.92/min または ≥80/h ≈ 1.33/min)
+### B-1. run1 calibration で observed rate が trigger zone (rate basis 別) に該当
 
-**default 対応**: **C 案 (Codex review 起動 + child ADR 起票)** で停止。
-720 min 強行 (旧案 A) は ME-9 re-open trigger を空文化するため禁止 (Codex
-2026-05-07 review Q5 採用)。
+**ME-9 Amendment 2026-05-07 (`decisions.md` ME-9 末尾) で trigger zone を
+context-aware に再定義済**:
+
+| context | 該当する Phase | central zone | trigger zone (STOP 該当) |
+|---|---|---|---|
+| single calibration | §Phase A (kant のみ、run_idx=100..104) | 1.55-1.87 /min (= 93-112 /h) | < 1.20 /min or > 2.20 /min (= < 72 /h or > 132 /h) |
+| 3-parallel production | §Phase C (3 persona、run_idx=0..4) | 0.92-1.20 /min (= 55-72 /h) | < 0.55-0.92 /min or > 1.20-1.33 /min (= < 33-55 /h or > 72-80 /h) |
+
+**注意**: run0 incident (3-parallel 65/h ≈ 1.083/min) を起点にした旧 trigger
+(`≤55/h or ≥80/h`) は parallel rate basis 由来。本 §Phase A の single
+calibration では context が違うため、上記 single zone を使う。
+
+**default 対応 (trigger zone 真に該当した場合)**: **C 案 (Codex review 起動 +
+child ADR 起票)** で停止。実質 cooldown 過小 / 過剰の証拠と判断される場合のみ
+発動 (memory pressure 累積や wall-duration effect ではないことを切り分けてから):
 
 ```bash
 # 該当時の手順:
 # 1. G-GEAR で停止、Mac へ報告
 # 2. Mac で `/start-task m9-eval-cooldown-readjust-adr` を起票
-# 3. Codex `gpt-5.5 xhigh` review で再評価
+# 3. Codex `gpt-5.5 xhigh` review で再評価 (single vs parallel basis を整理)
 # 4. ADR 確定後、本 v2 prompt の §Phase A から再実行
+```
+
+### B-1b. run100/101 完了後の resume 手順 (本 prompt 修正後の追加経路、2026-05-07)
+
+**run100/101 既採取済かつ run102/103/104 未採取の状態から resume する場合**:
+
+```bash
+# G-GEAR、main 同期 + 既存 sidecar 確認後
+cd ~/ERRE-Sand\ Box
+git fetch origin && git checkout main && git pull --ff-only origin main
+ls -la data/eval/calibration/run1/kant_natural_run10[0-4].duckdb*
+
+# run102 を採取 (360 min single、run0 360 min parallel と直接比較するための
+# critical sample。Codex H3 で必須指定)
+uv run python -m erre_sandbox.cli.eval_run_golden \
+  --persona kant --run-idx 102 --condition natural \
+  --turn-count 2000 --wall-timeout-min 360 \
+  --memory-db /tmp/p3_calibration_kant_run102.sqlite \
+  --output data/eval/calibration/run1/kant_natural_run102.duckdb
+
+# 期待: focal ≈ 569-583 (saturation central)、range 484-670、return 3 partial
+
+# 同様に run103 (wall=480) → run104 (wall=600) を sequential 実行
+# A.4 期待値 table の central focal range 内なら正常継続
 ```
 
 ### B-2. kant drain timeout (3-parallel で再現)
