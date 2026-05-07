@@ -77,6 +77,22 @@ data/eval/golden/*.duckdb.tmp
 data/eval/golden/*.log
 data/eval/golden/*.snapshot.duckdb
 
+# m9-eval-system Phase 2 run1 calibration (kant-only × 5 wall sequential、
+# 2026-05-07 起点)。DuckDB binaries + sidecar JSON は local のみ、empirical
+# table と receipt のみ commit する (PR #140 blockers.md D-8、本 PR で適用)。
+data/eval/calibration/**/*.duckdb
+data/eval/calibration/**/*.duckdb.tmp
+data/eval/calibration/**/*.duckdb.capture.json
+data/eval/calibration/**/*.log
+data/eval/calibration/**/*.snapshot.duckdb
+
+# m9-eval-system partial captures (run0 incident 隔離など)。同 policy。
+data/eval/partial/**/*.duckdb
+data/eval/partial/**/*.duckdb.tmp
+data/eval/partial/**/*.duckdb.capture.json
+data/eval/partial/**/*.log
+data/eval/partial/**/*.snapshot.duckdb
+
 # m9-eval-system P3 dry-run artifacts (Phase 0 sanity capture).
 data/eval/_dryrun/
 
