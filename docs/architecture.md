@@ -352,3 +352,62 @@ semantic_memory に row だけ作る (検索対象外; m4-memory-semantic-layer 
 | gRPC 通信 | Unity など非 Python クライアント接続時 | gateway/ に gRPC サーバー追加 |
 | ZeroMQ | 状態配信 >10kHz 必要時 | gateway/ の transport 差し替え |
 | MoE 日本語モデル | 16GB 帯で安定した MoE が登場時 | inference/ のモデル設定変更 |
+
+## 9. 計画中アーキテクチャ (M10+、認知深化 7-point 提案 2026-05-08)
+
+> 詳細仕様は `.steering/20260508-cognition-deepen-7point-proposal/design-final.md`、
+> 採用判断 ADR は同 dir の `decisions.md` (DA-1〜DA-13) を参照。
+> Codex `gpt-5.5 xhigh` 197K-token independent review 反映済 (HIGH 7 / MEDIUM 5 /
+> LOW 3 全反映)。実装は **M9 完全終了後**に M10-0 から段階開始。
+
+### 9.1 思想 (operational thesis re-articulation)
+
+functional-design.md §1 の thesis 文言は変更しない。M10+ では operational に次のように
+再表現する:
+
+> **歴史的認知習慣を immutable substrate とする、観測可能に発達する人工個体** を作り、
+> その発達と original substrate の保存性を **同時に測定する**。
+
+`cognitive_habits` / LoRA-trained style / `persona_id` は drift 禁止。Individual layer
+(`world_model` / `belief` / `narrative` のみ) で発達する。これにより thesis 内部の緊張
+(「再実装」vs「創発」) を **drift 許容軸** で直交解消する。
+
+### 9.2 二層 architecture
+
+```
+agent = PhilosopherBase (immutable) + IndividualProfile (mutable)
+
+  PhilosopherBase: persona_id / cognitive_habits / default_sampling /
+                   preferred_zones / lora_adapter_id (M9-B target)
+  IndividualProfile: world_model / development_state / narrative_arc /
+                     personality_drift_offset
+```
+
+PhilosopherBase は M9-B LoRA を **そのまま** 学習対象にする (M10-A scaffold は feature
+flag default off、training/raw_dialog export への流入は M9-B baseline 後のみ)。
+
+### 9.3 不可侵原則
+
+- **LLM 自己宣言で内部状態が動かない**: LLM = 候補提示、Python = state transition。
+  stage advance / personality drift / belief promotion は observable evidence のみ駆動
+  (M7δ `maybe_promote_belief` pattern を踏襲)。ME-9 trigger 擬陽性 incident と同型構造を
+  全工程で排除する。
+- **prompt cache 保護**: SYSTEM = `_COMMON_PREFIX` + immutable `PhilosopherBase` block +
+  state tail で SGLang RadixAttention 共有 prefix を最大化。Individual の SWM 注入は
+  USER prompt 側の bounded top-K に限定。
+- **Burrows = base 保持専用**: multi-individual 同 base で同じ値が出るのが成功条件。
+  個体化は semantic centroid / belief variance / NarrativeArc drift など別 sidecar 系
+  で測る。
+
+### 9.4 phasing (M9 完全終了後にのみ着手)
+
+| Milestone | Scope (MVP) |
+|---|---|
+| M10-0 | 個体化 metric + dataset manifest + cache benchmark + prompt ordering contract |
+| M10-A | 二層 schema scaffold (feature flag default off、persona YAML rename しない) |
+| M10-B | read-only SubjectiveWorldModel synthesis + USER prompt 注入 (LLMPlan 未変更) |
+| M10-C | bounded `WorldModelUpdateHint` 投入 + `cited_memory_ids` verify |
+| M11-A | NarrativeArc + coherence_score (diagnostic only) |
+| M11-B | DevelopmentState S1→S2→S3 transition (Python indirect signal) |
+| M11-C | kant-base × 3 individuals validation (base 保持 + 個体化分離) |
+| M12+ gate | S4/S5、retirement、rebirth、multi-base society、individual LoRA |

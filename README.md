@@ -22,6 +22,17 @@ Trigger-event tags (M9-A) propagate from the Python `Reflector` to the
 
 Recent landmarks (newest first):
 
+- **Cognition-deepening 7-point decision** (2026-05-08, this PR — design only,
+  no source change): three-source synthesis (Claude initial Plan-mode +
+  independent reimagine subagent + Codex `gpt-5.5 xhigh` 197K-token review,
+  ADOPT-WITH-CHANGES, HIGH 7 / MEDIUM 5 / LOW 3) for a future two-layer
+  cognition architecture (`PhilosopherBase` immutable inheritance +
+  `IndividualProfile` mutable runtime + `SubjectiveWorldModel` /
+  `DevelopmentState` S1–S3 / `NarrativeArc` / bounded `WorldModelUpdateHint`).
+  Implementation is **gated to post-M9** (M10-0 metric scaffolding precedes
+  any schema work). Final spec lives in
+  `.steering/20260508-cognition-deepen-7point-proposal/design-final.md`;
+  ADRs in `decisions.md`. No effect on the running G-GEAR run1 calibration.
 - **M9-eval ME-9 trigger amendment** (2026-05-07, PR #142): the regular STOP
   observed at run1 cells 100/101 is classified as a false-positive trigger
   (Codex 9th review, hybrid A/C verdict); cooldown re-adjustment is rejected.
@@ -54,7 +65,12 @@ Recent landmarks (newest first):
 
 **Next milestones**: (1) M9-eval Phase 2 run1 wall-budget calibration on
 G-GEAR (kant single-cell × 5, ~30 h overnight × 2); (2) M9-B LoRA execution
-(`m9-c-spike`); (3) `godot-ws-keepalive` reliability work.
+(`m9-c-spike`); (3) `godot-ws-keepalive` reliability work. After M9 fully
+closes, **M10+ cognition-deepening** kicks off (M10-0 metrics → M10-A
+two-layer schema scaffold → M10-B SWM read-only → M10-C bounded
+`WorldModelUpdateHint` → M11-A `NarrativeArc` → M11-B S1–S3 transition →
+M11-C kant-base × 3 individuals validation; S4/S5 / retirement / individual
+LoRA gated to M12+).
 
 ## Key components
 

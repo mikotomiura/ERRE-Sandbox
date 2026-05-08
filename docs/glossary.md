@@ -51,6 +51,24 @@
 | eval_audit | Eval Audit Gate | M9-eval CLI gate (`python -m erre_sandbox.cli.eval_audit`)。capture sidecar + DuckDB を突合し PASS/FAIL を返す。batch mode (`--duckdb-glob`) の exit code は最悪 cell に揃う | M9-eval ME-9 ADR |
 | trigger_event | Trigger Event Tag | M9-A で追加された `ReasoningTrace.trigger_event: TriggerEventTag | None`。Reflector → gateway → Godot ReasoningPanel まで貫通し、観測者が反省発火の理由を視認できる | event-boundary-observability |
 
+## 計画中用語 (M10+、未実装)
+
+下記は 2026-05-08 の認知深化 7-point 提案で確定した用語。実装は M9 完全終了後に
+M10-0 → M11-C で段階投入される (詳細は
+`.steering/20260508-cognition-deepen-7point-proposal/design-final.md` 参照)。
+**実装着手まではこの section にのみ存在し、コード・schema には出現しない**。
+
+| 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
+|---|---|---|---|
+| 思想家ベース | PhilosopherBase | 一次史料由来の immutable inheritance 層。`cognitive_habits` / `default_sampling` / `preferred_zones` / `lora_adapter_id` を保持し drift 禁止。M9-B LoRA はこの層を学習する | M10-A、persona YAML wrapper |
+| 個体プロファイル | IndividualProfile | PhilosopherBase の上に乗る mutable runtime 個体。`world_model` / `development_state` / `narrative_arc` / `personality_drift_offset` を持つ | M10-A、agent_id とは別 entity |
+| 主観世界モデル | SubjectiveWorldModel | 5-axis (env / concept / self / norm / temporal) × bounded entries (上限 50/individual) の compressed 世界観。各 `WorldModelEntry` は `cited_memory_ids ≥ 1` 必須 | M10-A、AgentState 第一級 property |
+| 世界モデル更新ヒント | WorldModelUpdateHint | LLMPlan に additive 追加される bounded primitive。`direction: Literal["strengthen", "weaken", "no_change"]` の 3 値 + `cited_memory_ids` 必須。free-form 禁止で ME-9 同型 risk を構造排除 | M10-C、LLMPlan minor bump |
+| 発達状態 | DevelopmentState | S1_seed → S2_exploring → S3_consolidated の 3 段 + hidden `maturity_score` (continuous)。S4/S5 は M12+ gate。stage 遷移は Python indirect signal のみ駆動 | M11-B、shuhari_stage と axis 直交 |
+| 物語アーク | NarrativeArc | structured trajectory (≤ 5 ArcSegment) + `coherence_score` (発話と SWM の cosine sim)。free-form prose ではない (M12+ defer) | M11-A、chashitsu reflection 拡張 |
+| 成熟度スコア | Maturity Score | `[0, 1]` の連続値。DevelopmentState stage はこれの view であり、empirical evidence (memory volume + narrative coherence + belief stability の AND) で更新される | M11-B、preregister 必須 |
+| 個体化 metric | Individualization Metric | Burrows ratio が base style retention 専用となる代わりに、個体化を測る別系統 (semantic centroid distance / belief variance / NarrativeArc drift / Agent Identity Evals 型 perturbation recovery) | M10-0、M9-eval sidecar 拡張 |
+
 ## 略語
 
 | 略語 | 正式名称 | 意味 |
