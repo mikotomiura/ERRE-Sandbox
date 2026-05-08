@@ -3,7 +3,7 @@
 ## 1. ディレクトリ構成
 
 ```
-> **現状実装スナップショット (last verified 2026-04-28)**: 本ツリーは
+> **現状実装スナップショット (last verified 2026-05-08)**: 本ツリーは
 > `find src tests godot_project personas fixtures docs .claude .agents` 実態を反映する。
 > `[planned]` ラベルは将来追加予定で現存しないファイル/ディレクトリを示す
 > (codex addendum D6 + 「現状 snapshot」運用)。
@@ -18,7 +18,8 @@ erre-sandbox/
 │   ├── schemas.py              # AgentState, Memory, ControlEnvelope (Pydantic v2)
 │   ├── contracts/              # 軽量 Pydantic 契約 (PR #111 / codex F5 で導入)
 │   │   ├── __init__.py         # M2_THRESHOLDS / Thresholds 再エクスポート
-│   │   └── thresholds.py       # M2 受け入れ閾値 (pydantic + stdlib のみ依存)
+│   │   ├── thresholds.py       # M2 受け入れ閾値 (pydantic + stdlib のみ依存)
+│   │   └── eval_paths.py       # M9-eval 4 層 contract (raw_dialog ↔ metrics 境界)
 │   ├── erre/                   # ERRE パイプライン DSL (M5 で完成)
 │   │   ├── fsm.py              # ERREModeTransitionPolicy / DefaultERREModePolicy
 │   │   └── sampling_table.py   # 8 モード x 3 パラメータの SAMPLING_DELTA_BY_MODE
@@ -44,13 +45,26 @@ erre-sandbox/
 │   │   ├── metrics.py          # 現在は contracts/thresholds.py への shim (PR #111 で再構成)
 │   │   ├── scenarios.py        # 統合テスト用シナリオ
 │   │   └── acceptance.py       # acceptance probe ヘルパ
-│   ├── evidence/               # post-hoc metric 集計 (M8 で追加)
-│   │   ├── metrics.py          # baseline quality (self_repetition / cross_persona_echo / bias_fired)
-│   │   └── scaling_metrics.py  # scaling profile (pair_info_gain / late_turn_fraction / zone_kl)
-│   ├── cli/                    # subcommand 実装 (M8 で追加)
+│   ├── evidence/               # post-hoc metric 集計 (M8 で追加、M9-eval で拡張)
+│   │   ├── metrics.py          # M8 baseline quality (self_repetition / cross_persona_echo / bias_fired)
+│   │   ├── scaling_metrics.py  # M8 scaling profile (pair_info_gain / late_turn_fraction / zone_kl)
+│   │   ├── tier_a/             # M9-eval Tier-A pipeline
+│   │   │   ├── burrows.py      # Burrows Δ (persona consistency)
+│   │   │   ├── mattr.py        # Moving Average Type-Token Ratio (lexical diversity)
+│   │   │   ├── nli.py          # NLI claim-conservation (transformers pipeline)
+│   │   │   ├── novelty.py      # MPNet sentence-transformer 由来 semantic novelty
+│   │   │   └── empath_proxy.py # Empath secondary diagnostic (Big5 主張不可)
+│   │   ├── reference_corpus/   # PD reference text (Burrows / NLI baseline)
+│   │   ├── eval_store.py       # DuckDB raw_dialog/metrics 単 file ストア
+│   │   ├── capture_sidecar.py  # capture status + md5 receipt sidecar JSON
+│   │   ├── golden_baseline.py  # GoldenBaselineDriver (stimulus 駆動)
+│   │   └── bootstrap_ci.py     # bootstrap 信頼区間 helpers (HIGH-2)
+│   ├── cli/                    # subcommand 実装 (M8 で追加、M9-eval で拡張)
 │   │   ├── baseline_metrics.py # `erre-sandbox baseline-metrics`
 │   │   ├── export_log.py       # `erre-sandbox export-log`
-│   │   └── scaling_metrics.py  # `erre-sandbox scaling-metrics`
+│   │   ├── scaling_metrics.py  # `erre-sandbox scaling-metrics`
+│   │   ├── eval_run_golden.py  # `python -m erre_sandbox.cli.eval_run_golden` (M9-eval P3a)
+│   │   └── eval_audit.py       # `python -m erre_sandbox.cli.eval_audit` (M9-eval ME-9 gate)
 │   ├── world/                  # ワールドシミュレーション
 │   │   ├── tick.py             # asyncio tick loop (WorldRuntime)
 │   │   └── zones.py            # peripatos/chashitsu/agora/garden/study
@@ -61,9 +75,20 @@ erre-sandbox/
 │           ├── messages.py     # AlertRecord / MetricsView などの Pydantic
 │           └── state.py        # MetricsAggregator / ThresholdEvaluator / DashboardState
 ├── godot_project/              # MIT ライセンスの Godot 4.6 シーン
-│   ├── project.godot
-│   ├── scenes/                 # 3D シーン (.tscn)
-│   ├── scripts/                # GDScript (.gd)
+│   ├── project.godot           # Godot 4.6 (config_version=5、features=4.6/GL Compatibility)
+│   ├── scenes/
+│   │   ├── MainScene.tscn      # ルートシーン
+│   │   ├── agents/             # 3D アバター
+│   │   ├── dev/                # 開発時 viewport / probe
+│   │   └── zones/              # 5 ERRE ゾーン + Study + BaseTerrain
+│   │       ├── Peripatos.tscn
+│   │       ├── Chashitsu.tscn
+│   │       ├── Zazen.tscn
+│   │       ├── Agora.tscn
+│   │       ├── Garden.tscn
+│   │       ├── Study.tscn
+│   │       └── BaseTerrain.tscn
+│   ├── scripts/                # GDScript (.gd) — Agent / World / WebSocket / ReasoningPanel ほか
 │   └── assets/                 # モデル・テクスチャ
 ├── personas/                   # 偉人ペルソナ定義 (現行 3 体、M4 で実装済)
 │   ├── kant.yaml               # カント
@@ -74,6 +99,11 @@ erre-sandbox/
 ├── fixtures/                   # Wire contract specimens (言語中立)
 │   └── control_envelope/       # ControlEnvelope 各 kind の JSON + README
 ├── corpora/                    # PD ソース (青空文庫/Gutenberg/archive.org)
+├── data/                       # ランタイム / 評価データ
+│   └── eval/                   # M9-eval 出力 (DuckDB + sidecar JSON)
+│       ├── pilot/              # Phase 3a pilot 採取
+│       └── calibration/        # Phase 2 wall-budget calibration runs (隔離)
+├── golden/                     # M9-eval golden battery 入力 (stimulus YAML 等)
 ├── tests/                      # pytest-asyncio テスト
 │   ├── conftest.py
 │   ├── test_schemas.py
@@ -135,7 +165,7 @@ erre-sandbox/
 - **置くべきでないもの**: テストデータ以外のアセット
 
 ### `godot_project/`
-- **目的**: Godot 4.4 の 3D シーン・スクリプト・アセット
+- **目的**: Godot 4.6 の 3D シーン・スクリプト・アセット
 - **置くべきもの**: `.tscn` シーン、`.gd` スクリプト、3D モデル、テクスチャ
 - **置くべきでないもの**: Python コード (Python 側は `src/erre_sandbox/ui/dashboard/` 配下で WebSocket 接続を扱う)
 
