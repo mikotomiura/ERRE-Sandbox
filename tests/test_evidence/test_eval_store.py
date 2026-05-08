@@ -33,12 +33,16 @@ from erre_sandbox.contracts.eval_paths import (
 )
 from erre_sandbox.evidence.eval_store import (
     RAW_DIALOG_TABLE,
+    TIER_B_METRIC_SCHEMA_VERSION,
     AnalysisView,
+    TierBMetricRow,
     atomic_temp_rename,
     bootstrap_schema,
     connect_analysis_view,
     connect_training_view,
     export_raw_only_snapshot,
+    fetch_tier_b_metric,
+    make_tier_b_notes,
     write_with_checkpoint,
 )
 
@@ -353,3 +357,156 @@ def test_atomic_temp_rename_overwrites_existing_target(tmp_path: Path) -> None:
     with connect_analysis_view(final) as view:
         rows = view.execute(count_sql)
     assert rows == [(0,)]
+
+
+# ---------------------------------------------------------------------------
+# P4a — Tier B retrieval helpers (M9-eval ME-15)
+# ---------------------------------------------------------------------------
+
+
+def _seed_tier_b_rows(
+    db: Path,
+    *,
+    run_id: str,
+    persona_id: str,
+    metric_name: str,
+    rows: list[tuple[int, float, str | None]],
+) -> None:
+    """Insert Tier B rows for the helper-coverage test."""
+    con = _writable(db)
+    bootstrap_schema(con)
+    insert_sql = (
+        f"INSERT INTO {METRICS_SCHEMA}.tier_b"  # noqa: S608  # module constants
+        ' ("run_id", "persona_id", "turn_idx", "metric_name", "metric_value", "notes")'
+        " VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    for window_index, metric_value, notes in rows:
+        con.execute(
+            insert_sql,
+            (run_id, persona_id, window_index, metric_name, metric_value, notes),
+        )
+    write_with_checkpoint(con)
+
+
+def test_fetch_tier_b_metric_returns_window_index_and_notes_metadata(
+    tmp_path: Path,
+) -> None:
+    """ME-15: helper exposes window_index + notes JSON, ordered by window."""
+    db = tmp_path / "tier_b.duckdb"
+    notes_w0 = make_tier_b_notes(
+        window_start_turn=0,
+        window_end_turn=99,
+        window_size=100,
+        kernel_name="semantic",
+    )
+    notes_w1 = make_tier_b_notes(
+        window_start_turn=100,
+        window_end_turn=199,
+        window_size=100,
+        kernel_name="semantic",
+    )
+    _seed_tier_b_rows(
+        db,
+        run_id="r1",
+        persona_id="kant",
+        metric_name="tier_b.vendi_score",
+        rows=[
+            (1, 5.5, notes_w1),  # inserted out of order
+            (0, 4.2, notes_w0),
+        ],
+    )
+
+    with connect_analysis_view(db) as view:
+        decoded = fetch_tier_b_metric(
+            view,
+            run_id="r1",
+            persona_id="kant",
+            metric_name="tier_b.vendi_score",
+        )
+
+    assert len(decoded) == 2
+    assert all(isinstance(row, TierBMetricRow) for row in decoded)
+    # Ordered by window_index ascending
+    assert decoded[0].window_index == 0
+    assert decoded[1].window_index == 1
+    # Notes JSON parsed
+    assert decoded[0].window_start_turn == 0
+    assert decoded[0].window_end_turn == 99
+    assert decoded[0].window_size == 100
+    assert decoded[0].metric_schema_version == TIER_B_METRIC_SCHEMA_VERSION
+    assert decoded[1].window_start_turn == 100
+    # Metric values intact
+    assert decoded[0].metric_value == pytest.approx(4.2)
+    assert decoded[1].metric_value == pytest.approx(5.5)
+
+
+def test_fetch_tier_b_metric_handles_missing_notes_gracefully(tmp_path: Path) -> None:
+    """Forward compat: rows with NULL notes still decode (zero-fill metadata)."""
+    db = tmp_path / "tier_b_nullnotes.duckdb"
+    _seed_tier_b_rows(
+        db,
+        run_id="r2",
+        persona_id="rikyu",
+        metric_name="tier_b.big5_stability_icc",
+        rows=[(0, 0.78, None)],
+    )
+    with connect_analysis_view(db) as view:
+        decoded = fetch_tier_b_metric(
+            view,
+            run_id="r2",
+            persona_id="rikyu",
+            metric_name="tier_b.big5_stability_icc",
+        )
+    assert len(decoded) == 1
+    assert decoded[0].window_index == 0
+    assert decoded[0].window_start_turn == 0
+    assert decoded[0].window_size == 0  # null notes → zero-fill window metadata
+    assert decoded[0].metric_schema_version == ""
+
+
+def test_make_tier_b_notes_emits_fixed_schema() -> None:
+    """ME-15 schema version pinned, optional fields appear only when set."""
+    payload = make_tier_b_notes(
+        window_start_turn=0,
+        window_end_turn=99,
+        window_size=100,
+        kernel_name="semantic",
+    )
+    assert '"metric_schema_version":"tier-b-v1"' in payload
+    assert '"kernel_name":"semantic"' in payload
+    assert '"ipip_version"' not in payload
+    assert '"icc_formula"' not in payload
+
+
+def test_tier_b_metric_isolation_from_training_view(tmp_path: Path) -> None:
+    """DB5 sentinel: training view never surfaces metrics.tier_b columns."""
+    db = tmp_path / "tier_b_isolation.duckdb"
+    _seed_tier_b_rows(
+        db,
+        run_id="r3",
+        persona_id="nietzsche",
+        metric_name="tier_b.vendi_score",
+        rows=[
+            (
+                0,
+                3.14,
+                make_tier_b_notes(
+                    window_start_turn=0,
+                    window_end_turn=99,
+                    window_size=100,
+                    kernel_name="semantic",
+                ),
+            )
+        ],
+    )
+    relation = connect_training_view(db)
+    try:
+        # Training view's columns set must equal the raw_dialog allow-list,
+        # never include any "tier_b" column.
+        assert set(relation.columns) == ALLOWED_RAW_DIALOG_KEYS
+        for col in relation.columns:
+            assert "tier_b" not in col
+            assert "metric_value" not in col
+            assert "metric_name" not in col
+    finally:
+        relation.close()

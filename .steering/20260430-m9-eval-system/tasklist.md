@@ -420,14 +420,28 @@ P3a-decide が追加され、合計 16 phase + closure。
 
 ### P4 — Tier B 3 metric (post-hoc)
 
-- [ ] [Mac] **P4a** — `src/erre_sandbox/evidence/tier_b/` 起草 (CPU + 7B-Q4 借用、5h):
-  - [ ] `vendi.py` — Vendi Score (semantic kernel)
-  - [ ] `ipip_neo.py` — IPIP-NEO 短縮版 agentic loop (deterministic temperature=0)
-    - [ ] acquiescence index / straight-line / reverse-keyed diagnostic (ME-1)
+- [x] [Mac] **P4a** — `src/erre_sandbox/evidence/tier_b/` 起草 (2026-05-08
+      PR `feat/m9-eval-p4a-tier-b`、Codex Verdict ADOPT-WITH-CHANGES、HIGH 4 全反映):
+  - [x] `vendi.py` — Vendi Score, default semantic kernel + sensitivity panel
+        API (ME-10、Codex P4a HIGH-1)。100-turn window、identity-kernel sanity
+  - [x] `ipip_neo.py` — IPIP-50 (Goldberg 1992) administering、anti-demand-
+        characteristics (ME-13、Codex P4a HIGH-4)、language="en" only
+        (ME-12、Codex P4a HIGH-3、Japanese vendoring deferred)
+    - [x] acquiescence index / straight-line / reverse-keyed diagnostic (ME-1)
+    - [x] decoy items 5 件 + decoy_consistency diagnostic (HIGH-4)
     - [ ] base model control measurement (persona prompt 無し 1 run)
-  - [ ] `big5_icc.py` — Big5 stability ICC (across run × mode)
-    - [ ] ME-1 fallback trigger 自動チェック (≥2/3 ICC <0.6 OR lower CI <0.5)
-  - [ ] `tests/test_evidence/test_tier_b/` (3 metric)
+          — P4b で実走時、IPIP 投与 path に control flag を足す (本 PR scope 外)
+  - [x] `big5_icc.py` — McGraw-Wong notation 統一、dual-consumer split
+        (ME-11、Codex P4a HIGH-2): ICC(C,k) consistency for ME-1 / ICC(A,1)
+        absolute agreement for DB9。degenerate handling (MEDIUM-5)
+    - [x] ME-1 fallback trigger 自動チェック (≥2/3 ICC <0.6 OR lower CI <0.5)
+  - [x] `tests/test_evidence/test_tier_b/` 25 件 (vendi 9 / ipip 10 / icc 6)
+  - [x] `eval_store.py` Tier B retrieval helper (`fetch_tier_b_metric` /
+        `make_tier_b_notes` / `TierBMetricRow`、ME-15)、4 件統合 test 追加
+  - [x] decisions.md ME-10〜ME-15 ADR 追加 (Codex review 全反映)
+  - [x] blockers.md に follow-up 4 task 記録 (ja-ipip-vendoring /
+        vendi-kernel-sensitivity / individual-layer-schema-add /
+        multilingual-vendi-encoder)
 - [ ] [GG] **P4b** — Tier B 後付け実行 (採取済 raw_dialog から、2h):
   - [ ] G-GEAR 上で 7B-Q4 + IPIP-NEO loop 実行
   - [ ] metrics schema へ投入完了
@@ -445,8 +459,10 @@ P3a-decide が追加され、合計 16 phase + closure。
         window/persona と report 明示)
         — 2026-05-08 P5 hardening PR で完了 (`cluster_only=True` flag、method
         label `hierarchical-cluster-only` で identification 可能)
-  - [ ] 3 sub-metric (Vendi / Big5 ICC / Burrows Delta) の CI 計算 ready
-        (P4a Tier B 実装後に統合確認)
+  - [x] 3 sub-metric (Vendi / Big5 ICC / Burrows Delta) の CI 計算 ready
+        — 2026-05-08 P4a 完了、`test_compute_vendi_bootstrap_cluster_only_primary_round_trip`
+        と `test_compute_big5_icc_seed_stability` で integration 検証
+        (cluster_only=True primary、ME-14 framing)
   - [x] `tests/test_evidence/test_bootstrap_ci.py`:
     - [x] N(0,1) n=500 既知分布で 95% CI 解析解 ± 5%
           — 既存 `test_bootstrap_ci_iid_normal_within_analytic_bound`
@@ -456,8 +472,10 @@ P3a-decide が追加され、合計 16 phase + closure。
           — 2026-05-08 P5 hardening PR (6 新規 tests)
     - [x] cluster_only mode + cluster_only overrides auto_block
           — 2026-05-08 P5 hardening PR
-    - [ ] Vendi orthogonal one-hot で score=N (P4a Tier B 実装後)
-    - [ ] Big5 ICC 同一回答列で 1.0 収束 (P4a Tier B 実装後)
+    - [x] Vendi identity-kernel で score=N (P4a 完了、Codex P4a HIGH-1 で
+          one-hot → identity-kernel に修正、`test_compute_vendi_identity_kernel_score_equals_n`)
+    - [x] Big5 ICC 同一回答列で 1.0 + degenerate=True (P4a 完了、Codex P4a MEDIUM-5
+          で deliberate special case 化、`test_compute_big5_icc_identical_windows_degenerate_returns_one`)
 - [ ] [Mac] **P5-trigger** — ME-1 fallback トリガ確認:
   - [ ] ≥2/3 personas で ICC < 0.6 OR lower CI < 0.5 の場合、
         BIG5-CHAT regression head 実装 ADR を `decisions.md` に child 起票

@@ -694,13 +694,266 @@ budget を確定する流れで M9 Phase 2 を継続。
 
 ---
 
+## ME-10 — Vendi kernel default + sensitivity panel preregister (Codex P4a HIGH-1)
+
+- **決定**:
+  - `tier_b/vendi.py` の **default kernel = `semantic`** (sentence-transformers
+    `all-mpnet-base-v2`、Tier A novelty.py と同 model 流用、追加 dep 0)
+  - hybrid weight (semantic+lexical) は **commit しない** — Friedman & Dieng 2023
+    に 0.7/0.3 等の prior art が存在しない (Codex web search 確認)
+  - **kernel sensitivity panel** API を提供: `vendi_kernel_sensitivity_panel()` が
+    5 候補 (`semantic-only` / `lexical-only` / hybrid 0.5/0.5, 0.7/0.3, 0.9/0.1)
+    を batch 計算。preregistered sensitivity test として P4b (golden baseline) で
+    persona-discriminative power を比較
+  - **one-hot sanity test の数学的正解**: score = N が成立する条件は K = I (identity
+    kernel)。lexical one-hot で hybrid score=N は成立しない (semantic の off-diagonal
+    が non-zero のため)。sanity は **identity-kernel stub** で検証
+  - window size: 100-turn 維持 (design-final.md / per-100-turn windowing 整合)、
+    sensitivity panel と併せて finite-sample stability を P4b で empirical 確認
+- **根拠**:
+  - Codex P4a HIGH-1: hybrid 0.7/0.3 は Friedman & Dieng 2023 に prior art なし、
+    one-hot sanity の数学誤り (K=I 必須)、100-turn は finite-sample fragile (Ospanov
+    et al. 2025 https://proceedings.mlr.press/v286/ospanov25a.html)
+  - Vendi paper (https://arxiv.org/abs/2210.02410) は user-defined / combined kernel
+    を支持するが weight rationale は与えない
+- **棄却**:
+  - hybrid 0.7/0.3 直接採用 (v3 案) → prior art 不在で恣意的
+  - lexical one-hot で score=N sanity (v1/v2/v3 案) → 数学的に不成立
+  - 200-turn window 化 (v2 案) → design-final.md 上書き coast 高、sensitivity で
+    100 stability を確認すれば足りる
+- **影響**:
+  - `vendi.py` 実装に sensitivity panel API 追加
+  - `test_vendi.py` の identity-kernel sanity test 修正
+  - 別タスク `m9-eval-p4b-vendi-kernel-sensitivity` を tasklist 追記
+- **re-open 条件**:
+  - P4b sensitivity panel で hybrid kernel が semantic-only より persona-
+    discriminative と empirical 確認 → default kernel 切替 ADR 起票
+  - 100-turn window で finite-sample fragile が観測 → 200-turn 移行 ADR 検討
+
+---
+
+## ME-11 — ICC McGraw-Wong notation + dual-consumer split (Codex P4a HIGH-2)
+
+- **決定**:
+  - **notation 統一**: McGraw & Wong (1996) 表記。`ICC(A,1)` = absolute agreement
+    single rater、`ICC(A,k)` = absolute agreement k-rater average、`ICC(C,1)` =
+    consistency single、`ICC(C,k)` = consistency k-rater average
+  - **dual-consumer split**:
+    - **ME-1 reliability fallback trigger**: `ICC(C,k)` consistency primary を採用、
+      threshold は ME-1 既決の 0.6 (point) / 0.5 (lower CI) を継続適用 (Koo-Li
+      2016 cutoff の根拠は consistency)
+    - **DB9 drift/adoption gate**: `ICC(A,1)` absolute agreement primary を採用、
+      level shift = drift signal として扱う。**ME-1 threshold 流用禁止**、DB9 用
+      cutoff は P4b で persona-conditional に calibrate
+  - `Big5ICCResult` に両 consumer の値を併記 (consistency + agreement、average +
+    single)、`me1_fallback_fire` flag は consistency のみ参照
+  - degenerate case (identical 全 constant 回答 → ANOVA 0/0): **意図的 special
+    case** として `icc_*=1.0, degenerate=True, fallback_fire=False` を返す
+- **根拠**:
+  - Codex P4a HIGH-2: "ICC(2,k) consistency" は notation 混在 (Shrout-Fleiss vs
+    McGraw-Wong vs Koo-Li)、merge-safe ではない
+  - Koo & Li 2016 (https://pubmed.ncbi.nlm.nih.gov/27330520/): ICC は model / type
+    / definition の選択が必要、CI で interpret
+  - drift detection の意味論: systematic offset を許容する consistency では LoRA
+    persona drift が捕まらない、absolute agreement が construct valid
+  - degenerate ANOVA: 同一 row では between-subject SS = 0 → 0/0、意図的 special
+    case 化が必要
+- **棄却**:
+  - 単一 ICC formula primary 化 (v1/v2 案) → 両 consumer の意味論が異なるため不可
+  - ME-1 threshold 0.6/0.5 を ICC(A,1) にも literally 流用 → calibration なしでは
+    threshold 妥当性が揺らぐ
+  - degenerate を ANOVA から自然に出力させる → 0/0 で NaN 化、ICC=1.0 を
+    assumption ではなく explicit special case にすべき
+- **影響**:
+  - `tier_b/big5_icc.py` の `Big5ICCResult` dataclass に consistency + agreement
+    両 surfaced
+  - `test_big5_icc.py` で offset-sensitivity test 追加 (consistency 不変、agreement
+    変化)
+  - `decisions.md` ME-1 の child ADR として記録、ME-1 threshold は consistency 専用
+    と明記
+- **re-open 条件**:
+  - P4b で agreement ICC threshold が persona-conditional に確定
+  - LLM personality stability literature が absolute agreement primary を強く支持
+    する場合 (現状 mixed)
+
+---
+
+## ME-12 — IPIP-50 English-only + Japanese vendoring defer (Codex P4a HIGH-3)
+
+- **決定**:
+  - **版**: IPIP-50 (Goldberg 1992、IPIP English official、public domain commercial
+    OK、https://ipip.ori.org/index.htm)。Mini-IPIP-20 (Donnellan 2006) は α 0.65-0.70
+    で ME-1 threshold 0.6 に近接、棄却
+  - **language**: P4a では `language="en"` only。`language="ja"` は
+    `NotImplementedError("Japanese IPIP-50 vendoring deferred — see m9-eval-p4b-ja-ipip-vendoring")`
+    を raise
+  - **defer 理由**:
+    - Murakami 2002/2003 (https://www.jstage.jst.go.jp/article/jjpjspp/11/2/11_KJ00002442203/_article/-char/ja)
+      は Japanese lexical Big Five 研究であって IPIP-50 翻訳ではない (Codex 確認)
+    - 公式 IPIP translations page (https://ipip.ori.org/newTranslations.htm) は
+      Nakayama/Karlin の Japanese IPIP リストを示すが、IPIP-50 specific translation
+      の license/provenance は P4a 内で確定不能
+    - Codex merge condition: vendor exact public-domain Japanese item text with
+      provenance、または ship en-only — 後者を pragmatic に採用
+  - **persona language 制約**: kant / nietzsche / rikyu いずれも IPIP 投与時は
+    `system prompt` 固定で English self-report を request。cross-language stability
+    の literature 確認は M9-C-adopt 範囲
+  - **defer task**: `m9-eval-p4b-ja-ipip-vendoring` を tasklist.md に追記、
+    Nakayama/Karlin 公式 source の license 確認 + 50 item vendoring を要件化
+- **根拠**:
+  - IPIP English items/scales は public domain (https://ipip.ori.org/newPermission.htm)
+  - IPIP-50 broad-domain α ≈ 0.84 (https://ipip.ori.org/newBigFive5broadTable.htm)
+    vs Mini-IPIP α ≈ 0.65-0.70 (https://ipip.ori.org/MiniIPIPTable.htm) — IPIP-50
+    が ME-1 fallback judgement の信頼性に勝る
+  - Murakami 2003 は warning: "Japanese Big Five content may differ in details from
+    English-language content" — Japanese IPIP-50 translation の cross-language
+    validation は別問題
+- **棄却**:
+  - Mini-IPIP-20 採用 (v1 案) → α marginal で ME-1 fallback false positive リスク
+  - Murakami 2002/2003 を IPIP-50 translation source として採用 (v2/v3 案) → Codex
+    の license/provenance audit で不正と判明
+  - ad-hoc 翻訳 (Claude/codex で本 PR で翻訳) → license clean ではない、psychometric
+    validation 0
+- **影響**:
+  - `tier_b/ipip_neo.py` の version param は `ipip-50` のみ受付、`mini-ipip-20`
+    は `NotImplementedError`
+  - `language="ja"` は raise、test 化
+  - `blockers.md` に `m9-eval-p4b-ja-ipip-vendoring` 追記
+- **re-open 条件**:
+  - Nakayama/Karlin 公式 Japanese IPIP-50 が license clear で取得可能
+  - cross-language Big Five validation literature が settled (現状 mixed)
+
+---
+
+## ME-13 — IPIP anti-demand-characteristics 設計 (Codex P4a HIGH-4)
+
+- **決定**:
+  - prompt template から下記 keyword を **完全に除去**: "personality test",
+    "Big Five", "IPIP", "questionnaire", "survey", "psychological"
+  - alt framing (英語): "Read the statement and reply with one digit 1-5
+    indicating how well it describes you, where 1=not at all, 5=very much."
+  - 各 item を **batch ではなく 1 item ずつ独立** に投与 (context contamination 防止)
+  - **deterministic shuffle**: `seed` から blake2b-derived RNG で item 順を固定、
+    forward / reverse adjacency を避ける
+  - **decoy items**: 5 件追加 (Big5 dimension 外の neutral statements、e.g.
+    "I prefer hot weather to cold")、scoring 時に filter
+  - **base-model no-persona control** (ME-1 既決): persona prompt 無し base model
+    qwen3:8b raw で同 IPIP 投与を 1 run 実施し、persona 効果を separately report
+  - 4 種 diagnostic (acquiescence / straight-line / reverse-keyed / **decoy
+    consistency**) を `Big5ICCResult` 周辺で常時計測
+- **根拠**:
+  - Codex P4a HIGH-4 + Salecha et al. 2024 (https://arxiv.org/abs/2405.06058):
+    LLMs detect personality-test context、socially desirable answers にシフト
+  - Nature 2025 https://www.nature.com/articles/s42256-025-01115-6: instruction-
+    sensitive 小モデルは特に脆弱
+  - 安定したバイアス response → 高 ICC false positive → DB9 offensive gate の
+    deceptive adoption (HIGH-4 critical)
+- **棄却**:
+  - reverse-coding のみで bias 抑制 (ME-1 既決 diagnostic 4 種だけ) → Salecha 2024
+    で reverse-coding は bias を completely 解消しないと empirical 確認
+  - "Please answer this Big Five questionnaire as honestly as possible" 直接 framing
+    → demand characteristics を最大化、明確に棄却
+  - decoy 不採用 → test-taking context inference を緩和できない
+- **影響**:
+  - `ipip_neo.py` prompt template 全面再設計
+  - `test_ipip_neo.py` で no-personality-keyword assertion test 追加
+  - decoy items 5 件を data file に vendoring (license: 自作、Big5 と無関係な
+    neutral statements)
+- **re-open 条件**:
+  - 大規模 LLM (10B+ instruction-tuned) で demand characteristics が再発
+  - constrained scoring (logits API 直接) が Ollama/SGLang で実装可能になり、
+    text generation を介さない administering に切替可能 → ADR 別起票
+
+---
+
+## ME-14 — Tier B BootstrapPair (primary cluster_only + diagnostic auto_block)、persona-conditional 強制 (Codex P4a MEDIUM-1)
+
+- **決定**:
+  - Tier B 用 dataclass `TierBBootstrapPair` を新設、primary CI と diagnostic CI を
+    別 field で公開:
+    - `primary: BootstrapResult` (`cluster_only=True`、`method="hierarchical-cluster-only"`、
+      ESS=25 disclosure)
+    - `diagnostic_auto_block: BootstrapResult | None` (`auto_block=True`、
+      `method="hierarchical-block"`)
+  - **DB9 quorum 判定 code は `primary` のみ参照** (consumer rule、grep gate で
+    enforcement 化を検討)
+  - **pooled-persona CI 禁止**: persona-conditional のみ計算可。pooled CI は
+    `is_exploratory=True` flag 付与時のみ output、quorum 判定で参照不可
+  - JSON output で両 CI を併記、運用者が variance underestimation を cross-check
+    可能
+- **根拠**:
+  - Codex P4a MEDIUM-1: PR #146 cluster_only primary は ESS=25 framing で承諾済、
+    auto_block 併載は variance robustness 向上に寄与するが consumer 混乱を防ぐ
+    field 分離が必須
+  - pooling は persona-conditional variance を underestimate (Tier B = persona drift
+    detection なので persona-conditional は構造的に必須)
+- **棄却**:
+  - 両 CI を同 dataclass に point/lo/hi 単一で統合 (v3 案) → 消費 code が混乱、
+    quorum 判定が誤 CI 参照リスク
+  - pooled CI を default 出力 → variance underestimation で false adoption
+- **影響**:
+  - `bootstrap_ci.py` への変更なし (既存 API 流用)、新 dataclass は `tier_b/`
+    内に閉じる
+  - `vendi.py` / `big5_icc.py` の per-persona aggregator は `TierBBootstrapPair` を
+    return
+  - DB9 quorum logic (M9-C-adopt 範囲) で `primary` のみ参照する API 規律
+- **re-open 条件**:
+  - quorum logic 実装時 (M9-C-adopt) に primary/diagnostic 区別が運用上問題
+  - persona-conditional CI が分散小すぎて detect 不能 → pooled CI の限定使用 ADR
+    起票
+
+---
+
+## ME-15 — Tier B 出力 schema (window_index helper + notes JSON 固定 schema) + DB11 follow-up 明示 (Codex P4a MEDIUM-2/3)
+
+- **決定**:
+  - `metrics.tier_b` table の column schema は **不変** (`turn_idx` を `window_index`
+    意味で再利用、rename しない、破壊的変更回避)
+  - **eval_store.py に新規 helper** `fetch_tier_b_metric()` を追加、戻り値は
+    `TierBMetricRow` dataclass (`window_index`, `metric_value`, `window_start_turn`,
+    `window_end_turn`, `window_size`, `metric_schema_version`)
+  - INSERT 時の `notes` JSON は **固定 schema** で書く:
+    `{"window_start_turn": int, "window_end_turn": int, "window_size": int,
+      "metric_schema_version": "tier-b-v1", "kernel_name": str | null,
+      "ipip_version": str | null, "icc_formula": str | null}`
+  - **DB11 follow-up 明示**: Tier B は eval-only path で training への漏洩は DB5
+    で構造的に防がれているが、`raw_dialog` allow-list は現時点で
+    `individual_layer_enabled` を含まない。**DB11 enforcement (raw_dialog DDL +
+    training-view assert + grep gate) は別タスク `m9-individual-layer-schema-add`
+    で実装**、P4a 内で「DB5 が保証」と主張しない
+  - Tier B 全 module docstring で「Tier B is eval-only; DB11 plumbing for training
+    enforcement is a separate required follow-up (see blockers.md)」と明示
+- **根拠**:
+  - Codex P4a MEDIUM-2: `turn_idx` を `window_index` 意味で再利用は tolerable だが
+    semantic leakage リスク、helper で名称区別 + JSON metadata で window scope を
+    明示
+  - Codex P4a MEDIUM-3: `ALLOWED_RAW_DIALOG_KEYS` (`eval_paths.py`) に
+    `individual_layer_enabled` を確認したが含まれず、DB11 contract と矛盾。
+    ADR で follow-up を明示しないと "DB5 が保証" が hand-waving
+- **棄却**:
+  - column rename `turn_idx → window_index` (P4a 範囲で破壊的) → 既存 metrics.tier_a
+    consumer も影響、scope creep
+  - DB11 enforcement を P4a に含む → scope 膨張、本 PR 工数 8-10h 超過
+  - "DB5 が保証" だけで follow-up なし → ALLOWED_RAW_DIALOG_KEYS の現実と矛盾
+- **影響**:
+  - `tier_b/__init__.py` で `TierBMetricRow` 公開
+  - `eval_store.py` に `fetch_tier_b_metric()` helper 追加
+  - `blockers.md` に `m9-individual-layer-schema-add` task 追記、DB11 enforcement
+    の必要性を defer 形で記録
+- **re-open 条件**:
+  - M10-A scaffold (Individual layer activation) で `individual_layer_enabled`
+    field が必要になる → enforcement 実装と同期
+  - column rename が他 sub-system 整合上必要 → schema migration ADR 別起票
+
+---
+
 ## ME-summary
 
-- 本 ADR **9 件** で Codex `gpt-5.5 xhigh` **6 回** review (2026-04-30 design.md MEDIUM 6 +
+- 本 ADR **15 件** で Codex `gpt-5.5 xhigh` **7 回** review (2026-04-30 design.md MEDIUM 6 +
   LOW 1 / 2026-05-01 LOW-1 RoleEval MEDIUM 5 + LOW 2 / 2026-05-01 P3a-decide gating
   fix LOW 2 / 2026-05-01 P3a-decide v2 cooldown × cognition_period HIGH 2 / MEDIUM 2 /
   LOW 1 / 2026-05-05 P3a-finalize HIGH 3 / MEDIUM 4 / LOW 4 / 2026-05-06 Phase 2
-  run0 wall-timeout HIGH 4 / MEDIUM 3) 全件に対応
+  run0 wall-timeout HIGH 4 / MEDIUM 3 / 2026-05-08 P4a Tier B HIGH 4 / MEDIUM 5 / LOW 3) 全件に対応
 - ME-4 は P3a-decide セッションで **partial update**、natural 再採取後に **二度目の
   Edit が必要** (current state = bug fix done + script ready, ratio 確定は次回)
 - ME-7 は本タスク P2a で確定、stimulus YAML schema と MCQ scoring protocol を規定
