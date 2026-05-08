@@ -69,8 +69,10 @@ def build_examples(
     for row in rows:
         # CS-3 belt-and-braces: even though assert_phase_beta_ready raises on
         # any evaluation row, double-filter here so a caller that forgot to
-        # gate cannot silently train on contaminated data.
-        if row.get("epoch_phase") == _EVALUATION_PHASE_VALUE:
+        # gate cannot silently train on contaminated data. Case-insensitive
+        # match so upstream casing variation ("Evaluation"/"EVALUATION") is
+        # also dropped (security review MEDIUM-2).
+        if str(row.get("epoch_phase", "")).strip().lower() == _EVALUATION_PHASE_VALUE:
             continue
         if row.get("speaker_persona_id") != persona_id:
             continue

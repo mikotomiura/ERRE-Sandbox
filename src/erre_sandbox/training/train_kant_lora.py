@@ -116,13 +116,21 @@ def assert_phase_beta_ready(
     raw_rows: list[dict[str, object]] = [dict(row) for row in relation.iter_rows()]
 
     # 1) epoch_phase=evaluation contamination — must run first so the
-    #    realised-count check below sees the post-filter dataset.
-    eval_rows = [r for r in raw_rows if r.get("epoch_phase") == _EVALUATION_PHASE_VALUE]
+    #    realised-count check below sees the post-filter dataset. Use
+    #    case-insensitive comparison so an upstream casing change
+    #    ("Evaluation"/"EVALUATION") cannot sneak rows past the gate
+    #    (CS-3 / security review MEDIUM-2).
+    eval_rows = [
+        r
+        for r in raw_rows
+        if str(r.get("epoch_phase", "")).strip().lower() == _EVALUATION_PHASE_VALUE
+    ]
     if eval_rows:
         raise EvaluationContaminationError(
             f"assert_phase_beta_ready: {len(eval_rows)} row(s) carry"
-            f" epoch_phase={_EVALUATION_PHASE_VALUE!r}; the training-view"
-            f" must filter these out before training can run (CS-3 sentinel)",
+            f" epoch_phase~={_EVALUATION_PHASE_VALUE!r} (case-insensitive);"
+            f" the training-view must filter these out before training can"
+            f" run (CS-3 sentinel)",
         )
 
     # 2 + 3) individual_layer_enabled enforcement (DB11 / blocker B-1)
@@ -135,12 +143,17 @@ def assert_phase_beta_ready(
                 f" landed — Phase β cannot proceed without DB11"
                 f" enforcement (CS-3 silent-skip ban).",
             )
-        ind_rows = [r for r in raw_rows if r.get(_INDIVIDUAL_LAYER_COLUMN) is True]
+        # Truthy check (not ``is True``) so non-bool truthy values (1,
+        # "true", etc. that DuckDB may surface for a non-strict BOOLEAN
+        # column) also trip the contamination guard
+        # (CS-3 / security review MEDIUM-3).
+        ind_rows = [r for r in raw_rows if bool(r.get(_INDIVIDUAL_LAYER_COLUMN, False))]
         if ind_rows:
             raise EvaluationContaminationError(
                 f"assert_phase_beta_ready: {len(ind_rows)} row(s) have"
-                f" {_INDIVIDUAL_LAYER_COLUMN}=True; these are flagged for"
-                f" individual evaluation and must not enter training (CS-3 / DB11)",
+                f" truthy {_INDIVIDUAL_LAYER_COLUMN}; these are flagged for"
+                f" individual evaluation and must not enter training"
+                f" (CS-3 / DB11)",
             )
 
     # 4) realised Kant example count vs literature-based threshold

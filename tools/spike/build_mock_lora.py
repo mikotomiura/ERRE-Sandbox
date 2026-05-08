@@ -90,20 +90,26 @@ def refusal_guard(output_dir: Path) -> None:
         MockLoRAGuardError: When any check fails. The message names the
             failed check so test fixtures can match on substring.
     """
-    parts = Path(output_dir).parts
+    # Resolve symlinks before segment check — a symlink under
+    # ``/tmp/safe_dir`` pointing at ``src/erre_sandbox/...`` would
+    # otherwise pass the literal-segment guard. ``strict=False`` allows
+    # the path to not yet exist (we mkdir later).
+    resolved = Path(output_dir).resolve(strict=False)
+    parts = resolved.parts
     if "src" in parts:
         raise MockLoRAGuardError(
-            f"refusing to write mock LoRA to {output_dir!s}: 'src' segment "
-            f"found in path; mock adapters must stay outside the source tree "
-            f"(CS-9 isolation)",
+            f"refusing to write mock LoRA to {output_dir!s} "
+            f"(resolved={resolved!s}): 'src' segment found in path; mock "
+            f"adapters must stay outside the source tree (CS-9 isolation)",
         )
-    name_lower = Path(output_dir).name.lower()
+    name_lower = resolved.name.lower()
     for bad in _FORBIDDEN_NAME_SUBSTRINGS:
         if bad in name_lower:
             raise MockLoRAGuardError(
-                f"refusing to write mock LoRA to {output_dir!s}: directory "
-                f"name contains {bad!r}; mock adapters must not masquerade "
-                f"as production checkpoints (CS-9 sentinel)",
+                f"refusing to write mock LoRA to {output_dir!s} "
+                f"(resolved={resolved!s}): directory name contains {bad!r}; "
+                f"mock adapters must not masquerade as production "
+                f"checkpoints (CS-9 sentinel)",
             )
 
 

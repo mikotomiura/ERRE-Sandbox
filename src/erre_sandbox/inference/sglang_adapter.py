@@ -421,9 +421,17 @@ class SGLangChatClient:
             ) from exc
 
         if response.status_code != httpx.codes.OK:
+            # Body may carry server-side debug info (model paths, env, stack
+            # traces). Keep it out of the public exception message; surface
+            # only the status code. Operators inspecting failures can raise
+            # the logger to DEBUG to recover the body locally.
+            logger.debug(
+                "SGLang %s error body (truncated): %s",
+                path,
+                response.text[:200],
+            )
             raise SGLangUnavailableError(
-                f"SGLang {path} returned HTTP {response.status_code}: "
-                f"{response.text[:200]}",
+                f"SGLang {path} returned HTTP {response.status_code}",
             )
 
         try:

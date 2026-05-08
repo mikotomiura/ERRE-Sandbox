@@ -217,16 +217,23 @@ async def test_chat_with_unknown_adapter_raises_before_network() -> None:
 
 
 async def test_load_adapter_5xx_does_not_mutate_registry() -> None:
+    sensitive_body = "Traceback... CUDA_VISIBLE_DEVICES=0 /secret/path/model.bin"
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == SGLangChatClient.LOAD_LORA_PATH:
-            return httpx.Response(500, text="lora directory missing")
+            return httpx.Response(500, text=sensitive_body)
         return httpx.Response(httpx.codes.OK, json={})
 
     transport = httpx.MockTransport(handler)
     ref = _kant_ref()
     async with _make_client(transport) as llm:
-        with pytest.raises(SGLangUnavailableError, match="HTTP 500"):
+        with pytest.raises(SGLangUnavailableError, match="HTTP 500") as exc_info:
             await llm.load_adapter(ref)
+        # security review HIGH-2: server-side debug body MUST NOT leak into
+        # the public exception message (paths / env / traces stay in DEBUG log).
+        assert "CUDA_VISIBLE_DEVICES" not in str(exc_info.value)
+        assert "/secret/path" not in str(exc_info.value)
+        assert "Traceback" not in str(exc_info.value)
         # CS-2: registry stays consistent with server actual state on failure.
         assert ref.adapter_name not in llm.loaded_adapters
 

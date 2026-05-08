@@ -48,6 +48,19 @@ def test_refuses_directory_name_with_checkpoint_or_production(tmp_path: Path) ->
         refusal_guard(prod)
 
 
+def test_refuses_symlink_pointing_into_src(tmp_path: Path) -> None:
+    """Symlink into a src/ tree is rejected after resolve() (security HIGH-1)."""
+    src_target = tmp_path / "src" / "erre_sandbox" / "lora_inside_src"
+    src_target.mkdir(parents=True)
+    link = tmp_path / "innocuous_link"
+    try:
+        link.symlink_to(src_target)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation not supported on this platform / FS")
+    with pytest.raises(MockLoRAGuardError, match="'src' segment"):
+        refusal_guard(link)
+
+
 # ---------------------------------------------------------------------------
 # PEFT identity-build tests (require [training] extras + GPU stack)
 # ---------------------------------------------------------------------------
