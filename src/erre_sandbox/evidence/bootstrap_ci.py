@@ -6,13 +6,22 @@ turn-level samples)** for autocorrelation-aware CI estimation. The DB9
 quorum semantics in `design-final.md` requires CI width per
 sub-metric to gate ratio confirmation.
 
-This module is drafted in P3a-decide (ahead of the formal P5 phase) so
-the stimulus-side ratio sanity-check can run on the pilot DuckDB files
-once they are rsync'd from G-GEAR. The full P5 features (block-length
-auto-estimation via autocorrelation, AR(1) sensitivity grid) will be
-layered on top in the dedicated P5 PR — the public API in this module
-is forward-compatible because callers consume CI tuples, not internal
-parameters.
+This module was drafted in P3a-decide (ahead of the formal P5 phase) so
+the stimulus-side ratio sanity-check could run on the pilot DuckDB files
+once they were rsync'd from G-GEAR. The P5 hardening pass adds:
+
+* :func:`estimate_block_length` — Politis-White-inspired autocorrelation
+  probe that returns a heuristic block length capped at ``max_block``.
+  White-noise series collapse to ~1; strong AR(1) series grow toward
+  ``max_block``.
+* ``cluster_only`` flag on :func:`hierarchical_bootstrap_ci` — skips
+  the inner block entirely and resamples whole clusters (used by the
+  Tier B per-100-turn metric where the 25 windows / persona means the
+  effective sample size is the cluster count and per-window
+  autocorrelation is not measured).
+* ``auto_block`` flag on :func:`hierarchical_bootstrap_ci` — passes the
+  pooled stream through :func:`estimate_block_length` to pick the
+  inner-block size at call time.
 
 Quick reference:
 
@@ -24,8 +33,10 @@ Quick reference:
   resampling. Used by P3 / P3-validate when there are 5 runs × 500
   turns per persona; the inner block protects the CI from
   underestimating standard error when consecutive turns are correlated.
+* :func:`estimate_block_length` — automatic block-length picker for the
+  ``auto_block`` path of :func:`hierarchical_bootstrap_ci`.
 
-Both helpers return :class:`BootstrapResult` so plotting / quorum gates
+All helpers return :class:`BootstrapResult` so plotting / quorum gates
 can read ``point / lo / hi / width`` uniformly.
 """
 
@@ -53,6 +64,11 @@ overnight.
 
 DEFAULT_CI: float = 0.95
 """Default 2-sided percentile CI (95%)."""
+
+MIN_SAMPLE_SIZE: int = 10
+"""Minimum sample size for block-length estimation.
+Samples with fewer finite values fall back to block length 1.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,10 +176,115 @@ def bootstrap_ci(
     )
 
 
+def estimate_block_length(
+    values: Sequence[float | None],
+    *,
+    max_block: int = 100,
+) -> int:
+    """Heuristic block length for circular-block bootstrap.
+
+    Inspired by Politis-White (2004) automatic block-length selection: walks
+    the sample autocorrelation function and returns the first lag at which
+    ``|ρ̂(k)|`` falls below the noise floor ``2 / sqrt(n)``. White-noise-like
+    series collapse to ~1; persistent AR-style series grow toward
+    ``max_block``.
+
+    The probe horizon is ``min(n // 4, ⌈5 · log10(n)⌉)`` so the routine is
+    cheap (O(n · log10 n)) and the cap matches the rule-of-thumb upper
+    bound for stationary block bootstrap (block ≤ ``n / 4``).
+
+    Args:
+        values: 1D sequence (NaN/None dropped via :func:`_clean`).
+        max_block: Hard upper bound on the returned block length. Useful
+            when the caller wants to cap the cost of inner-block resampling.
+
+    Returns:
+        Integer block length in ``[1, min(max_block, max(1, n // 4))]``.
+        Returns 1 for series shorter than 10 finite samples or with zero
+        variance (constant series).
+    """
+    if max_block < 1:
+        raise ValueError(f"max_block must be >= 1 (got {max_block})")
+    cleaned = _clean(values)
+    n = cleaned.size
+    if n < MIN_SAMPLE_SIZE:
+        return 1
+
+    centered = cleaned - cleaned.mean()
+    var = float((centered * centered).mean())
+    if var == 0.0:
+        return 1
+
+    cap = max(1, n // 4)
+    k_max = min(cap, max(1, int(5.0 * math.log10(max(n, 10)))))
+    threshold = 2.0 / math.sqrt(n)
+
+    for k in range(1, k_max + 1):
+        rho_k = float((centered[: n - k] * centered[k:]).mean() / var)
+        if abs(rho_k) < threshold:
+            return min(max(1, k), max_block, cap)
+
+    # Every probed lag was above the noise floor: hand back the largest
+    # length we are willing to use without exceeding the n // 4 ceiling.
+    return min(k_max, max_block, cap)
+
+
+def _compute_effective_block_length(
+    cleaned_clusters: list[np.ndarray],
+    pooled: np.ndarray,
+    block_length: int,
+    *,
+    cluster_only: bool,
+    auto_block: bool,
+) -> tuple[str, int]:
+    """Determine effective block length and method label.
+
+    Returns (method_label, effective_block_length).
+    """
+    if cluster_only:
+        return "hierarchical-cluster-only", block_length
+    if auto_block:
+        per_cluster_cap = max((c.size for c in cleaned_clusters), default=1)
+        effective_block_length = estimate_block_length(
+            pooled.tolist(),
+            max_block=per_cluster_cap,
+        )
+        return "hierarchical-block", effective_block_length
+    return "hierarchical-block", block_length
+
+
+def _draw_one_replicate(
+    cleaned_clusters: list[np.ndarray],
+    rng: np.random.Generator,
+    n_clusters: int,
+    effective_block_length: int,
+    *,
+    cluster_only: bool,
+) -> np.ndarray:
+    """Draw one bootstrap replicate."""
+    outer_idx = rng.integers(0, n_clusters, size=n_clusters)
+    if cluster_only:
+        return np.concatenate(
+            [cleaned_clusters[ci_idx] for ci_idx in outer_idx],
+        )
+    replicate_concat: list[np.ndarray] = []
+    for ci_idx in outer_idx:
+        cluster = cleaned_clusters[ci_idx]
+        cluster_n = cluster.size
+        n_blocks = max(1, math.ceil(cluster_n / effective_block_length))
+        starts = rng.integers(0, cluster_n, size=n_blocks)
+        for s in starts:
+            idx = (np.arange(effective_block_length) + s) % cluster_n
+            replicate_concat.append(cluster[idx])
+    return np.concatenate(replicate_concat)
+
+
 def hierarchical_bootstrap_ci(
     values_per_cluster: Sequence[Sequence[float | None]],
     *,
     block_length: int = 50,
+    cluster_only: bool = False,
+    auto_block: bool = False,
     n_resamples: int = DEFAULT_N_RESAMPLES,
     ci: float = DEFAULT_CI,
     seed: int = 0,
@@ -182,15 +303,27 @@ def hierarchical_bootstrap_ci(
             is dropped from the outer resample.
         block_length: Inner circular block length (turns). For 500-turn
             runs the literature default 50 covers ~1 effective sample
-            per 10 blocks (sensitivity grid for tuning lives in P5).
+            per 10 blocks. Ignored when ``cluster_only=True``; replaced
+            when ``auto_block=True``.
+        cluster_only: When ``True``, skip the inner block step and
+            concatenate the entire selected cluster verbatim per outer
+            draw. Use this for Tier B per-100-turn windowed metrics
+            where the 25 windows / persona means the effective sample
+            size is the cluster count and within-window autocorrelation
+            is not modelled.
+        auto_block: When ``True`` (and ``cluster_only=False``), call
+            :func:`estimate_block_length` on the pooled stream and use
+            that estimate as the inner block length. ``block_length``
+            is ignored in this mode.
         n_resamples: Bootstrap iteration count.
         ci: Two-sided coverage in ``(0, 1)``.
         seed: Deterministic seed.
 
     Returns:
-        :class:`BootstrapResult` with ``method="hierarchical-block"``
-        and ``n`` reflecting the **total** number of finite turn-level
-        observations across non-empty clusters (not the cluster count).
+        :class:`BootstrapResult`. ``method`` is
+        ``"hierarchical-cluster-only"`` when ``cluster_only=True`` and
+        ``"hierarchical-block"`` otherwise. ``n`` is the total number of
+        finite turn-level observations across non-empty clusters.
 
     Raises:
         ValueError: On invalid arguments or all-empty clusters.
@@ -213,20 +346,23 @@ def hierarchical_bootstrap_ci(
     n_total = pooled.size
     n_clusters = len(cleaned_clusters)
 
+    method_label, effective_block_length = _compute_effective_block_length(
+        cleaned_clusters,
+        pooled,
+        block_length,
+        cluster_only=cluster_only,
+        auto_block=auto_block,
+    )
+
     replicate_means = np.empty(n_resamples, dtype=float)
     for r in range(n_resamples):
-        outer_idx = rng.integers(0, n_clusters, size=n_clusters)
-        replicate_concat: list[np.ndarray] = []
-        for ci_idx in outer_idx:
-            cluster = cleaned_clusters[ci_idx]
-            cluster_n = cluster.size
-            n_blocks = max(1, math.ceil(cluster_n / block_length))
-            starts = rng.integers(0, cluster_n, size=n_blocks)
-            for s in starts:
-                # Circular block (wraps around for indices >= cluster_n).
-                idx = (np.arange(block_length) + s) % cluster_n
-                replicate_concat.append(cluster[idx])
-        replicate = np.concatenate(replicate_concat)
+        replicate = _draw_one_replicate(
+            cleaned_clusters,
+            rng,
+            n_clusters,
+            effective_block_length,
+            cluster_only=cluster_only,
+        )
         replicate_means[r] = float(replicate.mean())
 
     alpha = 1.0 - ci
@@ -239,7 +375,7 @@ def hierarchical_bootstrap_ci(
         width=hi - lo,
         n=n_total,
         n_resamples=n_resamples,
-        method="hierarchical-block",
+        method=method_label,
     )
 
 
@@ -248,5 +384,6 @@ __all__ = [
     "DEFAULT_N_RESAMPLES",
     "BootstrapResult",
     "bootstrap_ci",
+    "estimate_block_length",
     "hierarchical_bootstrap_ci",
 ]

@@ -22,8 +22,19 @@ import pytest
 from erre_sandbox.evidence.bootstrap_ci import (
     BootstrapResult,
     bootstrap_ci,
+    estimate_block_length,
     hierarchical_bootstrap_ci,
 )
+
+
+def _ar1_series(rng: np.random.Generator, n: int, rho: float) -> list[float]:
+    """Synthesise an AR(1) series ``x[t] = rho * x[t-1] + N(0, 1)``."""
+    eps = rng.standard_normal(n)
+    x = np.zeros(n)
+    x[0] = eps[0]
+    for t in range(1, n):
+        x[t] = rho * x[t - 1] + eps[t]
+    return x.tolist()
 
 
 def test_bootstrap_ci_returns_bootstrap_result_dataclass() -> None:
@@ -156,7 +167,7 @@ def test_hierarchical_bootstrap_widens_ci_on_ar1_correlation() -> None:
 def test_hierarchical_bootstrap_rejects_all_empty() -> None:
     with pytest.raises(ValueError, match="no finite values"):
         hierarchical_bootstrap_ci(
-            [[None, None], [float("nan")]],  # type: ignore[list-item]
+            [[None, None], [float("nan")]],
             block_length=2,
             n_resamples=10,
         )
@@ -165,3 +176,101 @@ def test_hierarchical_bootstrap_rejects_all_empty() -> None:
 def test_hierarchical_bootstrap_rejects_invalid_block_length() -> None:
     with pytest.raises(ValueError, match="block_length"):
         hierarchical_bootstrap_ci([[1.0, 2.0]], block_length=0, n_resamples=10)
+
+
+# --- P5 hardening (2026-05-08): block-length auto-estimation + cluster-only ---
+
+
+def test_estimate_block_length_white_noise_collapses_to_short() -> None:
+    """White noise should collapse to a small block length (~1-3)."""
+    rng = np.random.default_rng(0)
+    sample = rng.standard_normal(500).tolist()
+    block_len = estimate_block_length(sample)
+    assert 1 <= block_len <= 5
+
+
+def test_estimate_block_length_strong_ar1_grows() -> None:
+    """Strong AR(1) (rho=0.9) should yield a block length well above 1.
+
+    The exact value depends on the noise threshold ``2 / sqrt(n)``. For
+    n=500 we just assert L >= 5 — strong correlation must not degenerate
+    to white-noise behaviour.
+    """
+    rng = np.random.default_rng(0)
+    block_len = estimate_block_length(_ar1_series(rng, 500, rho=0.9))
+    assert block_len >= 5
+
+
+def test_estimate_block_length_short_series_returns_one() -> None:
+    """Series with fewer than 10 finite values fall back to 1."""
+    assert estimate_block_length([1.0, 2.0, 3.0]) == 1
+    assert estimate_block_length([None, 1.0, None, 2.0]) == 1
+
+
+def test_estimate_block_length_constant_series_returns_one() -> None:
+    """Zero variance → autocorrelation undefined; safe fallback is 1."""
+    assert estimate_block_length([5.0] * 100) == 1
+
+
+def test_estimate_block_length_respects_max_block_cap() -> None:
+    """Even very strong AR(1) cannot exceed ``max_block``."""
+    rng = np.random.default_rng(0)
+    block_len = estimate_block_length(_ar1_series(rng, 1000, rho=0.99), max_block=15)
+    assert block_len <= 15
+
+
+def test_estimate_block_length_rejects_invalid_max_block() -> None:
+    with pytest.raises(ValueError, match="max_block must be"):
+        estimate_block_length([1.0, 2.0, 3.0], max_block=0)
+
+
+def test_hierarchical_bootstrap_cluster_only_mode() -> None:
+    """``cluster_only=True`` skips the inner block and labels the method
+    ``hierarchical-cluster-only`` so quorum gates know which estimator
+    produced the interval.
+    """
+    rng = np.random.default_rng(0)
+    clusters = [rng.standard_normal(100).tolist() for _ in range(5)]
+    result = hierarchical_bootstrap_ci(
+        clusters,
+        cluster_only=True,
+        n_resamples=500,
+        seed=0,
+    )
+    assert result.method == "hierarchical-cluster-only"
+    assert result.n == 500
+    assert result.lo <= result.point <= result.hi
+
+
+def test_hierarchical_bootstrap_auto_block_runs_and_keeps_method_label() -> None:
+    """``auto_block=True`` must produce a usable CI and keep
+    ``method="hierarchical-block"`` (the inner-block topology is unchanged,
+    only the length is auto-picked).
+    """
+    rng = np.random.default_rng(0)
+    clusters = [_ar1_series(rng, 200, rho=0.7) for _ in range(5)]
+    result = hierarchical_bootstrap_ci(
+        clusters,
+        auto_block=True,
+        n_resamples=500,
+        seed=0,
+    )
+    assert result.method == "hierarchical-block"
+    assert result.n == 1000
+    assert result.lo <= result.point <= result.hi
+
+
+def test_hierarchical_bootstrap_cluster_only_overrides_auto_block() -> None:
+    """When both flags are passed, ``cluster_only`` wins (it collapses
+    the inner block entirely so the auto-block estimate is moot).
+    """
+    rng = np.random.default_rng(0)
+    clusters = [_ar1_series(rng, 100, rho=0.5) for _ in range(4)]
+    result = hierarchical_bootstrap_ci(
+        clusters,
+        cluster_only=True,
+        auto_block=True,
+        n_resamples=300,
+        seed=0,
+    )
+    assert result.method == "hierarchical-cluster-only"
