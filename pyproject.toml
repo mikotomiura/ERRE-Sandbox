@@ -57,6 +57,29 @@ eval = [
     "empath>=0.89",                  # Tier A secondary diagnostic (Big5 claim 不使用)
     "arch>=7,<8",                    # 時系列 bootstrap helpers (HIGH-2)
 ]
+# m9-c-spike — SGLang multi-LoRA serving (CS-1, decisions.md). Pinned to
+# the PyPI 2026-04-08 release; G-GEAR install + ``--enable-lora`` smoke
+# is verified in Phase K-α (.steering/20260508-m9-c-spike/k-alpha-handoff-prompt.md).
+# Kept off the default install — CI runs the SGLang adapter unit tests
+# via ``httpx.MockTransport`` so the heavy CUDA wheel stays optional.
+inference = [
+    "sglang==0.5.10.post1",
+]
+# m9-c-spike — Bounded Kant LoRA training stack (CS-3..CS-6, decisions.md).
+# Phase β (real Kant training) only fires after blockers B-1
+# (m9-individual-layer-schema-add) and B-2 (M9-eval P3 採取) clear; the
+# adapter scaffold + 4-種 hard-fail gate ship in this PR but consume
+# this extras stack only when ``train_kant_lora`` actually runs (peft /
+# transformers / datasets / accelerate / bitsandbytes are imported lazily
+# inside the function body, keeping the default ``import erre_sandbox.training``
+# free of GPU-stack dependencies).
+training = [
+    "transformers>=4.45,<5",
+    "accelerate>=0.34,<1",
+    "bitsandbytes>=0.43,<1",
+    "peft>=0.13,<1",
+    "datasets>=3,<4",
+]
 
 [project.scripts]
 erre-sandbox = "erre_sandbox.__main__:cli"
@@ -82,6 +105,38 @@ dev = [
     { include-group = "lint" },
     { include-group = "typecheck" },
     { include-group = "test" },
+]
+
+# m9-c-spike — sglang==0.5.10.post1 ([inference]) ships its own
+# transformers==5.3.0 pin which collides with both [training] (peft +
+# transformers>=4.45,<5) and [eval] (sentence-transformers requires
+# transformers<5). Operationally these stacks never co-reside on the
+# same GPU host anyway: training runs first (peft saves a checkpoint),
+# then the SGLang server boots with the adapter loaded, and Tier C
+# judge LLM (eval, ollama-based) lives in a separate process. uv
+# ``conflicts`` splits the lockfile universe pairwise so the resolver
+# can pin transformers per-extra without forcing a single global
+# version. Callers run ``uv sync --extra inference`` or
+# ``uv sync --extra training`` (and may combine training+eval) but not
+# inference+training or inference+eval. Adapter unit tests use
+# httpx.MockTransport and do not import sglang, so CI default install
+# (no extras) still exercises the SGLangChatClient surface.
+[tool.uv]
+# sglang==0.5.10.post1 transitively requires flash-attn-4>=4.0.0b4
+# (pre-release). uv's default prerelease policy rejects unsolicited
+# pre-releases; allow them so the [inference] universe can resolve.
+# This only affects the [inference] extras universe — core / [eval] /
+# [training] resolutions still prefer stable releases by other constraints.
+prerelease = "allow"
+conflicts = [
+    [
+        { extra = "inference" },
+        { extra = "training" },
+    ],
+    [
+        { extra = "inference" },
+        { extra = "eval" },
+    ],
 ]
 
 [tool.uv.build-backend]
@@ -154,7 +209,7 @@ strict = true
 warn_unused_ignores = true
 warn_return_any = false  # T05 完了後に true に昇格 (decisions.md 参照)
 plugins = ["pydantic.mypy"]
-exclude = ["^\\.venv/", "^build/", "^dist/"]
+exclude = ["^\\.venv/", "^build/", "^dist/", "^tools/"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -173,6 +228,17 @@ ignore_missing_imports = true
 # strict src check stays green without forcing the heavy install.
 [[tool.mypy.overrides]]
 module = ["transformers.*", "sentence_transformers.*", "empath.*", "ollama.*", "arch.*", "scipy.*"]
+ignore_missing_imports = true
+
+# m9-c-spike — SGLang serving + LoRA training stack live behind
+# ``[inference]`` / ``[training]`` extras and are imported lazily inside
+# function bodies (sglang only on real-server smoke; peft / accelerate /
+# bitsandbytes / datasets only inside ``train_kant_lora``). ``--all-groups``
+# in CI does NOT install these, so mypy cannot resolve them — mark the
+# modules as ``ignore_missing_imports`` to keep the strict src check green
+# without forcing the GPU-stack install.
+[[tool.mypy.overrides]]
+module = ["sglang.*", "peft.*", "accelerate.*", "bitsandbytes.*", "datasets.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
@@ -207,4 +273,7 @@ filterwarnings = [
 markers = [
     "godot: requires Godot binary on PATH or GODOT_BIN; deselected on CI via -m \"not godot\"",
     "eval: requires the [eval] extras (sentence-transformers / transformers / empath); deselected by default",
+    "inference: requires the [inference] extras (sglang); deselected by default — reserved for real SGLang server smoke (Phase K-α G-GEAR side)",
+    "training: requires the [training] extras (peft / transformers / accelerate / bitsandbytes / datasets); deselected by default — reserved for Phase K β real Kant training (B-1/B-2 解消後)",
+    "spike: requires [training] + GPU + actual peft LoRA build; deselected by default — m9-c-spike Phase J mock-LoRA identity verification (CS-9)",
 ]

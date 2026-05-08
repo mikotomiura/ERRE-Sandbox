@@ -1,0 +1,63 @@
+"""Training-layer exceptions for the m9-c-spike Phase β gate (CS-3).
+
+Three error types govern the 4-種 hard-fail flow in
+:func:`erre_sandbox.training.train_kant_lora.assert_phase_beta_ready`:
+
+* :class:`EvaluationContaminationError` — re-exported from the
+  contracts layer so callers in ``erre_sandbox.training`` and the
+  test suite import a single canonical class. Defining a parallel type
+  inside ``training`` would split the sentinel CI test set in two and
+  is therefore explicitly forbidden by CS-3.
+* :class:`BlockerNotResolvedError` — raised when the schema enforcement
+  follow-up (DB11 / blocker B-1 ``m9-individual-layer-schema-add``)
+  has not landed. The error message names the blocker so a silent skip
+  is structurally impossible.
+* :class:`InsufficientTrainingDataError` — raised when the realised
+  per-persona example count (``len(build_examples(...))``) falls below
+  the literature-derived ``min_examples`` threshold. Operational SLO
+  (CS-3), not a literature constant — adjust per-spike scope only.
+"""
+
+from __future__ import annotations
+
+from erre_sandbox.contracts.eval_paths import EvaluationContaminationError
+
+
+class BlockerNotResolvedError(RuntimeError):
+    """Phase β prerequisite blocker is still open (CS-3).
+
+    Raised by :func:`assert_phase_beta_ready` when the training-view
+    schema does not expose the ``individual_layer_enabled`` column. The
+    column is added by the ``m9-individual-layer-schema-add`` follow-up
+    (M9-eval-system blocker B-1 / DB11 enforcement); attempting to run
+    Phase β real Kant training before that lands risks training on rows
+    flagged for individual evaluation, which is a contamination class
+    breach.
+
+    Catching this exception without resolving the named blocker is a
+    contract bug. The message includes the blocker task name so an
+    accidental ``except`` clause cannot silently bypass the gate.
+    """
+
+
+class InsufficientTrainingDataError(ValueError):
+    """Realised Kant example count falls below the gate threshold (CS-3).
+
+    Raised by :func:`assert_phase_beta_ready` when
+    ``len(build_examples(rows, persona_id="kant"))`` is below
+    ``min_examples`` (default 1000, an operational SLO derived from
+    P-Tailor / Anthropic persona vector / BIG5-CHAT prior art — see
+    decisions.md CS-3 棄却).
+
+    Recovery is data-driven, not code-driven: gather more dialog turns
+    via the M9-eval P3 golden capture pipeline (blocker B-2) until the
+    realised count clears the threshold. Lowering ``min_examples`` is a
+    spike-scope override only and must be recorded as a CS-3 amendment.
+    """
+
+
+__all__ = [
+    "BlockerNotResolvedError",
+    "EvaluationContaminationError",
+    "InsufficientTrainingDataError",
+]

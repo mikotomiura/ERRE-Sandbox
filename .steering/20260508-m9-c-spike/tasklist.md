@@ -39,8 +39,8 @@
 ### Phase F — tasklist + blockers + design.md populate (本書 + Codex MEDIUM-6)
 
 - [x] `tasklist.md` (本書) populate (Phase A-L 全 sub-items)
-- [ ] `blockers.md` populate (hard blocker / soft blocker / defer)
-- [ ] `design.md` populate (Codex MEDIUM-6 反映、template-shaped から)
+- [x] `blockers.md` populate (hard blocker / soft blocker / defer)
+- [x] `design.md` populate (Codex MEDIUM-6 反映、design-final.md summary 貼付済)
 
 ## 次セッション以降 (実装 + tests + G-GEAR 実走)
 
@@ -180,7 +180,7 @@
 
 - [x] design-final.md 確定 (本セッション Phase E)
 - [x] decisions.md CS-1〜CS-9 起票 (本セッション Phase E)
-- [ ] design.md populate (Codex MEDIUM-6、Phase F、本セッション)
+- [x] design.md populate (Codex MEDIUM-6、Phase F、本セッション)
 - [ ] PR description (Phase L、次セッション以降):
   - `codex-review-m9-c-spike.md` link
   - HIGH 4 反映マッピング表
