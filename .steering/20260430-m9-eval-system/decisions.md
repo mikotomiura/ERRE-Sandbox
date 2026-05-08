@@ -692,6 +692,73 @@ budget を確定する流れで M9 Phase 2 を継続。
 - 旧 re-open 条件 (上記、≤55 / ≥80) は **本 amendment の trigger zone table で
   上書き**、condition-aware に再定義
 
+### Amendment 2026-05-08 — Phase A run1 calibration 完了 (5/5 cells、saturation 確定、wall_budget 600 min 採用)
+
+**根拠**: G-GEAR で Phase A run1 calibration を kant only × 5 wall (120/240/
+360/480/600) sequential で全 cell 完了 (2026-05-08 18:49、ME-2 protocol 経由で
+Mac 受領 + md5 10/10 一致 + DuckDB read_only sanity 5/5 OK)。
+
+**5-cell empirical summary**:
+
+| run_idx | wall (min) | focal | total_rows | rate (/min) | rate (/h) |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 120 | 195 | 582 | 1.625 | 97.50 |
+| 101 | 240 | 383 | 1,156 | 1.596 | 95.75 |
+| 102 | 360 | 573 | 1,723 | 1.592 | 95.50 |
+| 103 | 480 | 754 | 2,270 | 1.571 | 94.25 |
+| 104 | 600 | 931 | 2,816 | 1.552 | 93.10 |
+
+**統計** (n=5):
+
+```
+focal_per_min_single mean   = 1.5870 /min  (95.22 /h)
+stdev                        = 0.0276 /min
+95% CI (t-dist, df=4)        = [1.5527, 1.6213] /min  ≈ [93.16, 97.28] /h
+saturation                   = 単調減少 (1.625 → 1.552)、漸近線へ収束
+```
+
+**全 5 cell が single calibration central zone (1.55-1.87 /min) 内**、
+saturation curve は Codex M1 で示された pilot 1.875 /min 起点の漸近モデルに
+適合する (memory pressure 累積による wall-duration 効果)。
+
+**Contention factor wall-aligned 再校正** (Codex 9th HIGH-3):
+
+```
+run102 single 360min      = 1.592 /min   (wall-matched comparison)
+run0 3-parallel 360min    = 1.06  /min   (incident reference)
+contention_factor (1.502) = 1.592 / 1.06
+```
+
+→ 暫定 bracket [1.5, 1.76] の下端、§B.3 default 1.76× より **−14.7%**
+(3-parallel contention は事前推計より軽い)。
+
+**run2-4 wall budget 確定**:
+
+```
+parallel rate estimate    = 1.587 / 1.502 = 1.057 /min
+wall_budget_raw           = ceil(500 / (1.057 × 0.85)) = 557 min
+rounded to 60-multiple    = 600 min
+```
+
+→ **§B.3 default 600 min を採用確定**。run2-4 を 600 min wall_budget で
+3-parallel 採取 OK。
+
+**re-open 条件 (Amendment 2026-05-08)**:
+- run2-4 production (3-parallel × wall=600 min × 3 run) で focal/run が 500
+  目標から大幅乖離 (例: focal < 400 で systematic shortfall) → contention
+  factor 再校正 + wall_budget 増額検討
+- run0 partial 再採取 (`--allow-partial-rescue`) で wall=600 min × 3-parallel
+  の rate が 1.502 contention factor 予測 (1.057 /min ≈ 63 /h) と乖離 → 暫定
+  bracket [1.5, 1.76] を観測値に合わせて再 bracket
+
+**反映先**:
+- `data/eval/calibration/run1/` に 5 cell DuckDB + sidecar JSON commit
+  (本 PR、`feature/m9-eval-phase-a-run1-complete`)
+- `g-gear-p3-launch-prompt-v2.md` §B.3 の wall_budget 仮置きを **600 min 確定**
+  に更新
+- 次セッション (Phase B + C) launch prompt で確定値 (wall_budget=600,
+  contention_factor=1.502) を base に G-GEAR 投入 prompt 起草
+
 ---
 
 ## ME-10 — Vendi kernel default + sensitivity panel preregister (Codex P4a HIGH-1)
