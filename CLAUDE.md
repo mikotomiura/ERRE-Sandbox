@@ -10,7 +10,7 @@ Claude Code がセッション開始時に自動で読み込む指示書。
 
 - **名称**: ERRE-Sandbox (Autonomous 3D Society Emerging from the Cognitive Habits of Great Thinkers)
 - **目的**: 歴史的偉人の認知習慣をローカル LLM エージェントとして 3D 空間に再実装し、「意図的非効率性」と「身体的回帰」による知的創発を観察する研究プラットフォーム
-- **主要技術**: Python 3.11 / FastAPI / Godot 4.4 / SGLang+Ollama / sqlite-vec / Pydantic v2
+- **主要技術**: Python 3.11 / FastAPI / Godot 4.6 / SGLang+Ollama / sqlite-vec / Pydantic v2 / DuckDB (M9-eval)
 - **チーム規模**: 個人
 - **ライセンス**: Apache-2.0 OR MIT (本体)、GPL-3.0 (Blender 連携は別パッケージ)
 

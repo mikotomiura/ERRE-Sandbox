@@ -73,13 +73,14 @@ sqlite-vec ベースの階層的記憶。
 
 ### 機能 4: 3D 表現・可視化
 
-Godot 4.4 による 3D レンダリングとダッシュボード。
+Godot 4.6 による 3D レンダリングとダッシュボード。
 
 - **概要**: エージェントの行動を 3D アバターとして可視化し、研究者向けダッシュボードを提供
 - **入力**: WebSocket 経由のエージェント状態 JSON
 - **出力**: 3D シーン、Memory Stream タイムライン、AgentState パネル、対話ログ
 - **振る舞い**:
-  - Godot 側: GDScript でシーン更新、スキンメッシュアバターのアニメーション (walking / sitting / bowing)
+  - Godot 側: GDScript でシーン更新、humanoid avatar (Node3D + Head/Torso/Arms/Legs primitive 合成)、ERRE モード tint、Label3D dialog bubble、HSplit + 折り畳み式 ReasoningPanel (M7ζ + M9-A で `persona_id` / `trigger_event` を表示)
+  - ゾーン: 5 ERRE ゾーン (`peripatos` / `chashitsu` / `zazen` / `agora` / `garden`) + `study` + `base_terrain` の合計 7 シーン (`godot_project/scenes/zones/`)
   - ダッシュボード: Streamlit または FastAPI + HTMX
   - リプレイ: SQLite スナップショットから任意時点を再現
 
@@ -95,6 +96,8 @@ Godot 4.4 による 3D レンダリングとダッシュボード。
 - **統計設計**: n >= 20 回の独立試行、3段階 ablation、Benjamini-Hochberg FDR 補正、OSF 事前登録
 
 ### 機能 6: M8 観測 metric — baseline quality + scaling profile
+
+> M8 で merge 済。M9-eval Tier-A pipeline は機能 7 を参照。
 
 post-hoc 集計 CLI で 2 系統の metric を出す。M9 LoRA 比較の reference point と
 observability-triggered scaling の trigger 判定の両用途。
@@ -123,6 +126,36 @@ observability-triggered scaling の trigger 判定の両用途。
 - **D3 互換性**: `session_phase` model 実装後に `aggregate()` 内で
   `session_phase != AUTONOMOUS` の turn を filter で落とす一段落を追加するだけで
   Q&A epoch を metric から自動除外できる構造
+
+### 機能 7: M9-eval — LoRA 比較用評価パイプライン
+
+M9-B LoRA 実装の persona consistency を測るための独立評価系。
+契約 (`raw_dialog` 行は訓練 eligible、`metrics` 行は評価専用) を 4 層で
+担保する点が機能 6 との大きな違い。
+
+- **概要**: 偉人ペルソナを `--condition stimulus` (golden battery 駆動) と
+  `--condition natural` (3-agent runtime) の 2 条件で走らせ、turn 列を
+  DuckDB `raw_dialog` schema に格納。post-hoc に Tier-A metric を計算して
+  `metrics` schema に書き込む
+- **CLI**:
+  - `python -m erre_sandbox.cli.eval_run_golden` (`erre-eval-run-golden`)
+    — 1 cell ((persona, condition, run_idx)) を 1 DuckDB ファイルに採取
+  - `python -m erre_sandbox.cli.eval_audit` (`erre-eval-audit`) — sidecar JSON
+    と DuckDB を突合し PASS/FAIL を返すゲート (ME-9 ADR)
+- **Tier-A metric** (`evidence/tier_a/`):
+  - `burrows.py` — Burrows Δ (persona consistency)
+  - `mattr.py` — Moving Average Type-Token Ratio (lexical diversity)
+  - `nli.py` — NLI claim-conservation (transformers pipeline)
+  - `novelty.py` — MPNet sentence-transformer 由来 semantic novelty
+  - `empath_proxy.py` — Empath secondary diagnostic (Big5 主張不可)
+- **4 層 contamination defence** (`contracts/eval_paths.py` + `contracts/`
+  外で behavioural / static / egress audit を併用): API contract、
+  Behavioural CI sentinel、Static grep gate、Existing-egress audit
+- **依存方向**: `evidence/` → `schemas` / `memory` / `cognition` (定数のみ)。
+  `world` / `integration` / `ui` には依存しない (post-hoc layer)
+- **enforcement**: heavy ML 依存 (sentence-transformers、scipy、ollama、
+  empath、arch) は `pyproject.toml` の `[project.optional-dependencies] eval`
+  に隔離し、デフォルトの `uv sync` には入れない (Codex MEDIUM-4)
 
 ## 3. ユースケース
 
@@ -189,7 +222,23 @@ observability-triggered scaling の trigger 判定の両用途。
     - Chashitsu / Zazen zone 最小シーン + BaseTerrain 下敷き + ERRE mode tint + Label3D dialog bubble を Godot に実装済 (`m5-godot-zone-visuals` PR #59)
     - Godot 側 humanoid avatar (Node3D + Head/Torso/Arms/Legs primitive 合成、scene-local 共有 `StandardMaterial3D` で全身一斉 tint)、読みやすい Label3D bubble (font_size=48 / pixel_size=0.012 / outline=16 黒縁 / `no_depth_test`)、agent_id hash ベースの視覚オフセットで複数 agent の重なり防止 (PR #66)
     - Contract-First + LLM Spike の hybrid (design: `.steering/20260420-m5-planning/design.md`、acceptance: `.steering/20260421-m5-acceptance-live/acceptance.md`)
-- 5-8体が12時間シミュレーションを破綻なく実行 (M7)
+- 5-8体が12時間シミュレーションを破綻なく実行 (M7) — 2026-04-26 まで
+  に slice γ/δ/ε/ζ で differentiation observability、relationship loop、
+  filter live、resonance panel が live merge 済 (`SCHEMA_VERSION` は
+  M7γ → M7δ → M7ε → M7ζ → 0.9.0-m7z までブイ)
+- baseline quality + scaling profile metric (M8) — 2026-04-26 merge 済。
+  observability-triggered scaling の trigger は metric が解析的上限の % を
+  割った瞬間に M9 +1 persona を起票する運用 (機能 6 参照)
+- event-boundary observability (M9-A) — 2026-04-30 merge 済 (PR #117–#124、
+  6/6 PASS)。`TriggerEventTag` が `ReasoningTrace.trigger_event` を経由して
+  Godot `ReasoningPanel` まで貫通し、観測者は反省発火の理由を視認できる。
+  schema は `0.10.0-m7h` に bump
+- M9 LoRA execution plan (M9-B) — 2026-04-30 PR #127 で SGLang-first ADR
+  確定 (DB1–DB10)。実装は次マイルストン
+- M9 evaluation system (M9-eval) — 2026-04-30 ～ 進行中。Tier-A pipeline
+  (Burrows / MATTR / NLI / novelty / Empath proxy)、DuckDB raw_dialog ↔
+  metrics 4 層 contract、`erre-eval-run-golden` / `erre-eval-audit` CLI、
+  Phase 2 wall-budget calibration (G-GEAR overnight × 2 計画)
 - 4層評価フレームワークの実装と統計レポート出力 (M10-M11)
 
 ### オプション機能
@@ -221,7 +270,7 @@ observability-triggered scaling の trigger 判定の両用途。
 - **障害復旧**: SQLite スナップショットから任意時点を復元可能
 
 ### ユーザビリティ
-- **対応デバイス**: G-GEAR (Linux/WSL2) + MacBook Air M4 (macOS)
+- **対応デバイス**: G-GEAR (Windows native、RTX 5060 Ti 16 GB) + MacBook Air M4 (macOS)
 - **観察者インターフェース**: ブラウザ (Streamlit/HTMX)、Godot 3D ビューア
 
 ### ライセンス

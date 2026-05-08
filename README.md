@@ -1,8 +1,6 @@
 # ERRE-Sandbox
 
-[日本語](#日本語) | [English](#english)
-
-## English
+[English](README.md) | [日本語](README.ja.md)
 
 ERRE-Sandbox is a research platform that re-implements the cognitive habits
 of historical thinkers (Aristotle, Kant, Nietzsche, Rikyū, Dōgen, …) as
@@ -11,158 +9,126 @@ designed around two principles: **deliberate inefficiency** and **embodied
 return**, used as first-class primitives to observe emergent intellectual
 behavior.
 
-### Status — M5 complete (v0.3.0-m5, 2026-04-21)
+## Status — M9-A merged, M9-B / M9-eval in progress (last verified 2026-05-08)
 
-Three-agent society now ships with an event-driven ERRE-mode FSM,
-LLM-generated multi-turn dialogs, and fully rendered zone visuals.
-**Kant / Nietzsche / Rikyū** boot via
-`uv run erre-sandbox --personas kant,nietzsche,rikyu`, each running a
-10-second cognition cycle on top of a 30 Hz physics tick, reflecting
-episodic memory into semantic memory (sqlite-vec, `origin_reflection_id`),
-transitioning ERRE mode through `DefaultERREModePolicy` (zone change /
-fatigue / shuhari hooks with live `SamplingDelta` application), exchanging
-LLM-generated `dialog_turn` envelopes (`OllamaDialogTurnGenerator`,
-`num_predict=120` / `think=False` / 160-char cap / Japanese unified output)
-through the gateway (`schema_version=0.3.0-m5`, per-agent `?subscribe=`
-routing), and streaming to a Godot 4.6 viewer that renders humanoid
-avatars with ERRE mode tint, readable dialog bubbles, and four zone
-scenes (`base_terrain` / `peripatos` / `chashitsu` / `zazen`).
+Wire schema is at **`0.10.0-m7h`** (M9-A `event-boundary-observability`
+bump on top of M7ζ `live-resonance`). Three-agent society (Kant /
+Nietzsche / Rikyū) boots through `uv run erre-sandbox --personas
+kant,nietzsche,rikyu`, with the M5 ERRE-mode FSM, multi-turn LLM dialog,
+and all five zone scenes (`peripatos` / `chashitsu` / `zazen` / `agora` /
+`garden` plus `study` and `base_terrain`) live on a Godot 4.6 viewer.
+Trigger-event tags (M9-A) propagate from the Python `Reflector` to the
+`ReasoningPanel` so the operator can see *why* a reflection fired.
 
-- M5 live acceptance (7 items, all PASS on G-GEAR RTX 5060 Ti 16 GB):
-  [.steering/20260421-m5-acceptance-live/acceptance.md](.steering/20260421-m5-acceptance-live/acceptance.md)
-- M5 3-avatar MacBook recording: `.steering/20260421-m5-acceptance-live/evidence/recordings/erre-sandbox_demo.v3.mp4`
-- M4 3-avatar 60 s Godot recording: `.steering/20260420-m4-acceptance-live/evidence/godot-3avatar-20260420-1625.mp4`
-- M2 MVP demo (1-Kant walker): [.steering/20260419-m2-functional-closure/evidence/godot-walking-20260420-003400.mp4](.steering/20260419-m2-functional-closure/evidence/godot-walking-20260420-003400.mp4)
-- Release tags: `v0.1.0-m2` (contract freeze) / `v0.1.1-m2` (1-agent MVP) / `v0.2.0-m4` (3-agent reflection + dialog) / `v0.3.0-m5` (ERRE FSM + LLM dialog + zone visuals)
+Recent landmarks (newest first):
 
-Next milestone: **M6** — navmesh-based intra-zone pathing, preferred-zone
-movement policies, additional personas (dogen / aristotle / thoreau, …),
-and the remaining zone scenes (`agora` / `garden` / `study`).
+- **M9-eval ME-9 trigger amendment** (2026-05-07, PR #142): the regular STOP
+  observed at run1 cells 100/101 is classified as a false-positive trigger
+  (Codex 9th review, hybrid A/C verdict); cooldown re-adjustment is rejected.
+  ADR ME-9 gets an Amendment 2026-05-07, and the v2 prompt is extended with
+  §A.4 saturation model + §B-1b run102 resume procedure.
+- **M9-eval Phase 2 run1 calibration v2 prompt** (2026-05-07, PR #141): live
+  `qwen3:8b` G-GEAR launch prompt v2 (kant 1 cell × 5, wall ≈ 30 h × 2 nights),
+  golden-battery driver + audit gate (`erre-eval-run-golden` /
+  `erre-eval-audit`), 4-layer `raw_dialog` ↔ `metrics` schema contract
+  (`src/erre_sandbox/contracts/eval_paths.py`), `data/eval/calibration/run1/`
+  isolation with sidecar md5 receipt.
+- **M9-eval CLI partial-fix** (2026-05-06, PR #140): `eval_audit` gate +
+  capture-sidecar receipts + `--allow-partial` semantics, 1318 tests PASS.
+- **M9-B LoRA execution plan** (2026-04-30, PR #127): SGLang-first ADR
+  (DB1–DB10) with bounded Kant spike. Execution itself is the next
+  milestone.
+- **M9-A event-boundary observability** (2026-04-30, PR #117–#124, 6/6 PASS):
+  `TriggerEventTag` end-to-end through reasoning panel, `pulse_zone`
+  observability via log-based START counters.
+- **Godot viewport layout** (2026-04-28, PR #115/#116): HSplit + collapse
+  reasoning panel; live RTX 5060 Ti acceptance.
+- **CI pipeline + Codex environment** (2026-04-28, PR #113/#114): pre-commit
+  + 3-parallel CI jobs (`lint` / `typecheck` / `test`); `.codex/` config +
+  `AGENTS.md` for first-class Codex-CLI partnership.
+- **Contracts layer** (2026-04-28, PR #111/#112): `src/erre_sandbox/contracts/`
+  for ui-allowable lightweight Pydantic boundary (thresholds, eval paths).
+- Earlier release tags: `v0.1.0-m2` (contract freeze) / `v0.1.1-m2` (1-agent
+  MVP) / `v0.2.0-m4` (3-agent reflection + dialog) / `v0.3.0-m5` (ERRE
+  FSM + LLM dialog + zone visuals).
 
-### Key components
+**Next milestones**: (1) M9-eval Phase 2 run1 wall-budget calibration on
+G-GEAR (kant single-cell × 5, ~30 h overnight × 2); (2) M9-B LoRA execution
+(`m9-c-spike`); (3) `godot-ws-keepalive` reliability work.
 
-- **Python 3.11 core** (`src/erre_sandbox/`): schemas, inference adapters
-  (SGLang / Ollama), memory (sqlite-vec + semantic layer), CoALA-inspired
-  cognition cycle with `Reflector`, world tick loop, in-memory dialog
-  scheduler with proximity-based auto-fire.
-- **Godot 4.4 frontend** (`godot_project/`): 3D visualization, rendered over
-  a WebSocket bridge.
+## Key components
+
+- **Python 3.11 core** (`src/erre_sandbox/`): Pydantic v2 schemas
+  (`schemas.py`), inference adapters (Ollama / SGLang [planned]), memory
+  (sqlite-vec + semantic layer with `origin_reflection_id`), CoALA-inspired
+  cognition cycle with `Reflector`, ERRE FSM (`erre/`), world tick loop,
+  in-memory dialog scheduler with proximity-based auto-fire.
+- **Contracts layer** (`src/erre_sandbox/contracts/`): lightweight
+  pydantic-only boundary modules (`thresholds.py`, `eval_paths.py`) that
+  may be imported from `ui/`, `integration/`, `evidence/` without dragging
+  in heavy deps.
+- **Evidence layer** (`src/erre_sandbox/evidence/`): post-hoc metric
+  computation — M8 baseline quality (`self_repetition_rate` /
+  `cross_persona_echo_rate` / `bias_fired_rate`), M8 scaling profile
+  (`pair_information_gain` / `late_turn_fraction` / `zone_kl_from_uniform`),
+  M9-eval Tier-A pipeline (Burrows / MATTR / NLI / novelty / Empath proxy),
+  bootstrap CI, golden baseline driver, capture sidecar.
+- **Eval CLIs** (`src/erre_sandbox/cli/`):
+  - `erre-sandbox` sub-commands — `run` (default), `export-log`,
+    `baseline-metrics`, `scaling-metrics`.
+  - Stand-alone — `python -m erre_sandbox.cli.eval_run_golden` /
+    `python -m erre_sandbox.cli.eval_audit` (M9-eval).
+- **Godot 4.6 frontend** (`godot_project/`): 3D visualization over a
+  WebSocket bridge; humanoid avatars, ERRE-mode tint, dialog bubbles,
+  reasoning panel with trigger-event tags, six rendered scenes
+  (`MainScene` + `BaseTerrain` + 5 ERRE zones).
 - **Personas** (`personas/*.yaml`): per-thinker habits, ERRE-mode
   sampling overrides, public-domain source references. Current set:
-  `kant.yaml`, `nietzsche.yaml`, `rikyu.yaml`.
+  `kant.yaml`, `nietzsche.yaml`, `rikyu.yaml` (additional personas
+  gated on observability-triggered scaling — see
+  `docs/glossary.md`).
 
-### Getting started
+## Getting started
 
 ```bash
 uv sync
 uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy src
-uv run pytest
+uv run pytest -m "not godot"
 ```
 
 The pre-commit hook runs `ruff check` and `ruff format --check` on staged
 `src/` / `tests/` Python files at commit time. The GitHub Actions CI
-workflow (`.github/workflows/ci.yml`, on push to main and on every PR)
+workflow (`.github/workflows/ci.yml`, on push to `main` and on every PR)
 runs all four checks (`ruff check`, `ruff format --check`, `mypy src`,
-`pytest -m "not godot"`) in parallel jobs. All four can also be invoked
-manually with the commands shown above. Requires
-[uv](https://docs.astral.sh/uv/). To enable the local hook once after
-cloning:
+`pytest -m "not godot"`) in three parallel jobs (`lint` / `typecheck` /
+`test`). Godot-binary tests (marked `@pytest.mark.godot`) are deselected
+on CI and run manually. Requires [uv](https://docs.astral.sh/uv/). To
+enable the local hook once after cloning:
 
 ```bash
 uv tool install pre-commit
 pre-commit install
 ```
 
-### Layout
+Heavy ML dependencies for the M9-eval pipeline (sentence-transformers,
+scipy, ollama, empath, arch) are isolated under the `eval` extras group:
+
+```bash
+uv sync --extra eval
+```
+
+## Layout
 
 See `docs/repository-structure.md` for the authoritative layout and
-`docs/architecture.md` for the end-to-end data flow.
+`docs/architecture.md` for the end-to-end data flow. Glossary of
+ERRE-specific terms (peripatos, chashitsu, shu-ha-ri, observability-
+triggered scaling, …) is in `docs/glossary.md`.
 
-### License
+## License
 
 Dual-licensed under **Apache-2.0 OR MIT** at the user's choice. See
 `LICENSE`, `LICENSE-MIT`, and `NOTICE`. Any Blender-side integration lives
-in a separately-packaged GPL-3.0 project to prevent license contamination.
-
----
-
-## 日本語
-
-ERRE-Sandbox は歴史的偉人 (アリストテレス、カント、ニーチェ、利休、道元ほか)
-の認知習慣を、ローカル LLM で駆動される自律エージェント群として 3D 空間に
-再実装する研究プラットフォームです。「意図的非効率性」と「身体的回帰」を
-設計プリミティブとして、知的創発を観察します。
-
-### 現在の状態 — M5 完了 (v0.3.0-m5, 2026-04-21)
-
-3 体エージェント社会に event-driven ERRE モード FSM / LLM 生成マルチターン
-対話 / zone ビジュアルが揃いました。`uv run erre-sandbox --personas kant,nietzsche,rikyu`
-で起動するとカント / ニーチェ / 利休がそれぞれ 30 Hz 物理 tick + 10 秒
-cognition サイクルで動き、episodic memory を `Reflector` 経由で semantic
-memory に蒸留 (sqlite-vec、`origin_reflection_id` 付き)、zone 変化・疲労・
-守破離イベントで `DefaultERREModePolicy` が ERRE モードを遷移させ同時に
-`SamplingDelta` を live 適用、`OllamaDialogTurnGenerator` が multi-turn
-`dialog_turn` を LLM 生成 (`num_predict=120` / `think=False` / 160 char cap /
-日本語統一出力) して gateway 経由で交換 (`schema_version=0.3.0-m5`、
-per-agent `?subscribe=` routing)、WebSocket で Godot 4.6 ビューアに流し込み
-humanoid avatar + ERRE mode tint + 読める dialog bubble + 4 zone シーン
-(`base_terrain` / `peripatos` / `chashitsu` / `zazen`) で描画されます。
-
-- M5 live 検収 (7 項目すべて PASS、G-GEAR RTX 5060 Ti 16 GB 実機):
-  [.steering/20260421-m5-acceptance-live/acceptance.md](.steering/20260421-m5-acceptance-live/acceptance.md)
-- M5 3 体 MacBook 録画: `.steering/20260421-m5-acceptance-live/evidence/recordings/erre-sandbox_demo.v3.mp4`
-- M4 3-avatar 60 秒 Godot 録画: `.steering/20260420-m4-acceptance-live/evidence/godot-3avatar-20260420-1625.mp4`
-- M2 MVP デモ (1 体カント): [.steering/20260419-m2-functional-closure/evidence/godot-walking-20260420-003400.mp4](.steering/20260419-m2-functional-closure/evidence/godot-walking-20260420-003400.mp4)
-- リリースタグ: `v0.1.0-m2` (contract 凍結) / `v0.1.1-m2` (1 体 MVP) / `v0.2.0-m4` (3 体 reflection + dialog) / `v0.3.0-m5` (ERRE FSM + LLM dialog + zone visuals)
-
-次マイルストン: **M6** — zone 内 navmesh パス生成、preferred_zone 移動ポリシー、
-追加ペルソナ (dogen / aristotle / thoreau ほか)、残り zone シーン
-(`agora` / `garden` / `study`) の実装。
-
-### 主要コンポーネント
-
-- **Python 3.11 コア** (`src/erre_sandbox/`): スキーマ、推論アダプタ
-  (SGLang / Ollama)、記憶 (sqlite-vec + semantic layer)、`Reflector` を
-  組み込んだ CoALA 準拠認知サイクル、ワールド tick ループ、proximity
-  ベースの in-memory dialog scheduler。
-- **Godot 4.4 フロントエンド** (`godot_project/`): 3D 可視化。WebSocket
-  経由で Python 側と疎結合。
-- **ペルソナ** (`personas/*.yaml`): 偉人ごとの認知習慣、ERRE モードの
-  サンプリングオーバーライド、パブリックドメイン史料への参照。現行:
-  `kant.yaml`, `nietzsche.yaml`, `rikyu.yaml`。
-
-### 開発の始め方
-
-```bash
-uv sync
-uv run ruff check src tests
-uv run ruff format --check src tests
-uv run mypy src
-uv run pytest
-```
-
-pre-commit hook はコミット時にステージされた `src/` / `tests/` の Python
-ファイルに対して `ruff check` と `ruff format --check` の 2 つを実行します。
-GitHub Actions CI (`.github/workflows/ci.yml`、main への push 時と PR 時)
-は 4 つのチェック (`ruff check` / `ruff format --check` / `mypy src` /
-`pytest -m "not godot"`) を並列 jobs で実行します。いずれも手動実行可能です。
-[uv](https://docs.astral.sh/uv/) が必要です。クローン直後にローカル hook を
-有効化するには:
-
-```bash
-uv tool install pre-commit
-pre-commit install
-```
-
-### ディレクトリ構成
-
-正典は `docs/repository-structure.md`、全体のデータフローは
-`docs/architecture.md` を参照してください。
-
-### ライセンス
-
-**Apache-2.0 OR MIT** のデュアルライセンス。利用者が選択できます。
-`LICENSE` / `LICENSE-MIT` / `NOTICE` を参照。Blender 連携は GPL-3.0 の
-別パッケージに完全分離することで、本体のライセンス汚染を防いでいます。
+in a separately-packaged GPL-3.0 project (`erre-sandbox-blender/`) to
+prevent license contamination.

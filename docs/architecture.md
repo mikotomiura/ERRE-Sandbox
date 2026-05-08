@@ -2,7 +2,7 @@
 
 ## 1. アーキテクチャ概要
 
-### 現状実装スナップショット (last verified 2026-04-28)
+### 現状実装スナップショット (last verified 2026-05-08)
 
 > 本節は実装と一致している事実のみを記す。未実装・将来計画は §1 全体図と §2 表で
 > ``[planned]`` ラベル付きで区別する。docs drift を避けるため、main の HEAD が動いた
@@ -10,11 +10,15 @@
 > 提案による)。
 
 - **G-GEAR OS**: Windows native (旧 docs の Linux / Win+WSL2 表記は研究計画段階の想定。実環境は Win native)
-- **推論 (実)**: Ollama 上の `qwen3:8b` (GGUF Q5_K_M, ~5.2GB)。SGLang は M7 移行検討、vLLM は M9 (LoRA) 計画
+- **推論 (実)**: Ollama 上の `qwen3:8b` (GGUF Q5_K_M, ~5.2GB)。SGLang は M9-B 計画で SGLang-first 採用 (multi-LoRA は SGLang v0.3+ でサポート、`.steering/20260430-m9-b-lora-execution-plan/` 参照)
 - **埋め込み (実)**: `nomic-embed-text` (768d) — `src/erre_sandbox/memory/embedding.py:43-44` で `DEFAULT_MODEL` / `DEFAULT_DIM` 定義
 - **WebSocket route (実)**: `/ws/observe` — `src/erre_sandbox/integration/gateway.py:732` で `app.add_api_websocket_route`。`/stream` は記録上の旧 path 案で実装されていない
-- **Godot (実)**: 4.6.x (MIT)。`/opt/homebrew/bin/godot` 4.6.2.stable.official で headless boot 済 (PR #111 F4 検証)
-- **Contracts レイヤー (実)**: `src/erre_sandbox/contracts/` (PR #111 で導入、F5)。`schemas.py` と並ぶ ui-allowable boundary
+- **Godot (実)**: 4.6.x (MIT)。`/opt/homebrew/bin/godot` 4.6.2.stable.official で headless boot 済 (PR #111 F4 検証)。 5 ERRE zone (`peripatos` / `chashitsu` / `zazen` / `agora` / `garden`) + `study` + `base_terrain` の合計 7 シーンが `godot_project/scenes/zones/` 配下に live、HSplit + 折り畳み式 reasoning panel (PR #115/#116) を搭載
+- **Contracts レイヤー (実)**: `src/erre_sandbox/contracts/` (PR #111 で導入、F5)。`schemas.py` と並ぶ ui-allowable boundary。M9-eval 用に `eval_paths.py` を追加 (PR #128 系列): `raw_dialog` / `metrics` の schema 名・列 allow-list・`RawTrainingRelation` Protocol・`EvaluationContaminationError` を提供
+- **Evidence レイヤー (実)**: `src/erre_sandbox/evidence/` 配下に `metrics.py` (M8 baseline quality)、`scaling_metrics.py` (M8 scaling profile)、`tier_a/` (Burrows / MATTR / NLI / novelty / Empath proxy)、`bootstrap_ci.py`、`golden_baseline.py`、`eval_store.py` (DuckDB)、`capture_sidecar.py` を実装済 (M8 + M9-eval system)
+- **Eval CLI (実)**: `erre-sandbox` サブコマンドに `baseline-metrics` / `scaling-metrics` / `export-log` を実装済。M9-eval 用に `python -m erre_sandbox.cli.eval_run_golden` / `python -m erre_sandbox.cli.eval_audit` が独立コマンドとして提供される (`erre-eval-run-golden` / `erre-eval-audit` prog)
+- **Wire schema (実)**: `SCHEMA_VERSION = "0.10.0-m7h"` (M9-A `event-boundary-observability` bump、M7ζ `live-resonance` の上)。`HandshakeMsg` で MacBook / G-GEAR / Godot の lockstep を強制
+- **M9-A trigger-event 観測 (実)**: `ReasoningTrace.trigger_event: TriggerEventTag | None` (M9-A 加算) が Reflector → gateway → Godot `ReasoningPanel` まで伝搬し、観測者は反省発火の理由を視認可能
 
 ### 全体図 (現状 + planned 混在表記)
 
@@ -121,13 +125,33 @@
   - `evidence/scaling_metrics.py` (M8 scaling spike, L6 ADR D2 precondition):
     pair_information_gain (bits/turn) / late_turn_fraction (ratio) /
     zone_kl_from_uniform (bits)。CLI: `erre-sandbox scaling-metrics`
+  - `evidence/tier_a/` (M9-eval Phase 2 実装、`burrows.py` / `mattr.py` /
+    `nli.py` / `novelty.py` / `empath_proxy.py`): persona consistency / lexical
+    diversity / claim conservation / semantic novelty / lexical category proxy。
+    Tier-B/C は M10-M11 で着手予定
+  - `evidence/eval_store.py` + `evidence/capture_sidecar.py` (M9-eval Phase 0-2):
+    DuckDB 単 file + `raw_dialog` / `metrics` schema 分離 + 受領レシート (md5)。
+    `connect_training_view()` 経由で `RawTrainingRelation` Protocol のみ露出し、
+    LoRA 訓練側に metric 列が漏れない
+  - `evidence/golden_baseline.py` + `evidence/bootstrap_ci.py` (M9-eval Phase 3-5):
+    stratified golden battery driver + bootstrap 信頼区間
 - **observability-triggered scaling** (L6 ADR D2): 量先行 (4th persona を
   入れて困るか見る) を捨て、metric が解析的上限の % を割った瞬間に M9 +1
   persona 起票を判断する。閾値は σ-based heuristic ではなく `log2(C(N,2))`
   / `log2(n_zones)` の % で表現することで N に依存しない次元無し閾値とする
   (decisions.md D4 参照)。`var/scaling_alert.log` に違反時 1 行 TSV を append
+- **M9-eval contamination defence (4 層)**: ME-1 ADR + Codex HIGH-1 で
+  raw_dialog → 訓練 / metrics → 評価専用 の境界を多層化:
+  1. API contract (`contracts/eval_paths.py` の `RawTrainingRelation` Protocol +
+     列 allow-list)
+  2. Behavioural CI (`tests/test_evidence/test_eval_paths_contract.py` のセンチネル行)
+  3. Static grep gate (`.github/workflows/ci.yml` で `metrics.` 文字列を禁止)
+  4. Existing-egress audit (`cli/export_log.py` も sentinel test スコープに含める)
 - **入力**: sqlite `dialog_turns` (M1/M2) + 任意の probe NDJSON journal (M3)。
-  `--journal` 省略時は M3 = null で graceful degradation
+  `--journal` 省略時は M3 = null で graceful degradation。M9-eval は DuckDB
+  `raw_dialog` schema を入力とし、`<output>.duckdb.capture.json` sidecar で
+  status (`complete` / `partial` / `fatal`) と focal_observed / focal_target を
+  運ぶ (`erre-eval-audit` で gate 判定)
 - **依存方向**: schemas / memory / cognition (constants only)。world / integration /
   ui には依存しない
 
@@ -187,7 +211,7 @@
 ### Viz (MacBook Air M4)
 - **責務**: 3D 描画、ダッシュボード
 - **主要コンポーネント**:
-  - Godot 4.4: 3D ビューア、スキンメッシュアバター
+  - Godot 4.6: 3D ビューア、humanoid avatar、HSplit + 折り畳み式 ReasoningPanel (M7ζ + M9-A、`persona_id` / `trigger_event` を表示)
   - Streamlit / HTMX: Memory Stream・AgentState・対話ログのタイムライン
 
 ## 4. 主要コンポーネント
@@ -284,7 +308,7 @@ semantic_memory に row だけ作る (検索対象外; m4-memory-semantic-layer 
 |---|---|---|---|
 | SGLang server | HTTP API | なし (LAN 内) | Ollama にフォールバック |
 | Ollama | HTTP API | なし (localhost) | エラーログ + リトライ |
-| Godot 4.4 | WebSocket | なし (LAN 内) | 接続切断時に自動再接続 |
+| Godot 4.6 | WebSocket | なし (LAN 内) | 接続切断時に自動再接続 (`godot-ws-keepalive` で改善予定) |
 | HuggingFace Hub | HTTPS | API token | LoRA/デモの公開のみ、推論には不要 |
 | OSF (事前登録) | Web UI | アカウント | 手動操作、システム連携なし |
 

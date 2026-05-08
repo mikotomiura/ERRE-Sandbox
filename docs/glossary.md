@@ -40,6 +40,16 @@
 | pair_information_gain | Pair Information Gain | 観測者が次の dialog_turn の (speaker, addressee) ペアから得る相互情報量 (bits/turn)。`H(pair) - H(pair | history_k=3)` で計算。値↓ = 観測者が次の pair を予測できる = relational saturation。解析的上限 `log2(C(N,2))` | M8 scaling spike, observability-triggered scaling |
 | late_turn_fraction | Late Turn Fraction | dialog_turn のうち turn_index が dialog_turn_budget の半分 (=3) を超えた割合 ∈ [0,1]。値↑ = dialog 後半偏向 = 観測者の注意が turn 序盤で枯れている proxy | M8 scaling spike |
 | zone_kl_from_uniform | Zone KL from Uniform | 全 agent の zone 占有時間分布と uniform prior の KL divergence (bits)。値↑ = zone 偏向 = bias 効いている、値↓ = uniform 化 = bias 失効 = scaling trigger。解析的上限 `log2(n_zones)` | M8 scaling spike, observability-triggered scaling |
+| Burrows Δ | Burrows Delta | 文体距離 metric。最頻機能語の z-score プロファイル間距離 を取り、persona の identity drift を測る。M9-eval Tier-A | `evidence/tier_a/burrows.py` |
+| MATTR | Moving Average Type-Token Ratio | 文長正規化された語彙多様性 metric。windowed unique-token ratio の平均。M9-eval Tier-A | `evidence/tier_a/mattr.py` |
+| NLI claim-conservation | NLI Claim Conservation | reference text と発話の論理関係 (entailment / neutral / contradiction) を transformers pipeline で判定し、claim が persona から逸脱していないか測る | `evidence/tier_a/nli.py` |
+| MPNet novelty | MPNet Semantic Novelty | sentence-transformers (MPNet) で発話を埋め込み、persona ごとの過去発話 corpus との最大類似度の補数を novelty score とする | `evidence/tier_a/novelty.py` |
+| Empath proxy | Empath Proxy | Empath による語彙カテゴリ分布の secondary diagnostic。Big5 への直接 claim には使わない (M9-eval ADR ME-4 stage 2 close) | `evidence/tier_a/empath_proxy.py` |
+| raw_dialog schema | Raw Dialog Schema | M9-eval DuckDB 内の **訓練 eligible** 行のスキーマ名。turn id / persona / mode / zone / utterance / timestamp のみ含み、metric 列は持たない (`contracts/eval_paths.py`) | M9-eval contamination defence |
+| metrics schema | Metrics Schema | M9-eval DuckDB 内の **評価専用** 行のスキーマ名。Tier A/B/C スコアを `(run_id, persona_id, turn_idx)` でキーにする。LoRA 訓練側に漏れてはならない | M9-eval contamination defence |
+| capture sidecar | Capture Sidecar | `<output>.duckdb` と並ぶ `<output>.duckdb.capture.json`。`status` (`complete` / `partial` / `fatal`) / `focal_observed` / `focal_target` / md5 receipt を保持し、`erre-eval-audit` の gate 判定の一次入力になる | M9-eval ME-9 ADR |
+| eval_audit | Eval Audit Gate | M9-eval CLI gate (`python -m erre_sandbox.cli.eval_audit`)。capture sidecar + DuckDB を突合し PASS/FAIL を返す。batch mode (`--duckdb-glob`) の exit code は最悪 cell に揃う | M9-eval ME-9 ADR |
+| trigger_event | Trigger Event Tag | M9-A で追加された `ReasoningTrace.trigger_event: TriggerEventTag | None`。Reflector → gateway → Godot ReasoningPanel まで貫通し、観測者が反省発火の理由を視認できる | event-boundary-observability |
 
 ## 略語
 
