@@ -261,6 +261,61 @@ peripatos 421 / study 377 / chashitsu 186 / garden 157 / agora 17。3 persona
 - **defer 先**: `m9-eval-cli-partial-fix` (新規予定)、CLI fix 完了後
   本 incident は close
 
+## P4a Tier B follow-up tasks (2026-05-08、Codex P4a HIGH/MEDIUM 反映で開設)
+
+### `m9-eval-p4b-ja-ipip-vendoring` (Codex P4a HIGH-3、ME-12 defer)
+
+- IPIP-50 Japanese translation の license clear vendoring が必要
+- 候補 source: 公式 IPIP translations page (https://ipip.ori.org/newTranslations.htm)
+  の Nakayama/Karlin Japanese IPIP セットを 50-item subset で license/provenance
+  audit + vendoring
+- P4a 内では `language="ja"` は `NotImplementedError` で raise
+- 解消条件: 公式 source の license clear で 50 item を `data/eval/ipip-50-ja/`
+  配下に commit (provenance metadata 付き)
+- 影響範囲: kant / nietzsche / rikyu persona が **English self-report** で IPIP
+  投与されているのを native language self-report に切替可能
+
+### `m9-eval-p4b-vendi-kernel-sensitivity` (Codex P4a HIGH-1、ME-10 preregister)
+
+- P4a で `vendi_kernel_sensitivity_panel()` API は提供したが、実走は P4b で
+  golden baseline data (G-GEAR run1+ calibration 完了後) に対して実施
+- 5 候補 (`semantic-only` / `lexical-only` / hybrid 0.5/0.5, 0.7/0.3, 0.9/0.1)
+  を batch 計算、persona-discriminative power と finite-sample stability を比較
+- 解消条件: golden baseline 採取完了 + sensitivity panel 結果から default kernel
+  を確定 (現状 default `semantic` 維持の可否を empirical 確認)
+- 影響範囲: ME-10 ADR の re-open 条件 (hybrid kernel が semantic-only より
+  persona-discriminative と confirm) の判定材料
+
+### `m9-individual-layer-schema-add` (Codex P4a MEDIUM-3、ME-15 DB11 follow-up)
+
+- DB11 (PR #145) は raw_dialog metadata に `individual_layer_enabled: bool`
+  field 追加と training-view 入口 assert を要求
+- 現状 `ALLOWED_RAW_DIALOG_KEYS` (`src/erre_sandbox/contracts/eval_paths.py`) は
+  `individual_layer_enabled` を **含まない**
+- 必要な変更:
+  1. `eval_paths.py` の `ALLOWED_RAW_DIALOG_KEYS` に `individual_layer_enabled`
+     追加 (`BOOLEAN`)
+  2. `eval_store.py` の `_RAW_DIALOG_DDL_COLUMNS` に同 field 追加 + bootstrap DDL
+     更新
+  3. training-view 入口 (`connect_training_view()`) で
+     `evaluation_epoch=false AND individual_layer_enabled=false` assert
+  4. CI grep gate に `individual_layer_enabled=true` row が training-egress path
+     に到達しないことを sentinel 検証
+- 解消条件: M10-A scaffold (Individual layer activation) 着手と同期
+- 影響範囲: M10-A 以降の Individual layer 個体差表現が training pipeline に
+  contamination しないことを構造的に保証
+
+### `m9-eval-multilingual-vendi-encoder` (Codex P4a MEDIUM-4)
+
+- 現状 Tier A novelty.py / Tier B vendi.py 共に
+  `sentence-transformers/all-mpnet-base-v2` (English-only) を流用
+- ja / en mixed utterance に対する semantic similarity の cross-language fairness
+  は diagnostic only で本 PR は通過
+- 解消条件: golden baseline で language-stratified Vendi diagnostic が ja-only
+  vs en-only vs mixed で systematic bias を示した場合、`paraphrase-multilingual-
+  mpnet-base-v2` 等への切替 ADR 起票
+- 影響範囲: 多言語 LoRA persona drift 検出の精度
+
 ## 設計上の不確実性 (記録のみ、defer ではない)
 
 ### Tier B の effective sample size (Codex HIGH-2 補強として)

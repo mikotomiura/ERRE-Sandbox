@@ -34,6 +34,8 @@ surface as a DuckDB error — the test suite covers both paths.
 from __future__ import annotations
 
 import contextlib
+import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
@@ -331,6 +333,170 @@ def connect_analysis_view(db_path: str | Path) -> AnalysisView:
 
 
 # ---------------------------------------------------------------------------
+# P4a — Tier B retrieval (M9-eval ME-15)
+# ---------------------------------------------------------------------------
+
+TIER_B_METRIC_SCHEMA_VERSION: str = "tier-b-v1"
+"""Schema version embedded in Tier B sidecar ``notes`` JSON (ME-15).
+
+Bumped when the notes JSON shape changes; consumers compare exact strings.
+"""
+
+
+@dataclass(frozen=True, slots=True)
+class TierBMetricRow:
+    """One row of ``metrics.tier_b`` decoded for analysis-side consumers.
+
+    The physical column ``turn_idx`` is reused to carry the per-100-turn
+    ``window_index`` (M9-eval ME-15 / Codex P4a MEDIUM-2). Helpers expose
+    the field by its semantic name and parse the sidecar ``notes`` JSON so
+    downstream code does not accidentally join a window aggregate to a raw
+    turn.
+    """
+
+    window_index: int
+    metric_value: float
+    window_start_turn: int
+    window_end_turn: int
+    window_size: int
+    metric_schema_version: str
+    notes_raw: str | None  # untouched JSON for forward-compat fields
+
+
+def _parse_tier_b_notes(notes: str | None) -> dict[str, object]:
+    """Parse the Tier B sidecar JSON; missing fields default to zero / None.
+
+    Tier B uses a fixed schema (ME-15) rather than free-form JSON to keep
+    consumer code simple. The schema is small enough that an unconditional
+    ``json.loads`` call is cheap; we still tolerate ``None`` / empty input
+    for rows written before the schema was finalised.
+    """
+    if not notes:
+        return {}
+    try:
+        parsed = json.loads(notes)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return parsed
+
+
+def fetch_tier_b_metric(
+    view: AnalysisView,
+    *,
+    run_id: str,
+    persona_id: str,
+    metric_name: str,
+) -> list[TierBMetricRow]:
+    """Return Tier B rows for ``(run_id, persona_id, metric_name)``.
+
+    Helper that centralises the ``turn_idx → window_index`` rename and the
+    sidecar JSON parsing so downstream code (notebooks, dashboards, the
+    eventual M9-C-adopt quorum logic) sees stable field names. ME-14
+    requires the DB9 quorum code to read the *primary* CI only; this helper
+    is the retrieval half — the per-window values feed into the cluster-only
+    bootstrap before the quorum decision is made.
+
+    Args:
+        view: Read-only :class:`AnalysisView` (Mac-side, ME-2 protocol).
+        run_id: Capture run identifier matching ``raw_dialog.run_id``.
+        persona_id: Persona under evaluation.
+        metric_name: One of the Tier B identifiers — e.g.
+            ``"tier_b.vendi_score"`` / ``"tier_b.big5_stability_icc"``.
+
+    Returns:
+        List of :class:`TierBMetricRow`, ordered by ``window_index`` ascending.
+    """
+    select_sql = (
+        f"SELECT turn_idx, metric_value, notes FROM {METRICS_SCHEMA}.tier_b"  # noqa: S608  # identifier is module-private constant
+        " WHERE run_id = ? AND persona_id = ? AND metric_name = ?"
+        " ORDER BY turn_idx"
+    )
+    rows = view.execute(select_sql, (run_id, persona_id, metric_name))
+    decoded: list[TierBMetricRow] = []
+    for row in rows:
+        window_index_raw, metric_value_raw, notes_raw = row
+        notes_str = notes_raw if isinstance(notes_raw, str) else None
+        notes = _parse_tier_b_notes(notes_str)
+        decoded.append(
+            TierBMetricRow(
+                window_index=_coerce_int(window_index_raw),
+                metric_value=_coerce_float(metric_value_raw),
+                window_start_turn=_coerce_int(notes.get("window_start_turn", 0)),
+                window_end_turn=_coerce_int(notes.get("window_end_turn", 0)),
+                window_size=_coerce_int(notes.get("window_size", 0)),
+                metric_schema_version=_coerce_str(
+                    notes.get("metric_schema_version", ""),
+                ),
+                notes_raw=notes_str,
+            ),
+        )
+    return decoded
+
+
+def _coerce_int(value: object) -> int:
+    """Best-effort int coercion for DuckDB ``object`` row values."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, (str, float)):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+    return 0
+
+
+def _coerce_float(value: object) -> float:
+    """Best-effort float coercion for DuckDB ``object`` row values."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def _coerce_str(value: object) -> str:
+    """Best-effort str coercion for notes JSON values."""
+    if isinstance(value, str):
+        return value
+    return ""
+
+
+def make_tier_b_notes(
+    *,
+    window_start_turn: int,
+    window_end_turn: int,
+    window_size: int,
+    kernel_name: str | None = None,
+    ipip_version: str | None = None,
+    icc_formula: str | None = None,
+) -> str:
+    """Build the Tier B ``notes`` JSON with the fixed ME-15 schema.
+
+    The same writer is used by Vendi, IPIP-NEO and Big5 ICC persisters so
+    the JSON shape stays uniform across sub-metrics. Optional fields are
+    included only when set; consumers tolerate their absence.
+    """
+    payload: dict[str, object] = {
+        "window_start_turn": int(window_start_turn),
+        "window_end_turn": int(window_end_turn),
+        "window_size": int(window_size),
+        "metric_schema_version": TIER_B_METRIC_SCHEMA_VERSION,
+    }
+    if kernel_name is not None:
+        payload["kernel_name"] = kernel_name
+    if ipip_version is not None:
+        payload["ipip_version"] = ipip_version
+    if icc_formula is not None:
+        payload["icc_formula"] = icc_formula
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+# ---------------------------------------------------------------------------
 # P0c — Parquet snapshot (raw rows only)
 # ---------------------------------------------------------------------------
 
@@ -426,11 +592,15 @@ def atomic_temp_rename(
 
 __all__ = [
     "RAW_DIALOG_TABLE",
+    "TIER_B_METRIC_SCHEMA_VERSION",
     "AnalysisView",
+    "TierBMetricRow",
     "atomic_temp_rename",
     "bootstrap_schema",
     "connect_analysis_view",
     "connect_training_view",
     "export_raw_only_snapshot",
+    "fetch_tier_b_metric",
+    "make_tier_b_notes",
     "write_with_checkpoint",
 ]
