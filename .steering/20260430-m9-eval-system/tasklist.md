@@ -436,16 +436,28 @@ P3a-decide が追加され、合計 16 phase + closure。
 
 - [ ] [Mac] **P5** — `src/erre_sandbox/evidence/bootstrap_ci.py` 起草
       (Codex HIGH-2、3h):
-  - [ ] hierarchical bootstrap: outer cluster (run) + inner block (circular block / 500-turn)
-  - [ ] block length 自動推定 (autocorrelation 経由) + sensitivity grid
-  - [ ] Tier B per-100-turn は cluster-only resample (effective sample size 25
+  - [x] hierarchical bootstrap: outer cluster (run) + inner block (circular block / 500-turn)
+        — 2026-05-08 P5 hardening PR で完了 (`hierarchical_bootstrap_ci`)
+  - [x] block length 自動推定 (autocorrelation 経由) + sensitivity grid
+        — 2026-05-08 P5 hardening PR で完了 (`estimate_block_length` Politis-White-inspired
+        + `auto_block=True` flag)
+  - [x] Tier B per-100-turn は cluster-only resample (effective sample size 25
         window/persona と report 明示)
+        — 2026-05-08 P5 hardening PR で完了 (`cluster_only=True` flag、method
+        label `hierarchical-cluster-only` で identification 可能)
   - [ ] 3 sub-metric (Vendi / Big5 ICC / Burrows Delta) の CI 計算 ready
-  - [ ] `tests/test_evidence/test_bootstrap_ci.py`:
-    - [ ] N(0,1) n=500 既知分布で 95% CI 解析解 ± 5%
-    - [ ] **AR(1) 合成 turn metric** で iid vs block CI width 差を assert
-    - [ ] Vendi orthogonal one-hot で score=N
-    - [ ] Big5 ICC 同一回答列で 1.0 収束
+        (P4a Tier B 実装後に統合確認)
+  - [x] `tests/test_evidence/test_bootstrap_ci.py`:
+    - [x] N(0,1) n=500 既知分布で 95% CI 解析解 ± 5%
+          — 既存 `test_bootstrap_ci_iid_normal_within_analytic_bound`
+    - [x] **AR(1) 合成 turn metric** で iid vs block CI width 差を assert
+          — 既存 `test_hierarchical_bootstrap_widens_ci_on_ar1_correlation`
+    - [x] block length auto-estimation: white noise → ~1、AR(1) → 拡大、max_block 尊重
+          — 2026-05-08 P5 hardening PR (6 新規 tests)
+    - [x] cluster_only mode + cluster_only overrides auto_block
+          — 2026-05-08 P5 hardening PR
+    - [ ] Vendi orthogonal one-hot で score=N (P4a Tier B 実装後)
+    - [ ] Big5 ICC 同一回答列で 1.0 収束 (P4a Tier B 実装後)
 - [ ] [Mac] **P5-trigger** — ME-1 fallback トリガ確認:
   - [ ] ≥2/3 personas で ICC < 0.6 OR lower CI < 0.5 の場合、
         BIG5-CHAT regression head 実装 ADR を `decisions.md` に child 起票
