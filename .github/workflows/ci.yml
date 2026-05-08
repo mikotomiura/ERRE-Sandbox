@@ -63,14 +63,22 @@ jobs:
           python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
-      - name: pytest -m "not godot and not eval"
+      - name: pytest -m "not godot and not eval and not spike and not training and not inference"
         # ``eval``-marked tests need the [eval] extras (heavy ML deps:
         # sentence-transformers, transformers, empath). The default
         # CI install (``--all-groups``) only pulls dependency-groups,
         # so deselect ``eval``-marked tests here; m9-eval-system Tier
         # A unit tests stay on the default selection because they
         # inject stub callables and have no real-model imports.
-        run: uv run pytest -m "not godot and not eval"
+        #
+        # m9-c-spike adds three more deselect markers (CS-1 / CS-3 / CS-9):
+        #   * ``inference`` — real SGLang server smoke ([inference] extras)
+        #   * ``training``  — Phase K β real Kant training ([training] extras)
+        #   * ``spike``     — Phase J mock-LoRA identity verify ([training] + GPU)
+        # Adapter unit tests (Phase H) and hard-fail gate tests (Phase I /
+        # Phase J refusal-guard) stay on the default selection because they
+        # mock httpx and use synthetic DuckDB fixtures with no GPU imports.
+        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference"
 
   eval-egress-grep-gate:
     # m9-eval-system Phase P0b — defence-in-depth (layer 4 of the
