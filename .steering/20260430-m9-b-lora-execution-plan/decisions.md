@@ -268,3 +268,59 @@
 - **deliverable**: SGLang LoRA endpoint 動作確認 + adapter swap latency 実測 +
   vLLM migration 必要性 measured 判断材料
 - **タスク**: 別タスク `M9-C-spike` として切り出し (新規 scaffold)
+
+---
+
+## DB11 — Cognition deepening contamination prevention (PR #144 Codex HIGH-3 反映、addendum 2026-05-08)
+
+PR #144 (`docs/cognition-deepen-decision-2026-05-08`、main=`e641f8d`) で確定した認知深化
+二層 architecture から、M9-B LoRA training pipeline への contamination 防止 ADR を追加。
+
+### 決定
+
+raw_dialog metadata に `individual_layer_enabled: bool` field を追加 (default=false)。
+training-view contract loader は **`evaluation_epoch=false AND individual_layer_enabled=false`**
+の両方を満たす行のみ訓練 eligible とする。training pipeline 入口で
+`all(row.metadata.individual_layer_enabled is False)` を assert し、contamination
+検出時は fail-fast。
+
+### 根拠
+
+PR #144 Codex `gpt-5.5 xhigh` review HIGH-3 (`M9-B LoRA training contamination`):
+> Individual layer を M9-B 前または並行で cognition に混ぜると、LoRA が philosopher_base
+> ではなく「個体 overlay 済み Kant」を学習する。PR #127 の固定 Kant style 前提を破り、
+> 後続の base/individual 分解が測定不能になる。
+
+固定 Kant style を保証する training を維持するため、Individual layer が現れた tick の
+raw_dialog は **どんな状況でも** training export から除外する。
+
+### 棄却
+
+- 「flag を追加せず、M10-A scaffold 開始時に手動で training export を一時停止する」案:
+  human-error 余地が高く、M9-B execution が M10-A と時系列で重なる場合に防御不能
+- 「`evaluation_epoch=true` を流用する」案: eval / cognition deepening の 2 軸は orthogonal
+  (cognition deepening enabled かつ eval ではない tick がありうる)、統一は意味歪曲
+- 「runtime check のみで partition を切らない」案: dataset レベルの persistence で固定する
+  ことで、後段 pipeline が flag を尊重する保証が強化される
+
+### 影響
+
+- DB5 (Parquet schema 物理分離) に `individual_layer_enabled` field を 1 つ追加 (additive)
+- DB6 (Evaluation epoch 分離) の training-view contract に AND 条件を追加 (additive)
+- M9-eval-system Parquet pipeline 実装時に flag 対応必須
+- M9-C-adopt (LoRA execution) で training-view loader assert 実装必須
+- M10-A scaffold 設計時に `individual_layer_enabled=true` set 責務を明示
+
+### re-open 条件
+
+- 認知深化 phasing が M11+ 以降で根本的に変更され、Individual layer の概念自体が撤回された
+  場合 (現時点では PR #144 で確定済み、撤回 path は M12+ research re-evaluation の
+  empirical evidence 後でのみ可能)
+- LoRA を Individual layer にも適用すると判断された場合 (PR #144 M12+ research gate 該当、
+  その時点で contamination 防止 logic を再設計)
+
+### Cross-reference
+
+- PR #144 design-final.md §2.1 (M9 trunk との接続 / M9-B LoRA contamination 防止)
+- PR #144 decisions.md DA-8 (philosopher_seed refactor ADOPT-WITH-CHANGES)
+- `.steering/20260508-cognition-deepen-7point-proposal/codex-review.md` HIGH-3
