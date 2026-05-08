@@ -235,3 +235,28 @@ M9-eval-system  ←─並行─→  M9-C-spike (bounded, non-authoritative)
 
 (参考: 当初の M9-C 直行案は 2-3 セッション想定だった。評価基盤先行 + spike 並行で 3-5 倍延伸、
 ただし empirical foundation を確保)
+
+## Addendum 2026-05-08 — Cognition deepening (DB11) 由来の追加タスク
+
+PR #144 (cognition-deepening final 判定) と DB11 ADR (本 dir `decisions.md`、design-final.md
+§Addendum) から派生した implementation 作業。M9-B 本体タスクには影響しないが、後続
+M9-eval-system + M9-C-adopt + M10-A scaffold で漏れなく実装する責務を記録する。
+
+### M9-eval-system 側 (Parquet pipeline 実装時に追加、DB5 拡張)
+- [ ] raw_dialog metadata schema に `individual_layer_enabled: bool` field 追加 (default=false) [S]
+- [ ] training-view contract loader に AND 条件 (`evaluation_epoch=false AND individual_layer_enabled=false`) 追加 [S]
+- [ ] sentinel test: `individual_layer_enabled=true` の行が training-view から除外されること [S]
+- [ ] grep gate: training paths に `individual_layer_enabled=true` row が現れたら CI fail (既存 `metrics.` grep gate と同型) [S]
+- [ ] schema migration: 既存 raw_dialog (M9-A / M7ζ / 過去 run) を `individual_layer_enabled=false` で default 解釈する backfill [S]
+
+### M9-C-adopt 側 (LoRA execution 着手時に追加)
+- [ ] training pipeline 入口で `assert all(row.metadata.individual_layer_enabled is False)`、contamination 検出時 fail-fast [S]
+- [ ] runbook (LoRA training kick) に「DB11 contamination check 通過確認」step 追加 [S]
+
+### M10-A scaffold 側 (PR #144 phasing 配下、本 M9-B dir からは reference のみ)
+- [ ] IndividualProfile activation 時に raw_dialog meta `individual_layer_enabled=true` を立てる責務を docstring に明示 [S] (M10-A scaffold task で追跡)
+- [ ] feature flag `cognition.individual_layer.enabled` の代入経路と raw_dialog meta の整合性 unit test [S] (M10-A scaffold task で追跡)
+
+### 検証 (CI gate)
+- [ ] `eval egress grep gate` job (既存 CI workflow) に `individual_layer_enabled=true` の検出を追加 [S]
+- [ ] training-view loader unit test を `[evaluation_epoch ∈ {true,false}] × [individual_layer_enabled ∈ {true,false}]` の 4 組合せ matrix で実行 [S]
