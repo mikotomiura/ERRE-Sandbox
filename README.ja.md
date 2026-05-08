@@ -20,6 +20,17 @@ M9-A で trigger-event タグが Python 側 `Reflector` から `ReasoningPanel` 
 
 最近の主要マイルストン (新しい順):
 
+- **認知深化 7-point 提案 final 判定** (2026-05-08、本 PR — design only、
+  source 変更なし): 3-source synthesis (Claude initial Plan-mode +
+  independent reimagine subagent + Codex `gpt-5.5 xhigh` 197K tokens
+  ADOPT-WITH-CHANGES、HIGH 7 / MEDIUM 5 / LOW 3) で将来の二層認知
+  architecture を確定 (`PhilosopherBase` immutable inheritance +
+  `IndividualProfile` mutable runtime + `SubjectiveWorldModel` /
+  `DevelopmentState` S1–S3 / `NarrativeArc` / bounded
+  `WorldModelUpdateHint`)。実装は **M9 完全終了後にゲート** (M10-0
+  metric scaffolding が schema 作業に先行)。最終仕様は
+  `.steering/20260508-cognition-deepen-7point-proposal/design-final.md`、
+  ADR は `decisions.md`。G-GEAR の run1 calibration に影響なし。
 - **M9-eval ME-9 trigger amendment** (2026-05-07、PR #142): run1 cell 100/101
   の正規 STOP を擬陽性 trigger と判定 (Codex 9 回目 hybrid A/C verdict)、
   cooldown 再調整は棄却。ADR ME-9 に Amendment 2026-05-07 + v2 prompt §A.4
@@ -51,7 +62,11 @@ M9-A で trigger-event タグが Python 側 `Reflector` から `ReasoningPanel` 
 
 **次マイルストン**: (1) G-GEAR での M9-eval Phase 2 run1 wall-budget
 calibration (kant 単体 cell × 5、~30 h × 2 晩)、(2) M9-B LoRA 実装
-(`m9-c-spike`)、(3) `godot-ws-keepalive` の信頼性改善。
+(`m9-c-spike`)、(3) `godot-ws-keepalive` の信頼性改善。M9 完全終了後に
+**M10+ 認知深化** に着手 (M10-0 metric → M10-A 二層 schema scaffold →
+M10-B SWM read-only → M10-C bounded `WorldModelUpdateHint` → M11-A
+`NarrativeArc` → M11-B S1–S3 transition → M11-C kant-base × 3 individuals
+validation; S4/S5 / retirement / individual LoRA は M12+ gate)。
 
 ## 主要コンポーネント
 
