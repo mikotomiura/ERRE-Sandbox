@@ -118,20 +118,31 @@
 
 ### Phase K α — G-GEAR mock-LoRA infrastructure proof (data 不要、即実行)
 
-- [ ] G-GEAR で `sglang==0.5.10.post1` install (CUDA 12.x)
-- [ ] CS-1 launch args で SGLang 起動確認 (`--enable-lora --max-loras-per-batch
-  3 --max-lora-rank 8 --max-loaded-loras 3`)
-- [ ] mock-LoRA build (`uv run python -m tools.spike.build_mock_lora
-  --output checkpoints/mock-r8-default/`)
-- [ ] `/load_lora_adapter` で mock を load (PEFT direct load test、CS-6)
+**Status (2026-05-09)**: Step 1 ✅ / Steps 2-5 ⏸️ DEFERRED (DB3 fire #1
+fired on **install-side platform compat**, not CUDA runtime). See
+`.steering/20260508-m9-c-spike/k-alpha-report.md` for full diagnostic.
+Recommendations require Mac-side ADR re-open (CS-1 amendment).
+
+- [x] mock-LoRA build (`uv run python -m tools.spike.build_mock_lora
+  --output-dir checkpoints/mock_kant_r8`) — 2026-05-09 (after fixing
+  `init_lora_weights="default"` → `True` kwarg bug, see report Step 1)
+- [ ] G-GEAR で `sglang==0.5.10.post1` install (CUDA 12.x) — **BLOCKED**:
+  `sglang-kernel==0.4.1` ships only manylinux wheels; no native Windows
+  wheel exists. WSL2 / Docker not installed on G-GEAR. Pending CS-1
+  amendment (Linux execution boundary).
+- [ ] CS-1 launch args で SGLang 起動確認 — **BLOCKED on previous item**.
+- [ ] `/load_lora_adapter` で mock を load (PEFT direct load test、CS-6) —
+  **DEFERRED** (artefact ready, awaiting live SGLang server).
 - [ ] mock load 経由で chat round trip (Kant prompt + mock = base model 出力、
-  CS-9 identity transform 確認)
+  CS-9 identity transform 確認) — **DEFERRED**.
 - [ ] M5 resonance / ERRE FSM smoke test (SGLang LoRA 経路で 8 mode の
-  AnimationTree state を循環確認)
-- [ ] **DB3 fallback 判断 (CS-8 即時 fire)**:
-  - SGLang 起動失敗 → fire
-  - PEFT format 拒否 → fire
-  - FSM regression → fire
+  AnimationTree state を循環確認) — **DEFERRED**.
+- [x] **DB3 fallback 判断 (CS-8 即時 fire)**:
+  - SGLang 起動失敗 → **FIRED #1** (install-side platform incompat, NOT CUDA
+    runtime). Recommendation: amend CS-1 boundary, do NOT yet fire vLLM
+    fallback (vLLM has the same Linux constraint).
+  - PEFT format 拒否 → not exercised (Step 3 deferred)
+  - FSM regression → not exercised (Step 5 deferred)
   - latency / N=3 collapse は **diagnostic** (Phase K β real adapter で
     confirmation 後に判断)
 
