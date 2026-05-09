@@ -66,7 +66,30 @@ def test_refuses_symlink_pointing_into_src(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+# tiny-gpt2 uses HuggingFace ``Conv1D`` for ``c_attn``, so PEFT's dispatcher
+# auto-corrects ``fan_in_fan_out`` and emits a UserWarning. The
+# auto-correction is benign for the spike's purpose (we're verifying the
+# build wrapper, not the projection layer's transpose orientation), and
+# real Qwen3-8B uses ``torch.nn.Linear`` (no warning). Filter at the test
+# level so the project-wide ``filterwarnings = ["error"]`` does not flip
+# the auto-correction into a failure on developer machines that run
+# ``pytest -m spike`` with ``[training]`` extras installed.
+_FAN_IN_FAN_OUT_FILTER = "ignore:fan_in_fan_out is set to:UserWarning"
+# The CS-9 sentinel is written into the LoraConfig JSON's ``metadata`` key.
+# peft 0.19.1's ``LoraConfig`` does not declare ``metadata`` and warns
+# (informationally — the warning text says "these are ignored") whenever a
+# loader reads back the config. The sentinel design is intentional: it sits
+# inside adapter_config.json so production loaders inspecting that single
+# file find the ``mock=true`` flag without a side-channel artefact. Filter
+# the read-back warning at the test level for the same reason as the
+# fan_in_fan_out filter above.
+_UNKNOWN_METADATA_KW_FILTER = (
+    "ignore:Unexpected keyword arguments \\['metadata'\\]:UserWarning"
+)
+
+
 @pytest.mark.spike
+@pytest.mark.filterwarnings(_FAN_IN_FAN_OUT_FILTER)
 def test_build_emits_mock_sentinel_metadata(tmp_path: Path) -> None:
     """Built adapter_config.json carries the CS-9 ``mock=true`` sentinel."""
     pytest.importorskip("peft")
@@ -87,6 +110,8 @@ def test_build_emits_mock_sentinel_metadata(tmp_path: Path) -> None:
 
 
 @pytest.mark.spike
+@pytest.mark.filterwarnings(_FAN_IN_FAN_OUT_FILTER)
+@pytest.mark.filterwarnings(_UNKNOWN_METADATA_KW_FILTER)
 def test_build_produces_zero_b_identity_adapter(tmp_path: Path) -> None:
     """Built adapter has B=0 → identity transform (CS-9 / LOW-2)."""
     pytest.importorskip("peft")
