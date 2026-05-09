@@ -22,9 +22,11 @@ Three CS-9 invariants this module enforces:
    sentinel lets a production loader detect a mock adapter at policy
    level (the SGLangChatClient warns at load time but does not block;
    blocking belongs to the production loader).
-3. **No-op identity** — the adapter uses PEFT's default
-   ``init_lora_weights="default"`` so the B matrix is zero and the
-   adapter is functionally indistinguishable from the bare base model.
+3. **No-op identity** — the adapter uses PEFT's default init
+   (``init_lora_weights=True`` → kaiming-A + zero-B; labelled
+   ``"default"`` in the sentinel metadata for human readability) so
+   the B matrix is zero and the adapter is functionally
+   indistinguishable from the bare base model.
    The Phase K-α smoke is thus meaningful only as a wire-protocol /
    format / FSM-route check, not an adapter-contents check (the LoRA
    route through SGLang must preserve the base model's outputs).
@@ -182,7 +184,12 @@ def build_mock_lora(
         r=rank,
         lora_alpha=rank * 2,
         target_modules=list(target_modules),
-        init_lora_weights="default",  # B=0 identity (CS-9 / LOW-2)
+        # PEFT default = kaiming-A + zero-B → identity transform (CS-9 / LOW-2).
+        # Pass ``True`` (not the string ``"default"``) — peft>=0.19 raises
+        # ``ValueError: Unknown initialization init_lora_weights='default'``.
+        # The sentinel metadata below labels this scheme as ``"default"`` for
+        # human readability; the LoraConfig field accepts ``bool | Literal[...]``.
+        init_lora_weights=True,
         task_type="CAUSAL_LM",
     )
     peft_model = get_peft_model(base, lora_config)

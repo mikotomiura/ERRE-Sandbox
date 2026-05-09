@@ -61,6 +61,11 @@ var/
 # commit 対象外の spike 成果物を誤 commit しないための隔離ディレクトリ
 _ad_hoc/
 
+# m9-c-spike LoRA adapter checkpoints (mock + future real Kant rank=8 PEFT
+# directories). adapter_model.safetensors は再生成可能、metadata sentinel と
+# build script (tools/spike/build_mock_lora.py) でのみ整合保証する。
+checkpoints/
+
 # m9-eval-system P3a pilot capture (large DuckDB binaries + per-run logs).
 # Only `_summary.json` is committed; raw DuckDB snapshots stay local + rsync
 # to Mac via ME-2 protocol.
