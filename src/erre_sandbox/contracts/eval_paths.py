@@ -67,6 +67,17 @@ violation that must surface as :class:`EvaluationContaminationError`.
 # Column allow-list / forbidden patterns
 # ---------------------------------------------------------------------------
 
+INDIVIDUAL_LAYER_ENABLED_KEY: Final[str] = "individual_layer_enabled"
+"""Single source of truth for the DB11 / M10-A individual-layer flag column name.
+
+Exported so the training gate
+(:func:`erre_sandbox.training.train_kant_lora.assert_phase_beta_ready`)
+imports the same string the allow-list and the DDL lockstep check use,
+keeping the m9-individual-layer-schema-add (B-1) contract on a single
+canonical key. Changing the physical column name therefore requires
+updating exactly one literal here.
+"""
+
 ALLOWED_RAW_DIALOG_KEYS: Final[frozenset[str]] = frozenset(
     {
         "id",
@@ -83,6 +94,7 @@ ALLOWED_RAW_DIALOG_KEYS: Final[frozenset[str]] = frozenset(
         "zone",
         "reasoning",
         "epoch_phase",
+        INDIVIDUAL_LAYER_ENABLED_KEY,
         "created_at",
     },
 )
@@ -93,6 +105,15 @@ Any key emitted by a training-egress path MUST be a member of this set.
 that copies sqlite ``dialog_turns`` into DuckDB ``raw_dialog``; the
 existing M8 sink only populates a subset of these (see
 ``cli/export_log.py``), which is a strict subset and therefore safe.
+
+:data:`INDIVIDUAL_LAYER_ENABLED_KEY` is the DB11 / M10-A individual-layer
+activation flag; training-egress paths require it to be ``FALSE`` for
+every row, enforced at three layers: (1) the DDL ``BOOLEAN NOT NULL
+DEFAULT FALSE`` constraint in
+:data:`erre_sandbox.evidence.eval_store._RAW_DIALOG_DDL_COLUMNS`,
+(2) the construction-time aggregate assert inside
+``_DuckDBRawTrainingRelation.__init__``, and (3) the row-level scan
+inside :func:`erre_sandbox.training.train_kant_lora.assert_phase_beta_ready`.
 """
 
 FORBIDDEN_METRIC_KEY_PATTERNS: Final[tuple[str, ...]] = (
@@ -266,6 +287,7 @@ class RawTrainingRelation(Protocol):
 __all__ = [
     "ALLOWED_RAW_DIALOG_KEYS",
     "FORBIDDEN_METRIC_KEY_PATTERNS",
+    "INDIVIDUAL_LAYER_ENABLED_KEY",
     "METRICS_SCHEMA",
     "RAW_DIALOG_SCHEMA",
     "SENTINEL_LEAK_PREFIX",

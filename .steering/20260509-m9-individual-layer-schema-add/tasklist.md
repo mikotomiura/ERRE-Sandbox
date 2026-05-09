@@ -1,0 +1,78 @@
+# タスクリスト — m9-individual-layer-schema-add
+
+> Codex review (2026-05-09) 反映済 — HIGH 3 件 / MEDIUM 3 件 / LOW 1 件を反映、test placement と DDL 仕様を更新。
+
+## 準備
+- [x] 関連 docs を読む (`docs/architecture.md` DuckDB 4 層 contract, `docs/development-guidelines.md` TDD/Conventional Commits)
+- [x] Critical files の現状確認 (`eval_paths.py`, `eval_store.py`, `train_kant_lora.py`, `ci.yml`, `conftest.py`, `test_eval_paths_contract.py`)
+- [x] Plan 確定 (`.claude/plans/m9-c-spike-pr-155-eventual-yeti.md`)
+- [x] requirement.md / design.md / blockers.md / decisions.md 起票 (Codex review 反映済)
+
+## Codex independent review (実装着手前)
+- [x] `codex-review-prompt.md` 作成 (設計判断 + 8 specific points を verbatim、HIGH/MEDIUM/LOW format)
+- [x] `cat codex-review-prompt.md | codex exec --skip-git-repo-check` で起動
+- [x] 出力を `.steering/20260509-m9-individual-layer-schema-add/codex-review.md` に verbatim 保存 (43 行)
+- [x] HIGH 反映 (HIGH-1 NOT NULL / HIGH-2 構築時 aggregate assert / HIGH-3 Phase B kick を merge 後に倒す)
+- [x] MEDIUM 採否記録 (MEDIUM-1 weak backstop / MEDIUM-2 test placement / MEDIUM-3 定数統一を本 PR に)
+- [x] LOW 持ち越し or 反映 (LOW-1 docstring 強化を本 PR に反映)
+- [x] design.md / decisions.md / blockers.md を Codex review 反映で update
+
+## 実装 (RED → GREEN)
+- [x] `feature/m9-individual-layer-schema-add` ブランチ作成 (main `ac40411` から)
+- [ ] **R1-R7**: RED テスト追加 → 全部赤を確認
+  - [ ] `test_individual_layer_enabled_in_allowed_keys_uses_constant` (test_eval_paths_contract.py、判断 7 で `INDIVIDUAL_LAYER_ENABLED_KEY` constant 経由を assert)
+  - [ ] `test_bootstrap_individual_layer_enabled_column_is_not_null_with_default_false` (test_eval_store.py、HIGH-1)
+  - [ ] `test_explicit_null_insert_into_individual_layer_enabled_rejected` (test_eval_store.py、HIGH-1)
+  - [ ] `test_post_b1_real_relation_passes_blocker_check` (test_train_kant_lora.py、real DuckDB、MEDIUM-2)
+  - [ ] `test_assert_phase_beta_ready_blocks_individual_layer_true_via_real_relation` (test_train_kant_lora.py、real DuckDB、HIGH-2)
+  - [ ] `test_assert_phase_beta_ready_blocks_evaluation_phase_via_real_relation` (test_train_kant_lora.py、real DuckDB、HIGH-2)
+- [ ] **G1+G2 同 commit (lockstep 必須)**:
+  - [ ] G1: `eval_paths.py` に `INDIVIDUAL_LAYER_ENABLED_KEY: Final[str]` 追加 + `ALLOWED_RAW_DIALOG_KEYS` で使用 + `__all__` 更新 + docstring 更新
+  - [ ] G2: `eval_store.py::_RAW_DIALOG_DDL_COLUMNS` に `("individual_layer_enabled", "BOOLEAN NOT NULL DEFAULT FALSE")` 追加
+- [ ] **G3**: `train_kant_lora.py:62` の `_INDIVIDUAL_LAYER_COLUMN` 削除 + `INDIVIDUAL_LAYER_ENABLED_KEY` import + line 138/150 参照置換 + hard-fail order docstring 更新 + 引数 docstring 更新
+- [ ] **G4 (LOW-1)**: `exceptions.py:26-40` の `BlockerNotResolvedError` docstring 強化 (post-B-1 purpose 明記)
+- [ ] **G5 (MEDIUM-1)**: `.github/workflows/ci.yml` の `eval-egress-grep-gate` job に literal grep 追加 + weak backstop コメント
+- [ ] **G6 (任意)**: `eval_run_golden.py:547` 付近にコメント追記 (M10-A 担当者向け)
+- [ ] **G7 (HIGH-2)**: `_DuckDBRawTrainingRelation.__init__` (line 157-176) に構築時 aggregate row assert 追加 (`SUM(CASE …)` × 2 で eval_count + truthy/null ind_count、>0 で `EvaluationContaminationError`)。物理列に存在しない場合は SQL skip (legacy DB 互換)
+
+## テスト
+- [ ] `pytest tests/test_evidence -v` 全緑
+- [ ] `pytest tests/test_training -v` 全緑 (regression `test_individual_layer_column_absent_raises_blocker_not_resolved` 含む 7+ 件)
+- [ ] `pytest tests/test_cli/test_eval_audit.py` 全緑 (既存 INSERT 互換確認)
+- [ ] smoke: `uv run python -c "from erre_sandbox.contracts.eval_paths import ALLOWED_RAW_DIALOG_KEYS, INDIVIDUAL_LAYER_ENABLED_KEY; assert INDIVIDUAL_LAYER_ENABLED_KEY in ALLOWED_RAW_DIALOG_KEYS"`
+
+## 静的解析
+- [ ] `uv run ruff check src tests` 緑
+- [ ] `uv run ruff format --check src tests` 緑
+- [ ] `uv run mypy src` 緑
+
+## レビュー
+- [ ] `/review-changes` skill 経由で code-reviewer + security-checker 起動
+- [ ] HIGH 指摘への対応
+- [ ] (任意) Codex review 第 2 ラウンド (実装完了後の差分 review、`codex-review-round2-prompt.md` 経由)
+
+## ドキュメント
+- [x] design.md の Codex review HIGH 反映済を最終化
+- [x] decisions.md の MEDIUM 採否記録 (判断 6, 7 を新規追加、判断 1, 3, 4, 5 を update)
+- [x] blockers.md の defer 項目記載 (D-2 削除、D-1 弱化、D-3 維持)
+
+## PR 作成
+- [ ] `git push -u origin feature/m9-individual-layer-schema-add`
+- [ ] `gh pr create` with PR body referencing `codex-review.md` + `design.md` + `decisions.md` 判断 7 件
+- [ ] CI 全緑確認 (`lint` / `typecheck` / `test` / `eval-egress-grep-gate`)
+
+## ハンドオフ (本タスク完了時)
+- [ ] `.steering/20260508-m9-c-spike/blockers.md` の §B-1 を「PR-A 出題済 → merge 待ち」に更新
+- [ ] **重要**: PR-A merge 後の手順を user に明示 (判断 5 反映):
+  1. main merge 後、G-GEAR で `git pull origin main`
+  2. `.steering/20260430-m9-eval-system/g-gear-phase-bc-launch-prompt.md` §Phase B 通り kick (~3-5h)
+  3. Phase B 完了確認後、Phase C kick (~24-48h overnight×2)
+- [ ] `.claude/memory/MEMORY.md` 更新は不要 (B-1 merge は M9-c-spike の常態化変更、memory には残さない)
+
+## Defer (別 PR / 別タスク)
+- [ ] **既存 `.duckdb` migration スクリプト** (D-1、**fallback only**) — Phase B kick が PR-A merge **前**に行われた場合の rescue 用。判断 5 採用で本来不要。`scripts/migrate_individual_layer.py` を作成するか、ad-hoc `ALTER TABLE … ADD COLUMN IF NOT EXISTS` で対応
+- [ ] **M10-A scaffold (個体層 flag を立てる側)** (D-3) — `eval_run_golden.py` の INSERT で M10-A モード時に `individual_layer_enabled=true` を設定する側のロジック。本 PR は schema 層のみ
+- [ ] **B-2 (m9-eval P3 Phase B+C データ採取)** — G-GEAR で `g-gear-phase-bc-launch-prompt.md` 通りに kick (~3-5h Phase B + ~24-48h Phase C overnight×2)。**PR-A merge 後に倒す** (判断 5)
+
+## 解消済 (本 PR で取り込み)
+- [x] **`_INDIVIDUAL_LAYER_COLUMN` 定数の二重定義解消** (D-2) — Codex MEDIUM-3 反映で defer 取消、判断 7 として本 PR scope に取り込み

@@ -43,6 +43,7 @@ import duckdb
 
 from erre_sandbox.contracts.eval_paths import (
     ALLOWED_RAW_DIALOG_KEYS,
+    INDIVIDUAL_LAYER_ENABLED_KEY,
     METRICS_SCHEMA,
     RAW_DIALOG_SCHEMA,
     EvaluationContaminationError,
@@ -81,6 +82,10 @@ _RAW_DIALOG_DDL_COLUMNS: tuple[tuple[str, str], ...] = (
     ("zone", "TEXT"),
     ("reasoning", "TEXT"),
     ("epoch_phase", "TEXT"),
+    # B-1 (m9-individual-layer-schema-add, Codex HIGH-1): NOT NULL +
+    # DEFAULT FALSE keeps the column bivalent and lets existing INSERTs
+    # that omit the new column still succeed with explicit false.
+    ("individual_layer_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
     ("created_at", "TIMESTAMP"),
 )
 
@@ -174,6 +179,46 @@ class _DuckDBRawTrainingRelation:
                 f"raw_dialog projection includes a {METRICS_SCHEMA}-qualified"
                 f" column: {self._columns!r}",
             )
+
+        # Aggregate row-level contamination check (Codex HIGH-2 / DB11 /
+        # B-1): ``connect_training_view()`` is the loader boundary
+        # contracted by blockers.md §B-1, so we raise *before* any caller
+        # can reach ``iter_rows`` past a row that carries
+        # ``epoch_phase=evaluation`` or a truthy / NULL
+        # ``individual_layer_enabled``. SQL aggregate is used (not a
+        # ``WHERE`` filter) to avoid silently diluting the
+        # ``min_examples`` count check downstream in
+        # ``assert_phase_beta_ready``. The aggregate is skipped when
+        # either column is absent (legacy / pre-B-1 schemas) — those
+        # cases are still picked up by ``assert_phase_beta_ready``
+        # itself, so backwards compatibility at the loader is
+        # preserved.
+        column_set = frozenset(self._columns)
+        if "epoch_phase" in column_set and INDIVIDUAL_LAYER_ENABLED_KEY in column_set:
+            agg_row = self._conn.execute(
+                "SELECT"  # noqa: S608  # all interpolations are module-private constants
+                " COALESCE(SUM(CASE WHEN LOWER(epoch_phase) = 'evaluation'"
+                " THEN 1 ELSE 0 END), 0),"
+                f" COALESCE(SUM(CASE WHEN {INDIVIDUAL_LAYER_ENABLED_KEY}"
+                f" IS NOT FALSE THEN 1 ELSE 0 END), 0)"
+                f" FROM {RAW_DIALOG_SCHEMA}.{RAW_DIALOG_TABLE}",
+            ).fetchone()
+            eval_count = int(agg_row[0]) if agg_row else 0
+            ind_count = int(agg_row[1]) if agg_row else 0
+            if eval_count > 0:
+                raise EvaluationContaminationError(
+                    f"raw_dialog.{RAW_DIALOG_TABLE}: {eval_count} row(s)"
+                    f" carry epoch_phase~='evaluation' (case-insensitive)"
+                    f" at construction time — rejecting at the loader"
+                    f" boundary (Codex HIGH-2 / DB11 / B-1)",
+                )
+            if ind_count > 0:
+                raise EvaluationContaminationError(
+                    f"raw_dialog.{RAW_DIALOG_TABLE}: {ind_count} row(s)"
+                    f" carry truthy or NULL {INDIVIDUAL_LAYER_ENABLED_KEY}"
+                    f" at construction time — rejecting at the loader"
+                    f" boundary (Codex HIGH-2 / DB11 / B-1)",
+                )
 
     # ------------------------------------------------------------------
     # Protocol surface

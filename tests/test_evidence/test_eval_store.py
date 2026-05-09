@@ -118,6 +118,86 @@ def test_bootstrap_then_training_view_yields_zero_rows(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# B-1 (m9-individual-layer-schema-add) — DDL contract for the new column
+# ---------------------------------------------------------------------------
+
+
+def test_bootstrap_individual_layer_enabled_column_is_not_null_with_default_false(
+    tmp_path: Path,
+) -> None:
+    """B-1 (Codex HIGH-1): the new ``individual_layer_enabled`` column must
+    be ``BOOLEAN NOT NULL DEFAULT FALSE``. A nullable column would let
+    ``bool(NULL or False) → False`` slip a contamination row past the
+    Python-level gate, breaking the bivalent contract."""
+    db = tmp_path / "with_layer.duckdb"
+    con = _writable(db)
+    try:
+        bootstrap_schema(con)
+        meta = con.execute(
+            "SELECT data_type, is_nullable, column_default"
+            " FROM information_schema.columns"
+            " WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+            (RAW_DIALOG_SCHEMA, RAW_DIALOG_TABLE, "individual_layer_enabled"),
+        ).fetchone()
+    finally:
+        con.close()
+    assert meta is not None, (
+        "individual_layer_enabled column not found in raw_dialog.dialog"
+    )
+    data_type, is_nullable, column_default = meta
+    assert data_type == "BOOLEAN", f"unexpected data_type: {data_type!r}"
+    assert is_nullable == "NO", (
+        f"individual_layer_enabled must be NOT NULL, got is_nullable={is_nullable!r}"
+    )
+    # DuckDB renders the default as 'FALSE' / 'false' / "CAST('f' AS BOOLEAN)";
+    # accept any falsy spelling.
+    default_norm = str(column_default).strip().lower()
+    assert default_norm in {"false", "cast('f' as boolean)", "0"}, (
+        "individual_layer_enabled default must be FALSE,"
+        f" got column_default={column_default!r}"
+    )
+
+
+def test_explicit_null_insert_into_individual_layer_enabled_rejected(
+    tmp_path: Path,
+) -> None:
+    """B-1 (Codex HIGH-1): an explicit NULL insert must trip the NOT NULL
+    constraint, otherwise the bivalent contract has a hole.
+
+    The precondition guard distinguishes pre-G2 (column missing → DuckDB
+    binder error, false-pass risk) from post-G2 (NOT NULL constraint
+    violation, the real signal).
+    """
+    db = tmp_path / "null_reject.duckdb"
+    con = _writable(db)
+    try:
+        bootstrap_schema(con)
+        # Pre-G2 guard: column must exist before we can meaningfully
+        # test NOT NULL. Without this, a "Column not found" binder error
+        # would also satisfy ``pytest.raises(duckdb.Error)``.
+        cols = {
+            r[0]
+            for r in con.execute(
+                "SELECT column_name FROM information_schema.columns"
+                " WHERE table_schema = ? AND table_name = ?",
+                (RAW_DIALOG_SCHEMA, RAW_DIALOG_TABLE),
+            ).fetchall()
+        }
+        assert "individual_layer_enabled" in cols, (
+            "G2 precondition: column must exist before testing NOT NULL"
+            " (run after eval_store.py DDL update)"
+        )
+        with pytest.raises(duckdb.Error, match=r"(?i)not[ _]null"):
+            con.execute(
+                f"INSERT INTO {RAW_DIALOG_SCHEMA}.{RAW_DIALOG_TABLE}"  # noqa: S608  # module constants
+                ' ("id", "individual_layer_enabled") VALUES (?, ?)',
+                ("null-row", None),
+            )
+    finally:
+        con.close()
+
+
+# ---------------------------------------------------------------------------
 # connect_analysis_view (Mac-side full read)
 # ---------------------------------------------------------------------------
 

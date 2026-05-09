@@ -30,12 +30,27 @@ Hard-fail order (CS-3, must match :func:`build_examples` filter order):
 The gate is order-sensitive: contamination detection runs **before** the
 realised-count check, so a flood of ``epoch_phase=evaluation`` rows
 cannot silently dilute the threshold count in step 4.
+
+Post-B-1 (m9-individual-layer-schema-add landed) status: hard-fail #2
+no longer fires on production schemas because
+:func:`erre_sandbox.evidence.eval_store.bootstrap_schema` materialises
+``individual_layer_enabled`` as ``BOOLEAN NOT NULL DEFAULT FALSE`` and
+``_DuckDBRawTrainingRelation.__init__`` runs a construction-time
+aggregate assert (Codex HIGH-2) that rejects ``epoch_phase=evaluation``
+rows and truthy / NULL ``individual_layer_enabled`` rows before any
+caller can iterate them. Hard-fail #2 still fires when callers pass a
+mock relation with ``with_individual_layer_column=False``
+(``tests/test_training/conftest.py``), so the regression test
+``test_individual_layer_column_absent_raises_blocker_not_resolved``
+keeps the contract layer hot — see :class:`BlockerNotResolvedError`
+docstring for the rationale.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
+from erre_sandbox.contracts.eval_paths import INDIVIDUAL_LAYER_ENABLED_KEY
 from erre_sandbox.training.dataset import build_examples
 from erre_sandbox.training.exceptions import (
     BlockerNotResolvedError,
@@ -59,7 +74,6 @@ M9-C-adopt scope, not this spike.
 """
 
 _EVALUATION_PHASE_VALUE: Final[str] = "evaluation"
-_INDIVIDUAL_LAYER_COLUMN: Final[str] = "individual_layer_enabled"
 
 
 def assert_phase_beta_ready(
@@ -92,11 +106,12 @@ def assert_phase_beta_ready(
             amendment, not a knob to twist silently.
         individual_layer_enabled_required: When ``True`` (default), the
             gate enforces the DB11 enforcement contract — column must
-            exist, no row may have it set to ``True``. Setting this to
-            ``False`` is reserved for the immediate post-merge state
-            of B-1, where the column lands but the contamination
-            contract is still being validated; never set ``False`` in
-            production runs.
+            exist, no row may have it set to ``True``. Always ``True``
+            in production after B-1 (m9-individual-layer-schema-add)
+            lands, since :func:`bootstrap_schema` always materialises
+            the column. Tests pass ``False`` only when fabricating
+            pre-B-1 schema scenarios via the conftest mock fixture
+            ``make_relation(with_individual_layer_column=False)``.
 
     Returns:
         The realised Kant example count (``len(build_examples(..))``).
@@ -135,10 +150,10 @@ def assert_phase_beta_ready(
 
     # 2 + 3) individual_layer_enabled enforcement (DB11 / blocker B-1)
     if individual_layer_enabled_required:
-        if _INDIVIDUAL_LAYER_COLUMN not in relation.columns:
+        if INDIVIDUAL_LAYER_ENABLED_KEY not in relation.columns:
             raise BlockerNotResolvedError(
                 f"assert_phase_beta_ready: training-view schema does not"
-                f" expose {_INDIVIDUAL_LAYER_COLUMN!r} column."
+                f" expose {INDIVIDUAL_LAYER_ENABLED_KEY!r} column."
                 f" Blocker B-1 (m9-individual-layer-schema-add) has not"
                 f" landed — Phase β cannot proceed without DB11"
                 f" enforcement (CS-3 silent-skip ban).",
@@ -147,11 +162,13 @@ def assert_phase_beta_ready(
         # "true", etc. that DuckDB may surface for a non-strict BOOLEAN
         # column) also trip the contamination guard
         # (CS-3 / security review MEDIUM-3).
-        ind_rows = [r for r in raw_rows if bool(r.get(_INDIVIDUAL_LAYER_COLUMN, False))]
+        ind_rows = [
+            r for r in raw_rows if bool(r.get(INDIVIDUAL_LAYER_ENABLED_KEY, False))
+        ]
         if ind_rows:
             raise EvaluationContaminationError(
                 f"assert_phase_beta_ready: {len(ind_rows)} row(s) have"
-                f" truthy {_INDIVIDUAL_LAYER_COLUMN}; these are flagged for"
+                f" truthy {INDIVIDUAL_LAYER_ENABLED_KEY}; these are flagged for"
                 f" individual evaluation and must not enter training"
                 f" (CS-3 / DB11)",
             )

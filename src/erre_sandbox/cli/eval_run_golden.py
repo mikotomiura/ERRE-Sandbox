@@ -543,6 +543,15 @@ def _make_duckdb_sink(
         row_id = f"{run_id}:{turn.dialog_id}:{turn.turn_index}"
         zone_label = zone_resolver(turn.speaker_id, turn.dialog_id)
         try:
+            # B-1 (m9-individual-layer-schema-add): the new
+            # ``individual_layer_enabled`` column is intentionally
+            # omitted from this INSERT — the DDL constraint
+            # ``BOOLEAN NOT NULL DEFAULT FALSE`` in
+            # ``eval_store._RAW_DIALOG_DDL_COLUMNS`` materialises
+            # ``FALSE`` on every captured row. M10-A will introduce
+            # the truthy-setting branch when the individual-layer
+            # evaluation epoch is implemented; that is the only
+            # situation where this INSERT should expand to 16 columns.
             con.execute(
                 "INSERT INTO raw_dialog.dialog"
                 ' ("id", "run_id", "dialog_id", "tick", "turn_index",'

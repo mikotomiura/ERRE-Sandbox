@@ -37,6 +37,18 @@ class BlockerNotResolvedError(RuntimeError):
     Catching this exception without resolving the named blocker is a
     contract bug. The message includes the blocker task name so an
     accidental ``except`` clause cannot silently bypass the gate.
+
+    Post-B-1 status (Codex LOW-1): once the schema-contract update has
+    landed, the production ``connect_training_view()`` path will never
+    raise this — :func:`erre_sandbox.evidence.eval_store.bootstrap_schema`
+    materialises the column on every fresh DuckDB file. The Type and
+    its regression test (``with_individual_layer_column=False`` mock
+    fixture in ``tests/test_training/conftest.py``) are deliberately
+    retained as a defence layer for non-bootstrap snapshots, legacy
+    DuckDB artifacts produced before B-1 merged, and any future
+    non-DuckDB :class:`RawTrainingRelation` implementations that might
+    ship without the column. Removing this Type is a contract change,
+    not a cleanup.
     """
 
 
