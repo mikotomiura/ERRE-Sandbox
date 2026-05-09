@@ -82,8 +82,22 @@
 ## Defer (別 PR / 別タスク)
 - [ ] **既存 `.duckdb` migration スクリプト** (D-1、**fallback only**) — Phase B kick が PR-A merge **前**に行われた場合の rescue 用。判断 5 採用で本来不要、Phase B kick が judgement 通り merge 後に行われたため未発火
 - [ ] **M10-A scaffold (個体層 flag を立てる側)** (D-3) — `eval_run_golden.py` の INSERT で M10-A モード時に `individual_layer_enabled=true` を設定する側のロジック。本 PR は schema 層のみ
-- [ ] **B-2 Phase C 採取** — G-GEAR で `next-session-prompt-phase-c.md` 通りに kick (Windows native + sequential、~1.5-3h 想定 if Phase B pace generalizes、natural は wall-budget-bound なので最大 10h × 5 run の余地あり)
+- [ ] **B-2-C Phase C 採取 (multi-session、判断 9 反映)** — G-GEAR で `next-session-prompt-phase-c-revised.md` 通りに kick (Windows native + sequential、`timeout 360m`、~3-5h/cell × 15 cell = ~50-75h、4-5 セッション)。run0 から run4 まで run 単位で分割、各セッション末に audit + commit
+  - [ ] C-1: run0 × 3 persona (kant/nietzsche/rikyu)、~12-15h
+  - [ ] C-2: run1 × 3 persona、~12-15h
+  - [ ] C-3: run2 × 3 persona、~12-15h
+  - [ ] C-4: run3 × 3 persona、~12-15h
+  - [ ] C-5: run4 × 3 persona + Phase E 統合 PR、~12-15h
 - [ ] **Phase E 統合 PR** — Phase C 完了後、Phase B + C = 30 cell まとめて `feature/m9-eval-p3-golden-baseline-complete` で起票 (`g-gear-phase-bc-launch-prompt.md §Phase E` 参照)
+
+## Phase C kick 失敗 (2026-05-09 G-GEAR セッション、判断 9 反映)
+- [x] **C kick wall budget 仮定誤り発覚**: `next-session-prompt-phase-c.md` の 5-10 min/cell 仮定で kick → kant_natural_run0 が 89.5 min で focal_target=500 未到達 (438 行)、`timeout 90m` で kill (rc=124)
+- [x] **observed throughput**: natural は ~5 dialog 行/min (Phase B stimulus ~100 focal/min と桁違い)、原因仮説は free-form open-ended dialog + 高頻度 reflection trigger + 3-agent triad
+- [x] **判断 9 起票**: ~5h/cell wall budget 前提で multi-session 化、`timeout 360m` (6h cap) + run 単位分割、`--turn-count 500` 維持で B/C parity 確保
+- [x] **B-2-C blocker 起票**: blockers.md にアクティブ blocker として記録、解消条件は run0..run4 完了
+- [x] **partial cleanup 方針**: 既存 .tmp は削除して fresh kick (rescue で部分 dialog 継承すると continuity が壊れる)
+- [x] **next-session-prompt-phase-c-revised.md 生成**: multi-session handoff prompt、state 判定セクション + run-by-run 分割実行手順
+- [x] **session record commit**: decisions/blockers/tasklist/runlog/handoff を `feature/m9-eval-phase-b-stimulus-baseline` に追加 commit (Phase C 採取物 0 件、PR なし)
 
 ## 解消済 (本 PR で取り込み)
 - [x] **`_INDIVIDUAL_LAYER_COLUMN` 定数の二重定義解消** (D-2) — Codex MEDIUM-3 反映で defer 取消、判断 7 として本 PR scope に取り込み
