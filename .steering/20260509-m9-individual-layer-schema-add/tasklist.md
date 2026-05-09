@@ -69,10 +69,21 @@
   3. Phase B 完了確認後、Phase C kick (~24-48h overnight×2)
 - [ ] `.claude/memory/MEMORY.md` 更新は不要 (B-1 merge は M9-c-spike の常態化変更、memory には残さない)
 
+## Phase B 採取 (2026-05-09 G-GEAR セッション、判断 5 + 判断 8 反映)
+- [x] **B kick 環境転換**: WSL2 NAT mode で Ollama 127.0.0.1 不通 → Windows native + `PYTHONUTF8=1` + Git Bash GNU `timeout` で kick (判断 8)
+- [x] **既存 partial 退避**: 41 ファイルを `data/eval/partial/` へ移動 (15 stimulus duckdb cycle-count=3 fail + 3 natural .tmp + 18 logs + walltimes + meta)
+- [x] **Phase B 15 cell 採取**: 80.5 min wall (5 min/cell × 15)、全 cell focal=504, status=complete
+- [x] **audit gate**: `_audit_stimulus.json` 15/15 complete、partial=0、fail=0、overall_exit_code=0
+- [x] **md5 receipt**: `_checksums_phase_b.txt` 31 行 (15 .duckdb + 15 sidecar + 1 audit json) を CHECKPOINT 後に生成
+- [x] **commit + push**: `feature/m9-eval-phase-b-stimulus-baseline` (commit `2812285`) で receipt + audit のみ commit、`.duckdb` / sidecar 本体は .gitignore 除外 + Phase C 統合 PR まで defer
+- [x] **decisions.md 判断 8 追記**: WSL2→Windows native 転換 + Phase C 別セッション defer の理由を verbatim 記録
+- [x] **next-session-prompt-phase-c.md 生成**: Phase C kick 用 handoff prompt (Phase B 実測値 + Windows native パターン明示)
+
 ## Defer (別 PR / 別タスク)
-- [ ] **既存 `.duckdb` migration スクリプト** (D-1、**fallback only**) — Phase B kick が PR-A merge **前**に行われた場合の rescue 用。判断 5 採用で本来不要。`scripts/migrate_individual_layer.py` を作成するか、ad-hoc `ALTER TABLE … ADD COLUMN IF NOT EXISTS` で対応
+- [ ] **既存 `.duckdb` migration スクリプト** (D-1、**fallback only**) — Phase B kick が PR-A merge **前**に行われた場合の rescue 用。判断 5 採用で本来不要、Phase B kick が judgement 通り merge 後に行われたため未発火
 - [ ] **M10-A scaffold (個体層 flag を立てる側)** (D-3) — `eval_run_golden.py` の INSERT で M10-A モード時に `individual_layer_enabled=true` を設定する側のロジック。本 PR は schema 層のみ
-- [ ] **B-2 (m9-eval P3 Phase B+C データ採取)** — G-GEAR で `g-gear-phase-bc-launch-prompt.md` 通りに kick (~3-5h Phase B + ~24-48h Phase C overnight×2)。**PR-A merge 後に倒す** (判断 5)
+- [ ] **B-2 Phase C 採取** — G-GEAR で `next-session-prompt-phase-c.md` 通りに kick (Windows native + sequential、~1.5-3h 想定 if Phase B pace generalizes、natural は wall-budget-bound なので最大 10h × 5 run の余地あり)
+- [ ] **Phase E 統合 PR** — Phase C 完了後、Phase B + C = 30 cell まとめて `feature/m9-eval-p3-golden-baseline-complete` で起票 (`g-gear-phase-bc-launch-prompt.md §Phase E` 参照)
 
 ## 解消済 (本 PR で取り込み)
 - [x] **`_INDIVIDUAL_LAYER_COLUMN` 定数の二重定義解消** (D-2) — Codex MEDIUM-3 反映で defer 取消、判断 7 として本 PR scope に取り込み
