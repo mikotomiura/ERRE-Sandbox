@@ -20,6 +20,22 @@
 - **再開条件**: PR-A merge 前に Phase B kick が実行された場合のみ (回避は可能、user 操作の手順で明示する)
 - **cross-reference**: `.steering/20260430-m9-eval-system/blockers.md` には記録しない (本 PR で解消方針確立済)
 
+### D-4: `_seed_duckdb_with_sentinel_rows` fixture modernization (code-reviewer MEDIUM)
+
+- **発生日時**: 2026-05-09 (PR #156 code-reviewer 指摘)
+- **症状**: `tests/test_evidence/test_eval_paths_contract.py:69-103` の `_seed_duckdb_with_sentinel_rows` ヘルパーが `bootstrap_schema()` を使わず独自 11 列 DDL で `raw_dialog.dialog` を作成。新列 (`epoch_phase`, `individual_layer_enabled`, `speaker_agent_id`, `addressee_agent_id`, `reasoning`) が欠落しており、aggregate assert は skip 条件で通る。将来 `_DuckDBRawTrainingRelation.__init__` に追加 integrity check が入った場合に silent drift で false-green リスク
+- **解決方法**: `_seed_duckdb_with_sentinel_rows` 内で `bootstrap_schema()` を呼び、`raw_dialog_extra_columns` poison column のみ `ALTER TABLE ADD COLUMN` で注入する形に refactor
+- **defer 理由**: 本 PR scope 外 (test fixture refactor)。現状の 13 件の sentinel test は緑、本 PR の contract correctness には影響しない
+- **再開条件**: M10-A scaffold タスク or test fixture modernization PR
+
+### D-5: `_DuckDBRawTrainingRelation` に context manager protocol 未実装 (code-reviewer MEDIUM)
+
+- **発生日時**: 2026-05-09 (PR #156 code-reviewer 指摘)
+- **症状**: `_DuckDBRawTrainingRelation` (`eval_store.py:148-261`) は `close()` のみ。`AnalysisView` (line 362-367) は `__enter__/__exit__` 実装済で context manager protocol 一貫性が不揃い。test 側は `try/finally` + `relation.close()` で正しく処理されているが、`# type: ignore[attr-defined]` 付きで呼び出す形になっており保守性に影響
+- **解決方法**: `_DuckDBRawTrainingRelation.__enter__/__exit__` 追加 or `RawTrainingRelation` Protocol に `close()` 追加 (Protocol 変更は scope 大)
+- **defer 理由**: 本 PR の contract correctness には影響しない、refactor 範疇
+- **再開条件**: M10 scope or relation API refactor PR
+
 ### D-3: M10-A scaffold (個体層 flag を立てる側)
 
 - **発生日時**: 2026-05-09 (本 PR 設計時)

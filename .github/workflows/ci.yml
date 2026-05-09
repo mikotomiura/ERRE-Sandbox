@@ -130,7 +130,7 @@ jobs:
           # plus the construction-time aggregate assert in
           # ``_DuckDBRawTrainingRelation.__init__`` are the primary
           # guards. This grep ships as low-cost early warning only.
-          if grep -nE 'individual_layer_enabled[[:space:]]*[:=][[:space:]]*(True|"true"|1\b)' "${paths[@]}"; then
+          if grep -nE 'individual_layer_enabled[[:space:]]*[:=][[:space:]]*(True\b|"true"|1\b)' "${paths[@]}"; then
             echo "::error::training-egress module sets individual_layer_enabled truthy — DB11 / B-1 contract violation"
             exit 1
           fi
