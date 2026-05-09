@@ -314,6 +314,35 @@ def test_assert_no_sentinel_leak_ignores_non_strings() -> None:
 
 
 # ---------------------------------------------------------------------------
+# B-1 (m9-individual-layer-schema-add) — allow-list and constant export
+# ---------------------------------------------------------------------------
+
+
+def test_individual_layer_enabled_in_allowed_keys() -> None:
+    """B-1: allow-list must include the DB11 / M10-A flag column.
+
+    Without this membership ``connect_training_view`` would either drop
+    the column at construction-time subset check (legacy DB) or raise
+    contract-divergence at import time (post-B-1 DB)."""
+    assert "individual_layer_enabled" in ALLOWED_RAW_DIALOG_KEYS
+
+
+def test_individual_layer_enabled_key_constant_exported() -> None:
+    """B-1 (Codex MEDIUM-3): export the constant from ``eval_paths`` so
+    that the training gate (``train_kant_lora``) imports it and the
+    allow-list membership is keyed by a single source of truth."""
+    import erre_sandbox.contracts.eval_paths as ep
+
+    assert hasattr(ep, "INDIVIDUAL_LAYER_ENABLED_KEY"), (
+        "INDIVIDUAL_LAYER_ENABLED_KEY constant must be exported by eval_paths"
+    )
+    assert ep.INDIVIDUAL_LAYER_ENABLED_KEY == "individual_layer_enabled"
+    assert "INDIVIDUAL_LAYER_ENABLED_KEY" in ep.__all__, (
+        "INDIVIDUAL_LAYER_ENABLED_KEY must be listed in __all__"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Existing-egress audit: erre-sandbox export-log
 # ---------------------------------------------------------------------------
 

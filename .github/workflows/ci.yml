@@ -120,4 +120,18 @@ jobs:
             echo "::error::training-egress module references the metrics schema literally — that is a contract violation (see contracts/eval_paths.py)"
             exit 1
           fi
-          echo "[eval-egress-grep-gate] PASS"
+          # B-1 (m9-individual-layer-schema-add): training-egress
+          # modules must not contain a literal that sets
+          # ``individual_layer_enabled`` truthy. Codex MEDIUM-1: this
+          # grep is a *weak backstop only* — it cannot catch
+          # ``setattr``, ``dict.update``, alias assignment, kwargs
+          # splats, or comprehensions. The behavioural sentinel test
+          # (``tests/test_training/test_train_kant_lora.py::test_assert_phase_beta_ready_blocks_individual_layer_true_via_real_relation``)
+          # plus the construction-time aggregate assert in
+          # ``_DuckDBRawTrainingRelation.__init__`` are the primary
+          # guards. This grep ships as low-cost early warning only.
+          if grep -nE 'individual_layer_enabled[[:space:]]*[:=][[:space:]]*(True\b|"true"|1\b)' "${paths[@]}"; then
+            echo "::error::training-egress module sets individual_layer_enabled truthy — DB11 / B-1 contract violation"
+            exit 1
+          fi
+          echo "[eval-egress-grep-gate] PASS (B-1 individual-layer literal guard included; weak backstop only — primary guard is the behavioural sentinel + construction-time aggregate assert)"
