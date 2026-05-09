@@ -119,3 +119,33 @@
 - **トレードオフ**: 本 PR の diff が +15 行増えるが、blast radius は最小 (`train_kant_lora.py` の private 定数を import 1 行に置き換えるだけ)
 - **影響範囲**: `eval_paths.py` (export 追加)、`train_kant_lora.py` (import 追加 + private 定数削除)、blockers.md D-2 (削除)
 - **見直しタイミング**: なし (本 PR で完結)
+
+## 判断 8: Phase C kick を別セッションへ defer + Phase B 実行環境を Windows native へ転換 (2026-05-09 G-GEAR セッション、新規)
+
+- **判断日時**: 2026-05-09 (Phase B kick セッション)
+- **背景**: Phase B kick を `next-session-prompt.md` の WSL2 経由手順で開始したところ、kick 直後 ~30s で `Ollama /api/chat unreachable at http://127.0.0.1:11434` 連鎖失敗を観測。診断結果:
+  - Windows Ollama は `127.0.0.1:11434` のみ bind (env `OLLAMA_HOST` unset)
+  - WSL2 Ubuntu-22.04 は **NAT mode** (`networkingMode=mirrored` ではない)、default route via `172.28.96.1`
+  - WSL2 から `127.0.0.1` / `host.docker.internal` / resolv.conf nameserver `10.255.255.254` 全て unreachable
+  - handoff prompt の「`localhost:11434` で WSL2 から到達可能」前提が誤り
+- **選択肢**:
+  - A: WSL2 networking 修正 (Ollama bind 0.0.0.0 + Windows firewall 11434 inbound 開放 + WSL2 から `--ollama-host http://172.28.96.1:11434` 指定)
+  - **B (採用)**: Phase B を **Windows native** で実行 (Phase B は SGLang/CUDA toolkit 不要、Ollama HTTP + DuckDB のみ → WSL2 必要性なし)、`PYTHONUTF8=1` 強制で cp932 codepage の em-dash crash 回避
+  - C: Phase B を kick せずセッション終了
+- **採用**: **B (Windows native + PYTHONUTF8=1 + Git Bash GNU `timeout`)**
+- **理由**:
+  1. **最小コスト fix**: Windows Ollama config / firewall を触らず、ネットワーク経路を 1 hop 削減
+  2. **K-α retry の WSL2 依存とは別軸**: K-α は SGLang fp8 + CUDA toolkit が Linux 必須だったが、Phase B (Ollama HTTP) は OS 非依存
+  3. **wallclock 大幅短縮**: WSL2 9P FS overhead 想定の 75 min/cell が native では **5 min/cell** に短縮、合計 80.5 min wall (handoff 想定 3-5h から 2-3× 速い)
+  4. **副作用ゼロ**: 出力先は同じ `data/eval/golden/`、user-facing 成果物は不変
+- **トレードオフ**: handoff prompt の WSL2 前提から deviate するが、`g-gear-phase-bc-launch-prompt.md` の本質 (採取手順) は変わらず Phase E PR 構造も同一
+- **影響範囲**:
+  - 本セッション Phase B kick: WSL2 → Windows native
+  - 次セッション Phase C kick: 同じく Windows native (`next-session-prompt-phase-c.md` で明示)
+  - Phase B 採取結果 (15 cell): focal=504, 80.5 min wall, B-1 schema 全 cell 反映
+  - 判断 5 の前提 (PR-A merge 後 kick) は維持、kick タイミング自体に影響なし
+- **追加判断 (Phase C defer)**: Phase C kick は本セッションで連続実施せず別セッションへ defer。理由:
+  1. handoff prompt パターン踏襲 (overnight×2 occupancy + context 30% 超リスク)
+  2. natural は `--wall-timeout-min 600` で stimulus と異なる lifecycle、Phase B の 5 min/cell が natural に general化するか未確認
+  3. Mac 側で本 commit (2812285) を fetch して Phase B audit を独立確認する時間を確保
+- **見直しタイミング**: WSL2 networking が `networkingMode=mirrored` に切り替わって 127.0.0.1 で Windows Ollama が見えるようになった場合 (WSL2 設定変更時)
