@@ -83,7 +83,7 @@
 - [ ] **既存 `.duckdb` migration スクリプト** (D-1、**fallback only**) — Phase B kick が PR-A merge **前**に行われた場合の rescue 用。判断 5 採用で本来不要、Phase B kick が judgement 通り merge 後に行われたため未発火
 - [ ] **M10-A scaffold (個体層 flag を立てる側)** (D-3) — `eval_run_golden.py` の INSERT で M10-A モード時に `individual_layer_enabled=true` を設定する側のロジック。本 PR は schema 層のみ
 - [ ] **B-2-C Phase C 採取 (multi-session、判断 9 反映)** — G-GEAR で `next-session-prompt-phase-c-revised.md` 通りに kick (Windows native + sequential、`timeout 360m`、~3-5h/cell × 15 cell = ~50-75h、4-5 セッション)。run0 から run4 まで run 単位で分割、各セッション末に audit + commit
-  - [ ] C-1: run0 × 3 persona (kant/nietzsche/rikyu)、~12-15h
+  - [x] C-1: run0 × 3 persona (kant/nietzsche/rikyu)、実測 15h 17min (kant 5h7m + nietzsche 5h3m + rikyu 5h6m、判断 9 ~5h/cell 予測一致)、audit 3/3 PASS
   - [ ] C-2: run1 × 3 persona、~12-15h
   - [ ] C-3: run2 × 3 persona、~12-15h
   - [ ] C-4: run3 × 3 persona、~12-15h
