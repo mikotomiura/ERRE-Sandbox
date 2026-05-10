@@ -2,9 +2,24 @@
 
 > Codex review (2026-05-09) 反映済 — D-2 削除 (本 PR で解消)、D-1 弱化 (Phase B kick を merge 後に倒す方針へ転換)
 
-## (現状なし)
+## アクティブ
 
-実装着手前 (Codex review 反映済) の段階。発生した blocker はここに追記する。
+### B-2-C: Phase C natural 採取の wall budget 不足 (Phase C kick aborted、判断 9 で defer 化)
+
+- **発生日時**: 2026-05-09 (Phase C kick 1 cell 90m 失敗時)
+- **症状**: `next-session-prompt-phase-c.md` 通りに `timeout 90m` × 15 cell sequential で kick したところ、kant_natural_run0 が 89.5 min 走行で `raw_dialog.dialog` 438 行に到達した時点で shell timeout 90m に達して kill (rc=124)。Phase B stimulus の 5 min/cell から外挿した「natural も 5-10 min/cell」は誤り、natural は ~5h/cell が実測値
+- **影響**:
+  - `data/eval/golden/{kant,nietzsche}_natural_run0.duckdb.tmp` に partial データ (kant 438 行 / nietzsche ~80 行 推定、いずれも focal_target=500 未到達)
+  - GPU/CPU ~3h 消費 (kant 90m + nietzsche orphan 90m、TaskStop で shell wrapper 死亡後も python 子プロセスが `timeout 90m` cap まで継続)
+  - Phase C 採取の calendar slip: 1 セッション → 4-5 セッション
+  - B-2 (K-β trigger) の Phase C 部分は引き続き open
+- **解決方法 (採用、判断 9)**: defer + multi-session 化、`timeout 360m` (6h) cap で run0 まず 1-2 セッション、run1-4 を後続セッションに分割
+- **partial rescue 方針**: 既存 .tmp は削除して fresh kick (rescue で部分 dialog を継承すると continuity が壊れる)
+- **次セッション kick 用 handoff**: `.steering/20260509-m9-individual-layer-schema-add/next-session-prompt-phase-c-revised.md` (本ブロッカー解消用)
+- **再開条件**: G-GEAR で十分な wall 時間が確保できるセッション (overnight 1 晩で 3-5 cell 想定)、PR-A merge 状態維持
+- **cross-reference**: 判断 9、phase-c-runlog.txt、`.steering/20260430-m9-eval-system/blockers.md` ME-15 (Phase C 完了まで K-β trigger open)
+
+## 持ち越し候補 (defer、本タスク内で扱わない)
 
 ## 持ち越し候補 (defer、本タスク内で扱わない)
 

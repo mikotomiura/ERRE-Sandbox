@@ -149,3 +149,53 @@
   2. natural は `--wall-timeout-min 600` で stimulus と異なる lifecycle、Phase B の 5 min/cell が natural に general化するか未確認
   3. Mac 側で本 commit (2812285) を fetch して Phase B audit を独立確認する時間を確保
 - **見直しタイミング**: WSL2 networking が `networkingMode=mirrored` に切り替わって 127.0.0.1 で Windows Ollama が見えるようになった場合 (WSL2 設定変更時)
+
+## 判断 9: Phase C wall budget は **stimulus の 5 min/cell から general 化しない**、natural は **~5h/cell × 15 cell = ~60h** を前提に multi-session 化 (2026-05-09 Phase C kick aborted、新規)
+
+- **判断日時**: 2026-05-09 (Phase C kick 1 cell 90m 失敗を観測した時点)
+- **背景**: `next-session-prompt-phase-c.md` は Phase B の 5 min/cell から「natural も sequential で 1 cell ~5-10 min × 15 = ~75-150 min」と外挿し、`timeout 90m` shell cap で 15 cell sequential を 1 セッションで完了する想定だった。実測では 1 cell 目 (kant_natural_run0) が 89.5 min で `timeout 90m` の hard cap に到達 (rc=124)、その時点で `raw_dialog.dialog` には 438 行のみ (focal_target=500 未到達)
+- **観測値** (2026-05-09 18:04-19:34, kant_natural_run0):
+  - 89.5 min wall で 438 dialog 行 (`raw_dialog.dialog` テーブル)
+  - 全 3 persona × 1 focal = ~146 kant-focal turns (1/3 share 仮定)
+  - 89.5 min 中ずっと active progressing (最終 log 19:34:39, kill 6 秒前) → hang ではなく単純な低 throughput
+  - Reflection trigger 152 件 / 90 min ≈ 1.7/min (Phase B stimulus は audit 観測 focal=504/5min ≈ 100 focal/min と桁違い)
+  - chat POST 936 件 / 90 min ≈ 10/min (Ollama 単独呼出し)
+  - GPU/CPU 全期間 active、Ollama daemon 1.2 GiB のみ (LLM 推論は短時間 burst)
+- **原因仮説**:
+  1. **stimulus は scaffolded short-form Q&A** (Phase 1 の事前 prompt template、token-light、predictable 短い response)
+  2. **natural は free-form open-ended dialogue** (full context window、token-heavy、variable-length response)
+  3. **reflection trigger 頻度が高い** (DMN/insight aggregate 形式の自由対話で aggregate score が頻繁に閾値超え → 余分な LLM round trip)
+  4. **3 agent 同時走行**: kant cell でも nietzsche/rikyu が peripatos triad として同時走行し、各 dialog turn で 3 agent 分の LLM 呼出し → cycle あたりのリアルタイム消費が長い
+- **選択肢** (検討):
+  - A: 全 15 cell を 1 セッションで sequential kick (`timeout 360m` 仮定 → 90h、不可能)
+  - B: 3-parallel + WALL=600 の original launch prompt パターン (5 run × ~6h wall window = ~30h、2-3 overnight、GPU contention あり)
+  - C: `--turn-count 500 → 200` に短縮 (B/C parity 破壊、M9 evaluation contract 変更、Codex review 要再依頼)
+  - **D (採用)**: defer + multi-session 化 (run0 まず 1-2 セッション、run1-4 を後続セッションに分割、~5h/cell × 15 = ~60h 前提)
+- **採用**: **D (defer + multi-session)**
+- **理由**:
+  1. **B/C parity 維持**: `--turn-count 500` を変更すると Phase B との直接比較性が崩れ、M9 evaluation contract も変わる (判断 9-bis 候補を回避)
+  2. **GPU contention 回避**: 3-parallel は Ollama 1 GPU の文脈で context-switch overhead 不明 (ME-9 Amendment は contention factor を sequential では無効と記載)、判断 8 の Windows native pattern が sequential 前提で構築済
+  3. **session 健全性**: 1 セッション 60h は context decay と user 監視能力を超える、Plan/Clear/Execute boundary の分割原則 (CLAUDE.md) に整合
+  4. **Phase B の receipt は確定済**: `feature/m9-eval-phase-b-stimulus-baseline` は merge 可能状態 → Phase C 完了を待たず M10-A unblock の一部 (stimulus 側) だけでも先行可能 (要再判断)
+- **トレードオフ**:
+  - 完了までの calendar 時間が伸びる (1 セッション → 2-3 セッション、最低 2-3 日)
+  - Phase E 統合 PR の起票が遅延 (Mac rsync も遅延、ただし memory `feedback_batch_integration_over_per_session_sync` で受容済)
+- **影響範囲**:
+  - 本セッション Phase C kick: kant_natural_run0 90m + nietzsche_natural_run0 90m (~3h GPU 消費後 abort)
+  - `data/eval/golden/{kant,nietzsche}_natural_run0.duckdb.tmp` (gitignored、partial、削除して fresh kick 推奨)
+  - Phase C 再 kick: `next-session-prompt-phase-c-revised.md` で `timeout 360m` (= 6h cap) + run0/run1-4 分割 + 1 セッションあたり 3-5 cell 想定
+  - Phase B receipt (commit `2812285`) と stimulus 15 cell は無傷
+- **wall budget 改訂値** (handoff prompt に明示):
+  - **shell timeout**: `timeout 360m` (= 6h、CLI `--wall-timeout-min 600` の 60% 安全マージン)
+  - **per-cell typical**: ~3-5h (kant 観測 ~5 rows/min × 1500 rows ≈ 5h で focal_target=500 仮定)
+  - **per-session budget**: ~12-15h (overnight session 3-5 cell)
+  - **total Phase C**: ~50-75h calendar、~5 sessions
+- **再 kick 時の partial rescue 方針**: 本セッション abort 時の `data/eval/{golden,partial}/{kant,nietzsche}_natural_run0.duckdb.tmp` は **削除して fresh kick** を採用 (rescue 機構で 90m 部分的 dialog を引継ぐと dialog continuity が壊れる、`kant` の `raw_dialog.dialog` 438 行は B/C parity 比較の baseline 品質を満たさない)
+- **見直しタイミング**:
+  1. Phase C 再 kick で 1 cell が観測通り 5h で完了するか確認、桁違いに違えば再々判断
+  2. ME-9 Amendment §C.5 の rate formula を natural sequential context に拡張する場合 (本判断後の calibration session)
+  3. Ollama または qwen3:8b の throughput が改善 (tensor cache、model swap、context-length tune など) して 5h → 2h 化した場合
+- **cross-reference**:
+  - 観測 evidence: `.steering/20260509-m9-individual-layer-schema-add/phase-c-runlog.txt` (kant 89.5 min + nietzsche orphan 89 min)
+  - 判断 8 (Windows native + sequential) は維持、本判断はその上で wall budget のみ補正
+  - blockers.md §B-2 (K-β trigger) は Phase C 完了まで open 維持
