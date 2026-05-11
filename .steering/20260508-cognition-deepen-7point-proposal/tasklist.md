@@ -38,6 +38,8 @@
 
 ## Phase 5: ハンドオフ (pending、auto mode で走らせる)
 
+- [x] TOE Reasoning model アイディアの設計判断を
+      `toe-reasoning-model-judgment.md` として外付け記憶化 (2026-05-11)
 - [ ] CLAUDE.md / functional-design.md の thesis re-articulation 反映要否判断 (M10-0 着手前)
 - [ ] PR #127 (M9-B) design-final.md に "individual_layer_enabled=false manifest +
       exclusion rule" 追記タスク作成 (M9-B execution kick 前)
