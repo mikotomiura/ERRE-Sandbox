@@ -85,7 +85,7 @@
 - [ ] **B-2-C Phase C 採取 (multi-session、判断 9 反映)** — G-GEAR で `next-session-prompt-phase-c-revised.md` 通りに kick (Windows native + sequential、`timeout 360m`、~3-5h/cell × 15 cell = ~50-75h、4-5 セッション)。run0 から run4 まで run 単位で分割、各セッション末に audit + commit
   - [x] C-1: run0 × 3 persona (kant/nietzsche/rikyu)、実測 15h 17min (kant 5h7m + nietzsche 5h3m + rikyu 5h6m、判断 9 ~5h/cell 予測一致)、audit 3/3 PASS
   - [x] C-2: run1 × 3 persona、実測 15h 51min (kant 5h13m + nietzsche 5h25m + rikyu 5h13m)、audit 3/3 PASS
-  - [ ] C-3: run2 × 3 persona、~12-15h
+  - [x] C-3: run2 × 3 persona、実測 15h 29min (kant 5h11m + nietzsche 5h7m + rikyu 5h11m)、audit 3/3 PASS
   - [ ] C-4: run3 × 3 persona、~12-15h
   - [ ] C-5: run4 × 3 persona + Phase E 統合 PR、~12-15h
 - [ ] **Phase E 統合 PR** — Phase C 完了後、Phase B + C = 30 cell まとめて `feature/m9-eval-p3-golden-baseline-complete` で起票 (`g-gear-phase-bc-launch-prompt.md §Phase E` 参照)
