@@ -2,9 +2,9 @@
   "daily_token_budget": 1000000,
   "per_invocation_max": 200000,
   "today": {
-    "date": "2026-05-07",
-    "used": 257734,
-    "invocations": 2
+    "date": "2026-05-11",
+    "used": 271822,
+    "invocations": 1
   },
   "policy": {
     "on_overrun": "warn",
@@ -82,6 +82,14 @@
       "tokens": 81541,
       "per_invocation_max_overrun": 0,
       "policy_action": "ok (per_invocation_max=200K 内)"
+    },
+    {
+      "date": "2026-05-11",
+      "task": "20260508-cognition-deepen-7point-proposal",
+      "purpose": "M10-0 concrete design + reasoning-model-judgment.md independent review (HIGH 5 / MEDIUM 6 / LOW 3 / Verdict: ADOPT-WITH-CHANGES、HIGH-5 は事実誤認切出 evidence/tier_b vs eval/tier_b、HIGH-2 は DB11 contamination 新 table 拡張漏れ、HIGH-3 は recovery protocol が ME-9 同型 false-positive 再導入)",
+      "tokens": 271822,
+      "per_invocation_max_overrun": 71822,
+      "policy_action": "warn (個人プロジェクト規定どおり、HIGH 5 切出 + 事実誤認補正で value 大)"
     }
   ]
 }
