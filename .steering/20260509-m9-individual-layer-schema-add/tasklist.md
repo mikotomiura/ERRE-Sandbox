@@ -86,7 +86,7 @@
   - [x] C-1: run0 × 3 persona (kant/nietzsche/rikyu)、実測 15h 17min (kant 5h7m + nietzsche 5h3m + rikyu 5h6m、判断 9 ~5h/cell 予測一致)、audit 3/3 PASS
   - [x] C-2: run1 × 3 persona、実測 15h 51min (kant 5h13m + nietzsche 5h25m + rikyu 5h13m)、audit 3/3 PASS
   - [x] C-3: run2 × 3 persona、実測 15h 29min (kant 5h11m + nietzsche 5h7m + rikyu 5h11m)、audit 3/3 PASS
-  - [ ] C-4: run3 × 3 persona、~12-15h
+  - [x] C-4: run3 × 3 persona、実測 15h 43min (kant 5h09m + nietzsche 5h17m + rikyu 5h17m)、audit 3/3 PASS
   - [ ] C-5: run4 × 3 persona + Phase E 統合 PR、~12-15h
 - [ ] **Phase E 統合 PR** — Phase C 完了後、Phase B + C = 30 cell まとめて `feature/m9-eval-p3-golden-baseline-complete` で起票 (`g-gear-phase-bc-launch-prompt.md §Phase E` 参照)
 
