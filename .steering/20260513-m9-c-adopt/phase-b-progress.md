@@ -42,7 +42,7 @@ nohup /root/erre-sandbox/.venv/bin/python -m erre_sandbox.training.train_kant_lo
 disown
 ```
 
-### in-flight 計測 (起動から ~5min)
+### in-flight 計測 (起動から ~5min、PID 383 kill 前)
 
 - PID: 838 (`/mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/kant_r4_real.pid`)
 - elapsed: 04:55 (起動 22:43:51 JST)
@@ -52,9 +52,59 @@ disown
   完了時 peak 10.55 GB)
 - GPU util: 20-87% 変動 (NF4 weight conversion バースト)
 - log progress: `Loading weights: 4/399 [04:30<6:53:33, 62.82s/it]` (起動 5 分時点、
-  ETA ~7h for weight load alone)
+  ETA ~7h for weight load alone) ⚠ **異常遅延**
 - 期待 total wall-clock: weight load 5-7h + training 2-3h = **~10h** (PR #163 K-β
   rank=8 と同等想定)
+
+### 2026-05-13 23:28 JST incident — 重複 training process 検出 → PID 383 kill
+
+ユーザー指摘「monitor だけで実 training しているか」「不要な裏側処理がないか」
+診断中に発覚:
+
+- **`pgrep -af train_kant_lora` で 2 プロセス検出**:
+  - PID 383 (start 22:42、`Rl` running、ppid 302) — **私の最初の `nohup` 試行
+    (PowerShell `$!` escape 失敗で `PID=` 空表示) で実は起動成功していた残骸**
+  - PID 838 (start 22:43、`Sl` sleeping、ppid 830) — `kick_train.sh` 経由の正規
+    起動、phase-b-progress.md に記録した process
+- **両 process が同じ `--output-dir /root/erre-sandbox/checkpoints/kant_r4_real`
+  に書く** = race condition / save_steps 衝突の危険 (training step 到達前に発覚)
+- **GPU/CPU resource 競合** が Loading weights 異常遅延 (60s/it) の主原因と判定:
+  - VRAM 15.7 GB = 2 × ~8 GB の bf16 model copy
+  - GPU util は 1 process あたり 50% で頭打ち
+- **PID 383 kill 実行** (`kill 383`):
+  - VRAM 15987 → **10044 MiB** (5943 MiB 即時解放、PR #163 K-β peak 10.55 GB と整合)
+  - PID 838 状態 `Sl` → `Rl` (resource 待ち解消、active running)
+- **kill 後 30 秒で training 本体到達**:
+  - log: `1%| | 29/2000 [05:52<3:28:56, 6.36s/it]`
+  - **Loading weights は kill 時点で完了済み、training step に入っていた**
+  - rate 13.7 → 10.9 → 8.9 → 7.4 → **6.36 s/step** に加速 (resource 単独利用効果)
+  - VRAM 13.5 GB peak / GPU 89% sustained
+  - 新 ETA: **~3.5h で training 完了** (起動から累計 ~4h、9h 短縮)
+
+### 教訓 (再発防止)
+
+1. `wsl -- bash -c "...nohup..."` を Bash tool 経由で実行する際、PowerShell が
+   `$!` を空文字に置換することがある。**`PID=` が空表示でも実プロセスは起動済み**
+   の可能性を疑う必要がある。
+2. **kick 後は `pgrep -af` で重複起動を必ず check**。今回は kick の前に重複が
+   無いか確認していなかった (最初の `nohup` 試行は失敗したと誤判定して 2 度目を
+   kick)。
+3. Bash tool / PowerShell の `$` escape 不安定対策として、launcher script を
+   ファイルに書いて `wsl -- bash ./script.sh` で呼ぶパターンを採用 (実装済、
+   `kick_train.sh`)。
+4. **MSYS_NO_PATHCONV=1 prefix の有無で path mangling が変わる**。Bash tool
+   (Git Bash 経由) では必須、PowerShell tool では不要。次セッションで rank=16
+   kick 時に再徹底する。
+
+### incident 後の正常 in-flight 計測 (2026-05-13 23:28 JST 時点)
+
+- PID: 838 単独
+- elapsed: 44:53 (kill 直後)
+- VRAM: 13.5 GB peak (S-3 14GB threshold 近接、要 sustained monitor)
+- GPU util: 89% sustained
+- training progress: 29/2000 step (1.45%)、ETA 3:28:56
+- 出力 directory: `/root/erre-sandbox/checkpoints/kant_r4_real/` (save_steps 500、
+  step 500 到達で checkpoint-500 dir 生成想定)
 
 ### Phase B prompt の VRAM monitor 規定 (S-3 mitigation)
 
