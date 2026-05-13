@@ -363,6 +363,53 @@
 
 ---
 
+## CS-3 amendment (2026-05-13) — 実装 PR + real-data dry-run 検証
+
+- **commit**: feature/m9-c-spike-k-beta-train-impl
+- **状況**: B-1 (m9-individual-layer-schema-add) + B-2 (M9-eval P3 Phase B+C 30
+  cell golden baseline、PR #160) 両 trigger 解消後、`train_kant_lora()` の
+  NotImplementedError skeleton を inner PEFT/transformers/bitsandbytes/datasets
+  loop + argparse `__main__` CLI に置換
+- **本 PR スコープ**:
+  - inner loop (BNB nf4 + double quant + gradient checkpointing + rank=8 LoRA +
+    Qwen3-8B + HF Trainer) 実装
+  - argparse: `--persona / --duckdb-glob / --db-path / --output-dir / --rank /
+    --quantization / --batch-size / --gradient-accumulation / --max-seq-length /
+    --max-steps / --learning-rate / --save-steps / --min-examples / --seed /
+    --dry-run / -v`
+  - exit-code mapping: 0=success, 2=contamination, 3=blocker, 4=insufficient,
+    5=operator error
+  - shard 集約 helper `_collect_from_shards()` で multi-DuckDB → 単一 aggregate
+    gate path (per-shard で loader-level assert を fire させ、集計後に CS-3
+    threshold #4 を fire)
+  - `TrainRunSummary` dataclass で audit trail (output_dir/train_metadata.json)
+  - 新規テスト 13 件 (`tests/test_training/test_train_kant_lora_cli.py`):
+    lazy-import 規律 / argparse / dry-run rc / shard aggregation
+- **本 PR スコープ外** (= 次セッション、別 PR):
+  - WSL2 venv に `peft / bitsandbytes / accelerate` install (CS-1 amendment
+    で確定済の Linux execution boundary)
+  - 実訓練 (~2-4h on G-GEAR RTX 5060 Ti 16GB)
+  - SGLang real Kant adapter load + chat round trip (CS-6 検証)
+  - adapter swap latency 5 condition 実測 (CS-8)
+  - bench_serving N=3 throughput 実測 (CS-7)
+  - DB3 fallback fire 最終判断 (CS-8)
+  - docs/runbooks/m9-c-adapter-swap-runbook.md 起草 (DB8)
+- **dry-run 実測** (real golden data、kant 10 cells):
+  - 10 shards / 11,761 raw_dialog rows
+  - build_examples 後の persona examples: **5,022**
+  - CS-3 threshold (`DEFAULT_MIN_EXAMPLES=1000`) に対する margin: **5.02x**
+  - per-shard: natural runs ~500-501 examples、stimulus runs 504 examples
+  - GPU stack 未 import (lazy import discipline 検証 OK)
+  - log: `.steering/20260508-m9-c-spike/k-beta-dry-run.log`
+- **CS-3 自体の amendment**: なし。`DEFAULT_MIN_EXAMPLES=1000` 維持 (実測
+  5022 で十分な margin、CS-3 棄却節の SLO 妥当性を empirical に追認)
+- **CS-4 batch / gradient_accumulation の operator override**: argparse で
+  override 可能、ただし `batch_size > 1` または `gradient_accumulation < 8` の
+  場合は `_LOGGER.warning()` で audit trail に記録。VRAM budget overrun のリスク
+  を operator に通知
+
+---
+
 ## CS-summary
 
 - 本 ADR **9 件** で Codex `gpt-5.5 xhigh` **11 回目** review (2026-05-08
