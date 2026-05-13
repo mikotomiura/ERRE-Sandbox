@@ -1,0 +1,42 @@
+# ERRE-Sandbox .gitattributes
+#
+# Purpose: 評価データの改行コードを LF に固定し、G-GEAR (Windows) → Mac の
+# rsync / HTTP 転送に伴う CRLF 混入を排除する。
+#
+# 背景: codex_issue.md Item #6 (2026-05-12) / memory feedback_crlf_canonical_for_md5.md
+# (2026-05-09 Phase B audit json で git checkout (LF) と HTTP (CRLF) で md5 mismatch)。
+#
+# 方針:
+# - 評価系の json/txt は LF 強制 (`git diff --check` 緑、md5 突合の canonical を LF に固定)
+# - .duckdb は binary 明示 (差分計算回避)
+# - rsync receipt 用途で CRLF が必要な場合は repo 外に置くこと
+
+# 評価データの行末は LF 強制
+data/eval/**/*.json     text eol=lf
+data/eval/**/*.txt      text eol=lf
+data/eval/**/*.yaml     text eol=lf
+data/eval/**/*.yml      text eol=lf
+
+# 評価系 sqlite/duckdb は binary
+*.duckdb                binary
+*.duckdb-wal            binary
+*.duckdb-shm            binary
+*.sqlite                binary
+*.sqlite-journal        binary
+
+# 一般的なソースファイルも LF 推奨 (新規追加時の保護)
+*.py                    text eol=lf
+*.md                    text eol=lf
+*.toml                  text eol=lf
+*.json                  text eol=lf diff=json
+*.yaml                  text eol=lf
+*.yml                   text eol=lf
+
+# Godot (.gd, .tscn, .tres) は LF
+*.gd                    text eol=lf
+*.tscn                  text eol=lf
+*.tres                  text eol=lf
+
+# Shell / config
+*.sh                    text eol=lf
+*.toml                  text eol=lf
