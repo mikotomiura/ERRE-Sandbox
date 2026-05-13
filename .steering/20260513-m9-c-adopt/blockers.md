@@ -34,6 +34,16 @@
 - **教訓**: M9-eval-system の Tier B framework 完成度を adopt phase
   着手前に check する habit、PR #160 merge 後の Tier B 完了 verification
   step を tasklist に明示すべき
+- **2026-05-13 partial verification (Phase B Step 0、kant のみ)**:
+  - kant の no-LoRA shard が `data/eval/golden/kant_{natural,stimulus}_run{0..4}.duckdb`
+    に 10 shard 揃い済 (M9-eval P3、PR #160) を確認
+  - nietzsche / rikyu は M9-eval Phase B+C で採取済の前提だが、本 Phase B
+    scope は kant のみのため verification は kant 完了で本 step は PASS
+  - nietzsche / rikyu の同等 verification は Phase C 着手前に再 fire 必要
+    (本 PR scope 外、`next-session-prompt-phase-c.md` で別 PR record)
+  - Tier B baseline ICC 算出 (Vendi semantic kernel / Big5 ICC(C,k) /
+    ICC(A,1) diagnostic / Burrows Δ) は Step 5 で `tier_b_bootstrap_pair.py`
+    consumer 経由実施
 
 ### H-2: rikyu Japanese tokenizer 未実装 (Burrows Δ N/A、Codex MEDIUM-2 / LOW-3 反映)
 
@@ -101,6 +111,12 @@
   - fire: CS-1 amendment 未実施で rank=16 sweep 実施 → SGLang が
     rank=16 adapter を reject
   - 解消: CS-1 amendment merge + runbook update
+- **2026-05-13 解消 (Phase B Step 0)**: DB8 runbook §2 launch v5
+  invocation を `--max-lora-rank 16` に update、`.steering/20260513-m9-c-adopt/decisions.md`
+  に DA-1 amendment 2026-05-13 を追記済。M9-C-spike decisions.md CS-1
+  自体は immutable (spike scope の record)、Phase B 内 amendment trace は
+  M9-C-adopt decisions.md 側に集約。tail-sweep fire 時は再 amendment v2
+  で 32 へ拡張予定 (Step 6 内 record)
 
 ### S-3: VRAM peak rank=16 / rank=32 で headroom 圧迫リスク
 

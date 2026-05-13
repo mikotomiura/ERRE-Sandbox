@@ -38,9 +38,11 @@
 
 ### Phase B — A-1 rank sweep (kant のみ、`{4, 8, 16}` + conditional rank=32)
 
-- [ ] **前提 verification**:
-  - [ ] H-1 (3 persona baseline ICC 揃い) 解消確認
-  - [ ] S-2 (CS-1 `--max-lora-rank >= 16` amendment) 実施 → 別 PR で M9-C-spike decisions.md CS-1 amendment + DB8 runbook update
+- [x] **前提 verification** (2026-05-13 Phase B Step 0):
+  - [x] H-1 (kant baseline shard 揃い) — `data/eval/golden/kant_{natural,stimulus}_run{0..4}.duckdb` 10 shard 確認、Tier B baseline ICC 算出は Step 5 で実施
+  - [x] S-2 (CS-1 `--max-lora-rank >= 16` amendment) 実施 — DB8 runbook §2 update + `decisions.md` DA-1 amendment 2026-05-13 追記、M9-C-spike `decisions.md` CS-1 は immutable 保持
+  - [x] CS-3 4-種 hard-fail gate dry-run PASS (kant 5022 examples、10 shard、PR #163 parity)
+  - [x] `scripts/build_adapter_manifest.py` 起草 (DA-10 schema、CS-9/DA-6 hard block #2 (.bin pickle refuse) 込み)
 - [ ] kant rank=8 baseline 再 confirm (`kant_r8_real` 既存)
 - [ ] kant rank=4 train (G-GEAR overnight)、`data/lora/m9-c-adopt/archive/rank_4/kant/`
 - [ ] kant rank=16 train (overnight)、`data/lora/m9-c-adopt/archive/rank_16/kant/`

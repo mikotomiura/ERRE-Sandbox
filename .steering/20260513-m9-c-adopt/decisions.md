@@ -75,6 +75,39 @@
 
 ---
 
+### DA-1 amendment 2026-05-13 (M9-C-adopt Phase B 着手時、CS-1 `--max-lora-rank` pin 拡張)
+
+- **amendment 日時**: 2026-05-13 (Phase B 着手時、Codex HIGH-1 反映実施)
+- **背景**: DA-1 で rank ∈ {4, 8, 16} default sweep + conditional rank=32
+  tail-sweep を確定したが、M9-C-spike CS-1 で pin した `--max-lora-rank 8`
+  では SGLang server が rank=16 adapter を runtime で reject する。
+  DA-1 影響欄に "CS-1 amendment 候補" と記載していた事項を本 amendment で
+  正式化する。
+- **amendment 内容**:
+  1. SGLang launch SOP の `--max-lora-rank` 値を **8 → 16** に拡張
+     (`docs/runbooks/m9-c-adapter-swap-runbook.md` §2 launch v5 invocation
+     + 既知の落とし穴 を本 PR で update 済)
+  2. CS-1 amendment record は本 ADR 内に記録、M9-C-spike `decisions.md`
+     (`.steering/20260508-m9-c-spike/decisions.md` CS-1) は immutable
+     として保持
+  3. conditional rank=32 tail-sweep fire 時は再 amendment v2 で
+     `--max-lora-rank 32` に拡張 (Phase B Step 6 内で別途 record)
+- **根拠**: SGLang docs (sgl-project.github.io/advanced_features/lora.html)
+  で `--max-lora-rank` が serving 時 rank ceiling、CS-6 (`/load_lora_adapter`
+  PEFT format compatibility) を満たすには事前 launch args 整合性必須
+- **影響**:
+  - Phase B Step 1+3 で rank=4 / rank=16 を rank=16-cap SGLang server に
+    load する経路が valid 化
+  - DB8 runbook (`docs/runbooks/m9-c-adapter-swap-runbook.md`) §2 を本 PR
+    で update
+  - production loader manifest (DA-6 / DA-10) の rank field は `{4, 8, 16}`
+    accept (tail-sweep fire 時は `{4, 8, 16, 32}`)、`_validate_adapter_manifest()`
+    実装で integrate (Phase F)
+- **S-2 解消**: 本 amendment + DB8 runbook update により blockers.md S-2
+  (CS-1 amendment) は解消
+
+---
+
 ## DA-2 — Live path 切替方式: feature flag + Ollama fallback、vLLM は late-binding only (Codex MEDIUM-1 反映)
 
 - **判断日時**: 2026-05-13
