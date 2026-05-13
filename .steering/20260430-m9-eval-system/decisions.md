@@ -759,6 +759,79 @@ rounded to 60-multiple    = 600 min
 - 次セッション (Phase B + C) launch prompt で確定値 (wall_budget=600,
   contention_factor=1.502) を base に G-GEAR 投入 prompt 起草
 
+### Amendment 2026-05-12 — Phase C natural sequential single-LLM 5-session 実測 (judgement 9 wall budget validated)
+
+**根拠**: m9-individual-layer-schema-add の Phase C 採取が C-1〜C-5 全 5 session
+完了 (2026-05-09 〜 2026-05-13、G-GEAR Windows native + `PYTHONUTF8=1` +
+`timeout 360m` × 1 cell × 3 persona sequential)。判断 9 の `~5h/cell, multi-session`
+仮定が 15 cell すべてで実証された。
+
+**5-session empirical summary** (Phase C natural、run0〜run4 × kant/nietzsche/rikyu):
+
+| session | run | calendar 期間 | session wall | kant | nietzsche | rikyu | per-cell avg |
+|:---|:---:|:---|---:|---:|---:|---:|---:|
+| C-1 | run0 | 2026-05-09 → 05-10 | 15h17m | 5h07m | 5h03m | 5h06m | 5h05m |
+| C-2 | run1 | 2026-05-10 → 05-11 | 15h51m | 5h13m | 5h25m | 5h13m | 5h17m |
+| C-3 | run2 | 2026-05-11 → 05-12 | 15h29m | 5h11m | 5h07m | 5h11m | 5h09m |
+| C-4 | run3 | 2026-05-11/12 → 05-12 | 15h43m | 5h09m | 5h17m | 5h17m | 5h14m |
+| C-5 | run4 | 2026-05-12 → 05-13 | 15h38m | 5h17m | 5h17m | 5h05m | 5h13m |
+| **計** | | **5 session** | **77h58m** | | | | **5h12m/cell** |
+
+**audit gate**: 全 5 audit json (`_audit_natural_run{0,1,2,3,4}.json`) で
+15/15 status=complete、partial=0、fail=0、focal_observed ∈ {500, 501}
+(focal_target=500 + Phase 0 padding tolerance)。
+
+**B/C parity 比較** (m9 evaluation contract `--turn-count 500` 維持):
+
+```
+Phase B stimulus     :  80.5 min / 15 cell  =  5.37 min/cell    (focal=504)
+Phase C natural      : 4678 min / 15 cell   = 311.87 min/cell   (focal=500-501)
+throughput ratio     : 311.87 / 5.37        ≈ 58.1× (natural is slower)
+```
+
+判断 9 の「~63× ratio」推計に近似一致 (5-session 平均でわずかに高速、+8%)。
+3-agent triad における free-form open-ended dialogue + 高頻度 reflection trigger
+(~1.7/min) + 3 agent 分 LLM round-trip の 3 要因が dominant な throughput cap
+として確定。
+
+**wall budget 確定値** (handoff prompt / 後続 task で参照):
+
+```
+shell timeout         : 360 min (= 6h, CLI --wall-timeout-min 600 の 60% safety margin)
+per-cell typical      : 5h12m   (5-session avg, max 5h25m [C-2 nietzsche])
+per-session budget    : 15h35m  (3-cell sequential)
+total Phase C natural : 77h58m calendar (5 session × overnight)
+session 内 cell 並列度: 1 (sequential 固定、3-parallel は判断 8 で却下)
+```
+
+**判断 9 vs 実測 deviation**:
+
+```
+判断 9 仮置き         : ~5h/cell, 12-15h/session, 50-75h total, 5 sessions
+5-session 実測         : 5h12m/cell, 15h35m/session, 77h58m total, 5 sessions
+deviation              : per-cell +4%, total +4% (judgement 内に収束)
+```
+
+判断 9 の上限予測 75h と実測 78h はほぼ一致 (+4%)、wall budget 改訂は不要。
+`timeout 360m` shell cap は 5-session × 15 cell で **rc=124 timeout 0 件** —
+6h cap は十分な safety margin として validated。
+
+**反映先**:
+- Phase E 統合 PR (`feature/m9-eval-phase-b-stimulus-baseline` → main) で
+  Phase B (15 stimulus) + Phase C (15 natural) = 30 cell golden baseline 確定
+- `data/eval/golden/_checksums_p3_full.txt` (67 行 = 30 .duckdb + 30 sidecar +
+  6 audit + 1 phase_b checksums) で md5 receipt 化
+- `next-session-prompt-phase-c-{1..5}.md` のシリーズは本 PR merge 後 archive
+- 後続 M10-A scaffold タスクで natural baseline 比較ベンチマークとして利用
+
+**re-open 条件 (Amendment 2026-05-12)**:
+- 後続 evaluation epoch (M10-A 等) で natural cell 採取が 5h12m から大幅乖離
+  (例: 6h 超で systematic) → Ollama / qwen3:8b throughput regression を疑う
+- `--turn-count 500` 以外に拡張する場合 (例: 1000) は throughput 線形外挿で
+  ~10h25m/cell 想定、`timeout 720m` への拡張が必要
+- WSL2 networking が `networkingMode=mirrored` に切り替わって Windows Ollama が
+  WSL2 から見えるようになった場合は判断 8 の Windows native 拘束を緩める検討余地
+
 ---
 
 ## ME-10 — Vendi kernel default + sensitivity panel preregister (Codex P4a HIGH-1)

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "status": "complete",
+  "stop_reason": "complete",
+  "focal_target": 500,
+  "focal_observed": 500,
+  "total_rows": 1494,
+  "wall_timeout_min": 600.0,
+  "drain_completed": true,
+  "runtime_drain_timeout": false,
+  "git_sha": "a1df334",
+  "captured_at": "2026-05-10T20:36:20Z",
+  "persona": "rikyu",
+  "condition": "natural",
+  "run_idx": 1,
+  "duckdb_path": "C:\\ERRE-Sand_Box\\data\\eval\\golden\\rikyu_natural_run1.duckdb"
+}
