@@ -68,6 +68,18 @@ credible approaches:
 Do not use reimagine after implementation has already created side effects that would need
 manual rollback.
 
+## Network Access Policy
+
+The `.codex/config.toml` workspace_write sandbox defaults to `network_access = false`
+(SH-3 ADR, 2026-05-13). Codex `web_search = "live"` is decoupled and stays enabled —
+queries leave the box, but repo contents do not.
+
+Do NOT toggle `network_access = true` without explicit per-session user approval.
+If a task genuinely needs egress (e.g. `uv sync` for a fresh dependency), surface
+the need to the user first and request a one-shot override via `--config
+sandbox_workspace_write.network_access=true`. Do not commit a `true` value into
+`.codex/config.toml`. See `AGENTS.md` "Network access policy" section.
+
 ## Review And Finish
 
 Before final delivery:

@@ -11,14 +11,14 @@ Design-final: `design-final.md` (= `design.md` v1 を SH-0 prosess で昇格)
 - [x] [Mac] `decisions.md` ADR SH-0〜SH-5 起草 (SH-0 で /reimagine 代替プロセス明示)
 - [x] [Mac] `design-final.md` = design.md v1 昇格 (SH-0 判定)
 
-## P1 — §3 Codex network split (SH-3、~0.5h)
+## P1 — §3 Codex network split (SH-3、~0.5h) — 完了
 
-- [ ] [Mac] `.codex/config.toml:10` — `network_access = true` → `false`
-- [ ] [Mac] `.codex/config.toml:4` — `web_search = "live"` 据置を確認
-- [ ] [Mac] `AGENTS.md` — "Network access policy" section 追加
+- [x] [Mac] `.codex/config.toml:10` — `network_access = true` → `false`
+- [x] [Mac] `.codex/config.toml:4` — `web_search = "live"` 据置を確認
+- [x] [Mac] `AGENTS.md` — "Network access policy" section 追加
   (SGLang v0.3+ multi-LoRA 発見実績 citation、per-session 明示承認運用)
-- [ ] [Mac] `.agents/skills/erre-workflow/SKILL.md` — 同ノート追加
-- [ ] [Mac] commit: `chore(codex): network_access=false split (SH-3)`
+- [x] [Mac] `.agents/skills/erre-workflow/SKILL.md` — 同ノート追加
+- [x] [Mac] commit: `chore(codex): network_access=false split (SH-3)`
 
 ## P2 — §4 `--memory-db` guard (SH-4、~2h)
 
