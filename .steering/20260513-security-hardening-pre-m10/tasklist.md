@@ -20,18 +20,20 @@ Design-final: `design-final.md` (= `design.md` v1 を SH-0 prosess で昇格)
 - [x] [Mac] `.agents/skills/erre-workflow/SKILL.md` — 同ノート追加
 - [x] [Mac] commit: `chore(codex): network_access=false split (SH-3)`
 
-## P2 — §4 `--memory-db` guard (SH-4、~2h)
+## P2 — §4 `--memory-db` guard (SH-4、~2h) — 完了
 
-- [ ] [Mac] `cli/eval_run_golden.py` — `ALLOWED_MEMORY_DB_PREFIXES` constant 追加
+- [x] [Mac] `cli/eval_run_golden.py` — `ALLOWED_MEMORY_DB_PREFIX_STRINGS` + `_ALLOWED_MEMORY_DB_TMP_BASENAME_PREFIXES` constant 追加
   (`/tmp/p3a_natural_` / `/tmp/erre-` / `var/eval/`)
-- [ ] [Mac] `cli/eval_run_golden.py:711-775` 近傍 — `_resolve_memory_db_path()` helper 追加
+- [x] [Mac] `cli/eval_run_golden.py:711-775` 近傍 — `_resolve_memory_db_path()` helper 追加 + macOS `/tmp` → `/private/tmp` symlink 正規化対応
   (symlink reject / prefix check / overwrite gate)
-- [ ] [Mac] `cli/eval_run_golden.py:1029-1030` — unconditional unlink を helper 経由に
-- [ ] [Mac] `cli/eval_run_golden.py:1269-1292` — `--overwrite-memory-db` flag 追加
-- [ ] [Mac] `tests/test_cli/test_eval_run_golden.py` — 4 red-team ケース追加
-  (symlink / prefix / exists / overwrite)
-- [ ] [Mac] `uv run pytest tests/test_cli/test_eval_run_golden.py -q` 緑確認
-- [ ] [Mac] commit: `feat(cli): eval --memory-db symlink+prefix+overwrite guard (SH-4)`
+- [x] [Mac] `cli/eval_run_golden.py:1029-1030` — unconditional unlink を helper 経由に
+- [x] [Mac] `cli/eval_run_golden.py:1269-1292` — `--overwrite-memory-db` flag 追加
+- [x] [Mac] `capture_natural()` signature — `overwrite_memory_db: bool = False` 追加 + caller `main()` で wire
+- [x] [Mac] `tests/test_cli/test_eval_run_golden.py` — 5 red-team ケース追加
+  (symlink / prefix / exists / overwrite / default auto-unlink)
+- [x] [Mac] `uv run pytest tests/test_cli/test_eval_run_golden.py -q -m eval` → 27 passed
+- [x] [Mac] 全 CI 緑確認 (`ruff check / format --check / mypy / pytest 1341 passed`)
+- [x] [Mac] commit: `feat(cli): eval --memory-db symlink+prefix+overwrite guard (SH-4)`
 
 ## P3 — §5 bounded envelope queue + warning (SH-5、~3h)
 

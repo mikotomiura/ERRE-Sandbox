@@ -708,6 +708,110 @@ def _initial_state_for_natural(persona: PersonaSpec) -> AgentState:
 # ---------------------------------------------------------------------------
 
 
+ALLOWED_MEMORY_DB_PREFIX_STRINGS: Final[tuple[str, ...]] = (
+    "/tmp/p3a_natural_",  # noqa: S108 — back-compat ME-2 default location
+    "/tmp/erre-",  # noqa: S108 — new convention for ad-hoc eval scratch
+)
+# Basename prefixes under /tmp that are allowed (i.e. the basename of the
+# immediate child under /tmp). Used by ``_is_allowed_memory_db_prefix`` so the
+# check works regardless of whether /tmp is a symlink to /private/tmp (macOS).
+_ALLOWED_MEMORY_DB_TMP_BASENAME_PREFIXES: Final[tuple[str, ...]] = (
+    "p3a_natural_",
+    "erre-",
+)
+
+
+def _is_allowed_memory_db_prefix(path: Path) -> bool:
+    """Check whether ``path`` falls under an allowlisted memory-db location.
+
+    Allowed locations (SH-4 ADR, 2026-05-13):
+
+    * ``/tmp/p3a_natural_*`` — back-compat ME-2 default (auto-managed)
+    * ``/tmp/erre-*`` — new naming convention for ad-hoc eval scratch
+    * ``<cwd>/var/eval/...`` — repo-relative persistent eval store
+
+    Any other path (e.g. ``/etc/passwd``, ``/home/me/important.sqlite``) is
+    rejected so a typo cannot delete an unrelated SQLite file via
+    ``_resolve_memory_db_path``'s overwrite branch.
+
+    The check uses :meth:`Path.relative_to` after :meth:`Path.resolve` so it
+    works uniformly across Linux (``/tmp`` is real) and macOS (``/tmp`` is a
+    symlink to ``/private/tmp``).
+    """
+    resolved = path.resolve()
+    tmp_root = Path("/tmp").resolve()  # noqa: S108 — sanctioned scratch root
+    try:
+        rel = resolved.relative_to(tmp_root)
+    except ValueError:
+        pass
+    else:
+        first = rel.parts[0] if rel.parts else ""
+        if any(first.startswith(p) for p in _ALLOWED_MEMORY_DB_TMP_BASENAME_PREFIXES):
+            return True
+    try:
+        resolved.relative_to((Path.cwd() / "var" / "eval").resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _resolve_memory_db_path(
+    path: Path | None,
+    *,
+    persona: str,
+    run_idx: int,
+    overwrite: bool,
+) -> Path:
+    """Validate / default the natural-condition memory DB path (SH-4 ADR).
+
+    Two branches with asymmetric semantics by design:
+
+    * ``path is None`` → default ``/tmp/p3a_natural_<persona>_run<idx>.sqlite``.
+      The default location is treated as scratch — pre-existing files are
+      unlinked unconditionally to preserve back-compat with the pre-SH-4
+      ME-2 behaviour. No ``--overwrite-memory-db`` flag required.
+    * explicit ``path`` → symlinks are rejected, only paths under
+      :data:`ALLOWED_MEMORY_DB_PREFIX_STRINGS` (or ``var/eval/``) are accepted,
+      and a pre-existing file requires ``--overwrite-memory-db``. This stops
+      a typo like ``--memory-db /etc/important.sqlite`` from quietly deleting
+      an unrelated file the way the pre-SH-4 unconditional ``unlink`` did.
+
+    Returns a ``Path`` guaranteed not to exist on disk when the caller opens
+    it. Raises :class:`argparse.ArgumentTypeError` (validation) or
+    :class:`FileExistsError` (overwrite gate) on policy violation.
+    """
+    if path is None:
+        default = Path(
+            f"/tmp/p3a_natural_{persona}_run{run_idx}.sqlite",  # noqa: S108
+        )
+        if default.exists():
+            default.unlink()
+        return default
+
+    if path.is_symlink():
+        msg = (
+            f"symlink not allowed for --memory-db: {path!s}; pass the resolved"
+            " target directly so we never unlink through a symlink"
+        )
+        raise argparse.ArgumentTypeError(msg)
+    if not _is_allowed_memory_db_prefix(path):
+        allowed = ", ".join(ALLOWED_MEMORY_DB_PREFIX_STRINGS) + ", var/eval/"
+        msg = (
+            f"--memory-db must be under {allowed}: got {path!s}"
+            " (SH-4: prevents accidental unlink of unrelated SQLite files)"
+        )
+        raise argparse.ArgumentTypeError(msg)
+    if path.exists():
+        if not overwrite:
+            msg = (
+                f"--memory-db {path!s} already exists;"
+                " pass --overwrite-memory-db to replace it"
+            )
+            raise FileExistsError(msg)
+        path.unlink()
+    return path
+
+
 def _resolve_output_paths(
     output: Path,
     *,
@@ -991,6 +1095,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     personas_dir: Path = _PERSONAS_DIR_DEFAULT,
     seeds_path: Path | None = None,
     runtime_factory: Callable[..., WorldRuntime] | None = None,
+    overwrite_memory_db: bool = False,
 ) -> CaptureResult:
     """Capture one natural-condition cell using a headless WorldRuntime stack.
 
@@ -1020,14 +1125,16 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     con = duckdb.connect(str(temp_path), read_only=False)
     bootstrap_schema(con)
 
-    if memory_db_path is None:
-        # ME-2 keeps the natural-condition memory DB /tmp-scoped so the eval
-        # DuckDB file remains the only artefact rsync'd back to Mac.
-        memory_db_path = Path(
-            f"/tmp/p3a_natural_{persona}_run{run_idx}.sqlite",  # noqa: S108
-        )
-    if memory_db_path.exists():
-        memory_db_path.unlink()
+    # SH-4: validate (symlink/prefix/overwrite) for explicit paths, fall back to
+    # ME-2 default ``/tmp/p3a_natural_<persona>_run<idx>.sqlite`` when None.
+    # The default path is treated as scratch and auto-unlinked; user-supplied
+    # paths require ``--overwrite-memory-db`` to replace an existing file.
+    memory_db_path = _resolve_memory_db_path(
+        memory_db_path,
+        persona=persona,
+        run_idx=run_idx,
+        overwrite=overwrite_memory_db,
+    )
 
     memory = MemoryStore(db_path=str(memory_db_path))
     memory.create_schema()
@@ -1291,6 +1398,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--overwrite-memory-db",
+        action="store_true",
+        help=(
+            "Permit replacing an existing user-supplied --memory-db sqlite"
+            " file (default: refuse). The implicit default"
+            " /tmp/p3a_natural_<persona>_run<idx>.sqlite is treated as"
+            " scratch and does NOT require this flag (SH-4 ADR)."
+        ),
+    )
+    parser.add_argument(
         "--ollama-host",
         default="http://127.0.0.1:11434",
         help="Ollama HTTP endpoint (default %(default)s).",
@@ -1382,6 +1499,7 @@ async def _async_main(args: argparse.Namespace) -> int:
             memory_db_path=args.memory_db,
             wall_timeout_min=args.wall_timeout_min,
             personas_dir=args.personas_dir,
+            overwrite_memory_db=args.overwrite_memory_db,
         )
 
     return _publish_capture(args, result, temp_path, final_path)
