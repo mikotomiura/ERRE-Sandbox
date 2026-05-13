@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "status": "complete",
+  "stop_reason": "complete",
+  "focal_target": 500,
+  "focal_observed": 504,
+  "total_rows": 852,
+  "wall_timeout_min": 120.0,
+  "drain_completed": true,
+  "runtime_drain_timeout": false,
+  "git_sha": "ae679ac",
+  "captured_at": "2026-05-09T04:06:07Z",
+  "persona": "rikyu",
+  "condition": "stimulus",
+  "run_idx": 0,
+  "duckdb_path": "C:\\ERRE-Sand_Box\\data\\eval\\golden\\rikyu_stimulus_run0.duckdb"
+}
