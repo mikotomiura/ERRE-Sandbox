@@ -5,8 +5,45 @@
 
 ## Hard blockers (Phase β real training 着手不可)
 
-### B-1: `m9-individual-layer-schema-add` 未完了 (CS-3 / Codex HIGH-3)
+### B-3: WSL2 training venv に `peft / bitsandbytes / accelerate` 未インストール (2026-05-13)
 
+- **発生日時**: 2026-05-13 (Phase K-β 実装 PR セッション、Plan A 採用直後)
+- **症状**: G-GEAR WSL2 Ubuntu-22.04 の `/root/erre-sandbox/.venv` には
+  `sglang 0.5.10.post1` + `cu128 torch` + `transformers 5.3.0` が install 済だが、
+  訓練に必要な `peft / bitsandbytes / accelerate` が未インストール。Windows
+  side の uv venv は `torch==2.11.0+cpu` で GPU 訓練不可。本 PR の inner loop
+  は実装済だが kick できない (`ImportError` で即 fail)
+- **依存タスク**: 別 PR (feature/m9-c-spike-k-beta-real-train、次セッション scope)
+- **解決方法 (planned)**:
+  1. **A 案**: 既存 WSL2 venv に `peft / bitsandbytes / accelerate` 追加 install
+     - 懸念: pyproject.toml の `[training]` extras pin は `transformers>=4.45,<5`
+       で WSL2 の `transformers 5.3.0` (sglang 同居) と衝突
+     - 解決: peft 0.19.x / bitsandbytes 0.49.x / accelerate 1.x が
+       `transformers 5.x` を受け付ける確認 (Windows side は実際に組み合わせて
+       通っている、CPU だが)
+  2. **B 案**: 別 venv (`/root/erre-sandbox/.venv-training`) に [training] のみ
+     install、訓練終了後に既存 SGLang venv に戻して serving
+     - 利点: stack 衝突回避、production な分離
+     - 欠点: GPU メモリ占有切り替え時に process restart 必要
+  3. **C 案**: pyproject.toml `[training]` の `transformers` pin を `>=4.45,<6` に
+     緩和 → A 案を pyproject 整合で実施
+- **影響範囲**: Phase K-β 実訓練 (S-3..S-9)
+- **教訓**: 「lazy import なら CI default install で gate のみ走らせられる」と
+  「実訓練を kick できる venv が存在する」は **別問題**。実装 PR と訓練 PR は
+  分けるのが正解 (Plan A、本 PR で empirical 確認)
+- **trigger** (本 blocker fire / 解消判断):
+  - 解消条件: WSL2 で `python -c "import peft, bitsandbytes, accelerate, torch;
+    assert torch.cuda.is_available()"` が exit 0
+  - fire 継続条件: 上記いずれかの import fail or torch.cuda.is_available()=False
+
+### B-1: `m9-individual-layer-schema-add` 未完了 (CS-3 / Codex HIGH-3) ✅ 解消済 (2026-05-13)
+
+- **解消メモ**: PR-A (`m9-individual-layer-schema-add`) merge により
+  `ALLOWED_RAW_DIALOG_KEYS` + `_RAW_DIALOG_DDL_COLUMNS` に
+  `individual_layer_enabled` 追加、`_DuckDBRawTrainingRelation.__init__` で
+  construction-time aggregate assert (Codex HIGH-2) を実装。本 PR の dry-run
+  実測 (kant 10 cells) で blocker fire しないことを確認 (5022 examples /
+  rc=0)
 - **発生日時**: 2026-05-08 (m9-c-spike Plan 起草時)
 - **症状**: `ALLOWED_RAW_DIALOG_KEYS` (`src/erre_sandbox/contracts/eval_paths.py`)
   に `individual_layer_enabled` field が未追加。DB11 (PR #145) は training-view
@@ -30,8 +67,13 @@
   保証" は actual schema が allow-list に必要 column を含む場合のみ成立**。
   ADR と schema 実装の lockstep を Codex P4a MEDIUM-3 で再指摘されている。
 
-### B-2: M9-eval P3 golden baseline 採取完了 (CS-3 / Codex HIGH-3)
+### B-2: M9-eval P3 golden baseline 採取完了 (CS-3 / Codex HIGH-3) ✅ 解消済 (2026-05-13)
 
+- **解消メモ**: PR #160 merge (Phase B+C 30 cell golden baseline) で kant_*.duckdb
+  10 cells (natural run0-4 + stimulus run0-4) が `data/eval/golden/` に揃った。
+  本 PR の dry-run 実測で raw_dialog 11,761 rows / persona examples 5,022
+  (CS-3 threshold 1000 に対し 5.02x margin) を確認、min_examples gate 余裕
+  通過 (`.steering/20260508-m9-c-spike/k-beta-dry-run.log`)
 - **発生日時**: 2026-05-08 (m9-c-spike Plan 起草時)
 - **症状**: Kant 単独 pilot data ~40-50 turn は LoRA training に不足 (Codex
   HIGH-3、Anthropic persona vector / P-Tailor / BIG5-CHAT prior art に対し

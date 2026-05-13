@@ -74,34 +74,37 @@
   - close idempotent
   - integration: SGLang docker container で actual /load_lora_adapter (任意)
 
-### Phase I — `training/` module + Phase β gate + tests
+### Phase I — `training/` module + Phase β gate + tests ✅ 完了
 
-- [ ] `src/erre_sandbox/training/__init__.py` 新設 (LoRA fine-tuning pipeline、
+- [x] `src/erre_sandbox/training/__init__.py` 新設 (LoRA fine-tuning pipeline、
   DB5/DB6/DB11 contract docstring)
-- [ ] `src/erre_sandbox/training/prompt_builder.py` 新設:
-  - `TrainingExample` dataclass
-  - `build_examples(rows, *, persona_id, epoch_phase_filter)` (CS-3 整合)
-- [ ] `src/erre_sandbox/training/dataset.py` 新設 (HF datasets adapter)
-- [ ] `src/erre_sandbox/training/train_kant_lora.py` 新設 (CLI):
-  - `assert_phase_beta_ready()` hard-fail gate (CS-3、4 種類):
-    - `epoch_phase=evaluation` → `EvaluationContaminationError`
-    - `individual_layer_enabled=True` → `EvaluationContaminationError`
-    - `individual_layer_enabled` field absent → `BlockerNotResolvedError`
-    - realized examples < `min_examples=1000` → `InsufficientTrainingDataError`
-  - QLoRA NF4 + double quant + gradient_checkpointing (CS-4)
-  - rank=8 LoRA (CS-5)
-  - PEFT `save_pretrained()` 出力 (CS-6 整合)
-  - peak memory logging (`nvidia-smi` 採取)
-- [ ] `tests/test_training/test_prompt_builder.py` (4 件):
-  - epoch_phase=evaluation 行 0 件 filter (CS-3)
-  - sort 確認 (run_id, tick, turn_index)
-  - persona assistant target / 他 persona user context
-  - empty raw_dialog → empty
-- [ ] `tests/test_training/test_dataset.py` (2 件):
-  - HF Dataset shape SFTTrainer 互換
-  - seed stability
-- [ ] `tests/test_training/test_train_kant_lora.py` (4 件):
-  - `assert_phase_beta_ready` raises 4 種類 (CS-3 hard-fail 全パターン)
+- [x] `src/erre_sandbox/training/prompt_builder.py` 新設
+- [x] `src/erre_sandbox/training/dataset.py` 新設 (HF datasets adapter)
+- [x] `src/erre_sandbox/training/train_kant_lora.py` 新設 (CLI):
+  - [x] `assert_phase_beta_ready()` hard-fail gate (CS-3、4 種類) — 既存
+  - [x] inner loop (2026-05-13 本 PR): QLoRA NF4 + double quant +
+    gradient_checkpointing (CS-4) / rank=8 LoRA (CS-5) / PEFT
+    `save_pretrained()` 出力 (CS-6 整合) / peak memory logging
+  - [x] argparse `__main__` CLI (2026-05-13 本 PR): `--duckdb-glob /
+    --db-path / --output-dir / --rank / --quantization / --batch-size /
+    --gradient-accumulation / --max-seq-length / --max-steps /
+    --learning-rate / --save-steps / --min-examples / --seed / --dry-run`
+  - [x] exit code mapping (CS-3): 0=success / 2=contamination /
+    3=blocker / 4=insufficient / 5=operator error
+  - [x] shard 集約 (multi-DuckDB → 単一 aggregate gate path)
+  - [x] `TrainRunSummary` dataclass + `train_metadata.json` audit trail
+- [x] `tests/test_training/test_prompt_builder.py` (4 件、既存)
+- [x] `tests/test_training/test_dataset.py` (2 件、既存)
+- [x] `tests/test_training/test_train_kant_lora.py` (10 件、既存)
+- [x] `tests/test_training/test_train_kant_lora_cli.py` (13 件、2026-05-13 本 PR):
+  - lazy-import 規律 (GPU stack 未 import)
+  - argparse surface (help / missing / mutual exclusive / glob no-match)
+  - dry-run rc (success / contamination / insufficient / quantization)
+  - shard aggregation (multi-shard PASS / contaminated shard fail-fast / empty paths)
+  - subprocess `python -m` smoke
+- [x] real-data dry-run smoke (kant 10 cells / 11,761 rows / 5,022 examples /
+  CS-3 threshold 5.02x margin、log `.steering/20260508-m9-c-spike/
+  k-beta-dry-run.log`)
 
 ### Phase J — `tools/spike/build_mock_lora.py` + tests
 
