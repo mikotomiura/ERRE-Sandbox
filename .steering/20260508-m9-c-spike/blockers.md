@@ -5,8 +5,14 @@
 
 ## Hard blockers (Phase β real training 着手不可)
 
-### B-3: WSL2 training venv に `peft / bitsandbytes / accelerate` 未インストール (2026-05-13)
+### B-3: WSL2 training venv に `peft / bitsandbytes / accelerate` 未インストール (2026-05-13) ✅ 解消済 (2026-05-13)
 
+- **解消メモ** (A 案採用): `/root/erre-sandbox/.venv` に `python -m ensurepip --upgrade` で pip 0.24.0 を bootstrap、
+  続いて `pip install peft>=0.13 bitsandbytes>=0.43 accelerate>=0.30` を実施。
+  実 install version: peft 0.19.1 / bitsandbytes 0.49.2 / accelerate 1.13.0。
+  既存の sglang 0.5.10.post1 / torch 2.9.1+cu128 / transformers 5.3.0 / datasets 3.6.0 は無変更。
+  hf_transfer 0.1.9 も追加 install (HF_HUB_ENABLE_HF_TRANSFER=1 で xet 並列 DL 高速化)。
+  Phase K-β 本訓練を 2.07h で完遂、SGLang serve も同 venv で動作確認。
 - **発生日時**: 2026-05-13 (Phase K-β 実装 PR セッション、Plan A 採用直後)
 - **症状**: G-GEAR WSL2 Ubuntu-22.04 の `/root/erre-sandbox/.venv` には
   `sglang 0.5.10.post1` + `cu128 torch` + `transformers 5.3.0` が install 済だが、

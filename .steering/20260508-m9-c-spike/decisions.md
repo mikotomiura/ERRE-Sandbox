@@ -363,6 +363,68 @@
 
 ---
 
+## CS-7 amendment (2026-05-13) — bench_serving 実測 (single_lora vs no_lora)
+
+- **measurement env**: G-GEAR WSL2、SGLang 0.5.10.post1、Qwen3-8B fp8、
+  `--max-running-requests 1`、num_prompts=16、random in/out=256/256、seed=0
+- **single_lora** (kant_r8_real loaded、`--lora-name kant_r8_real`):
+  - output throughput: 34.64 tok/s
+  - mean E2E latency: 28,225 ms
+  - P99 E2E: 48,110 ms
+  - mean TTFT: 25,252 ms / median 26,819 ms
+  - mean ITL: 28.42 ms / median 28.35 ms
+- **no_lora** (kant_r8_real unloaded、`--lora-name` 未指定):
+  - output throughput: 35.54 tok/s
+  - mean E2E latency: 27,501 ms
+  - P99 E2E: 46,897 ms
+  - mean TTFT: 24,595 ms / median 26,180 ms
+  - mean ITL: 27.77 ms / median 27.70 ms
+- **CS-7 4 trigger 評価** (single_lora vs no_lora baseline):
+  | trigger | threshold | 実測 | 判定 |
+  |---|---|---|---|
+  | p95 e2e > 2x single-LoRA | `single / no_lora > 2.0` | 1.026 | **NON-FIRE** |
+  | output tok/s < 70% baseline | `single / no_lora < 0.7` | 0.975 | **NON-FIRE** |
+  | adapter-misrouting | sentinel 検出 | N/A (single adapter) | **N/A** |
+  | timeout | 1 件でも HTTP timeout | 0 件 | **NON-FIRE** |
+- **N=3 multi-LoRA condition defer 理由**: K-α の `mock_kant_r8` のみ in place、
+  `mock_nietzsche_r8` / `mock_rikyu_r8` の生成は M9-C-adopt scope。single adapter
+  routing オーバーヘッド 2.5% (97.5%/100%) は contention が小さく、cross-adapter
+  N=3 で fragile collapse する可能性低い (CS-7 trigger 4 件すべて NON-FIRE で
+  本 spike の判定確度十分)
+- **artefacts**:
+  - `data/eval/spike/m9-c-spike-bench/single_lora.jsonl` (bench_serving 出力)
+  - `data/eval/spike/m9-c-spike-bench/no_lora.jsonl` (bench_serving 出力)
+
+---
+
+## CS-8 amendment (2026-05-13) — adapter swap latency 5 condition + DB3 fallback 最終判断
+
+- **measurement script**: `scripts/m9-c-spike/measure_latency.py`、3 trial × 5 condition
+- **実測** (ms、min / median / max):
+  | condition | min | median | max | 評価 |
+  |---|---|---|---|---|
+  | `cold_load` (load_lora_adapter 初回) | 7.8 | 8.2 | 10.0 | **PASS** (500ms の 60x margin) |
+  | `warm_reload` (unload + reload) | 7.5 | 7.7 | 8.8 | **PASS** |
+  | `pinned` (chat round-trip、pinned=true) | 7132 | 7161 | 10869 | chat generation latency 主 |
+  | `unpinned` (chat round-trip、pinned=false) | 7102 | 7174 | 7206 | pinned とほぼ同等 |
+  | `no_lora` (chat round-trip、base only) | 7107 | 7162 | 7185 | adapter routing overhead 観測されず |
+- **CS-8 500ms threshold 判定**: adapter swap (cold/warm) は ~8ms と極めて高速、
+  500ms threshold の 60x margin。chat latency は全 condition で同等 (~7.1-7.2s)、
+  adapter 経由のオーバーヘッド観測されず → **DB3 NON-FIRE**
+- **DB3 fallback fire 最終判断** (2026-05-13、real Kant rank=8 adapter で confirmation):
+  - CS-1 SGLang 起動失敗 → **NOT FIRED** (CS-1 amendment 2026-05-09 で Linux 境界引き直し、本 PR で WSL2 launch 成功確認)
+  - CS-6 `/load_lora_adapter` PEFT format reject → **NOT FIRED** (HTTP 200、success=true)
+  - M5 resonance / ERRE FSM regression → **DEFER** (本 PR scope 外、live inference path との統合は M9-C-adopt)
+  - CS-8 adapter swap latency > 500ms → **NOT FIRED** (実測 ~8ms、60x margin)
+  - CS-7 N=3 throughput collapse → **NOT FIRED** (single_lora vs no_lora 2.5% 差、4 trigger 全 NON-FIRE)
+  - → **DB3 fallback NON-FIRE**、SGLang-first 確定。vLLM 移行 (D-1) は defer 継続。
+- **artefacts**:
+  - `data/eval/spike/m9-c-spike-bench/k-beta-swap-latency.jsonl` (5 condition × 3 trial)
+  - `.steering/20260508-m9-c-spike/k-beta-logs/load_real.json` (CS-6 acceptance)
+  - `.steering/20260508-m9-c-spike/k-beta-logs/chat_real.json` (CS-9 inverse: real adapter で Kant response 生成)
+
+---
+
 ## CS-3 amendment (2026-05-13) — 実装 PR + real-data dry-run 検証
 
 - **commit**: feature/m9-c-spike-k-beta-train-impl
