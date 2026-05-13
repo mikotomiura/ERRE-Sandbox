@@ -238,7 +238,7 @@ ignore_missing_imports = true
 # modules as ``ignore_missing_imports`` to keep the strict src check green
 # without forcing the GPU-stack install.
 [[tool.mypy.overrides]]
-module = ["sglang.*", "peft.*", "accelerate.*", "bitsandbytes.*", "datasets.*"]
+module = ["sglang.*", "peft.*", "accelerate.*", "bitsandbytes.*", "datasets.*", "torch", "torch.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

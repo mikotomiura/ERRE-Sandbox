@@ -580,7 +580,7 @@ def _load_quantised_model(
         BitsAndBytesConfig,
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+    tokenizer = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call,unused-ignore]
         base_model,
         trust_remote_code=True,
         use_fast=True,
@@ -593,7 +593,7 @@ def _load_quantised_model(
         "device_map": "auto",
     }
     if quantization in {"nf4", "fp4"}:
-        bnb_config = BitsAndBytesConfig(  # type: ignore[no-untyped-call]
+        bnb_config = BitsAndBytesConfig(  # type: ignore[no-untyped-call,unused-ignore]
             load_in_4bit=True,
             bnb_4bit_quant_type=quantization,
             bnb_4bit_use_double_quant=True,
@@ -624,7 +624,7 @@ def _apply_lora(
     )
 
     if quantization in {"nf4", "fp4"}:
-        model = prepare_model_for_kbit_training(  # type: ignore[no-untyped-call]
+        model = prepare_model_for_kbit_training(  # type: ignore[no-untyped-call,unused-ignore]
             model,
             use_gradient_checkpointing=True,
         )
