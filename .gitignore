@@ -66,6 +66,20 @@ _ad_hoc/
 # build script (tools/spike/build_mock_lora.py) でのみ整合保証する。
 checkpoints/
 
+# m9-c-adopt Phase B+C LoRA adapter archives (rank sweep × 3 persona).
+# adapter_model.safetensors / checkpoint-* / tokenizer files は再生成可能
+# (training_git_sha + golden shards + CLI args + seed で reproducible)、
+# manifest.json (sha256 + DA-10 schema) + train_metadata.json (CS-4 audit
+# trail) のみ commit して reproducibility と integrity を担保する。
+data/lora/**/adapter_model.safetensors
+data/lora/**/adapter_model.bin
+data/lora/**/checkpoint-*
+data/lora/**/tokenizer.json
+data/lora/**/tokenizer_config.json
+data/lora/**/special_tokens_map.json
+data/lora/**/chat_template.jinja
+data/lora/**/README.md
+
 # m9-eval-system P3a pilot capture (large DuckDB binaries + per-run logs).
 # Only `_summary.json` is committed; raw DuckDB snapshots stay local + rsync
 # to Mac via ME-2 protocol.
@@ -115,3 +129,9 @@ data/eval/partial-stash-*/*.duckdb.wal
 # Codex independent review raw logs (large transcripts of model reasoning;
 # the verbatim final answer is saved separately in `codex-review-*.md`).
 .steering/**/codex-review-*.raw.log
+
+# m9-c-adopt Phase B training runtime artefacts (stdout/stderr logs + PID
+# files for nohup-detached overnight runs). kick_train.sh は commit、
+# 実行時の transient state は local-only。
+.steering/**/phase-b-logs/*.log
+.steering/**/phase-b-logs/*.pid
