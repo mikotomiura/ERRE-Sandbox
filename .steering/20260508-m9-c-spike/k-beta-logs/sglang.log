@@ -1,0 +1,397 @@
+[launch_sglang] HF_HOME=/root/.cache/huggingface
+[launch_sglang] python=/root/erre-sandbox/.venv/bin/python
+[launch_sglang] starting at 2026-05-13T21:15:09+09:00
+/root/erre-sandbox/.venv/lib/python3.11/site-packages/sglang/launch_server.py:51: UserWarning: 'python -m sglang.launch_server' is still supported, but 'sglang serve' is the recommended entrypoint.
+  Example: sglang serve --model-path <model> [options]
+  warnings.warn(
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+/root/erre-sandbox/.venv/lib/python3.11/site-packages/sglang/srt/entrypoints/http_server.py:172: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  from sglang.srt.utils.json_response import (
+[2026-05-13 21:15:20] server_args=ServerArgs(model_path='Qwen/Qwen3-8B', tokenizer_path='Qwen/Qwen3-8B', tokenizer_mode='auto', tokenizer_worker_num=1, skip_tokenizer_init=False, load_format='auto', model_loader_extra_config='{}', trust_remote_code=False, context_length=None, is_embedding=False, enable_multimodal=None, revision=None, model_impl='auto', host='127.0.0.1', port=30000, fastapi_root_path='', grpc_mode=False, skip_server_warmup=False, warmups=None, nccl_port=None, checkpoint_engine_wait_weights_before_ready=False, ssl_keyfile=None, ssl_certfile=None, ssl_ca_certs=None, ssl_keyfile_password=None, enable_ssl_refresh=False, dtype='auto', quantization='fp8', quantization_param_path=None, kv_cache_dtype='auto', enable_fp32_lm_head=False, modelopt_quant=None, modelopt_checkpoint_restore_path=None, modelopt_checkpoint_save_path=None, modelopt_export_path=None, quantize_and_serve=False, rl_quant_profile=None, mem_fraction_static=0.85, max_running_requests=1, max_queued_requests=None, max_total_tokens=2048, chunked_prefill_size=2048, enable_dynamic_chunking=False, max_prefill_tokens=16384, prefill_max_requests=None, schedule_policy='fcfs', enable_priority_scheduling=False, disable_priority_preemption=False, default_priority_value=None, abort_on_priority_when_disabled=False, schedule_low_priority_values_first=False, priority_scheduling_preemption_threshold=10, schedule_conservativeness=1.0, page_size=1, swa_full_tokens_ratio=0.8, disable_hybrid_swa_memory=False, radix_eviction_policy='lru', enable_prefill_delayer=False, prefill_delayer_max_delay_passes=30, prefill_delayer_token_usage_low_watermark=None, prefill_delayer_forward_passes_buckets=None, prefill_delayer_wait_seconds_buckets=None, device='cuda', tp_size=1, pp_size=1, pp_max_micro_batch_size=None, pp_async_batch_depth=0, stream_interval=1, stream_response_default_include_usage=False, incremental_streaming_output=False, enable_streaming_session=False, random_seed=364737185, constrained_json_whitespace_pattern=None, constrained_json_disable_any_whitespace=False, watchdog_timeout=300, soft_watchdog_timeout=None, dist_timeout=None, download_dir=None, model_checksum=None, base_gpu_id=0, gpu_id_step=1, sleep_on_idle=False, use_ray=False, custom_sigquit_handler=None, log_level='info', log_level_http=None, log_requests=False, log_requests_level=2, log_requests_format='text', log_requests_target=None, uvicorn_access_log_exclude_prefixes=[], crash_dump_folder=None, show_time_cost=False, enable_metrics=False, enable_mfu_metrics=False, enable_metrics_for_all_schedulers=False, tokenizer_metrics_custom_labels_header='x-custom-labels', tokenizer_metrics_allowed_custom_labels=None, extra_metric_labels=None, bucket_time_to_first_token=None, bucket_inter_token_latency=None, bucket_e2e_request_latency=None, collect_tokens_histogram=False, prompt_tokens_buckets=None, generation_tokens_buckets=None, gc_warning_threshold_secs=0.0, decode_log_interval=40, enable_request_time_stats_logging=False, kv_events_config=None, enable_trace=False, otlp_traces_endpoint='localhost:4317', export_metrics_to_file=False, export_metrics_to_file_dir=None, api_key=None, admin_api_key=None, served_model_name='Qwen/Qwen3-8B', weight_version='default', chat_template=None, hf_chat_template_name=None, completion_template=None, file_storage_path='sglang_storage', enable_cache_report=False, reasoning_parser=None, tool_call_parser=None, tool_server=None, sampling_defaults='model', dp_size=1, load_balance_method='round_robin', attn_cp_size=1, moe_dp_size=1, dist_init_addr=None, nnodes=1, node_rank=0, json_model_override_args='{}', preferred_sampling_params=None, enable_lora=True, enable_lora_overlap_loading=False, max_lora_rank=8, lora_target_modules={'k_proj', 'o_proj', 'q_proj', 'v_proj'}, lora_paths=[], max_loaded_loras=3, max_loras_per_batch=3, lora_eviction_policy='lru', lora_backend='csgmv', max_lora_chunk_size=16, experts_shared_outer_loras=None, attention_backend='flashinfer', decode_attention_backend=None, prefill_attention_backend=None, sampling_backend='flashinfer', grammar_backend='xgrammar', mm_attention_backend=None, fp8_gemm_runner_backend='auto', fp4_gemm_runner_backend='auto', nsa_prefill_backend=None, nsa_decode_backend=None, disable_flashinfer_autotune=False, mamba_backend='triton', speculative_algorithm=None, speculative_draft_model_path=None, speculative_draft_model_revision=None, speculative_draft_load_format=None, speculative_num_steps=None, speculative_eagle_topk=None, speculative_num_draft_tokens=None, speculative_accept_threshold_single=1.0, speculative_accept_threshold_acc=1.0, speculative_token_map=None, speculative_attention_mode='prefill', speculative_draft_attention_backend=None, speculative_moe_runner_backend='auto', speculative_moe_a2a_backend=None, speculative_draft_model_quantization='fp8', speculative_ngram_min_bfs_breadth=1, speculative_ngram_max_bfs_breadth=10, speculative_ngram_match_type='BFS', speculative_ngram_max_trie_depth=18, speculative_ngram_capacity=10000000, enable_multi_layer_eagle=False, ep_size=1, moe_a2a_backend='none', moe_runner_backend='auto', flashinfer_mxfp4_moe_precision='default', enable_flashinfer_allreduce_fusion=False, enforce_disable_flashinfer_allreduce_fusion=False, enable_aiter_allreduce_fusion=False, deepep_mode='auto', ep_num_redundant_experts=0, ep_dispatch_algorithm=None, init_expert_location='trivial', enable_eplb=False, eplb_algorithm='auto', eplb_rebalance_num_iterations=1000, eplb_rebalance_layers_per_chunk=None, eplb_min_rebalancing_utilization_threshold=1.0, expert_distribution_recorder_mode=None, expert_distribution_recorder_buffer_size=1000, enable_expert_distribution_metrics=False, deepep_config=None, moe_dense_tp_size=None, elastic_ep_backend=None, enable_elastic_expert_backup=False, mooncake_ib_device=None, max_mamba_cache_size=None, mamba_ssm_dtype=None, mamba_full_memory_ratio=0.9, mamba_scheduler_strategy='no_buffer', mamba_track_interval=256, linear_attn_backend='triton', linear_attn_decode_backend=None, linear_attn_prefill_backend=None, enable_hierarchical_cache=False, hicache_ratio=2.0, hicache_size=0, hicache_write_policy='write_through', hicache_io_backend='kernel', hicache_mem_layout='layer_first', hicache_storage_backend=None, hicache_storage_prefetch_policy='best_effort', hicache_storage_backend_extra_config=None, enable_hisparse=False, hisparse_config=None, enable_lmcache=False, kt_weight_path=None, kt_method='AMXINT4', kt_cpuinfer=None, kt_threadpool_count=2, kt_num_gpu_experts=None, kt_max_deferred_experts_per_token=None, dllm_algorithm=None, dllm_algorithm_config=None, enable_double_sparsity=False, ds_channel_config_path=None, ds_heavy_channel_num=32, ds_heavy_token_num=256, ds_heavy_channel_type='qk', ds_sparse_decode_threshold=4096, cpu_offload_gb=0, offload_group_size=-1, offload_num_in_group=1, offload_prefetch_step=1, offload_mode='cpu', multi_item_scoring_delimiter=None, disable_radix_cache=False, cuda_graph_max_bs=8, cuda_graph_bs=[1, 2, 4, 8], disable_cuda_graph=True, disable_cuda_graph_padding=False, enable_profile_cuda_graph=False, enable_cudagraph_gc=False, enable_layerwise_nvtx_marker=False, enable_nccl_nvls=False, enable_symm_mem=False, disable_flashinfer_cutlass_moe_fp4_allgather=False, enable_tokenizer_batch_encode=False, disable_tokenizer_batch_decode=False, disable_outlines_disk_cache=False, disable_custom_all_reduce=False, enable_mscclpp=False, enable_torch_symm_mem=False, pre_warm_nccl=False, disable_overlap_schedule=False, enable_mixed_chunk=False, enable_dp_attention=False, enable_dp_lm_head=False, enable_two_batch_overlap=False, enable_single_batch_overlap=False, tbo_token_distribution_threshold=0.48, enable_torch_compile=False, disable_piecewise_cuda_graph=True, enforce_piecewise_cuda_graph=False, enable_torch_compile_debug_mode=False, torch_compile_max_bs=32, piecewise_cuda_graph_max_tokens=2048, piecewise_cuda_graph_tokens=[4, 8, 12, 16, 20, 24, 28, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 352, 384, 416, 448, 480, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1280, 1536, 1792, 2048], piecewise_cuda_graph_compiler='eager', torchao_config='', enable_nan_detection=False, enable_p2p_check=False, triton_attention_reduce_in_fp32=False, triton_attention_num_kv_splits=8, triton_attention_split_tile_size=None, num_continuous_decode_steps=1, delete_ckpt_after_loading=False, enable_memory_saver=False, enable_weights_cpu_backup=False, enable_draft_weights_cpu_backup=False, allow_auto_truncate=False, enable_custom_logit_processor=False, flashinfer_mla_disable_ragged=False, disable_shared_experts_fusion=False, disable_chunked_prefix_cache=False, disable_fast_image_processor=False, keep_mm_feature_on_device=False, enable_return_hidden_states=False, enable_return_routed_experts=False, scheduler_recv_interval=1, numa_node=None, enable_deterministic_inference=False, rl_on_policy_target=None, enable_attn_tp_input_scattered=False, gc_threshold=None, enable_nsa_prefill_context_parallel=False, nsa_prefill_cp_mode='round-robin-split', enable_fused_qk_norm_rope=False, enable_precise_embedding_interpolation=False, enable_fused_moe_sum_all_reduce=False, enable_prefill_context_parallel=False, prefill_cp_mode='in-seq-split', enable_dynamic_batch_tokenizer=False, dynamic_batch_tokenizer_batch_size=32, dynamic_batch_tokenizer_batch_timeout=0.002, debug_tensor_dump_output_folder=None, debug_tensor_dump_layers=None, debug_tensor_dump_input_file=None, debug_tensor_dump_inject=False, disaggregation_mode='null', disaggregation_transfer_backend='mooncake', disaggregation_bootstrap_port=8998, disaggregation_ib_device=None, disaggregation_decode_enable_offload_kvcache=False, num_reserved_decode_tokens=512, disaggregation_decode_polling_interval=1, encoder_only=False, language_only=False, encoder_transfer_backend='zmq_to_scheduler', encoder_urls=[], enable_adaptive_dispatch_to_encoder=False, custom_weight_loader=[], weight_loader_disable_mmap=False, remote_instance_weight_loader_seed_instance_ip=None, remote_instance_weight_loader_seed_instance_service_port=None, remote_instance_weight_loader_send_weights_group_ports=None, remote_instance_weight_loader_backend='nccl', remote_instance_weight_loader_start_seed_via_transfer_engine=False, engine_info_bootstrap_port=6789, modelexpress_config=None, enable_pdmux=False, pdmux_config_path=None, sm_group_num=8, enable_broadcast_mm_inputs_process=False, enable_prefix_mm_cache=False, mm_enable_dp_encoder=False, mm_process_config={}, limit_mm_data_per_request=None, enable_mm_global_cache=False, decrypted_config_file=None, decrypted_draft_config_file=None, forward_hooks=None)
+[2026-05-13 21:15:22] Using default HuggingFace chat template with detected content format: string
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-13 21:15:24] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-13 21:15:25] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-13 21:15:27] SM120 (Blackwell) detected: auto-selecting fp4-gemm-backend=flashinfer_cudnn
+[2026-05-13 21:15:27] Init torch distributed begin.
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[2026-05-13 21:15:27] Init torch distributed ends. elapsed=0.20 s, mem usage=0.03 GB
+[2026-05-13 21:15:28] Load weight begin. avail mem=14.77 GB
+[2026-05-13 21:15:29] Found local HF snapshot for Qwen/Qwen3-8B at /root/.cache/huggingface/hub/models--Qwen--Qwen3-8B/snapshots/b968826d9c46dd6066d109eabc6255188de91218; skipping download.
+Multi-thread loading shards:   0% Completed | 0/5 [00:00<?, ?it/s]Multi-thread loading shards:  20% Completed | 1/5 [00:03<00:15,  3.84s/it]Multi-thread loading shards:  40% Completed | 2/5 [00:07<00:11,  3.76s/it]Multi-thread loading shards:  60% Completed | 3/5 [00:08<00:05,  2.53s/it]Multi-thread loading shards:  80% Completed | 4/5 [00:11<00:02,  2.86s/it]Multi-thread loading shards: 100% Completed | 5/5 [00:14<00:00,  2.66s/it]Multi-thread loading shards: 100% Completed | 5/5 [00:14<00:00,  2.86s/it]
+[2026-05-13 21:15:44] Load weight end. elapsed=16.08 s, type=Qwen3ForCausalLM, avail mem=5.68 GB, mem usage=9.09 GB.
+[2026-05-13 21:15:44] Using csgmv as backend of LoRA kernels.
+[2026-05-13 21:15:44] Using KV cache dtype: torch.bfloat16
+[2026-05-13 21:15:44] KV Cache is allocated. #tokens: 2048, K size: 0.14 GB, V size: 0.14 GB
+[2026-05-13 21:15:44] Memory pool end. avail mem=5.44 GB
+[2026-05-13 21:15:45] Disable piecewise CUDA graph because --disable-piecewise-cuda-graph is set
+[2026-05-13 21:15:47] max_total_num_tokens=2048, chunked_prefill_size=2048, max_prefill_tokens=16384, max_running_requests=1, context_len=40960, available_gpu_mem=4.89 GB
+[2026-05-13 21:15:47] INFO:     Started server process [364]
+[2026-05-13 21:15:47] INFO:     Waiting for application startup.
+[2026-05-13 21:15:47] Using default chat sampling params from model generation config: {'temperature': 0.6, 'top_k': 20, 'top_p': 0.95}
+[2026-05-13 21:15:47] INFO:     Application startup complete.
+[2026-05-13 21:15:47] INFO:     Uvicorn running on http://127.0.0.1:30000 (Press CTRL+C to quit)
+[2026-05-13 21:15:48] INFO:     127.0.0.1:60212 - "GET /model_info HTTP/1.1" 200 OK
+2026-05-13 21:15:48,718 - CUTE_DSL - WARNING - [handle_import_error] - Unexpected error during package walk: cutlass.cute.experimental
+[2026-05-13 21:15:48] Unexpected error during package walk: cutlass.cute.experimental
+[2026-05-13 21:15:49] Prefill batch, #new-seq: 1, #new-token: 6, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.00
+[2026-05-13 21:15:49] INFO:     127.0.0.1:60224 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:15:49] The server is fired up and ready to roll!
+[2026-05-13 21:15:51] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 2.70
+[2026-05-13 21:15:52] INFO:     127.0.0.1:60238 - "GET /health HTTP/1.1" 200 OK
+[2026-05-13 21:16:03] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:16:03] LoRA adapter loading starts: LoRARef(lora_id=f407c3bbc9a94964a50c313af7149a49, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 11.33it/s]
+[2026-05-13 21:16:03] LoRA adapter loading completes: LoRARef(lora_id=f407c3bbc9a94964a50c313af7149a49, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+/root/erre-sandbox/.venv/lib/python3.11/site-packages/fastapi/routing.py:328: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  return await dependant.call(**values)
+[2026-05-13 21:16:03] INFO:     127.0.0.1:46422 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:16:14] INFO:     127.0.0.1:49296 - "POST /v1/chat/completions HTTP/1.1" 400 Bad Request
+[2026-05-13 21:16:35] Prefill batch, #new-seq: 1, #new-token: 36, #cached-token: 0, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.02
+[2026-05-13 21:16:37] Decode batch, #running-req: 1, #token: 68, token usage: 0.03, cuda graph: False, gen throughput (token/s): 0.56, #queue-req: 0
+[2026-05-13 21:16:38] Decode batch, #running-req: 1, #token: 108, token usage: 0.05, cuda graph: False, gen throughput (token/s): 30.14, #queue-req: 0
+[2026-05-13 21:16:39] Decode batch, #running-req: 1, #token: 148, token usage: 0.07, cuda graph: False, gen throughput (token/s): 30.15, #queue-req: 0
+[2026-05-13 21:16:40] Decode batch, #running-req: 1, #token: 188, token usage: 0.09, cuda graph: False, gen throughput (token/s): 30.78, #queue-req: 0
+[2026-05-13 21:16:42] Decode batch, #running-req: 1, #token: 228, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.06, #queue-req: 0
+[2026-05-13 21:16:43] Decode batch, #running-req: 1, #token: 268, token usage: 0.13, cuda graph: False, gen throughput (token/s): 36.18, #queue-req: 0
+[2026-05-13 21:16:44] Decode batch, #running-req: 1, #token: 308, token usage: 0.15, cuda graph: False, gen throughput (token/s): 36.02, #queue-req: 0
+[2026-05-13 21:16:45] Decode batch, #running-req: 1, #token: 348, token usage: 0.17, cuda graph: False, gen throughput (token/s): 35.82, #queue-req: 0
+[2026-05-13 21:16:46] Decode batch, #running-req: 1, #token: 388, token usage: 0.19, cuda graph: False, gen throughput (token/s): 35.67, #queue-req: 0
+[2026-05-13 21:16:47] Decode batch, #running-req: 1, #token: 428, token usage: 0.21, cuda graph: False, gen throughput (token/s): 35.57, #queue-req: 0
+[2026-05-13 21:16:47] INFO:     127.0.0.1:33948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=f407c3bbc9a94964a50c313af7149a49, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=f407c3bbc9a94964a50c313af7149a49, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=96574e11b5774c98b2c8d2f705755274, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 386.43it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=96574e11b5774c98b2c8d2f705755274, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=96574e11b5774c98b2c8d2f705755274, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=96574e11b5774c98b2c8d2f705755274, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=4f83e0ffd8be4a248af7488b3ebf5a31, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 441.23it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=4f83e0ffd8be4a248af7488b3ebf5a31, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=4f83e0ffd8be4a248af7488b3ebf5a31, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=4f83e0ffd8be4a248af7488b3ebf5a31, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=7d241b6d740d42088c99a43a6acc7bbc, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 372.66it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=7d241b6d740d42088c99a43a6acc7bbc, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=7d241b6d740d42088c99a43a6acc7bbc, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=7d241b6d740d42088c99a43a6acc7bbc, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=3831f67a7e9a40a287d2cf5440246ac8, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 342.11it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=3831f67a7e9a40a287d2cf5440246ac8, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=3831f67a7e9a40a287d2cf5440246ac8, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=3831f67a7e9a40a287d2cf5440246ac8, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=9ad08ec426e041408cfa5fc9e76e7e02, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 408.05it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=9ad08ec426e041408cfa5fc9e76e7e02, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=9ad08ec426e041408cfa5fc9e76e7e02, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=9ad08ec426e041408cfa5fc9e76e7e02, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=637b4b98b97b442c9d5577345e1329d3, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 350.08it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=637b4b98b97b442c9d5577345e1329d3, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=637b4b98b97b442c9d5577345e1329d3, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=637b4b98b97b442c9d5577345e1329d3, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=18bf39375759464ab34d8c98effd2f9e, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 449.26it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=18bf39375759464ab34d8c98effd2f9e, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter unloading starts: LoRARef(lora_id=18bf39375759464ab34d8c98effd2f9e, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] LoRA adapter unloading completes: LoRARef(lora_id=18bf39375759464ab34d8c98effd2f9e, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:19] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:19] LoRA adapter loading starts: LoRARef(lora_id=3a3957ff95464211a2a1b63a0b98f266, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=True). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 438.05it/s]
+[2026-05-13 21:17:19] LoRA adapter loading completes: LoRARef(lora_id=3a3957ff95464211a2a1b63a0b98f266, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=True). avail mem=4.86 GB
+[2026-05-13 21:17:19] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:22] Prefill batch, #new-seq: 1, #new-token: 6, #cached-token: 26, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.77
+[2026-05-13 21:17:23] Decode batch, #running-req: 1, #token: 64, token usage: 0.03, cuda graph: False, gen throughput (token/s): 1.11, #queue-req: 0
+[2026-05-13 21:17:24] Decode batch, #running-req: 1, #token: 104, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.10, #queue-req: 0
+[2026-05-13 21:17:25] Decode batch, #running-req: 1, #token: 144, token usage: 0.07, cuda graph: False, gen throughput (token/s): 35.84, #queue-req: 0
+[2026-05-13 21:17:27] Decode batch, #running-req: 1, #token: 184, token usage: 0.09, cuda graph: False, gen throughput (token/s): 35.43, #queue-req: 0
+[2026-05-13 21:17:28] Decode batch, #running-req: 1, #token: 224, token usage: 0.11, cuda graph: False, gen throughput (token/s): 35.68, #queue-req: 0
+[2026-05-13 21:17:29] Decode batch, #running-req: 1, #token: 264, token usage: 0.13, cuda graph: False, gen throughput (token/s): 35.55, #queue-req: 0
+[2026-05-13 21:17:30] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:30] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.84
+[2026-05-13 21:17:30] Decode batch, #running-req: 1, #token: 48, token usage: 0.02, cuda graph: False, gen throughput (token/s): 34.96, #queue-req: 0
+[2026-05-13 21:17:31] Decode batch, #running-req: 1, #token: 88, token usage: 0.04, cuda graph: False, gen throughput (token/s): 36.13, #queue-req: 0
+[2026-05-13 21:17:32] Decode batch, #running-req: 1, #token: 128, token usage: 0.06, cuda graph: False, gen throughput (token/s): 36.11, #queue-req: 0
+[2026-05-13 21:17:33] Decode batch, #running-req: 1, #token: 168, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.77, #queue-req: 0
+[2026-05-13 21:17:34] Decode batch, #running-req: 1, #token: 208, token usage: 0.10, cuda graph: False, gen throughput (token/s): 35.82, #queue-req: 0
+[2026-05-13 21:17:36] Decode batch, #running-req: 1, #token: 248, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.78, #queue-req: 0
+[2026-05-13 21:17:37] Decode batch, #running-req: 1, #token: 0, token usage: 0.00, cuda graph: False, gen throughput (token/s): 35.63, #queue-req: 0
+[2026-05-13 21:17:37] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:37] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:17:38] Decode batch, #running-req: 1, #token: 72, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.18, #queue-req: 0
+[2026-05-13 21:17:39] Decode batch, #running-req: 1, #token: 112, token usage: 0.05, cuda graph: False, gen throughput (token/s): 35.93, #queue-req: 0
+[2026-05-13 21:17:40] Decode batch, #running-req: 1, #token: 152, token usage: 0.07, cuda graph: False, gen throughput (token/s): 35.98, #queue-req: 0
+[2026-05-13 21:17:41] Decode batch, #running-req: 1, #token: 192, token usage: 0.09, cuda graph: False, gen throughput (token/s): 35.73, #queue-req: 0
+[2026-05-13 21:17:42] Decode batch, #running-req: 1, #token: 232, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.13, #queue-req: 0
+[2026-05-13 21:17:43] Decode batch, #running-req: 1, #token: 272, token usage: 0.13, cuda graph: False, gen throughput (token/s): 36.41, #queue-req: 0
+[2026-05-13 21:17:44] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:44] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:17:44] LoRA adapter unloading starts: LoRARef(lora_id=3a3957ff95464211a2a1b63a0b98f266, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:44] LoRA adapter unloading completes: LoRARef(lora_id=3a3957ff95464211a2a1b63a0b98f266, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:17:44] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:44] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:17:44] LoRA adapter loading starts: LoRARef(lora_id=b25b45e1124f40168d4c9744f07ca304, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 405.64it/s]
+[2026-05-13 21:17:44] LoRA adapter loading completes: LoRARef(lora_id=b25b45e1124f40168d4c9744f07ca304, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:17:44] INFO:     127.0.0.1:57496 - "POST /load_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:17:44] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:17:44] Decode batch, #running-req: 1, #token: 56, token usage: 0.03, cuda graph: False, gen throughput (token/s): 34.91, #queue-req: 0
+[2026-05-13 21:17:46] Decode batch, #running-req: 1, #token: 96, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.50, #queue-req: 0
+[2026-05-13 21:17:47] Decode batch, #running-req: 1, #token: 136, token usage: 0.07, cuda graph: False, gen throughput (token/s): 36.23, #queue-req: 0
+[2026-05-13 21:17:48] Decode batch, #running-req: 1, #token: 176, token usage: 0.09, cuda graph: False, gen throughput (token/s): 36.15, #queue-req: 0
+[2026-05-13 21:17:49] Decode batch, #running-req: 1, #token: 216, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.01, #queue-req: 0
+[2026-05-13 21:17:50] Decode batch, #running-req: 1, #token: 256, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.93, #queue-req: 0
+[2026-05-13 21:17:51] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:51] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:17:51] Decode batch, #running-req: 1, #token: 40, token usage: 0.02, cuda graph: False, gen throughput (token/s): 34.89, #queue-req: 0
+[2026-05-13 21:17:52] Decode batch, #running-req: 1, #token: 80, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.95, #queue-req: 0
+[2026-05-13 21:17:53] Decode batch, #running-req: 1, #token: 120, token usage: 0.06, cuda graph: False, gen throughput (token/s): 36.02, #queue-req: 0
+[2026-05-13 21:17:55] Decode batch, #running-req: 1, #token: 160, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.87, #queue-req: 0
+[2026-05-13 21:17:56] Decode batch, #running-req: 1, #token: 200, token usage: 0.10, cuda graph: False, gen throughput (token/s): 35.80, #queue-req: 0
+[2026-05-13 21:17:57] Decode batch, #running-req: 1, #token: 240, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.46, #queue-req: 0
+[2026-05-13 21:17:58] Decode batch, #running-req: 1, #token: 280, token usage: 0.14, cuda graph: False, gen throughput (token/s): 35.74, #queue-req: 0
+[2026-05-13 21:17:58] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:17:58] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:17:59] Decode batch, #running-req: 1, #token: 64, token usage: 0.03, cuda graph: False, gen throughput (token/s): 35.03, #queue-req: 0
+[2026-05-13 21:18:00] Decode batch, #running-req: 1, #token: 104, token usage: 0.05, cuda graph: False, gen throughput (token/s): 35.84, #queue-req: 0
+[2026-05-13 21:18:01] Decode batch, #running-req: 1, #token: 144, token usage: 0.07, cuda graph: False, gen throughput (token/s): 35.34, #queue-req: 0
+[2026-05-13 21:18:02] Decode batch, #running-req: 1, #token: 184, token usage: 0.09, cuda graph: False, gen throughput (token/s): 35.56, #queue-req: 0
+[2026-05-13 21:18:04] Decode batch, #running-req: 1, #token: 224, token usage: 0.11, cuda graph: False, gen throughput (token/s): 35.63, #queue-req: 0
+[2026-05-13 21:18:05] Decode batch, #running-req: 1, #token: 264, token usage: 0.13, cuda graph: False, gen throughput (token/s): 35.62, #queue-req: 0
+[2026-05-13 21:18:05] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:18:05] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:18:05] LoRA adapter unloading starts: LoRARef(lora_id=b25b45e1124f40168d4c9744f07ca304, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:18:05] LoRA adapter unloading completes: LoRARef(lora_id=b25b45e1124f40168d4c9744f07ca304, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:18:05] INFO:     127.0.0.1:57496 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:18:05] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:18:06] Decode batch, #running-req: 1, #token: 48, token usage: 0.02, cuda graph: False, gen throughput (token/s): 34.71, #queue-req: 0
+[2026-05-13 21:18:07] Decode batch, #running-req: 1, #token: 88, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.79, #queue-req: 0
+[2026-05-13 21:18:08] Decode batch, #running-req: 1, #token: 128, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.90, #queue-req: 0
+[2026-05-13 21:18:09] Decode batch, #running-req: 1, #token: 168, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.63, #queue-req: 0
+[2026-05-13 21:18:10] Decode batch, #running-req: 1, #token: 208, token usage: 0.10, cuda graph: False, gen throughput (token/s): 35.64, #queue-req: 0
+[2026-05-13 21:18:11] Decode batch, #running-req: 1, #token: 248, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.60, #queue-req: 0
+[2026-05-13 21:18:13] Decode batch, #running-req: 1, #token: 0, token usage: 0.00, cuda graph: False, gen throughput (token/s): 35.61, #queue-req: 0
+[2026-05-13 21:18:13] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:18:13] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:18:14] Decode batch, #running-req: 1, #token: 72, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.08, #queue-req: 0
+[2026-05-13 21:18:15] Decode batch, #running-req: 1, #token: 112, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.54, #queue-req: 0
+[2026-05-13 21:18:16] Decode batch, #running-req: 1, #token: 152, token usage: 0.07, cuda graph: False, gen throughput (token/s): 36.26, #queue-req: 0
+[2026-05-13 21:18:17] Decode batch, #running-req: 1, #token: 192, token usage: 0.09, cuda graph: False, gen throughput (token/s): 36.05, #queue-req: 0
+[2026-05-13 21:18:18] Decode batch, #running-req: 1, #token: 232, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.04, #queue-req: 0
+[2026-05-13 21:18:19] Decode batch, #running-req: 1, #token: 272, token usage: 0.13, cuda graph: False, gen throughput (token/s): 36.09, #queue-req: 0
+[2026-05-13 21:18:20] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-13 21:18:20] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 31, token usage: 0.02, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.14
+[2026-05-13 21:18:20] Decode batch, #running-req: 1, #token: 56, token usage: 0.03, cuda graph: False, gen throughput (token/s): 35.20, #queue-req: 0
+[2026-05-13 21:18:21] Decode batch, #running-req: 1, #token: 96, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.00, #queue-req: 0
+[2026-05-13 21:18:23] Decode batch, #running-req: 1, #token: 136, token usage: 0.07, cuda graph: False, gen throughput (token/s): 36.02, #queue-req: 0
+[2026-05-13 21:18:24] Decode batch, #running-req: 1, #token: 176, token usage: 0.09, cuda graph: False, gen throughput (token/s): 35.86, #queue-req: 0
+[2026-05-13 21:18:25] Decode batch, #running-req: 1, #token: 216, token usage: 0.11, cuda graph: False, gen throughput (token/s): 35.81, #queue-req: 0
+[2026-05-13 21:18:26] Decode batch, #running-req: 1, #token: 256, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.79, #queue-req: 0
+[2026-05-13 21:18:27] INFO:     127.0.0.1:57496 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+/root/erre-sandbox/.venv/lib/python3.11/site-packages/fastapi/routing.py:120: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  response = await f(request)
+[2026-05-13 21:19:04] INFO:     127.0.0.1:38524 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-13 21:19:04] INFO:     127.0.0.1:38538 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-13 21:21:06] INFO:     127.0.0.1:52952 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:06] Reloading evicted adapter: kant_r8_real
+[2026-05-13 21:21:06] Start load Lora adapter. Lora name=kant_r8_real, path=/root/erre-sandbox/checkpoints/kant_r8_real
+[2026-05-13 21:21:06] LoRA adapter loading starts: LoRARef(lora_id=8e8b7fc7223740d3aa50beb8a0f230cb, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+Multi-thread loading shards:   0% Completed | 0/1 [00:00<?, ?it/s]Multi-thread loading shards: 100% Completed | 1/1 [00:00<00:00, 1615.06it/s]
+[2026-05-13 21:21:06] LoRA adapter loading completes: LoRARef(lora_id=8e8b7fc7223740d3aa50beb8a0f230cb, lora_name=kant_r8_real, lora_path=/root/erre-sandbox/checkpoints/kant_r8_real, pinned=False). avail mem=4.86 GB
+[2026-05-13 21:21:07] Prefill batch, #new-seq: 1, #new-token: 173, #cached-token: 0, token usage: 0.08, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 0.01
+[2026-05-13 21:21:07] Decode batch, #running-req: 1, #token: 181, token usage: 0.09, cuda graph: False, gen throughput (token/s): 0.25, #queue-req: 0
+[2026-05-13 21:21:09] INFO:     127.0.0.1:52960 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:52966 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:52982 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:52990 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:52992 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53006 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53016 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53028 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53030 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53038 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53040 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53042 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53054 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53058 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53074 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] INFO:     127.0.0.1:53076 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:21:09] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 172, token usage: 0.08, #running-req: 0, #queue-req: 15, cuda graph: False, input throughput (token/s): 84.80
+[2026-05-13 21:21:09] Decode batch, #running-req: 1, #token: 189, token usage: 0.09, cuda graph: False, gen throughput (token/s): 17.63, #queue-req: 15
+[2026-05-13 21:21:10] Decode batch, #running-req: 1, #token: 229, token usage: 0.11, cuda graph: False, gen throughput (token/s): 35.17, #queue-req: 15
+[2026-05-13 21:21:11] Prefill batch, #new-seq: 1, #new-token: 48, #cached-token: 0, token usage: 0.02, #running-req: 0, #queue-req: 14, cuda graph: False, input throughput (token/s): 0.39
+[2026-05-13 21:21:11] Decode batch, #running-req: 1, #token: 55, token usage: 0.03, cuda graph: False, gen throughput (token/s): 34.37, #queue-req: 14
+[2026-05-13 21:21:13] Decode batch, #running-req: 1, #token: 95, token usage: 0.05, cuda graph: False, gen throughput (token/s): 35.45, #queue-req: 14
+[2026-05-13 21:21:14] Decode batch, #running-req: 1, #token: 135, token usage: 0.07, cuda graph: False, gen throughput (token/s): 35.31, #queue-req: 14
+[2026-05-13 21:21:15] Decode batch, #running-req: 1, #token: 175, token usage: 0.09, cuda graph: False, gen throughput (token/s): 35.19, #queue-req: 14
+[2026-05-13 21:21:15] Prefill batch, #new-seq: 1, #new-token: 120, #cached-token: 2, token usage: 0.06, #running-req: 0, #queue-req: 13, cuda graph: False, input throughput (token/s): 11.92
+[2026-05-13 21:21:16] Decode batch, #running-req: 1, #token: 148, token usage: 0.07, cuda graph: False, gen throughput (token/s): 34.25, #queue-req: 13
+[2026-05-13 21:21:17] Prefill batch, #new-seq: 1, #new-token: 193, #cached-token: 0, token usage: 0.09, #running-req: 0, #queue-req: 12, cuda graph: False, input throughput (token/s): 69.18
+[2026-05-13 21:21:17] Decode batch, #running-req: 1, #token: 200, token usage: 0.10, cuda graph: False, gen throughput (token/s): 33.33, #queue-req: 12
+[2026-05-13 21:21:18] Decode batch, #running-req: 1, #token: 240, token usage: 0.12, cuda graph: False, gen throughput (token/s): 34.70, #queue-req: 12
+[2026-05-13 21:21:19] Decode batch, #running-req: 1, #token: 280, token usage: 0.14, cuda graph: False, gen throughput (token/s): 34.92, #queue-req: 12
+[2026-05-13 21:21:21] Decode batch, #running-req: 1, #token: 320, token usage: 0.16, cuda graph: False, gen throughput (token/s): 35.20, #queue-req: 12
+[2026-05-13 21:21:22] Decode batch, #running-req: 1, #token: 360, token usage: 0.18, cuda graph: False, gen throughput (token/s): 35.24, #queue-req: 12
+[2026-05-13 21:21:23] Prefill batch, #new-seq: 1, #new-token: 68, #cached-token: 0, token usage: 0.03, #running-req: 0, #queue-req: 11, cuda graph: False, input throughput (token/s): 34.64
+[2026-05-13 21:21:23] Decode batch, #running-req: 1, #token: 81, token usage: 0.04, cuda graph: False, gen throughput (token/s): 34.27, #queue-req: 11
+[2026-05-13 21:21:24] Decode batch, #running-req: 1, #token: 121, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.45, #queue-req: 11
+[2026-05-13 21:21:25] Decode batch, #running-req: 1, #token: 161, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.20, #queue-req: 11
+[2026-05-13 21:21:26] Decode batch, #running-req: 1, #token: 201, token usage: 0.10, cuda graph: False, gen throughput (token/s): 35.15, #queue-req: 11
+[2026-05-13 21:21:27] Decode batch, #running-req: 1, #token: 241, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.18, #queue-req: 11
+[2026-05-13 21:21:29] Decode batch, #running-req: 1, #token: 281, token usage: 0.14, cuda graph: False, gen throughput (token/s): 34.96, #queue-req: 11
+[2026-05-13 21:21:29] Prefill batch, #new-seq: 1, #new-token: 252, #cached-token: 0, token usage: 0.12, #running-req: 0, #queue-req: 10, cuda graph: False, input throughput (token/s): 10.29
+[2026-05-13 21:21:30] Decode batch, #running-req: 1, #token: 274, token usage: 0.13, cuda graph: False, gen throughput (token/s): 34.19, #queue-req: 10
+[2026-05-13 21:21:30] Prefill batch, #new-seq: 1, #new-token: 196, #cached-token: 0, token usage: 0.10, #running-req: 0, #queue-req: 9, cuda graph: False, input throughput (token/s): 216.18
+[2026-05-13 21:21:31] Decode batch, #running-req: 1, #token: 218, token usage: 0.11, cuda graph: False, gen throughput (token/s): 34.20, #queue-req: 9
+[2026-05-13 21:21:32] Decode batch, #running-req: 1, #token: 258, token usage: 0.13, cuda graph: False, gen throughput (token/s): 35.67, #queue-req: 9
+[2026-05-13 21:21:33] Prefill batch, #new-seq: 1, #new-token: 100, #cached-token: 1, token usage: 0.05, #running-req: 0, #queue-req: 8, cuda graph: False, input throughput (token/s): 78.29
+[2026-05-13 21:21:33] Decode batch, #running-req: 1, #token: 115, token usage: 0.06, cuda graph: False, gen throughput (token/s): 34.53, #queue-req: 8
+[2026-05-13 21:21:34] Decode batch, #running-req: 1, #token: 155, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.37, #queue-req: 8
+[2026-05-13 21:21:35] Decode batch, #running-req: 1, #token: 195, token usage: 0.10, cuda graph: False, gen throughput (token/s): 35.28, #queue-req: 8
+[2026-05-13 21:21:37] Decode batch, #running-req: 1, #token: 235, token usage: 0.11, cuda graph: False, gen throughput (token/s): 35.26, #queue-req: 8
+[2026-05-13 21:21:38] Decode batch, #running-req: 1, #token: 275, token usage: 0.13, cuda graph: False, gen throughput (token/s): 35.43, #queue-req: 8
+[2026-05-13 21:21:38] Prefill batch, #new-seq: 1, #new-token: 10, #cached-token: 0, token usage: 0.01, #running-req: 0, #queue-req: 7, cuda graph: False, input throughput (token/s): 20.08
+[2026-05-13 21:21:39] Decode batch, #running-req: 1, #token: 49, token usage: 0.02, cuda graph: False, gen throughput (token/s): 34.40, #queue-req: 7
+[2026-05-13 21:21:40] Decode batch, #running-req: 1, #token: 89, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.66, #queue-req: 7
+[2026-05-13 21:21:40] Prefill batch, #new-seq: 1, #new-token: 212, #cached-token: 0, token usage: 0.10, #running-req: 0, #queue-req: 6, cuda graph: False, input throughput (token/s): 3.90
+[2026-05-13 21:21:41] Decode batch, #running-req: 1, #token: 242, token usage: 0.12, cuda graph: False, gen throughput (token/s): 33.37, #queue-req: 6
+[2026-05-13 21:21:42] Decode batch, #running-req: 1, #token: 282, token usage: 0.14, cuda graph: False, gen throughput (token/s): 34.69, #queue-req: 6
+[2026-05-13 21:21:43] Prefill batch, #new-seq: 1, #new-token: 15, #cached-token: 0, token usage: 0.01, #running-req: 0, #queue-req: 5, cuda graph: False, input throughput (token/s): 88.57
+[2026-05-13 21:21:44] Decode batch, #running-req: 1, #token: 43, token usage: 0.02, cuda graph: False, gen throughput (token/s): 34.17, #queue-req: 5
+[2026-05-13 21:21:45] Decode batch, #running-req: 1, #token: 83, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.29, #queue-req: 5
+[2026-05-13 21:21:46] Decode batch, #running-req: 1, #token: 123, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.32, #queue-req: 5
+[2026-05-13 21:21:47] Decode batch, #running-req: 1, #token: 163, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.23, #queue-req: 5
+[2026-05-13 21:21:48] Prefill batch, #new-seq: 1, #new-token: 243, #cached-token: 0, token usage: 0.12, #running-req: 0, #queue-req: 4, cuda graph: False, input throughput (token/s): 3.15
+[2026-05-13 21:21:48] Decode batch, #running-req: 1, #token: 265, token usage: 0.13, cuda graph: False, gen throughput (token/s): 33.56, #queue-req: 4
+[2026-05-13 21:21:48] Prefill batch, #new-seq: 1, #new-token: 37, #cached-token: 0, token usage: 0.02, #running-req: 0, #queue-req: 3, cuda graph: False, input throughput (token/s): 314.26
+[2026-05-13 21:21:49] Decode batch, #running-req: 1, #token: 73, token usage: 0.04, cuda graph: False, gen throughput (token/s): 33.92, #queue-req: 3
+[2026-05-13 21:21:50] Decode batch, #running-req: 1, #token: 113, token usage: 0.06, cuda graph: False, gen throughput (token/s): 34.70, #queue-req: 3
+[2026-05-13 21:21:51] Prefill batch, #new-seq: 1, #new-token: 87, #cached-token: 1, token usage: 0.04, #running-req: 0, #queue-req: 2, cuda graph: False, input throughput (token/s): 16.24
+[2026-05-13 21:21:52] Decode batch, #running-req: 1, #token: 126, token usage: 0.06, cuda graph: False, gen throughput (token/s): 34.16, #queue-req: 2
+[2026-05-13 21:21:53] Prefill batch, #new-seq: 1, #new-token: 71, #cached-token: 0, token usage: 0.04, #running-req: 0, #queue-req: 1, cuda graph: False, input throughput (token/s): 41.29
+[2026-05-13 21:21:53] Decode batch, #running-req: 1, #token: 76, token usage: 0.04, cuda graph: False, gen throughput (token/s): 34.09, #queue-req: 1
+[2026-05-13 21:21:53] Prefill batch, #new-seq: 1, #new-token: 217, #cached-token: 0, token usage: 0.11, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 210.19
+[2026-05-13 21:21:54] Decode batch, #running-req: 1, #token: 252, token usage: 0.12, cuda graph: False, gen throughput (token/s): 33.44, #queue-req: 0
+[2026-05-13 21:21:55] Decode batch, #running-req: 1, #token: 292, token usage: 0.14, cuda graph: False, gen throughput (token/s): 34.94, #queue-req: 0
+[2026-05-13 21:21:56] Decode batch, #running-req: 1, #token: 332, token usage: 0.16, cuda graph: False, gen throughput (token/s): 34.74, #queue-req: 0
+[2026-05-13 21:21:57] INFO:     127.0.0.1:55804 - "GET /server_info HTTP/1.1" 200 OK
+[2026-05-13 21:21:57] INFO:     127.0.0.1:55808 - "GET /server_info HTTP/1.1" 200 OK
+[2026-05-13 21:22:31] Start unload Lora adapter. Lora name=kant_r8_real
+[2026-05-13 21:22:31] LoRA adapter unloading starts: LoRARef(lora_id=8e8b7fc7223740d3aa50beb8a0f230cb, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:22:31] LoRA adapter unloading completes: LoRARef(lora_id=8e8b7fc7223740d3aa50beb8a0f230cb, lora_name=kant_r8_real). avail mem=4.86 GB
+[2026-05-13 21:22:31] INFO:     127.0.0.1:44952 - "POST /unload_lora_adapter HTTP/1.1" 200 OK
+[2026-05-13 21:22:34] INFO:     127.0.0.1:42102 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-13 21:22:34] INFO:     127.0.0.1:42116 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-13 21:22:40] INFO:     127.0.0.1:42122 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:40] Prefill batch, #new-seq: 1, #new-token: 173, #cached-token: 0, token usage: 0.08, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 4.58
+[2026-05-13 21:22:41] Decode batch, #running-req: 1, #token: 179, token usage: 0.09, cuda graph: False, gen throughput (token/s): 0.90, #queue-req: 0
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35454 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35460 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35472 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35476 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35482 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35490 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35492 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35494 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35498 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35510 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35512 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35514 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35530 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35536 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35546 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] INFO:     127.0.0.1:35552 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-13 21:22:42] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 172, token usage: 0.08, #running-req: 0, #queue-req: 15, cuda graph: False, input throughput (token/s): 88.60
+[2026-05-13 21:22:43] Decode batch, #running-req: 1, #token: 187, token usage: 0.09, cuda graph: False, gen throughput (token/s): 18.82, #queue-req: 15
+[2026-05-13 21:22:44] Decode batch, #running-req: 1, #token: 227, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.02, #queue-req: 15
+[2026-05-13 21:22:45] Prefill batch, #new-seq: 1, #new-token: 48, #cached-token: 0, token usage: 0.02, #running-req: 0, #queue-req: 14, cuda graph: False, input throughput (token/s): 0.40
+[2026-05-13 21:22:45] Decode batch, #running-req: 1, #token: 53, token usage: 0.03, cuda graph: False, gen throughput (token/s): 35.26, #queue-req: 14
+[2026-05-13 21:22:46] Decode batch, #running-req: 1, #token: 93, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.32, #queue-req: 14
+[2026-05-13 21:22:47] Decode batch, #running-req: 1, #token: 133, token usage: 0.06, cuda graph: False, gen throughput (token/s): 36.27, #queue-req: 14
+[2026-05-13 21:22:48] Decode batch, #running-req: 1, #token: 173, token usage: 0.08, cuda graph: False, gen throughput (token/s): 36.00, #queue-req: 14
+[2026-05-13 21:22:49] Prefill batch, #new-seq: 1, #new-token: 120, #cached-token: 2, token usage: 0.06, #running-req: 0, #queue-req: 13, cuda graph: False, input throughput (token/s): 12.21
+[2026-05-13 21:22:49] Decode batch, #running-req: 1, #token: 146, token usage: 0.07, cuda graph: False, gen throughput (token/s): 34.97, #queue-req: 13
+[2026-05-13 21:22:50] Prefill batch, #new-seq: 1, #new-token: 193, #cached-token: 0, token usage: 0.09, #running-req: 0, #queue-req: 12, cuda graph: False, input throughput (token/s): 71.20
+[2026-05-13 21:22:51] Decode batch, #running-req: 1, #token: 198, token usage: 0.10, cuda graph: False, gen throughput (token/s): 34.53, #queue-req: 12
+[2026-05-13 21:22:52] Decode batch, #running-req: 1, #token: 238, token usage: 0.12, cuda graph: False, gen throughput (token/s): 36.02, #queue-req: 12
+[2026-05-13 21:22:53] Decode batch, #running-req: 1, #token: 278, token usage: 0.14, cuda graph: False, gen throughput (token/s): 35.56, #queue-req: 12
+[2026-05-13 21:22:54] Decode batch, #running-req: 1, #token: 318, token usage: 0.16, cuda graph: False, gen throughput (token/s): 35.21, #queue-req: 12
+[2026-05-13 21:22:55] Decode batch, #running-req: 1, #token: 358, token usage: 0.17, cuda graph: False, gen throughput (token/s): 35.27, #queue-req: 12
+[2026-05-13 21:22:56] Prefill batch, #new-seq: 1, #new-token: 68, #cached-token: 0, token usage: 0.03, #running-req: 0, #queue-req: 11, cuda graph: False, input throughput (token/s): 35.11
+[2026-05-13 21:22:56] Decode batch, #running-req: 1, #token: 79, token usage: 0.04, cuda graph: False, gen throughput (token/s): 34.57, #queue-req: 11
+[2026-05-13 21:22:57] Decode batch, #running-req: 1, #token: 119, token usage: 0.06, cuda graph: False, gen throughput (token/s): 36.45, #queue-req: 11
+[2026-05-13 21:22:58] Decode batch, #running-req: 1, #token: 159, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.97, #queue-req: 11
+[2026-05-13 21:23:00] Decode batch, #running-req: 1, #token: 199, token usage: 0.10, cuda graph: False, gen throughput (token/s): 36.13, #queue-req: 11
+[2026-05-13 21:23:01] Decode batch, #running-req: 1, #token: 239, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.97, #queue-req: 11
+[2026-05-13 21:23:02] Decode batch, #running-req: 1, #token: 279, token usage: 0.14, cuda graph: False, gen throughput (token/s): 35.92, #queue-req: 11
+[2026-05-13 21:23:02] Prefill batch, #new-seq: 1, #new-token: 252, #cached-token: 0, token usage: 0.12, #running-req: 0, #queue-req: 10, cuda graph: False, input throughput (token/s): 10.54
+[2026-05-13 21:23:03] Decode batch, #running-req: 1, #token: 272, token usage: 0.13, cuda graph: False, gen throughput (token/s): 34.28, #queue-req: 10
+[2026-05-13 21:23:04] Prefill batch, #new-seq: 1, #new-token: 196, #cached-token: 0, token usage: 0.10, #running-req: 0, #queue-req: 9, cuda graph: False, input throughput (token/s): 215.72
+[2026-05-13 21:23:04] Decode batch, #running-req: 1, #token: 216, token usage: 0.11, cuda graph: False, gen throughput (token/s): 34.25, #queue-req: 9
+[2026-05-13 21:23:05] Decode batch, #running-req: 1, #token: 256, token usage: 0.12, cuda graph: False, gen throughput (token/s): 35.81, #queue-req: 9
+[2026-05-13 21:23:06] Prefill batch, #new-seq: 1, #new-token: 100, #cached-token: 1, token usage: 0.05, #running-req: 0, #queue-req: 8, cuda graph: False, input throughput (token/s): 79.04
+[2026-05-13 21:23:06] Decode batch, #running-req: 1, #token: 113, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.38, #queue-req: 8
+[2026-05-13 21:23:07] Decode batch, #running-req: 1, #token: 153, token usage: 0.07, cuda graph: False, gen throughput (token/s): 36.77, #queue-req: 8
+[2026-05-13 21:23:09] Decode batch, #running-req: 1, #token: 193, token usage: 0.09, cuda graph: False, gen throughput (token/s): 36.21, #queue-req: 8
+[2026-05-13 21:23:10] Decode batch, #running-req: 1, #token: 233, token usage: 0.11, cuda graph: False, gen throughput (token/s): 36.15, #queue-req: 8
+[2026-05-13 21:23:11] Decode batch, #running-req: 1, #token: 273, token usage: 0.13, cuda graph: False, gen throughput (token/s): 36.08, #queue-req: 8
+[2026-05-13 21:23:11] Prefill batch, #new-seq: 1, #new-token: 10, #cached-token: 0, token usage: 0.01, #running-req: 0, #queue-req: 7, cuda graph: False, input throughput (token/s): 20.64
+[2026-05-13 21:23:12] Decode batch, #running-req: 1, #token: 47, token usage: 0.02, cuda graph: False, gen throughput (token/s): 35.35, #queue-req: 7
+[2026-05-13 21:23:13] Decode batch, #running-req: 1, #token: 87, token usage: 0.04, cuda graph: False, gen throughput (token/s): 36.15, #queue-req: 7
+[2026-05-13 21:23:13] Prefill batch, #new-seq: 1, #new-token: 212, #cached-token: 0, token usage: 0.10, #running-req: 0, #queue-req: 6, cuda graph: False, input throughput (token/s): 3.99
+[2026-05-13 21:23:14] Decode batch, #running-req: 1, #token: 240, token usage: 0.12, cuda graph: False, gen throughput (token/s): 34.63, #queue-req: 6
+[2026-05-13 21:23:15] Decode batch, #running-req: 1, #token: 280, token usage: 0.14, cuda graph: False, gen throughput (token/s): 36.13, #queue-req: 6
+[2026-05-13 21:23:16] Prefill batch, #new-seq: 1, #new-token: 15, #cached-token: 0, token usage: 0.01, #running-req: 0, #queue-req: 5, cuda graph: False, input throughput (token/s): 92.20
+[2026-05-13 21:23:16] Decode batch, #running-req: 1, #token: 41, token usage: 0.02, cuda graph: False, gen throughput (token/s): 35.37, #queue-req: 5
+[2026-05-13 21:23:18] Decode batch, #running-req: 1, #token: 81, token usage: 0.04, cuda graph: False, gen throughput (token/s): 35.95, #queue-req: 5
+[2026-05-13 21:23:19] Decode batch, #running-req: 1, #token: 121, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.75, #queue-req: 5
+[2026-05-13 21:23:20] Decode batch, #running-req: 1, #token: 161, token usage: 0.08, cuda graph: False, gen throughput (token/s): 35.76, #queue-req: 5
+[2026-05-13 21:23:20] Prefill batch, #new-seq: 1, #new-token: 243, #cached-token: 0, token usage: 0.12, #running-req: 0, #queue-req: 4, cuda graph: False, input throughput (token/s): 3.21
+[2026-05-13 21:23:21] Decode batch, #running-req: 1, #token: 263, token usage: 0.13, cuda graph: False, gen throughput (token/s): 34.57, #queue-req: 4
+[2026-05-13 21:23:21] Prefill batch, #new-seq: 1, #new-token: 37, #cached-token: 0, token usage: 0.02, #running-req: 0, #queue-req: 3, cuda graph: False, input throughput (token/s): 325.50
+[2026-05-13 21:23:22] Decode batch, #running-req: 1, #token: 71, token usage: 0.03, cuda graph: False, gen throughput (token/s): 35.38, #queue-req: 3
+[2026-05-13 21:23:23] Decode batch, #running-req: 1, #token: 111, token usage: 0.05, cuda graph: False, gen throughput (token/s): 36.22, #queue-req: 3
+[2026-05-13 21:23:23] Prefill batch, #new-seq: 1, #new-token: 87, #cached-token: 1, token usage: 0.04, #running-req: 0, #queue-req: 2, cuda graph: False, input throughput (token/s): 16.92
+[2026-05-13 21:23:24] Decode batch, #running-req: 1, #token: 124, token usage: 0.06, cuda graph: False, gen throughput (token/s): 35.16, #queue-req: 2
+[2026-05-13 21:23:25] Prefill batch, #new-seq: 1, #new-token: 71, #cached-token: 0, token usage: 0.04, #running-req: 0, #queue-req: 1, cuda graph: False, input throughput (token/s): 42.28
+[2026-05-13 21:23:25] Decode batch, #running-req: 1, #token: 74, token usage: 0.04, cuda graph: False, gen throughput (token/s): 34.85, #queue-req: 1
+[2026-05-13 21:23:26] Prefill batch, #new-seq: 1, #new-token: 217, #cached-token: 0, token usage: 0.11, #running-req: 0, #queue-req: 0, cuda graph: False, input throughput (token/s): 217.44
+[2026-05-13 21:23:27] Decode batch, #running-req: 1, #token: 250, token usage: 0.12, cuda graph: False, gen throughput (token/s): 34.19, #queue-req: 0
+[2026-05-13 21:23:28] Decode batch, #running-req: 1, #token: 290, token usage: 0.14, cuda graph: False, gen throughput (token/s): 35.80, #queue-req: 0
+[2026-05-13 21:23:29] Decode batch, #running-req: 1, #token: 330, token usage: 0.16, cuda graph: False, gen throughput (token/s): 35.72, #queue-req: 0
+[2026-05-13 21:23:30] INFO:     127.0.0.1:33096 - "GET /server_info HTTP/1.1" 200 OK
+[2026-05-13 21:23:30] INFO:     127.0.0.1:33102 - "GET /server_info HTTP/1.1" 200 OK

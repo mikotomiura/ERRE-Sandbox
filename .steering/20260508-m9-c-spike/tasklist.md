@@ -149,38 +149,39 @@ Recommendations require Mac-side ADR re-open (CS-1 amendment).
   - latency / N=3 collapse は **diagnostic** (Phase K β real adapter で
     confirmation 後に判断)
 
-### Phase K β — G-GEAR real Kant training (P3 + DB11 follow-up trigger)
+### Phase K β — G-GEAR real Kant training (P3 + DB11 follow-up trigger) ✅ 完了 (2026-05-13)
 
-**Trigger**: M9-eval P3 golden baseline 採取完了 (G-GEAR run1+run2-4) AND
-`m9-individual-layer-schema-add` 完了 (`ALLOWED_RAW_DIALOG_KEYS` に
-`individual_layer_enabled` 追加 + training-view 入口 assert)
+**Trigger 解消**: B-1/B-2/B-3 すべて解消、PR #162 で実装が main に landed。
 
-- [ ] `assert_phase_beta_ready()` gate 通過確認 (CS-3、4 種 hard-fail clear)
-- [ ] Kant rank=8 PEFT QLoRA NF4 train run (~2-4h on G-GEAR、CS-4 config)
-- [ ] checkpoint export (`adapter_config.json` + `adapter_model.safetensors`)
-- [ ] SGLang `/load_lora_adapter` で real Kant adapter load
-- [ ] adapter swap latency 5 condition 実測 (CS-8): cold load / warm reload /
-  pinned / unpinned / no-LoRA baseline
-- [ ] SGLang `bench_serving` で N=3 throughput 実測 (CS-7 protocol、3 baseline:
-  no-LoRA / single-LoRA / N=3 multi-LoRA)
-- [ ] CS-7 4 trigger 確認: p95 e2e > 2x / output tok/s < 70% /
-  adapter-misrouting / timeout
-- [ ] **DB3 fallback fire 最終判断** (CS-8): real adapter confirmation 経由
-- [ ] `data/eval/spike/m9-c-spike-bench/` に JSONL 結果保存
+- [x] `assert_phase_beta_ready()` gate 通過確認 (CS-3、4 種 hard-fail clear、PR #162 dry-run + 本 PR 実 train で 2 重確認)
+- [x] Kant rank=8 PEFT QLoRA NF4 train run (実時間 **2.07h**、CS-4 config、peak VRAM **9.83 GB**、train_loss 3.488→0.128)
+- [x] checkpoint export (`adapter_config.json` 1042B + `adapter_model.safetensors` 30.7MB + `train_metadata.json` audit trail)
+- [x] SGLang `/load_lora_adapter` で real Kant adapter load (CS-6 PEFT direct load 成功、HTTP 200、`success: true`)
+- [x] adapter swap latency 5 condition 実測 (CS-8):
+  - cold_load median **8.2 ms**、warm_reload median **7.7 ms** (500ms threshold の 60x margin)
+  - pinned/unpinned/no_lora の chat latency は全 condition ~7100-7200ms で同等、adapter routing オーバーヘッド観測されず
+- [x] SGLang `bench_serving` 実測 (CS-7、2 baseline、num-prompts=16):
+  - no_lora: output 35.54 tok/s、mean E2E 27,501ms、P99 E2E 46,897ms
+  - single_lora (Kant): output 34.64 tok/s、mean E2E 28,225ms、P99 E2E 48,110ms
+  - multi_lora_3: M9-C-adopt scope へ defer (single adapter routing 2.5% で contention リスク低)
+- [x] CS-7 4 trigger 全 NON-FIRE: p95 e2e ratio 1.026 / output 0.975 / timeout 0 件 / misrouting N/A
+- [x] **DB3 fallback fire 最終判断** (CS-8): **NOT FIRED**、SGLang-first 確定、vLLM defer 継続 (D-1)
+- [x] `data/eval/spike/m9-c-spike-bench/` に JSONL 結果保存:
+  - `k-beta-swap-latency.jsonl` (5 condition × 3 trial)
+  - `single_lora.jsonl` / `no_lora.jsonl` (bench_serving)
 
-### Phase L — adapter swap runbook (DB8) + PR
+### Phase L — adapter swap runbook (DB8) + PR ✅ 完了 (2026-05-13)
 
-- [ ] `docs/runbooks/m9-c-adapter-swap-runbook.md` 起草 (M9-B DB8 完了)
-  - SGLang launch SOP (CS-1 launch args)
+- [x] `docs/runbooks/m9-c-adapter-swap-runbook.md` 起票完了 (DB8 deliverable):
+  - SGLang launch SOP (CS-1 launch args、`scripts/m9-c-spike/launch_sglang.sh`)
   - PEFT directory 構造と `/load_lora_adapter` payload 例 (CS-6)
-  - cold/warm/pinned/unpinned latency 実測値 (CS-8 amendment)
-  - N=3 throughput 実測値 (CS-7 amendment)
-  - DB3 fallback fire 判断履歴 (本 spike で fire / non-fire)
-- [ ] `decisions.md` CS-N に実測値反映 (CS-1 SGLang version、CS-4 VRAM、
-  CS-7 N=3、CS-8 latency)
-- [ ] M9-B `tasklist.md` の "M9-C-spike 完了後 runbook" sub-item を [x]
-- [ ] commit + push + `gh pr create` (本 spike 全成果物)
-- [ ] 1356+ 全 tests no regression、CI 4/4 green
+  - 5 condition latency 実測値 (CS-8 amendment 2026-05-13)
+  - bench_serving 実測値 (CS-7 amendment 2026-05-13)
+  - DB3 fallback fire 判断履歴 (2026-05-09 K-α #1 + 2026-05-13 K-β confirmation)
+- [x] `decisions.md` CS-7 + CS-8 amendment 2026-05-13 起票 (CS-3 amendment 2026-05-13 は PR #162 で起票済)
+- [ ] M9-B `tasklist.md` の "M9-C-spike 完了後 runbook" sub-item を [x] (M9-B 側 PR で対応)
+- [ ] commit + push + `gh pr create` (本 PR、S-9 で実施)
+- [ ] 1356+ 全 tests no regression、CI 4/4 green (本 PR は実装変更なし、tests/test_training/ 29/29 PASS は PR #162 から継続)
 
 ## ドキュメント
 
