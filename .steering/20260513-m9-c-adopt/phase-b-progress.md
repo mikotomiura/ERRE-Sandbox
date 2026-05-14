@@ -1,452 +1,165 @@
-# Phase B 進捗 — m9-c-adopt rank sweep on kant (in-flight、第 3 セッション update 2026-05-14)
+# Phase B 進捗 — m9-c-adopt rank sweep on kant (FINAL, 2026-05-14)
 
-> Phase A (PR #164 merged) → Phase B 第 1 セッション (2026-05-13 夜) → 第 2
-> セッション (2026-05-14 朝) → 第 3 セッション (2026-05-14 昼)。本 file は
-> in-flight 状態を引き継ぐための **state pin**。第 3 セッションは
-> **DA-11 scope narrowing 適用** + SGLang LoRA pilot driver 新規実装 +
-> 1800-turn pilot 採取 + Vendi lexical-5gram baseline 算出 + per-rank bench
-> を完遂、Big5 ICC + Burrows + semantic Vendi + DA-1 final + PR 起票は
-> Phase B 第 4 セッションへ defer。
+> Phase A (PR #164 merged) → Phase B 第 1〜4 セッション完遂。本 file は
+> Phase B closure summary。詳細は `phase-b-report.md` (PR description 候補)、
+> ADR は `decisions.md` (DA-11 第 3 セッション narrowing + DA-12 第 4
+> セッション verdict)。
 
 ---
 
-## 現在の状態 (2026-05-14 第 3 セッション完了時点、DA-11 scope narrowing 適用後)
+## 最終状態 (2026-05-14 第 4 セッション完了時点、DA-12 verdict = DEFER)
 
 | Step | 内容 | 状態 |
 |---|---|---|
-| Step 0 | pre-flight (branch + CS-1 amendment + manifest scaffold) | **完了** (commit `0246768`) |
-| Step 1 | rank=4 training (kant、G-GEAR overnight) | **完走** (train_loss=0.2364、peak_vram=10.51GB、train_runtime=7733s、sha256 `b89a248695...`) |
-| Step 2 | rank=8 baseline re-confirm + manifest backfill | **完了** (commit `8e7352b`、sha256 `cd8c6e5f...`) |
-| Step 3a | rank=4 archive + manifest | **完了** sha256 `b89a248695...` ✅ phase 1 verbatim 一致 |
-| Step 3b | rank=16 training | **完走** train_loss=0.1993、peak_vram_bytes=10.63GB、train_runtime=7424s (~2.06h) |
+| Step 0 | pre-flight (branch + CS-1 amendment + manifest scaffold) | **完了** (`0246768`) |
+| Step 1 | rank=4 training (kant、G-GEAR overnight) | **完了** sha256 `b89a248695...`、peak_vram 10.51 GB |
+| Step 2 | rank=8 baseline re-confirm + manifest backfill | **完了** sha256 `cd8c6e5f...` (PR #163 K-β verbatim) |
+| Step 3a | rank=4 archive + manifest | **完了** |
+| Step 3b | rank=16 training | **完了** train_loss=0.1993、peak_vram_bytes 10.14 GB |
 | Step 3c | rank=16 archive + manifest | **完了** sha256 `9532b438f3...` |
 | Step 4 | 3 adapter multi-pin load + chat sanity | **完了** 3 rank で異なる出力 (adapter routing 確認) |
-| Step 5a (narrowed) | Vendi lexical-5gram baseline | **完了 (2026-05-14 第 3 セッション)** point=75.77 / CI=[75.19, 76.37] / 25 windows |
-| Step 5b | SGLang re-launch + 3 adapter pinned | **完了 (2026-05-14 第 3 セッション)** /v1/models 経由 adapter check + ninja symlink WORKAROUND 適用 |
-| Step 5c | Tier B pilot 1800 turn 採取 | **完了 (2026-05-14 第 3 セッション)** 6 shard (kant_r{4,8,16}_run{0,1}_stim.duckdb)、1.5 turn/s sustained、~21 min total |
-| Step 5d | per-rank Tier B metric | **defer (DA-11、Phase B 第 4 セッション)** Big5 ICC consumer 未実装 + 計算規模 ~25-35h compute |
-| Step 5e | CS-7 4 trigger bench | **partial (rank=4/8/16 single_lora 完了)** no_lora は PR #163 K-β 値継続使用 |
-| Step 5f | DA-1 4 軸 intersection final | **defer (DA-11、Phase B 第 4 セッション)** ICC + Burrows + semantic Vendi 未揃い |
-| Step 6 | conditional rank=32 tail-sweep | **defer (DA-11、Phase B 第 4 セッション)** fire 判定は DA-1 final 後 |
-| Step 7 | 採用 rank 確定 + PR | **defer (DA-11、Phase B 第 4 セッション)** PR は ICC + Burrows + DA-1 final 揃い後の統合 PR で起票 |
+| Step 5a (narrowed) | Vendi lexical-5gram baseline | **完了** point=75.77 / CI=[75.19, 76.37] |
+| Step 5a' (第 4) | Vendi **semantic** baseline (MPNet) | **完了** point=30.822 / CI=[30.73, 30.93] |
+| Step 5b | SGLang re-launch + 3 adapter pinned | **完了** (第 3 + 第 4 セッション共通) |
+| Step 5c | Tier B pilot 1800 turn 採取 | **完了** 6 shard |
+| Step 5d (第 4) | per-rank Big5 ICC + Burrows + Vendi semantic | **完了** 3 metric × 3 rank、artefacts in `tier-b-*-kant-r{4,8,16}-*.json` |
+| Step 5e (partial) | CS-7 4 trigger bench (rank=4/8/16 single_lora) | **完了**、no_lora は PR #163 K-β 値継続 |
+| Step 5f (第 4) | DA-1 4 軸 intersection final | **完了 (verdict = DEFER)** 全 rank 2/4 axes PASS only (ICC + throughput)、Vendi + Burrows direction failure |
+| Step 6 (第 4) | conditional rank=32 tail-sweep | **NOT fire** — direction failure は scaling では解消不能 (DA-12) |
+| Step 7 (本 PR) | DA-12 ADR 起票 + phase-b-report 起票 + blockers/tasklist 更新 + commit/PR | **本セッション内で完遂** |
 
-branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin push 済、第 1 + 第 2 + 第 3 セッション commit ある、第 3 セッション最終 commit は pilot data + scripts + DA-11 + handoff)
+branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin push 済、本 PR の
+本コミットを最後に Phase B closure)
 
 ---
 
-## 第 3 セッション完了サマリ (2026-05-14、DA-11 scope narrowing 適用)
+## DA-1 4-axis matrix (実測)
 
-### 発見されたギャップ (handoff prompt との差分)
+| rank | Vendi semantic | ICC(C,k) | Burrows Δ | throughput | axes PASS |
+|---|---|---|---|---|---|
+| no-LoRA baseline | 30.822 [30.726, 30.928] | 0.9980 [0.9974, 0.9987] | 108.534 [108.10, 109.02] | K-β 34.64 / threshold 24.25 | — |
+| 4 | 33.895 [33.85, 33.94] | 0.9792 [0.967, 0.994] | 113.595 [113.26, 113.93] | 33.82 (PASS) | **2/4** (V:FAIL B:FAIL) |
+| 8 | 34.701 [34.67, 34.73] | 0.9843 [0.980, 0.995] | 113.723 [113.31, 114.13] | 33.77 (PASS) | **2/4** (V:FAIL B:FAIL) |
+| 16 | 33.685 [33.09, 34.28] | 0.9837 [0.981, 0.994] | 112.564 [112.31, 112.82] | 33.72 (PASS) | **2/4** (V:FAIL B:FAIL) |
 
-handoff prompt (`next-session-prompt-phase-b-3.md`) は Step 5 全体 (baseline +
-1800-turn pilot + per-rank metric + bench + DA-1 4 軸 intersection + PR
-起票) を本セッション内で完遂前提だったが、実装着手時に以下を発見:
+matrix artefact: `da1-matrix-kant.json`
 
-1. **Big5 ICC consumer 未実装** + 計算規模 ~25-35h Ollama compute (50 IPIP
-   question × 25 window × 5 run × 4 condition)
-2. **Burrows Δ 言語不一致**: kant 発話が de/en/ja 混合、Burrows ref は de のみ
-3. **SGLang LoRA pilot driver 未実装**: 既存 `eval_run_golden` CLI は Ollama only
-4. **sentence-transformers MPNet 未インストール** in WSL2 venv (semantic
-   Vendi は Mac post-hoc へ defer)
+## 採用 rank 確定
 
-→ DA-11 ADR (decisions.md) で本セッションを **G-GEAR foundational work +
-Vendi lexical baseline + per-rank bench + scope narrowing 記録** に narrow、
-Big5 ICC + Burrows + semantic Vendi + DA-1 final + PR 起票は Phase B 第 4
-セッションへ defer
+**確定なし** (DA-12 verdict = DEFER)。`data/lora/m9-c-adopt/kant_r{X}_real/`
+への production placement は本 PR scope 外、archive (`data/lora/m9-c-adopt/
+archive/rank_{4,8,16}/kant/`) のみ commit 済。Phase E A-6 multi-turn full
+Tier B (別 PR、retrain v2 が prereq) で final verdict を確定する。
 
-### Step 5b — SGLang re-launch (DB8 runbook v6 launch args)
+## 第 4 セッション完遂サマリ
 
-- ninja symlink (`/usr/local/bin/ninja -> /root/erre-sandbox/.venv/bin/ninja`)
-  既に存在を verify
-- launch args (multi_pin_sanity.sh と同):
-  ```
-  --model-path Qwen/Qwen3-8B --enable-lora --lora-target-modules q_proj k_proj v_proj o_proj
-  --max-lora-rank 16 --max-loras-per-batch 3 --max-loaded-loras 3
-  --quantization fp8 --mem-fraction-static 0.85 --max-total-tokens 2048
-  --disable-cuda-graph --max-running-requests 1
-  ```
-- VRAM after weight load: 9.09 GB (model) + 0.14 GB KV cache = ~9.4 GB
-- 3 adapter (kant_r4/8/16_real) load 200 OK via multi_pin_sanity.sh
+### Step 5d (Big5 ICC consumer 実装) — 完遂
 
-### Step 5c — Tier B pilot driver 新規実装 + 採取
+- `scripts/m9-c-adopt/compute_big5_icc.py` 新規 (DuckDB shard × IPIP-50 ×
+  LLM-backed responder)
+- Ollama (Windows native venv 経由) + SGLang (WSL2) 2 responder switch
+- T=0 deterministic で trivial ICC=1.0 を観察 → T=0.7 + per-call seed
+  mutation を導入 (`decisions.md` DA-12 hot decision に root cause + 修正
+  明示)
+- Big5 ICC baseline = ICC(C,k) 0.998 [0.997, 0.999]、per-rank LoRA-on
+  ICC(C,k) 0.979〜0.984 (全 rank DA-1 axis 2 PASS)
 
-- script: `scripts/m9-c-adopt/tier_b_pilot.py` 新規
-  - SGLang HTTP `/v1/chat/completions` + `model={adapter_name}` で routing
-  - chat_template_kwargs: `enable_thinking: False` (qwen3 CoT 抑制)
-  - defensive: `<think>...</think>` block を strip
-  - stratified slice (kant.yaml 70 stim → 50/cycle)、cycle_count=6 で
-    300 focal turn/run
-  - DuckDB sink: `epoch_phase=evaluation`、per-25-turn checkpoint resume
-  - adapter check: `/v1/models` で loaded LoRA list verify
-- smoke: 10 turn × rank=8 で 7.5s = ~0.75 sec/turn 確認 (Ollama 14s/turn の
-  約 19× 高速、prompt の 7h estimate は Ollama 由来で実機 SGLang fp8 では
-  大幅短縮)
-- full pilot: `phase-b-logs/run_pilot.sh` 経由で 6 cell (3 rank × 2 run ×
-  300 turn = 1800 turn) sequential、~1.5 turn/s sustained、~21 min total
-- 出力: `data/eval/m9-c-adopt-tier-b-pilot/kant_r{4,8,16}_run{0,1}_stim.duckdb`
-  6 shard、各 300 focal turn
+### Burrows Δ Option A — 完遂
 
-### Step 5a (narrowed) — Vendi lexical-5gram baseline
+- `scripts/m9-c-adopt/compute_burrows_delta.py` 新規
+- `langdetect` (pure Python、deterministic seed=0、confidence ≥ 0.85) で
+  per-utterance routing、de のみ filter、en/ja は named limitation で drop
+- de_fraction baseline 0.369 / pilot 0.49 (pilot は single-turn で German
+  stimulus に対し German response する率が高い)
+- baseline Burrows point = 108.534 [108.10, 109.02]、per-rank LoRA-on
+  112.56〜113.72 (全 rank direction failure on DA-1 axis 3)
 
-- script: `scripts/m9-c-adopt/compute_baseline_vendi.py` 新規 (--kernel
-  semantic / lexical-5gram switch、Mac post-hoc で semantic 再算出可能)
-- 5 shard (kant_stimulus_run{0..4}.duckdb) × 5 window/shard = 25 window 集計
-- bootstrap: cluster_only=True (ME-14)、n_resamples=2000、ci=0.95
-- artefact: `tier-b-baseline-kant-vendi-lexical.json` +
-  `tier-b-baseline-kant.md` (defer 内容明記)
+### semantic Vendi 再算出 — 完遂
 
-| metric | value |
-|---|---|
-| point | 75.7692 |
-| CI95 lo | 75.1892 |
-| CI95 hi | 76.3720 |
-| width | 1.1828 |
-| n_clusters | 5 |
-| total_windows | 25 |
+- `compute_baseline_vendi.py --kernel semantic` で MPNet cosine kernel
+- baseline point = 30.822 [30.726, 30.928]、per-rank LoRA-on 33.69〜34.70
+  (全 rank direction failure on DA-1 axis 1、Cohen's d +2.13〜+3.00)
+- 第 3 セッション lexical Vendi で観察済の direction failure を semantic
+  でも再現 → kernel artifact ではなく pilot methodology または LoRA
+  失敗の signal
 
-### Step 5e (partial) — CS-7 per-rank single_lora bench
+### DA-1 final verdict — 完遂
 
-- script: `scripts/m9-c-adopt/bench_per_rank.sh` 新規 (sglang.bench_serving
-  per rank wrapper)
-- conditions: `single_lora-r{4,8,16}` (3 rank); no_lora は CS-1 launch
-  flag toggle 必須 (`--enable-lora` 不在で再起動) のため defer、PR #163
-  K-β 値 (24.25 tok/s threshold) 継続使用
-- 出力: `data/eval/m9-c-adopt-bench/single_lora-r{4,8,16}.jsonl`
+- `scripts/m9-c-adopt/da1_matrix.py` 新規で 4 軸 intersection matrix +
+  PASS/FAIL judgment + Cohen's d diagnostic
+- 全 rank 2/4 axes PASS only (ICC + throughput)、Vendi + Burrows
+  direction failure → DA-12 DEFER verdict
 
-### DA-11 ADR (本セッション追加)
+### DA-12 ADR 起票
 
-- decisions.md に DA-11 (Phase B Tier B consumer scope narrowing) 起票
-- handoff: `next-session-prompt-phase-b-4.md` 新規 (Big5 ICC consumer 実装 +
-  Burrows 言語処理判断 + semantic Vendi 再算出 + DA-1 final + PR 起票)
+`decisions.md` に DA-12 (Phase B 第 4 セッション DA-1 verdict = DEFER)
+を追記。内容:
+- pilot verdict = DEFER (production 採用なし、provisional rank=8 carry-over)
+- tail-sweep rank=32 NOT fire (direction failure は scaling では解消不能)
+- DA-9 retrain v2 path 開放 + Phase D 着手前 prereq 化
+- direction failure の 2 因子 identifiability 不能 (pilot methodology
+  confound + LoRA が IPIP self-report neutral midpoint を shift しない)
+
+### dependency 追加 (本 PR)
+
+- `langdetect` (Windows native venv のみ install、`[eval]` extras 追加
+  検討は別 PR)
+- `sentence-transformers` を Windows native venv に install (uv pip
+  経由)。WSL2 venv は未 install
 
 ### 既知の落とし穴 amendment (本セッション追加)
 
-- **SGLang `/get_server_info` には `loaded_lora_adapters` フィールドが無い**
-  (本 SGLang 0.5.10.post1 version): `/v1/models` を使う。`tier_b_pilot.py`
-  の adapter check で対応済 ('Qwen/Qwen3-8B' base + 3 adapter ids が `data`
-  array に listing される)
-- **SGLang chat API での qwen3 CoT 抑制**: `chat_template_kwargs:
-  {"enable_thinking": False}` payload 必須。Ollama の `think=false` 等価
-- **sentence-transformers は WSL2 venv 未インストール**: lexical-5gram
-  kernel で代替、semantic kernel は Mac master post-hoc で実走
-- **pilot driver throughput estimate**: Ollama qwen3:8b Q4_K_M で ~14s/turn
-  → SGLang fp8 で ~0.7s/turn (約 20× 高速)、handoff prompt の
-  「~7h compute」見積りは無効化 (実測 ~21 min for 1800 turn)
+- **WSL2 → Windows-native Ollama 不通**:
+  `reference_wsl2_ollama_unreachable.md` 既知。Ollama responder は
+  Windows-side `.venv/Scripts/python.exe` から走らせる必要
+- **T=0 ICC trivial 1.0 artifact**: deterministic + no context conditioning
+  では IPIP self-report が固定値、全 window で per-dim sd=0.0、ICC=1.0
+  を取る。T=0.7 + per-call seed mutation で admin-level stochasticity
+  を導入。kant persona default T と整合
+- **SGLang VRAM 圧迫**: `--mem-fraction-static 0.85` + 3 LoRA adapter pin で
+  VRAM ~15.8 GB peak (16.3 GB total、~500 MiB free)。本 session 内では
+  問題なかったが、Phase E full Tier B で同時 inference が増える場合は
+  `--mem-fraction-static 0.80` への amendment 検討
 
 ---
 
-## 第 2 セッション完了サマリ (2026-05-14)
+## blockers.md status (第 4 セッション完了時)
 
-### Step 3b 完走 (rank=16)
-
-- elapsed: 起動 07:22 UTC → 完走 09:27 UTC (~2.06h)
-- train_runtime=7424s、train_loss=0.1993 (rank=4 0.2364 から improvement)
-- realised_examples=5022、quantization=nf4、target_modules=q/k/v/o_proj
-- peak_vram_bytes (training metadata): 10630824960 = 10.14 GB
-- nvidia-smi peak sustained: ~14016 MiB (driver + overhead 込み、operational margin 健全)
-- S-3 watch threshold は 14000 → 14300 MiB に amendment (上記 plateau に operational margin +280 MiB)
-
-### Step 3c — rank=16 archive
-
-- 場所: `data/lora/m9-c-adopt/archive/rank_16/kant/`
-- manifest:
-  - `sha256_adapter_model=9532b438f34da8e87ebb4a71707da4ab22c4ed790959c177c7ea8fc373c0ac38`
-  - `rank=16`、`training_git_sha=92786f28383c5e45336bc59170717488f45f2185`
-  - その他 base_model / target_modules / is_mock は DA-10 schema 準拠
-- adapter_model.safetensors サイズ: 61.4 MB (rank=4 15.4 MB の 4 倍、rank ratio 整合)
-
-### Step 4 — multi-pin sanity (SGLang `--max-lora-rank 16`)
-
-- launch args (DB8 runbook §2 v6、ninja symlink workaround 適用):
-  ```
-  --model-path Qwen/Qwen3-8B --enable-lora --lora-target-modules q_proj k_proj v_proj o_proj
-  --max-lora-rank 16 --max-loras-per-batch 3 --max-loaded-loras 3
-  --quantization fp8 --mem-fraction-static 0.85 --max-total-tokens 2048
-  --disable-cuda-graph --max-running-requests 1
-  ```
-- POST /load_lora_adapter × 3 全 200 OK、`loaded_adapters` map 累積:
-  ```json
-  {"kant_r4_real": "...", "kant_r8_real": "...", "kant_r16_real": "..."}
-  ```
-- POST /v1/chat/completions × 3 で同一 prompt "Was ist die Bedingung der Möglichkeit der Erfahrung?"
-  に対し **3 rank で異なる出力**: rank=4 は 3 条件分解 (sensibility/understanding/transcendental
-  unity of apperception)、rank=8 は a priori/a posteriori 軸、rank=16 はより直接的構造
-  → adapter routing が機能していることの sanity 確認
-- artefact: `.steering/20260513-m9-c-adopt/phase-b-logs/multi_pin_artifacts/{load,chat}_kant_r{4,8,16}_real.json`
-
-### ninja 不在 incident (Step 4 中)
-
-- SGLang JIT compile (fp8 token_ids resolve kernel) で `ninja` CLI を subprocess で
-  invoke、PATH 未通過で `FileNotFoundError`
-- 解決: `ln -sf /root/erre-sandbox/.venv/bin/ninja /usr/local/bin/ninja` で system PATH へ
-  symlink。spike 時は PATH 設定が異なっていた模様
-- 教訓: SGLang fp8 + inference path は ninja CLI runtime 依存、PATH に必要
-
-### 既知の落とし穴 amendment (本セッション追加)
-
-- **Bash tool 経由の `wsl -- bash -c "..."` で PATH に `(` 含有時 syntax error**:
-  `bash -c "export PATH=...:\$PATH && ..."` パターンは Windows-side PATH の "Program Files (x86)"
-  パーレン含有で bash parsing fail。symlink で system PATH 採用 or PATH explicitly セット
-- **WSL2 idle shutdown 対策**: Bash tool `run_in_background=true` で wsl.exe を pinned することで
-  WSL2 alive 保持。nohup + disown は WSL2 死亡時に効かない (本セッション Step 3b 第 1 試行で失敗)
+- **S-2** (CS-1 amendment): 解消済 (Phase A)
+- **S-3** (training VRAM): partial (rank=16 amendment 済、rank=32 fire なし)
+- **H-1** (Tier B persona-discriminative): partial verify (ICC + throughput
+  PASS、Vendi + Burrows direction failure → Phase E A-6 へ持ち越し)
+- **H-2** (rikyu Japanese Burrows N/A): unchanged
+- **U-6** (pilot single-turn methodology confound): **新規 fire** (DA-12
+  identifiability 不能)
 
 ---
 
-## 第 2 セッション update (2026-05-14)
+## Phase D 着手前 dependency
 
-### rank=4 archive 完了 (Step 3a)
+DA-12 に従い以下の順で別 PR が prereq:
 
-- **archive 場所**: `data/lora/m9-c-adopt/archive/rank_4/kant/`
-- **manifest 内容**:
-  - `adapter_name=kant_r4_real`、`persona_id=kant`、`base_model=Qwen/Qwen3-8B`、`rank=4`
-  - `target_modules=[q_proj,k_proj,v_proj,o_proj]`
-  - `sha256_adapter_model=b89a248695394a8d17c606d6509d46c268ba4e0efbb04641555af9a21e05f78d` ✅ phase 1 verbatim と一致
-  - `training_git_sha=92786f28383c5e45336bc59170717488f45f2185`
-  - `is_mock=false`、`created_at=2026-05-13T22:19:11Z`
-- **gitignore**: `.safetensors` + `chat_template.jinja` 除外、`manifest.json` + `adapter_config.json` + `train_metadata.json` のみ commit 対象 (rank_8 と同 policy)
-
-### rank=16 training kick (Step 3b、in-flight)
-
-- **起動方式**: Bash tool `run_in_background=true` で wsl.exe を pinned (nohup +
-  disown は WSL2 idle shutdown で前回失敗。本 session では Bash bg task が
-  wsl.exe を抱える間 WSL2 alive 維持)
-- **kick 時刻**: 2026-05-14 07:22 UTC (Bash bg id `b4swoljve`)
-- **invocation**:
-  ```bash
-  MSYS_NO_PATHCONV=1 wsl -- bash -c "/root/erre-sandbox/.venv/bin/python -m erre_sandbox.training.train_kant_lora \
-    --persona kant --rank 16 --duckdb-glob '/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_*.duckdb' \
-    --output-dir /root/erre-sandbox/checkpoints/kant_r16_real -v \
-    > /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/train_kant_r16_real.log 2>&1"
-  ```
-- **kick 後 sanity** (~30s 経過):
-  - PID 360 (python 単独、重複なし) ✅
-  - Loading weights 1.2s/it (rank=4 第 1 セッション の 62s/it 異常遅延と対照、resource 単独利用)
-  - VRAM 6.7 GB / GPU util 4% (model load 開始)
-- **VRAM 警戒 Monitor**: `phase-b-logs/watch_r16.sh` で `nvidia-smi` per-60s sampling、
-  log error/completion marker grep。当初 threshold 14000 MiB streak=3 で第 1 fire
-  (2026-05-14 08:45 JST 時点 1332/2000 step / 14014-14020 MiB sustained / GPU 87-93% /
-  temp 64-66°C)。S-3 早期 abort 規定の主旨は OOM 予防、実測 14016 MiB は total 16311 MiB
-  に対し 2.3 GB headroom 健全 → **continue 判断**、threshold を 14300 MiB に amendment
-  (rank=16 training の sustained plateau ~14016 MiB 上に operational margin +280 MiB)。
-  Monitor `bht62jtxf` 停止 → `b6sxeyjgo` (threshold 14300) で再起動
-
-### S-3 実測 amendment (2026-05-14)
-
-- rank=16 training sustained VRAM plateau: **~14016 MiB** (training step ~1300 で観察)
-- total VRAM: 16311 MiB → headroom ~2.3 GB
-- S-3 当初 threshold 14000 MiB は precautionary、実際 OOM 余地は十分 (PR #163 K-β
-  rank=8 は serving 中 fp8 10.86 GB peak、training は activation 増で +3 GB は妥当)
-- watch_r16.sh threshold を **14300 MiB** に amendment、blockers.md S-3 status は
-  「fire 継続だが non-blocking、rank=16 評価続行」に update 必要 (Step 7 で実施)
-- **既知の落とし穴 (再発防止)**:
-  - Bash tool 経由の WSL invocation で `>` redirect は `bash -c "..."` 内 (WSL 側) で行う。Git Bash 側だと `/mnt/c/...` が解釈できず redirect fail
-  - WSL2 idle shutdown 対策として nohup + disown ではなく Bash bg task で wsl.exe を pinned
-
----
-
-## rank=4 training in-flight 詳細
-
-### 起動 invocation
-
-```bash
-# 経由: .steering/20260513-m9-c-adopt/phase-b-logs/kick_train.sh 4
-MSYS_NO_PATHCONV=1 wsl -- bash /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/kick_train.sh 4
-```
-
-実行された native command:
-
-```bash
-nohup /root/erre-sandbox/.venv/bin/python -m erre_sandbox.training.train_kant_lora \
-  --persona kant \
-  --rank 4 \
-  --duckdb-glob '/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_*.duckdb' \
-  --output-dir /root/erre-sandbox/checkpoints/kant_r4_real \
-  -v \
-  > /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/train_kant_r4_real.log 2>&1 < /dev/null &
-disown
-```
-
-### in-flight 計測 (起動から ~5min、PID 383 kill 前)
-
-- PID: 838 (`/mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/kant_r4_real.pid`)
-- elapsed: 04:55 (起動 22:43:51 JST)
-- RSS: 4.7 GB (CPU 側、HF Hub cache 経由 model load 中)
-- VRAM peak: **15.7 GB / 16.3 GB total** (bf16 model 全載 → NF4 quantize 過渡期、
-  S-3 14GB threshold より上だが quantize 中の transient と判定、PR #163 K-β は
-  完了時 peak 10.55 GB)
-- GPU util: 20-87% 変動 (NF4 weight conversion バースト)
-- log progress: `Loading weights: 4/399 [04:30<6:53:33, 62.82s/it]` (起動 5 分時点、
-  ETA ~7h for weight load alone) ⚠ **異常遅延**
-- 期待 total wall-clock: weight load 5-7h + training 2-3h = **~10h** (PR #163 K-β
-  rank=8 と同等想定)
-
-### 2026-05-13 23:28 JST incident — 重複 training process 検出 → PID 383 kill
-
-ユーザー指摘「monitor だけで実 training しているか」「不要な裏側処理がないか」
-診断中に発覚:
-
-- **`pgrep -af train_kant_lora` で 2 プロセス検出**:
-  - PID 383 (start 22:42、`Rl` running、ppid 302) — **私の最初の `nohup` 試行
-    (PowerShell `$!` escape 失敗で `PID=` 空表示) で実は起動成功していた残骸**
-  - PID 838 (start 22:43、`Sl` sleeping、ppid 830) — `kick_train.sh` 経由の正規
-    起動、phase-b-progress.md に記録した process
-- **両 process が同じ `--output-dir /root/erre-sandbox/checkpoints/kant_r4_real`
-  に書く** = race condition / save_steps 衝突の危険 (training step 到達前に発覚)
-- **GPU/CPU resource 競合** が Loading weights 異常遅延 (60s/it) の主原因と判定:
-  - VRAM 15.7 GB = 2 × ~8 GB の bf16 model copy
-  - GPU util は 1 process あたり 50% で頭打ち
-- **PID 383 kill 実行** (`kill 383`):
-  - VRAM 15987 → **10044 MiB** (5943 MiB 即時解放、PR #163 K-β peak 10.55 GB と整合)
-  - PID 838 状態 `Sl` → `Rl` (resource 待ち解消、active running)
-- **kill 後 30 秒で training 本体到達**:
-  - log: `1%| | 29/2000 [05:52<3:28:56, 6.36s/it]`
-  - **Loading weights は kill 時点で完了済み、training step に入っていた**
-  - rate 13.7 → 10.9 → 8.9 → 7.4 → **6.36 s/step** に加速 (resource 単独利用効果)
-  - VRAM 13.5 GB peak / GPU 89% sustained
-  - 新 ETA: **~3.5h で training 完了** (起動から累計 ~4h、9h 短縮)
-
-### 教訓 (再発防止)
-
-1. `wsl -- bash -c "...nohup..."` を Bash tool 経由で実行する際、PowerShell が
-   `$!` を空文字に置換することがある。**`PID=` が空表示でも実プロセスは起動済み**
-   の可能性を疑う必要がある。
-2. **kick 後は `pgrep -af` で重複起動を必ず check**。今回は kick の前に重複が
-   無いか確認していなかった (最初の `nohup` 試行は失敗したと誤判定して 2 度目を
-   kick)。
-3. Bash tool / PowerShell の `$` escape 不安定対策として、launcher script を
-   ファイルに書いて `wsl -- bash ./script.sh` で呼ぶパターンを採用 (実装済、
-   `kick_train.sh`)。
-4. **MSYS_NO_PATHCONV=1 prefix の有無で path mangling が変わる**。Bash tool
-   (Git Bash 経由) では必須、PowerShell tool では不要。次セッションで rank=16
-   kick 時に再徹底する。
-
-### incident 後の正常 in-flight 計測 (2026-05-13 23:28 JST 時点)
-
-- PID: 838 単独
-- elapsed: 44:53 (kill 直後)
-- VRAM: 13.5 GB peak (S-3 14GB threshold 近接、要 sustained monitor)
-- GPU util: 89% sustained
-- training progress: 29/2000 step (1.45%)、ETA 3:28:56
-- 出力 directory: `/root/erre-sandbox/checkpoints/kant_r4_real/` (save_steps 500、
-  step 500 到達で checkpoint-500 dir 生成想定)
-
-### Phase B prompt の VRAM monitor 規定 (S-3 mitigation)
-
-- `nvidia-smi --query-gpu=memory.used` per-step sampling、**peak > 14GB sustained**
-  で early abort
-- **transient peak (model load 中)** は許容、**training 開始後の sustained > 14GB**
-  でのみ early abort 判断
-- PR #163 K-β rank=8 は training 中 peak 10.55 GB、rank=4 は activation 同等 + adapter
-  ~15MB のため training 中 peak は ~10.5 GB 想定 (S-3 invoke 不要)
-
----
-
-## 次セッションの最優先 action
-
-### 1. rank=4 training 完了確認
-
-```bash
-# WSL2 process state
-MSYS_NO_PATHCONV=1 wsl -- bash -c "PID=\$(cat /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/kant_r4_real.pid); ps -p \$PID -o pid,etime,stat,cmd --no-headers 2>&1; echo ---; tail -30 /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/train_kant_r4_real.log | tr '\r' '\n' | tail -10; echo ---; ls /root/erre-sandbox/checkpoints/kant_r4_real/ 2>&1"
-```
-
-判定:
-
-- process が **存在しない** + `adapter_model.safetensors` + `train_metadata.json`
-  が `/root/erre-sandbox/checkpoints/kant_r4_real/` に揃う → **完了**
-- process が **生きている** + log が最終 step 近辺 → **継続待ち**
-- process が **存在しない** + adapter file 不在 → **fail**、log で原因切り分け
-
-### 2. rank=4 完了時の archive + manifest 生成
-
-```bash
-MSYS_NO_PATHCONV=1 wsl -- bash -c "
-  cp /root/erre-sandbox/checkpoints/kant_r4_real/adapter_config.json \
-     /root/erre-sandbox/checkpoints/kant_r4_real/adapter_model.safetensors \
-     /root/erre-sandbox/checkpoints/kant_r4_real/train_metadata.json \
-     /mnt/c/ERRE-Sand_Box/data/lora/m9-c-adopt/archive/rank_4/kant/ && \
-  cd /mnt/c/ERRE-Sand_Box && \
-  /root/erre-sandbox/.venv/bin/python scripts/build_adapter_manifest.py \
-    --adapter-dir data/lora/m9-c-adopt/archive/rank_4/kant \
-    --persona-id kant --rank 4"
-```
-
-### 3. rank=16 training kick (Step 3)
-
-rank=4 完了確認後:
-
-```bash
-MSYS_NO_PATHCONV=1 wsl -- bash /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/kick_train.sh 16
-```
-
-注意点:
-
-- VRAM peak 警戒 (rank=16 で activation 増、CS-4 fp8 serving 10.86GB を training
-  時 NF4 + bf16 transient で再考)、peak > 14GB sustained で early abort
-- training 中は SGLang server を起動しない (VRAM 占有衝突)
-
-### 4. rank=16 完了後の archive + manifest
-
-```bash
-MSYS_NO_PATHCONV=1 wsl -- bash -c "
-  cp /root/erre-sandbox/checkpoints/kant_r16_real/adapter_config.json \
-     /root/erre-sandbox/checkpoints/kant_r16_real/adapter_model.safetensors \
-     /root/erre-sandbox/checkpoints/kant_r16_real/train_metadata.json \
-     /mnt/c/ERRE-Sand_Box/data/lora/m9-c-adopt/archive/rank_16/kant/ && \
-  cd /mnt/c/ERRE-Sand_Box && \
-  /root/erre-sandbox/.venv/bin/python scripts/build_adapter_manifest.py \
-    --adapter-dir data/lora/m9-c-adopt/archive/rank_16/kant \
-    --persona-id kant --rank 16"
-```
-
-### 5. Step 4 Tier B pilot 着手前
-
-3 adapter 揃い (rank=4 / rank=8 既存 / rank=16) + manifest 3 件 + SGLang
-`--max-lora-rank 16` で multi-pin load 確認 → Step 4 へ。Step 4 着手前に
-本 progress.md を update し、3 rank の adapter sha256 + VRAM peak (training 中)
-を verbatim 記録する。
-
----
-
-## 既知の落とし穴
-
-### MSYS path conversion
-
-Bash tool (Git Bash on Windows) は `/mnt/c/...` を `C:/Program Files/Git/mnt/...`
-に MSYS auto-translate する。WSL2 invocation には `MSYS_NO_PATHCONV=1` を必ず
-prefix する。`kick_train.sh` は内部で `/mnt/c/` を直接使うが、Bash tool 経由で
-呼ぶ際は `MSYS_NO_PATHCONV=1 wsl -- bash ...` の形を厳守。
-
-### tqdm progress bar が tail で見えない
-
-`Loading weights:` の進捗バーは `\r` で in-place update する。`tail` では古い
-line しか見えないため、最新 state 確認は:
-
-```bash
-tr '\r' '\n' < /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/train_kant_r4_real.log | tail -10
-```
-
-### training 中の SGLang stop 必須
-
-`pkill -f sglang.launch_server`、VRAM `nvidia-smi` で 16GB total のうち 14GB+
-free を確認。training は **16GB 中ほぼ全てを** model load 中に消費するため、
-SGLang が同時に走っていると即 OOM。
-
-### Loading weight rate ~62-87s/it
-
-CPU 100% + GPU 20-87% で **hardware-limited**、stall ではない。PR #163 K-β
-rank=8 と同等 throughput と判断。399 iter × ~60s = ~6.7h を model load に費やす。
-Training 本体は per-step ~5s × 2000 step = ~3h。
-
----
+1. **feature/m9-c-adopt-retrain-v2** (別 PR): min_examples 1000 → 3000、
+   stimulus prompt diversity 改善、rank=8 固定再 training
+2. **Phase E A-6** (別 PR): multi-turn full 7500-turn Tier B 採取 + 再
+   DA-1 4 軸 intersection 評価
+3. methodology confound 切り分けの場合: pilot multi-turn 採取の小 PR
+4. **Phase D** (`MultiBackendChatClient` 実装 + live path 統合): 上記
+   1-3 のいずれかが ADOPT 判定 完遂後
 
 ## 関連ファイル
 
-- 設計契約: `.steering/20260513-m9-c-adopt/design-final.md` (HIGH 4 反映後)
-- ADR: `.steering/20260513-m9-c-adopt/decisions.md` (DA-1..DA-10 + DA-1 amendment 2026-05-13)
-- blockers: `.steering/20260513-m9-c-adopt/blockers.md` (S-2 解消、H-1 partial verify)
-- tasklist: `.steering/20260513-m9-c-adopt/tasklist.md` (Phase B Step 0-7 + 前提 verification 済 mark)
-- DB8 runbook: `docs/runbooks/m9-c-adapter-swap-runbook.md` (§2 `--max-lora-rank 16` amendment 済)
-- launcher: `.steering/20260513-m9-c-adopt/phase-b-logs/kick_train.sh`
-- manifest builder: `scripts/build_adapter_manifest.py` (DA-10 schema)
-- archive (rank=8 完了済): `data/lora/m9-c-adopt/archive/rank_8/kant/{manifest.json,adapter_config.json,train_metadata.json}`
+- 設計契約: `design-final.md` (HIGH 4 反映後)
+- ADR: `decisions.md` (DA-1..DA-12)
+- blockers: `blockers.md` (S-3 amendment + H-1 partial verify + U-6 新規)
+- tasklist: `tasklist.md` (Phase B 全 step 完了 mark)
+- 報告: `phase-b-report.md` (本 PR description 候補)
+- consumer scripts: `scripts/m9-c-adopt/compute_big5_icc.py` /
+  `compute_burrows_delta.py` / `da1_matrix.py` / `compute_baseline_vendi.py` /
+  `tier_b_pilot.py` / `bench_per_rank.sh`
+- DB8 runbook: `docs/runbooks/m9-c-adapter-swap-runbook.md` (§2
+  `--max-lora-rank 16` amendment 維持)
+- archive: `data/lora/m9-c-adopt/archive/rank_{4,8,16}/kant/{manifest.json,
+  adapter_config.json,train_metadata.json}` (3 rank 揃い)
+- pilot shards: `data/eval/m9-c-adopt-tier-b-pilot/kant_r{4,8,16}_run{0,1}_stim.duckdb` (6 shard)
+- bench: `data/eval/m9-c-adopt-bench/single_lora-r{4,8,16}.jsonl`

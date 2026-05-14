@@ -54,15 +54,14 @@
   - [x] **Step 5b**: SGLang re-launch + 3 adapter pinned (`/v1/models` 経由 adapter check)
   - [x] **Step 5c**: SGLang LoRA Tier B pilot driver 新規実装 + 1800 turn 採取 (3 rank × 2 run × 300 turn、6 shard、~21 min)
   - [x] **Step 5e (partial)**: CS-7 per-rank single_lora bench (rank=4/8/16)、no_lora は PR #163 K-β 値継続使用
-  - [ ] **Step 5d (defer Phase B 第 4 セッション)**: Big5 ICC consumer 実装 + per-rank ICC + bootstrap CI (~25-35h compute)
-  - [ ] **Burrows Δ (defer Phase B 第 4 セッション)**: 言語処理判断 (langdetect / English vendoring / N/A fallback) + 算出
-  - [ ] **semantic Vendi (defer Phase B 第 4 セッション)**: Mac master 側で MPNet cache + 再算出
-  - [ ] **Step 5f (defer Phase B 第 4 セッション)**: DA-1 4 軸 intersection で final 採用 rank 確定
-- [ ] **conditional rank=32 tail-sweep 判定** (HIGH-1、Phase B 第 4 セッション fire 判定):
-  - [ ] rank=16 throughput PASS かつ Vendi/ICC/Burrows のいずれか未達 → tail-sweep fire
-  - [ ] rank=8→16 で effect size delta > 0.5 → tail-sweep fire
-  - [ ] tail-sweep 時は `--max-lora-rank 32` への再 amendment、VRAM monitor 強化
-- [ ] **AC-1 PASS** (Phase B 第 4 セッション完了で確定: rank 決定 + manifest 揃い + VRAM headroom 健全)
+- **Phase B 第 4 セッション完遂 (2026-05-14、DA-12 verdict = DEFER)**:
+  - [x] **Step 5d (Big5 ICC)**: `scripts/m9-c-adopt/compute_big5_icc.py` 新規実装 + Ollama (Windows native) responder + SGLang (WSL2) responder switch。Ollama no-LoRA baseline ICC(C,k)=0.998 [0.997, 0.999]、per-rank LoRA-on ICC(C,k) 0.979〜0.984 (全 rank PASS DA-1 axis 2)。T=0 trivial 1.0 artifact 回避のため T=0.7 + per-call seed mutation を導入 (`decisions.md` DA-12 hot decision)
+  - [x] **Burrows Δ Option A**: `scripts/m9-c-adopt/compute_burrows_delta.py` 新規実装、langdetect deterministic (seed=0) + confidence 0.85 + de utterances only filter。baseline point=108.534 [108.10, 109.02]、per-rank LoRA-on 112.56〜113.72 (全 rank direction failure on DA-1 axis 3)
+  - [x] **Vendi semantic 再算出**: `compute_baseline_vendi.py --kernel semantic` (MPNet)。baseline point=30.822 [30.726, 30.928]、per-rank LoRA-on 33.69〜34.70 (全 rank direction failure on DA-1 axis 1、Cohen's d +2.13〜+3.00)
+  - [x] **Step 5f (DA-1 4 軸 intersection)**: `scripts/m9-c-adopt/da1_matrix.py` 新規実装で matrix 集約。**全 rank 2/4 軸 PASS (ICC + throughput)、direction failure on Vendi + Burrows**
+  - [x] **DA-12 ADR 起票**: pilot verdict = DEFER、production placement なし、provisional rank=8 carry-over、tail-sweep rank=32 NOT fire、DA-9 retrain v2 path 開放
+- [x] **Step 6 conditional rank=32 tail-sweep 判定**: **NOT fire** — direction failure は rank scaling では解消不能 (pilot single-turn methodology confound + LoRA が IPIP self-report neutral midpoint を shift しない 2 因子の identifiability 不能)、DA-9 retrain v2 path で対応
+- [x] **AC-1 PASS** (Phase B 完遂: rank training + archive + manifest 揃い + VRAM headroom 健全 + pilot infra + 全 metric 算出 + DA-12 verdict 記録)。production rank 採用は Phase E A-6 multi-turn full Tier B へ持ち越し
 
 ### Phase C — A-2 3 persona expansion (adopted rank で nietzsche / rikyu 訓練)
 

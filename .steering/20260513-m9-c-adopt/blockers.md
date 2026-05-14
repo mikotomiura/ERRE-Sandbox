@@ -52,6 +52,18 @@
     compute + Burrows 言語不一致)
   - H-1 の kant 部分は **partial closure** (lexical Vendi のみ)、final
     closure は Phase B 第 4 セッション完了時
+- **2026-05-14 partial verify (Phase B 第 4 セッション完了時、DA-12 verdict)**:
+  - kant **Vendi semantic baseline + Big5 ICC + Burrows Δ** 算出完了
+    (本 PR で `compute_big5_icc.py` / `compute_burrows_delta.py` / Vendi
+    semantic 再算出 consumer 経由)
+  - Tier B persona-discriminative の 4 軸 intersection は **2-of-4 軸のみ
+    PASS** (ICC + throughput)、Vendi semantic + Burrows Δ は全 rank で
+    direction failure (DA-12)
+  - H-1 全体としては **partial verify**: 算出/評価インフラは揃った、
+    ただし persona-discriminative の empirical confirmation は **未完了**
+    で Phase E A-6 (multi-turn full Tier B) に持ち越し
+  - nietzsche / rikyu の同等 verification は Phase C 着手前に再 fire 必要
+    (feature/m9-c-adopt-retrain-v2 + Phase E A-6 完了後)
 
 ### H-2: rikyu Japanese tokenizer 未実装 (Burrows Δ N/A、Codex MEDIUM-2 / LOW-3 反映)
 
@@ -236,6 +248,28 @@
   growth)、CS-7 全 NON-FIRE で AC-4 PASS
 - **trigger**: A-4b stress bench で memory growth > 500MB/1h sustained
   OR queue wait p99 > 30s → DB3 re-arm trigger fire
+
+### U-6: pilot single-turn vs baseline multi-turn methodology confound (DA-12 2026-05-14)
+
+- **症状**: Phase B pilot driver (`tier_b_pilot.py`) は DA-11 で single-turn
+  採取に scope narrowing。baseline 5 shard は M9-eval P3 multi-turn dialog。
+  両者の比較で Vendi semantic (全 rank LoRA-on > baseline、Cohen's d +2.1〜+3.0)
+  + Burrows Δ (全 rank LoRA-on > baseline、-3.7〜-4.8% reduction) が
+  **direction failure** を示す。原因が (a) pilot single-turn protocol
+  方法論 confound か、(b) LoRA が IPIP self-report neutral midpoint を
+  shift しない (本来の LoRA failure) か、pilot data 単独では切り分け不能
+- **closure path**: 以下のいずれか:
+  1. **methodology fix path**: small PR で pilot を multi-turn 採取に
+     拡張、direction が baseline と align すれば methodology confound 主因
+     と認定 → 4 軸 intersection 再評価で DA-1 ADOPT 候補
+  2. **retrain v2 path (DA-9 流用)**: feature/m9-c-adopt-retrain-v2 で
+     min_examples 1000 → 3000、stimulus prompt diversity 改善、rank=8 固定
+     → Phase E A-6 multi-turn full Tier B で再評価
+- **trigger**:
+  - fire 継続: DA-12 verdict = DEFER、Phase D / Phase E 着手は prereq
+    待ち
+  - 解消: Phase E A-6 で DA-1 4 軸 intersection 3-of-3 以上 (axes 1-3) +
+    throughput PASS → ADOPT-CHANGES または ADOPT 確定
 
 ### U-5: 8-mode FSM regression (Codex 言及なし、D-5 由来)
 
