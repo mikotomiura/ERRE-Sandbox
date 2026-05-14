@@ -1077,4 +1077,14 @@ direction)。
 - analysis tests: `tests/test_analysis/test_kant_corpus.py`
 - baseline reference (DA-13 artefacts):
   `.steering/20260514-m9-c-adopt-pilot-multiturn/tier-b-pilot-multiturn-kant-nolora-*.json`
-- HEAD: (本 design PR merge 後、final commit SHA を埋め込み)
+- design PR merge: `597820f` (PR #167 `feature/m9-c-adopt-retrain-v2-design`、
+  2026-05-14、DA-14 ADR 起票 + corpus analysis + Codex HIGH 反映 spec)
+- implementation PR merge: `2727144` (PR #168
+  `feature/m9-c-adopt-retrain-v2-implementation`、2026-05-14、
+  WeightedTrainer + group split + monolog re-cast + audit 実装、
+  pre-training audit PASS: N_eff=3560.9 / top 5%=15.4% / de+en=50.1%
+  soft warning)
+- HEAD: `2727144` (implementation PR、spec realisation 完了点)
+- next: training execution + multi-turn pilot recapture + DA-14 4 軸
+  ADOPT/REJECT 判定 (別 overnight session、handoff prompt:
+  `.steering/20260514-m9-c-adopt-retrain-v2-impl/next-session-prompt-FINAL-training.md`)
