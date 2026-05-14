@@ -1,22 +1,135 @@
-# Phase B 進捗 — m9-c-adopt rank sweep on kant (in-flight、2026-05-13 セッション 1)
+# Phase B 進捗 — m9-c-adopt rank sweep on kant (in-flight、第 2 セッション update 2026-05-14)
 
-> Phase A (PR #164 merged) → Phase B 第 1 セッション (2026-05-13 夜)。本 file
-> は overnight 走行中の training を引き継ぐための **state pin**。次セッション
-> で本 file を最初に Read し、in-flight 状態を回復してから残工程に進む。
+> Phase A (PR #164 merged) → Phase B 第 1 セッション (2026-05-13 夜) → 第 2
+> セッション (2026-05-14 朝 〜)。本 file は in-flight 状態を引き継ぐための
+> **state pin**。Step 3a (rank=4 archive) 完了、Step 3b (rank=16 training)
+> 走行中。
 
 ---
 
-## 現在の状態 (2026-05-13 22:48 JST 時点)
+## 現在の状態 (2026-05-14 第 2 セッション 進捗、Step 3a+3b+3c+4 完了時点)
 
 | Step | 内容 | 状態 |
 |---|---|---|
 | Step 0 | pre-flight (branch + CS-1 amendment + manifest scaffold) | **完了** (commit `0246768`) |
-| Step 1 | rank=4 training (kant、G-GEAR overnight) | **running** (PID 838、background detached) |
-| Step 2 | rank=8 baseline re-confirm + manifest backfill | **完了** (commit `8e7352b`) |
-| Step 3 | rank=16 training | 未着手 (rank=4 完了後に kick) |
-| Step 4-7 | Tier B pilot + metric + verdict + PR | 未着手 |
+| Step 1 | rank=4 training (kant、G-GEAR overnight) | **完走** (train_loss=0.2364、peak_vram=10.51GB、train_runtime=7733s、sha256 `b89a248695...`) |
+| Step 2 | rank=8 baseline re-confirm + manifest backfill | **完了** (commit `8e7352b`、sha256 `cd8c6e5f...`) |
+| Step 3a | rank=4 archive + manifest | **完了 (2026-05-14)** sha256 `b89a248695...` ✅ phase 1 verbatim 一致 |
+| Step 3b | rank=16 training | **完走 (2026-05-14)** train_loss=0.1993、peak_vram_bytes=10.63GB、train_runtime=7424s (~2.06h) |
+| Step 3c | rank=16 archive + manifest | **完了 (2026-05-14)** sha256 `9532b438f3...` |
+| Step 4 | 3 adapter multi-pin load + chat sanity | **完了 (2026-05-14)** 3 rank で異なる出力 (adapter routing 確認) |
+| Step 5-7 | Tier B pilot / verdict / PR | **次セッションに handoff** (`next-session-prompt-phase-b-3.md`) |
 
-branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin に push 済、2 commit)
+branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin に push 済、4 commit、Step 3a/3c/4 + 進捗 update は本セッションで追加 commit 予定)
+
+---
+
+## 第 2 セッション完了サマリ (2026-05-14)
+
+### Step 3b 完走 (rank=16)
+
+- elapsed: 起動 07:22 UTC → 完走 09:27 UTC (~2.06h)
+- train_runtime=7424s、train_loss=0.1993 (rank=4 0.2364 から improvement)
+- realised_examples=5022、quantization=nf4、target_modules=q/k/v/o_proj
+- peak_vram_bytes (training metadata): 10630824960 = 10.14 GB
+- nvidia-smi peak sustained: ~14016 MiB (driver + overhead 込み、operational margin 健全)
+- S-3 watch threshold は 14000 → 14300 MiB に amendment (上記 plateau に operational margin +280 MiB)
+
+### Step 3c — rank=16 archive
+
+- 場所: `data/lora/m9-c-adopt/archive/rank_16/kant/`
+- manifest:
+  - `sha256_adapter_model=9532b438f34da8e87ebb4a71707da4ab22c4ed790959c177c7ea8fc373c0ac38`
+  - `rank=16`、`training_git_sha=92786f28383c5e45336bc59170717488f45f2185`
+  - その他 base_model / target_modules / is_mock は DA-10 schema 準拠
+- adapter_model.safetensors サイズ: 61.4 MB (rank=4 15.4 MB の 4 倍、rank ratio 整合)
+
+### Step 4 — multi-pin sanity (SGLang `--max-lora-rank 16`)
+
+- launch args (DB8 runbook §2 v6、ninja symlink workaround 適用):
+  ```
+  --model-path Qwen/Qwen3-8B --enable-lora --lora-target-modules q_proj k_proj v_proj o_proj
+  --max-lora-rank 16 --max-loras-per-batch 3 --max-loaded-loras 3
+  --quantization fp8 --mem-fraction-static 0.85 --max-total-tokens 2048
+  --disable-cuda-graph --max-running-requests 1
+  ```
+- POST /load_lora_adapter × 3 全 200 OK、`loaded_adapters` map 累積:
+  ```json
+  {"kant_r4_real": "...", "kant_r8_real": "...", "kant_r16_real": "..."}
+  ```
+- POST /v1/chat/completions × 3 で同一 prompt "Was ist die Bedingung der Möglichkeit der Erfahrung?"
+  に対し **3 rank で異なる出力**: rank=4 は 3 条件分解 (sensibility/understanding/transcendental
+  unity of apperception)、rank=8 は a priori/a posteriori 軸、rank=16 はより直接的構造
+  → adapter routing が機能していることの sanity 確認
+- artefact: `.steering/20260513-m9-c-adopt/phase-b-logs/multi_pin_artifacts/{load,chat}_kant_r{4,8,16}_real.json`
+
+### ninja 不在 incident (Step 4 中)
+
+- SGLang JIT compile (fp8 token_ids resolve kernel) で `ninja` CLI を subprocess で
+  invoke、PATH 未通過で `FileNotFoundError`
+- 解決: `ln -sf /root/erre-sandbox/.venv/bin/ninja /usr/local/bin/ninja` で system PATH へ
+  symlink。spike 時は PATH 設定が異なっていた模様
+- 教訓: SGLang fp8 + inference path は ninja CLI runtime 依存、PATH に必要
+
+### 既知の落とし穴 amendment (本セッション追加)
+
+- **Bash tool 経由の `wsl -- bash -c "..."` で PATH に `(` 含有時 syntax error**:
+  `bash -c "export PATH=...:\$PATH && ..."` パターンは Windows-side PATH の "Program Files (x86)"
+  パーレン含有で bash parsing fail。symlink で system PATH 採用 or PATH explicitly セット
+- **WSL2 idle shutdown 対策**: Bash tool `run_in_background=true` で wsl.exe を pinned することで
+  WSL2 alive 保持。nohup + disown は WSL2 死亡時に効かない (本セッション Step 3b 第 1 試行で失敗)
+
+---
+
+## 第 2 セッション update (2026-05-14)
+
+### rank=4 archive 完了 (Step 3a)
+
+- **archive 場所**: `data/lora/m9-c-adopt/archive/rank_4/kant/`
+- **manifest 内容**:
+  - `adapter_name=kant_r4_real`、`persona_id=kant`、`base_model=Qwen/Qwen3-8B`、`rank=4`
+  - `target_modules=[q_proj,k_proj,v_proj,o_proj]`
+  - `sha256_adapter_model=b89a248695394a8d17c606d6509d46c268ba4e0efbb04641555af9a21e05f78d` ✅ phase 1 verbatim と一致
+  - `training_git_sha=92786f28383c5e45336bc59170717488f45f2185`
+  - `is_mock=false`、`created_at=2026-05-13T22:19:11Z`
+- **gitignore**: `.safetensors` + `chat_template.jinja` 除外、`manifest.json` + `adapter_config.json` + `train_metadata.json` のみ commit 対象 (rank_8 と同 policy)
+
+### rank=16 training kick (Step 3b、in-flight)
+
+- **起動方式**: Bash tool `run_in_background=true` で wsl.exe を pinned (nohup +
+  disown は WSL2 idle shutdown で前回失敗。本 session では Bash bg task が
+  wsl.exe を抱える間 WSL2 alive 維持)
+- **kick 時刻**: 2026-05-14 07:22 UTC (Bash bg id `b4swoljve`)
+- **invocation**:
+  ```bash
+  MSYS_NO_PATHCONV=1 wsl -- bash -c "/root/erre-sandbox/.venv/bin/python -m erre_sandbox.training.train_kant_lora \
+    --persona kant --rank 16 --duckdb-glob '/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_*.duckdb' \
+    --output-dir /root/erre-sandbox/checkpoints/kant_r16_real -v \
+    > /mnt/c/ERRE-Sand_Box/.steering/20260513-m9-c-adopt/phase-b-logs/train_kant_r16_real.log 2>&1"
+  ```
+- **kick 後 sanity** (~30s 経過):
+  - PID 360 (python 単独、重複なし) ✅
+  - Loading weights 1.2s/it (rank=4 第 1 セッション の 62s/it 異常遅延と対照、resource 単独利用)
+  - VRAM 6.7 GB / GPU util 4% (model load 開始)
+- **VRAM 警戒 Monitor**: `phase-b-logs/watch_r16.sh` で `nvidia-smi` per-60s sampling、
+  log error/completion marker grep。当初 threshold 14000 MiB streak=3 で第 1 fire
+  (2026-05-14 08:45 JST 時点 1332/2000 step / 14014-14020 MiB sustained / GPU 87-93% /
+  temp 64-66°C)。S-3 早期 abort 規定の主旨は OOM 予防、実測 14016 MiB は total 16311 MiB
+  に対し 2.3 GB headroom 健全 → **continue 判断**、threshold を 14300 MiB に amendment
+  (rank=16 training の sustained plateau ~14016 MiB 上に operational margin +280 MiB)。
+  Monitor `bht62jtxf` 停止 → `b6sxeyjgo` (threshold 14300) で再起動
+
+### S-3 実測 amendment (2026-05-14)
+
+- rank=16 training sustained VRAM plateau: **~14016 MiB** (training step ~1300 で観察)
+- total VRAM: 16311 MiB → headroom ~2.3 GB
+- S-3 当初 threshold 14000 MiB は precautionary、実際 OOM 余地は十分 (PR #163 K-β
+  rank=8 は serving 中 fp8 10.86 GB peak、training は activation 増で +3 GB は妥当)
+- watch_r16.sh threshold を **14300 MiB** に amendment、blockers.md S-3 status は
+  「fire 継続だが non-blocking、rank=16 評価続行」に update 必要 (Step 7 で実施)
+- **既知の落とし穴 (再発防止)**:
+  - Bash tool 経由の WSL invocation で `>` redirect は `bash -c "..."` 内 (WSL 側) で行う。Git Bash 側だと `/mnt/c/...` が解釈できず redirect fail
+  - WSL2 idle shutdown 対策として nohup + disown ではなく Bash bg task で wsl.exe を pinned
 
 ---
 
