@@ -68,17 +68,13 @@ def test_stratified_slice_multi_turn_target(pilot_module):
     sliced_single = pilot_module._stratified_slice(
         battery, target_focal_per_cycle=8, multi_turn_max=1
     )
-    assert sum(
-        pilot_module._focal_turn_count(s, 1) for s in sliced_single
-    ) >= 8
+    assert sum(pilot_module._focal_turn_count(s, 1) for s in sliced_single) >= 8
     # multi-turn max=2: wachsmuth 2-turn → ceil(2/2)=1 focal each, roleeval 1-turn → 1
     # same as single in this synthetic battery; capacity = 15
     sliced_multi = pilot_module._stratified_slice(
         battery, target_focal_per_cycle=8, multi_turn_max=6
     )
-    assert sum(
-        pilot_module._focal_turn_count(s, 6) for s in sliced_multi
-    ) >= 8
+    assert sum(pilot_module._focal_turn_count(s, 6) for s in sliced_multi) >= 8
 
 
 def test_stratified_slice_returns_full_battery_on_oversize_target(pilot_module):
