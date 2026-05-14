@@ -38,11 +38,13 @@ gate function ships in this PR but ``train_kant_lora()`` is a deliberate
 no-op skeleton until both blockers resolve.
 """
 
-from erre_sandbox.training.dataset import build_examples
+from erre_sandbox.training.dataset import build_examples, build_weighted_examples
 from erre_sandbox.training.exceptions import (
     BlockerNotResolvedError,
     EvaluationContaminationError,
+    InsufficientEffectiveSampleSizeError,
     InsufficientTrainingDataError,
+    WeightConcentrationError,
 )
 from erre_sandbox.training.prompt_builder import (
     KANT_SYSTEM_PROMPT,
@@ -52,14 +54,25 @@ from erre_sandbox.training.train_kant_lora import (
     assert_phase_beta_ready,
     train_kant_lora,
 )
+from erre_sandbox.training.weighting import (
+    compute_example_weight,
+    emit_weight_audit,
+    normalise_weights_to_mean_one,
+)
 
 __all__ = [
     "KANT_SYSTEM_PROMPT",
     "BlockerNotResolvedError",
     "EvaluationContaminationError",
+    "InsufficientEffectiveSampleSizeError",
     "InsufficientTrainingDataError",
+    "WeightConcentrationError",
     "assert_phase_beta_ready",
     "build_chatml_prompt",
     "build_examples",
+    "build_weighted_examples",
+    "compute_example_weight",
+    "emit_weight_audit",
+    "normalise_weights_to_mean_one",
     "train_kant_lora",
 ]

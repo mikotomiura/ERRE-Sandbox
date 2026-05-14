@@ -60,11 +60,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from erre_sandbox.contracts.eval_paths import INDIVIDUAL_LAYER_ENABLED_KEY
-from erre_sandbox.training.dataset import build_examples
+from erre_sandbox.training.dataset import build_examples, build_weighted_examples
+from erre_sandbox.training.example_features import classify_shard
 from erre_sandbox.training.exceptions import (
     BlockerNotResolvedError,
     EvaluationContaminationError,
+    InsufficientEffectiveSampleSizeError,
     InsufficientTrainingDataError,
+    WeightConcentrationError,
+)
+from erre_sandbox.training.weighting import (
+    compute_example_weight,
+    emit_weight_audit,
+    normalise_weights_to_mean_one,
 )
 
 if TYPE_CHECKING:
@@ -101,6 +109,27 @@ DEFAULT_TARGET_MODULES: Final[tuple[str, ...]] = (
 )
 """LoRA target modules (CS-9 / CS-5). Qwen3-8B attention projections."""
 
+DEFAULT_EVAL_SPLIT_FRACTION: Final[float] = 0.10
+"""Group-aware validation split fraction for retrain v2 (Codex HIGH-A #1)."""
+
+DEFAULT_SYNTHETIC_MONOLOG_HARD_CAP: Final[int] = 500
+"""Hard upper bound on synthetic monolog rows (Codex MEDIUM-3).
+
+The spec target is ~150-300; the hard cap is a defensive ceiling that fires
+if the Kant-N-Kant pattern detector finds more pairs than expected (e.g.
+because the natural shards became larger after a future P3+ collection).
+Excess pairs are subsampled with seed-stable RNG, preserving determinism.
+"""
+
+DA14_N_EFF_FALLBACK_TRIGGER: Final[float] = 1000.0
+"""Audit threshold below which the Candidate C fallback fires (DA-14)."""
+
+DA14_TOP_5_PCT_FALLBACK_TRIGGER: Final[float] = 0.50
+"""Top-5% weight mass concentration above which the Candidate C fallback fires."""
+
+DA14_DE_EN_SOFT_WARNING_THRESHOLD: Final[float] = 0.60
+"""Combined de+en weighted-mass below which a soft warning is logged."""
+
 Quantization = Literal["nf4", "fp4", "none"]
 
 _EVALUATION_PHASE_VALUE: Final[str] = "evaluation"
@@ -120,6 +149,11 @@ class TrainRunSummary:
     The CLI ``--dry-run`` path returns the same shape with
     ``training_executed=False`` — letting downstream automation key off a
     single object regardless of whether the GPU loop actually ran.
+
+    Retrain v2 additions (DA-14): ``weighted``, ``weight_audit_path``,
+    ``synthetic_monolog_n``, ``eval_split_size``, ``train_dialog_ids_n``,
+    ``eval_dialog_ids_n``, ``eval_loss``. All default to None/0/False so
+    the K-β baseline path remains shape-compatible with this struct.
     """
 
     persona_id: str
@@ -141,6 +175,13 @@ class TrainRunSummary:
     peak_vram_bytes: int = 0
     train_loss: float | None = None
     metadata: dict[str, object] = field(default_factory=dict)
+    weighted: bool = False
+    weight_audit_path: str | None = None
+    synthetic_monolog_n: int = 0
+    eval_split_size: int = 0
+    train_dialog_ids_n: int = 0
+    eval_dialog_ids_n: int = 0
+    eval_loss: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -163,6 +204,13 @@ class TrainRunSummary:
             "peak_vram_bytes": self.peak_vram_bytes,
             "train_loss": self.train_loss,
             "metadata": dict(self.metadata),
+            "weighted": self.weighted,
+            "weight_audit_path": self.weight_audit_path,
+            "synthetic_monolog_n": self.synthetic_monolog_n,
+            "eval_split_size": self.eval_split_size,
+            "train_dialog_ids_n": self.train_dialog_ids_n,
+            "eval_dialog_ids_n": self.eval_dialog_ids_n,
+            "eval_loss": self.eval_loss,
         }
 
 
@@ -356,6 +404,495 @@ def _collect_from_shards(
 
 
 # ---------------------------------------------------------------------------
+# Retrain v2 data prep — group-aware split, monolog re-cast, audit
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class WeightedSplitResult:
+    """Output of :func:`_collect_from_shards_weighted` (DA-14 retrain v2).
+
+    Carries everything :func:`_execute_training_run_weighted` needs to drive
+    the WeightedTrainer loop: ChatML payloads, normalised weights, weight
+    metadata for the audit, the eval split, and a structured audit dict
+    that the pre-training fallback trigger consumes.
+    """
+
+    train_examples: list[
+        dict[str, object]
+    ]  # {"text", "sample_weight", "weight_metadata"}
+    eval_examples: list[dict[str, object]]
+    shard_stats: list[_DuckDBShardStat]
+    realised_examples: int
+    synthetic_monolog_n: int
+    train_dialog_ids: set[tuple[str, str]]  # (source_shard, dialog_id)
+    eval_dialog_ids: set[tuple[str, str]]
+    audit: dict[str, object]
+
+
+def _get_git_sha() -> str:
+    """Return the current git HEAD short SHA, or ``"unknown"`` on failure.
+
+    Used to stamp ``synthesised_at_commit`` into synthetic monolog
+    metadata (Codex MEDIUM-3 provenance). Subprocess is the cheapest
+    pure-stdlib way to read the SHA without taking a GitPython dependency.
+    """
+    import subprocess  # noqa: PLC0415 — only used by this helper
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607 — static command
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def _make_synthetic_monologs(  # noqa: C901, PLR0912, PLR0915 — sequential pattern scan, complexity tracks the spec
+    all_rows_by_shard: dict[str, list[dict[str, object]]],
+    train_group_keys: set[tuple[str, str]],
+    *,
+    persona_id: str,
+    use_real_tokenizer: bool,
+    hard_cap: int,
+    seed: int,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    """Detect Kant-N-Kant patterns and emit synthetic monolog rows (Codex MEDIUM-3).
+
+    For each natural shard in ``all_rows_by_shard``, walk the rows in
+    ``(dialog_id, turn_index)`` order looking for the pattern
+
+        speaker_persona_id sequence: kant → (anyone-not-kant) → kant
+
+    over three consecutive turn_index values ``(k, k+1, k+2)``. When the
+    middle row's group key is in ``train_group_keys`` (Codex MEDIUM-3:
+    monolog re-cast must derive from training-side rows only), concatenate
+    the two Kant utterances into a single synthetic monolog with
+    ``addressee=None`` and a ``_mono`` dialog_id suffix.
+
+    Args:
+        all_rows_by_shard: Mapping of ``source_shard_basename -> [raw_row]``.
+            Only natural shards (source_shard_type == "natural") are
+            scanned; stimulus shards are excluded because stim turns are
+            scripted prompts, not Kant authoring.
+        train_group_keys: Set of ``(source_shard, dialog_id)`` tuples that
+            belong to the training side of the group-aware split. Synthetic
+            rows are only emitted for dialogs in this set.
+        persona_id: Persona id (currently always ``"kant"``).
+        use_real_tokenizer: Forwarded to :func:`build_weighted_examples`
+            so token counts match the trainer's view.
+        hard_cap: Subsample to this many rows if the detector finds more.
+            Subsampling uses ``numpy.random.default_rng(seed)``.
+        seed: Reproducibility seed for the subsample step.
+
+    Returns:
+        A tuple of (synthetic_examples, synthetic_metadata). The example
+        list is shaped like :func:`build_weighted_examples`'s output but
+        with ``weight_metadata.synthetic_source_dialog_id`` /
+        ``synthetic_source_turn_indices`` / ``synthesised_at_commit`` fields
+        attached and ``dialog_id`` set to ``"<orig>_mono"``.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    from erre_sandbox.training.prompt_builder import (  # noqa: PLC0415
+        build_chatml_prompt,
+    )
+
+    git_sha = _get_git_sha()
+    candidates: list[dict[str, object]] = []
+    for shard_basename, rows in all_rows_by_shard.items():
+        try:
+            shard_type, _ = classify_shard(Path(shard_basename))
+        except ValueError:
+            _LOGGER.warning(
+                "monolog re-cast: skipping unrecognised shard %r",
+                shard_basename,
+            )
+            continue
+        if shard_type != "natural":
+            continue
+        # Group rows by dialog_id, then sort by turn_index for sequence scan
+        by_dialog: dict[str, list[dict[str, object]]] = {}
+        for row in rows:
+            d_id = str(row.get("dialog_id", ""))
+            by_dialog.setdefault(d_id, []).append(row)
+        for dialog_id, dlg_rows in by_dialog.items():
+            group_key = (shard_basename, dialog_id)
+            if group_key not in train_group_keys:
+                continue
+            try:
+                dlg_rows.sort(key=lambda r: int(r.get("turn_index", -1)))
+            except (TypeError, ValueError):
+                continue
+            for i in range(len(dlg_rows) - 2):
+                a, b, c = dlg_rows[i], dlg_rows[i + 1], dlg_rows[i + 2]
+                if (
+                    a.get("speaker_persona_id") == persona_id
+                    and b.get("speaker_persona_id") != persona_id
+                    and c.get("speaker_persona_id") == persona_id
+                ):
+                    a_utt = str(a.get("utterance", "")).strip()
+                    c_utt = str(c.get("utterance", "")).strip()
+                    if not a_utt or not c_utt:
+                        continue
+                    try:
+                        a_idx = int(a.get("turn_index", -1))
+                        c_idx = int(c.get("turn_index", -1))
+                    except (TypeError, ValueError):
+                        continue
+                    candidates.append(
+                        {
+                            "source_shard": shard_basename,
+                            "source_shard_type": shard_type,
+                            "orig_dialog_id": dialog_id,
+                            "turn_indices": [a_idx, c_idx],
+                            "combined_utterance": f"{a_utt} {c_utt}",
+                        }
+                    )
+
+    if len(candidates) > hard_cap:
+        rng = np.random.default_rng(seed)
+        indices = rng.choice(len(candidates), size=hard_cap, replace=False)
+        candidates = [candidates[i] for i in sorted(indices)]
+
+    from erre_sandbox.training.example_features import (  # noqa: PLC0415
+        extract_example_metadata,
+    )
+
+    synthetic_examples: list[dict[str, object]] = []
+    synthetic_metadata_only: list[dict[str, object]] = []
+    for c in candidates:
+        new_dialog_id = f"{c['orig_dialog_id']}_mono"
+        synthetic_row = {
+            "utterance": c["combined_utterance"],
+            "addressee_persona_id": None,
+            "speaker_persona_id": persona_id,
+            "dialog_id": new_dialog_id,
+            "turn_index": -1,  # synthetic; not a real turn position
+            "epoch_phase": "training",
+        }
+        text = build_chatml_prompt(
+            persona_id=persona_id,
+            utterance=str(c["combined_utterance"]),
+            addressee_persona_id=None,
+        )
+        metadata = extract_example_metadata(
+            synthetic_row,
+            source_shard=str(c["source_shard"]),
+            source_shard_type=str(c["source_shard_type"]),
+            use_real_tokenizer=use_real_tokenizer,
+        )
+        metadata["synthetic_source_dialog_id"] = c["orig_dialog_id"]
+        metadata["synthetic_source_turn_indices"] = c["turn_indices"]
+        metadata["synthesised_at_commit"] = git_sha
+        metadata["is_synthetic_monolog"] = True
+        synthetic_examples.append({"text": text, "weight_metadata": metadata})
+        synthetic_metadata_only.append(metadata)
+    return synthetic_examples, synthetic_metadata_only
+
+
+def _collect_from_shards_weighted(  # noqa: C901 — orchestrator stays linear for spec readability
+    db_paths: Sequence[Path],
+    *,
+    persona_id: str,
+    min_examples: int,
+    individual_layer_enabled_required: bool = True,
+    seed: int = 42,
+    eval_split_fraction: float = DEFAULT_EVAL_SPLIT_FRACTION,
+    synthetic_monolog_hard_cap: int = DEFAULT_SYNTHETIC_MONOLOG_HARD_CAP,
+    use_real_tokenizer: bool = False,
+) -> WeightedSplitResult:
+    """Retrain v2 corpus loader: group-aware split + monolog re-cast + audit.
+
+    Pipeline:
+
+    1. Per shard: load raw_dialog rows; classify shard type
+       (natural/stimulus); build weighted examples (filter chain identical
+       to :func:`build_examples`).
+    2. Aggregate, run :func:`assert_phase_beta_ready` (CS-3 gate).
+    3. Group examples by ``(source_shard, dialog_id)``; perform a
+       stratified 90/10 random split (``numpy.random.default_rng(seed)``;
+       stratification by ``source_shard_type`` so the train/eval ratio is
+       preserved within natural and within stimulus).
+    4. Scan natural shards for Kant-N-Kant patterns; emit synthetic
+       monolog rows from training-side dialogs only (Codex MEDIUM-3).
+    5. Compute raw weights for the train split (base + synthetic),
+       normalise to mean=1.0 (HIGH-C #2), and emit the audit dict
+       (HIGH-A #2).
+    6. Hard-fail if ``train_dialog_ids ∩ eval_dialog_ids`` is non-empty.
+    """
+    from erre_sandbox.evidence.eval_store import (  # noqa: PLC0415
+        connect_training_view,
+    )
+
+    all_rows_by_shard: dict[str, list[dict[str, object]]] = {}
+    weighted_examples_by_shard: dict[str, list[dict[str, object]]] = {}
+    shard_stats: list[_DuckDBShardStat] = []
+    aggregated_rows: list[dict[str, object]] = []
+    for shard_path in db_paths:
+        relation = connect_training_view(shard_path)
+        try:
+            shard_rows = [dict(row) for row in relation.iter_rows()]
+        finally:
+            close = getattr(relation, "close", None)
+            if callable(close):
+                close()
+        shard_basename = Path(shard_path).name
+        try:
+            shard_type, _run = classify_shard(Path(shard_path))
+        except ValueError:
+            shard_type = "unknown"
+        shard_w_examples = build_weighted_examples(
+            shard_rows,
+            persona_id=persona_id,
+            source_shard=shard_basename,
+            source_shard_type=shard_type,
+            use_real_tokenizer=use_real_tokenizer,
+        )
+        all_rows_by_shard[shard_basename] = shard_rows
+        weighted_examples_by_shard[shard_basename] = shard_w_examples
+        shard_stats.append(
+            _DuckDBShardStat(
+                path=Path(shard_path),
+                raw_rows=len(shard_rows),
+                persona_examples=len(shard_w_examples),
+            ),
+        )
+        aggregated_rows.extend(shard_rows)
+
+    # Gate (CS-3, applied to aggregate) — reuse the same _AggregateRelation
+    # shape as the K-β path so contamination / SLO checks behave identically.
+    from erre_sandbox.contracts.eval_paths import RAW_DIALOG_SCHEMA  # noqa: PLC0415
+
+    columns: tuple[str, ...] = (
+        tuple(aggregated_rows[0].keys()) if aggregated_rows else ()
+    )
+
+    class _AggregateRelation:
+        schema_name = RAW_DIALOG_SCHEMA
+
+        def __init__(self, rows: list[dict[str, object]]) -> None:
+            self._rows = rows
+
+        @property
+        def columns(self) -> tuple[str, ...]:
+            return columns
+
+        def row_count(self) -> int:
+            return len(self._rows)
+
+        def iter_rows(self) -> Any:
+            yield from self._rows
+
+    realised = assert_phase_beta_ready(
+        _AggregateRelation(aggregated_rows),
+        persona_id=persona_id,
+        min_examples=min_examples,
+        individual_layer_enabled_required=individual_layer_enabled_required,
+    )
+
+    # Group-aware stratified split
+    train_group_keys, eval_group_keys = _group_aware_stratified_split(
+        weighted_examples_by_shard,
+        eval_split_fraction=eval_split_fraction,
+        seed=seed,
+    )
+
+    if train_group_keys & eval_group_keys:
+        raise RuntimeError(
+            "_collect_from_shards_weighted: train and eval group keys overlap"
+            f" ({len(train_group_keys & eval_group_keys)} shared); aborting"
+            " before training to prevent contamination",
+        )
+
+    base_train: list[dict[str, object]] = []
+    eval_examples: list[dict[str, object]] = []
+    for shard_basename, examples in weighted_examples_by_shard.items():
+        for ex in examples:
+            metadata = ex["weight_metadata"]
+            assert isinstance(metadata, dict)
+            group_key = (shard_basename, str(metadata["dialog_id"]))
+            if group_key in eval_group_keys:
+                eval_examples.append(ex)
+            else:
+                base_train.append(ex)
+
+    synthetic_examples, _synthetic_meta = _make_synthetic_monologs(
+        all_rows_by_shard,
+        train_group_keys,
+        persona_id=persona_id,
+        use_real_tokenizer=use_real_tokenizer,
+        hard_cap=synthetic_monolog_hard_cap,
+        seed=seed,
+    )
+
+    train_examples_unweighted = base_train + synthetic_examples
+    raw_weights = [
+        compute_example_weight(ex["weight_metadata"])  # type: ignore[arg-type]
+        for ex in train_examples_unweighted
+    ]
+    normalised = normalise_weights_to_mean_one(raw_weights)
+    train_examples: list[dict[str, object]] = []
+    train_metadata_list: list[dict[str, object]] = []
+    for ex, w in zip(train_examples_unweighted, normalised, strict=True):
+        # weight metadata kept as-is for audit; sample_weight is added so
+        # WeightedTrainer can pop it during compute_loss.
+        train_examples.append(
+            {
+                "text": ex["text"],
+                "sample_weight": float(w),
+                "weight_metadata": ex["weight_metadata"],
+            }
+        )
+        train_metadata_list.append(ex["weight_metadata"])  # type: ignore[arg-type]
+
+    # Eval examples carry sample_weight=1.0 so the WeightedTrainer's
+    # compute_loss reduces to a standard (un-weighted) mean over the eval
+    # batch (design.md S-5).
+    for ex in eval_examples:
+        ex["sample_weight"] = 1.0  # type: ignore[index]
+
+    # Compute audit (written to disk in _pre_training_audit; this struct
+    # mirrors what the JSON file will contain so the caller can apply
+    # fallback-trigger checks without round-tripping through disk).
+    audit_struct: dict[str, object] = {
+        "n_train": len(train_examples),
+        "n_eval": len(eval_examples),
+        "synthetic_monolog_n": len(synthetic_examples),
+        "weights": normalised,
+        "metadata": train_metadata_list,
+    }
+    return WeightedSplitResult(
+        train_examples=train_examples,
+        eval_examples=eval_examples,
+        shard_stats=shard_stats,
+        realised_examples=realised,
+        synthetic_monolog_n=len(synthetic_examples),
+        train_dialog_ids=train_group_keys,
+        eval_dialog_ids=eval_group_keys,
+        audit=audit_struct,
+    )
+
+
+def _group_aware_stratified_split(
+    weighted_examples_by_shard: dict[str, list[dict[str, object]]],
+    *,
+    eval_split_fraction: float,
+    seed: int,
+) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
+    """Stratified random split of dialog groups (Codex HIGH-A #1 + MEDIUM-2).
+
+    Splits ``(source_shard, dialog_id)`` group keys into train and eval
+    sets, stratified by ``source_shard_type`` ("natural" / "stimulus") so
+    the eval split keeps the natural-vs-stimulus ratio of the corpus.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    rng = np.random.default_rng(seed)
+    by_stratum: dict[str, list[tuple[str, str]]] = {}
+    for shard_basename, examples in weighted_examples_by_shard.items():
+        seen: set[tuple[str, str]] = set()
+        for ex in examples:
+            metadata = ex["weight_metadata"]
+            assert isinstance(metadata, dict)
+            stratum = str(metadata["source_shard_type"])
+            group_key = (shard_basename, str(metadata["dialog_id"]))
+            if group_key in seen:
+                continue
+            seen.add(group_key)
+            by_stratum.setdefault(stratum, []).append(group_key)
+
+    train_keys: set[tuple[str, str]] = set()
+    eval_keys: set[tuple[str, str]] = set()
+    for stratum, keys in by_stratum.items():
+        keys_arr = np.array(keys, dtype=object)
+        if len(keys_arr) == 0:
+            continue
+        rng.shuffle(keys_arr)
+        n_eval = max(1, round(eval_split_fraction * len(keys_arr)))
+        # Ensure at least one train key remains
+        n_eval = min(n_eval, len(keys_arr) - 1) if len(keys_arr) > 1 else 0
+        for i, k in enumerate(keys_arr):
+            tup = tuple(k.tolist()) if hasattr(k, "tolist") else tuple(k)  # type: ignore[arg-type]
+            if i < n_eval:
+                eval_keys.add(tup)  # type: ignore[arg-type]
+            else:
+                train_keys.add(tup)  # type: ignore[arg-type]
+        _LOGGER.info(
+            "split stratum=%s n_train=%d n_eval=%d",
+            stratum,
+            len(keys_arr) - n_eval,
+            n_eval,
+        )
+    return train_keys, eval_keys
+
+
+def _pre_training_audit(
+    weighted_split: WeightedSplitResult,
+    *,
+    output_dir: Path,
+) -> tuple[Path, dict[str, object]]:
+    """Materialise weight-audit.json and apply DA-14 fallback triggers.
+
+    Returns ``(audit_path, audit_dict)``. Raises
+    :class:`InsufficientEffectiveSampleSizeError` (exit 6) or
+    :class:`WeightConcentrationError` (exit 7) when the audit breaches
+    the DA-14 thresholds. A soft warning is logged when de+en weighted
+    mass falls below 60% (training continues).
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    audit_path = output_dir / "weight-audit.json"
+    audit = emit_weight_audit(
+        weights=weighted_split.audit["weights"],  # type: ignore[arg-type]
+        metadata=weighted_split.audit["metadata"],  # type: ignore[arg-type]
+        output_path=audit_path,
+    )
+
+    n_eff = float(audit.get("n_eff", 0.0))  # type: ignore[arg-type]
+    top_5_share = float(audit.get("top_5_pct_weight_share", 0.0))  # type: ignore[arg-type]
+    lang_mass = audit.get("per_language_weighted_mass", {})
+    assert isinstance(lang_mass, dict)
+    de_en_mass = float(lang_mass.get("de", 0.0)) + float(lang_mass.get("en", 0.0))
+
+    _LOGGER.info(
+        "weight audit: n_eff=%.1f top_5%%=%.3f de+en=%.3f synthetic_n=%d",
+        n_eff,
+        top_5_share,
+        de_en_mass,
+        weighted_split.synthetic_monolog_n,
+    )
+
+    if n_eff < DA14_N_EFF_FALLBACK_TRIGGER:
+        raise InsufficientEffectiveSampleSizeError(
+            f"pre-training audit: N_eff={n_eff:.1f} < DA-14 fallback trigger"
+            f" {DA14_N_EFF_FALLBACK_TRIGGER:.0f}; STOP and escalate to Candidate C"
+            f" (targeted +2500 de/en/≥60 hybrid collection)",
+        )
+    if top_5_share >= DA14_TOP_5_PCT_FALLBACK_TRIGGER:
+        raise WeightConcentrationError(
+            f"pre-training audit: top 5% weight share={top_5_share:.3f}"
+            f" >= DA-14 fallback trigger {DA14_TOP_5_PCT_FALLBACK_TRIGGER:.2f};"
+            f" STOP and escalate to Candidate C",
+        )
+    if de_en_mass < DA14_DE_EN_SOFT_WARNING_THRESHOLD:
+        _LOGGER.warning(
+            "pre-training audit: de+en weighted mass=%.3f below soft warning"
+            " threshold %.2f; continuing training but flag in train_metadata",
+            de_en_mass,
+            DA14_DE_EN_SOFT_WARNING_THRESHOLD,
+        )
+    return audit_path, audit
+
+
+# ---------------------------------------------------------------------------
 # Training entry — lazy GPU-stack imports kept inside the function body
 # ---------------------------------------------------------------------------
 
@@ -378,6 +915,8 @@ def train_kant_lora(
     target_modules: Sequence[str] = DEFAULT_TARGET_MODULES,
     seed: int = 42,
     dry_run: bool = False,
+    weighted: bool = False,
+    use_real_tokenizer_for_weights: bool = True,
 ) -> TrainRunSummary:
     """Phase β real Kant LoRA training entry (CS-4 / CS-5 / CS-6).
 
@@ -432,6 +971,17 @@ def train_kant_lora(
         dry_run: When ``True``, only the gate runs and the function
             returns immediately with ``training_executed=False``. No
             GPU-stack import is performed.
+        weighted: Retrain v2 path (DA-14). When ``True``, the corpus is
+            split via :func:`_collect_from_shards_weighted` (group-aware
+            90/10 stratified), monolog re-cast is applied to training
+            groups, per-example sample weights are computed and
+            normalised, and a ``weight-audit.json`` is emitted. Pre-
+            training fallback triggers (N_eff < 1000 / top-5%% concentration
+            >= 50%) raise distinct exceptions mapped to exit codes 6 / 7.
+        use_real_tokenizer_for_weights: Forwarded to weight-metadata
+            extraction. Defaults to ``True`` so production weights reflect
+            the actual Qwen3-8B tokenisation (Codex MEDIUM-1 caveat).
+            Tests / dry-runs may set this to ``False`` for determinism.
 
     Returns:
         :class:`TrainRunSummary` describing what ran (or what would have
@@ -488,6 +1038,27 @@ def train_kant_lora(
             gradient_accumulation_steps,
             DEFAULT_BATCH_SIZE,
             DEFAULT_GRADIENT_ACCUMULATION,
+        )
+
+    if weighted:
+        return _run_weighted_path(
+            resolved_paths=resolved_paths,
+            output_dir_path=output_dir_path,
+            base_model=base_model,
+            persona_id=persona_id,
+            lora_rank=lora_rank,
+            quantization=quantization,
+            batch_size=batch_size,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            max_seq_length=max_seq_length,
+            max_steps=max_steps,
+            learning_rate=learning_rate,
+            save_steps=save_steps,
+            min_examples=min_examples,
+            target_modules=target_modules,
+            seed=seed,
+            dry_run=dry_run,
+            use_real_tokenizer_for_weights=use_real_tokenizer_for_weights,
         )
 
     examples, shard_stats, realised = _collect_from_shards(
@@ -552,6 +1123,115 @@ def train_kant_lora(
         seed=seed,
     )
 
+    return summary
+
+
+def _run_weighted_path(
+    *,
+    resolved_paths: list[Path],
+    output_dir_path: Path,
+    base_model: str,
+    persona_id: str,
+    lora_rank: int,
+    quantization: Quantization,
+    batch_size: int,
+    gradient_accumulation_steps: int,
+    max_seq_length: int,
+    max_steps: int,
+    learning_rate: float,
+    save_steps: int,
+    min_examples: int,
+    target_modules: Sequence[str],
+    seed: int,
+    dry_run: bool,
+    use_real_tokenizer_for_weights: bool,
+) -> TrainRunSummary:
+    """DA-14 retrain v2 weighted path (signal-driven + monolog re-cast + audit).
+
+    Encapsulates the new pipeline so :func:`train_kant_lora`'s K-β path
+    remains untouched. Always builds ``output_dir_path`` (the audit JSON
+    must be inspectable even on dry-run).
+    """
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+
+    split = _collect_from_shards_weighted(
+        resolved_paths,
+        persona_id=persona_id,
+        min_examples=min_examples,
+        seed=seed,
+        use_real_tokenizer=use_real_tokenizer_for_weights,
+    )
+
+    audit_path, audit = _pre_training_audit(split, output_dir=output_dir_path)
+
+    summary = TrainRunSummary(
+        persona_id=persona_id,
+        base_model=base_model,
+        lora_rank=lora_rank,
+        quantization=quantization,
+        batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        max_seq_length=max_seq_length,
+        max_steps=max_steps,
+        learning_rate=learning_rate,
+        save_steps=save_steps,
+        min_examples_threshold=min_examples,
+        realised_examples=split.realised_examples,
+        output_dir=str(output_dir_path),
+        db_paths=[str(p) for p in resolved_paths],
+        shard_stats=[
+            {
+                "path": str(s.path),
+                "raw_rows": s.raw_rows,
+                "persona_examples": s.persona_examples,
+            }
+            for s in split.shard_stats
+        ],
+        training_executed=False,
+        metadata={
+            "target_modules": list(target_modules),
+            "seed": seed,
+            "audit_n_eff": audit.get("n_eff"),
+            "audit_top_5_pct": audit.get("top_5_pct_weight_share"),
+            "audit_de_en_mass": (
+                float(audit.get("per_language_weighted_mass", {}).get("de", 0.0))  # type: ignore[union-attr]
+                + float(audit.get("per_language_weighted_mass", {}).get("en", 0.0))  # type: ignore[union-attr]
+            ),
+        },
+        weighted=True,
+        weight_audit_path=str(audit_path),
+        synthetic_monolog_n=split.synthetic_monolog_n,
+        eval_split_size=len(split.eval_examples),
+        train_dialog_ids_n=len(split.train_dialog_ids),
+        eval_dialog_ids_n=len(split.eval_dialog_ids),
+    )
+
+    if dry_run:
+        _LOGGER.info(
+            "train_kant_lora dry-run (weighted): gate cleared with %d examples,"
+            " %d synthetic monologs, %d eval rows; GPU stack not imported",
+            split.realised_examples,
+            split.synthetic_monolog_n,
+            len(split.eval_examples),
+        )
+        return summary
+
+    _execute_training_run_weighted(
+        split=split,
+        output_dir_path=output_dir_path,
+        summary=summary,
+        base_model=base_model,
+        lora_rank=lora_rank,
+        quantization=quantization,
+        batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        max_seq_length=max_seq_length,
+        max_steps=max_steps,
+        learning_rate=learning_rate,
+        save_steps=save_steps,
+        target_modules=target_modules,
+        seed=seed,
+    )
     return summary
 
 
@@ -818,6 +1498,246 @@ def _execute_training_run(
 
 
 # ---------------------------------------------------------------------------
+# Retrain v2 GPU pipeline (WeightedTrainer + sample_weight collator)
+# ---------------------------------------------------------------------------
+
+
+def _run_trainer_weighted(
+    *,
+    model: Any,
+    tokenizer: Any,
+    train_examples: list[dict[str, object]],
+    eval_examples: list[dict[str, object]],
+    output_dir_path: Path,
+    quantization: Quantization,
+    batch_size: int,
+    gradient_accumulation_steps: int,
+    max_seq_length: int,
+    max_steps: int,
+    learning_rate: float,
+    save_steps: int,
+    seed: int,
+) -> tuple[int, float | None, float | None]:
+    """Drive the HF Trainer loop with per-example sample weights (DA-14).
+
+    Returns ``(peak_vram_bytes, train_loss, eval_loss)``. The WeightedTrainer
+    class is defined inside this function so ``transformers.Trainer`` import
+    stays lazy (the gate-only path must remain installable without
+    ``[training]`` extras — Codex HIGH-B guard).
+    """
+    import torch  # noqa: PLC0415
+    from datasets import Dataset  # noqa: PLC0415
+    from transformers import (  # noqa: PLC0415
+        DataCollatorForLanguageModeling,
+        Trainer,
+        TrainingArguments,
+        set_seed,
+    )
+
+    from erre_sandbox.training.weighting import (  # noqa: PLC0415
+        compute_weighted_causal_lm_loss,
+    )
+
+    set_seed(seed)
+
+    def _to_text_only(rows: list[dict[str, object]]) -> Dataset:
+        """Strip weight_metadata so HF Dataset only carries text + sample_weight."""
+        return Dataset.from_list(
+            [{"text": r["text"], "sample_weight": r["sample_weight"]} for r in rows],
+        )
+
+    train_dataset = _to_text_only(train_examples)
+    eval_dataset = _to_text_only(eval_examples) if eval_examples else None
+
+    def _tokenize(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        encoded = tokenizer(
+            batch["text"],
+            truncation=True,
+            max_length=max_seq_length,
+            padding=False,
+        )
+        encoded["labels"] = [list(ids) for ids in encoded["input_ids"]]
+        encoded["sample_weight"] = list(batch["sample_weight"])
+        return encoded
+
+    tokenized_train = train_dataset.map(
+        _tokenize,
+        batched=True,
+        remove_columns=train_dataset.column_names,
+    )
+    tokenized_eval = (
+        eval_dataset.map(
+            _tokenize,
+            batched=True,
+            remove_columns=eval_dataset.column_names,
+        )
+        if eval_dataset is not None
+        else None
+    )
+
+    base_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+    def _weighted_collator(features: list[dict[str, Any]]) -> dict[str, Any]:
+        weights = [f.pop("sample_weight") for f in features]
+        batch = base_collator(features)
+        batch["sample_weight"] = torch.tensor(weights, dtype=torch.float32)
+        return batch
+
+    class WeightedTrainer(Trainer):  # type: ignore[misc,unused-ignore]
+        """HF Trainer with per-example sample-weight aware compute_loss (HIGH-C)."""
+
+        def compute_loss(  # type: ignore[override]
+            self,
+            model,
+            inputs,
+            return_outputs=False,  # noqa: FBT002
+            num_items_in_batch=None,  # noqa: ARG002 — required for HF Trainer compat
+        ):
+            weights = inputs.pop("sample_weight")
+            outputs = model(**inputs)
+            weighted_loss = compute_weighted_causal_lm_loss(
+                outputs.logits,
+                inputs["labels"],
+                weights,
+            )
+            return (weighted_loss, outputs) if return_outputs else weighted_loss
+
+    eval_kwargs: dict[str, object] = {}
+    if tokenized_eval is not None:
+        eval_kwargs = {
+            "eval_strategy": "steps",
+            "eval_steps": save_steps,
+            "per_device_eval_batch_size": 1,  # HIGH-B guard: eval batch=1, loss-only
+        }
+
+    training_args = TrainingArguments(
+        output_dir=str(output_dir_path),
+        per_device_train_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        learning_rate=learning_rate,
+        max_steps=max_steps,
+        save_steps=save_steps,
+        save_total_limit=2,
+        logging_steps=10,
+        bf16=True,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
+        optim=("paged_adamw_8bit" if quantization in {"nf4", "fp4"} else "adamw_torch"),
+        report_to=[],
+        seed=seed,
+        warmup_ratio=0.03,
+        lr_scheduler_type="cosine",
+        remove_unused_columns=False,  # keep sample_weight column
+        **eval_kwargs,  # type: ignore[arg-type]
+    )
+
+    trainer = WeightedTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_train,
+        eval_dataset=tokenized_eval,
+        data_collator=_weighted_collator,
+    )
+
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+    train_result = trainer.train()
+    peak_vram = (
+        int(torch.cuda.max_memory_allocated()) if torch.cuda.is_available() else 0
+    )
+    train_loss = (
+        float(train_result.training_loss)
+        if train_result is not None and hasattr(train_result, "training_loss")
+        else None
+    )
+
+    eval_loss: float | None = None
+    if tokenized_eval is not None:
+        try:
+            metrics = trainer.evaluate()
+        except (RuntimeError, ValueError) as exc:
+            _LOGGER.warning("final evaluate() failed: %s", exc)
+            metrics = {}
+        eval_loss = float(metrics["eval_loss"]) if "eval_loss" in metrics else None
+
+    trainer.model.save_pretrained(str(output_dir_path))
+    tokenizer.save_pretrained(str(output_dir_path))
+    return peak_vram, train_loss, eval_loss
+
+
+def _execute_training_run_weighted(
+    *,
+    split: WeightedSplitResult,
+    output_dir_path: Path,
+    summary: TrainRunSummary,
+    base_model: str,
+    lora_rank: int,
+    quantization: Quantization,
+    batch_size: int,
+    gradient_accumulation_steps: int,
+    max_seq_length: int,
+    max_steps: int,
+    learning_rate: float,
+    save_steps: int,
+    target_modules: Sequence[str],
+    seed: int,
+) -> None:
+    """Run the full GPU-side weighted pipeline and update ``summary`` in place."""
+    tokenizer, model = _load_quantised_model(base_model, quantization)
+    model = _apply_lora(
+        model,
+        lora_rank=lora_rank,
+        quantization=quantization,
+        target_modules=target_modules,
+    )
+
+    peak_vram, train_loss, eval_loss = _run_trainer_weighted(
+        model=model,
+        tokenizer=tokenizer,
+        train_examples=split.train_examples,
+        eval_examples=split.eval_examples,
+        output_dir_path=output_dir_path,
+        quantization=quantization,
+        batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        max_seq_length=max_seq_length,
+        max_steps=max_steps,
+        learning_rate=learning_rate,
+        save_steps=save_steps,
+        seed=seed,
+    )
+
+    summary.training_executed = True
+    summary.peak_vram_bytes = peak_vram
+    summary.train_loss = train_loss
+    summary.eval_loss = eval_loss
+
+    metadata_path = output_dir_path / "train_metadata.json"
+    metadata_path.write_text(
+        json.dumps(summary.to_dict(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    _LOGGER.info(
+        "train_kant_lora (weighted) completed: persona=%s rank=%d quant=%s"
+        " realised=%d synthetic_n=%d peak_vram=%.2fGB train_loss=%s"
+        " eval_loss=%s output=%s",
+        summary.persona_id,
+        lora_rank,
+        quantization,
+        summary.realised_examples,
+        summary.synthetic_monolog_n,
+        peak_vram / (1024**3) if peak_vram else 0.0,
+        train_loss,
+        eval_loss,
+        output_dir_path,
+    )
+
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -946,6 +1866,31 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Run the gate only, then exit. No GPU stack import, no files"
             " written to output_dir. Useful for B-1/B-2 trigger verification."
+            " When combined with --weighted, the pre-training audit is still"
+            " emitted to output_dir/weight-audit.json so the fallback trigger"
+            " can be evaluated before the 3-5h training kickoff."
+        ),
+    )
+    parser.add_argument(
+        "--weighted",
+        dest="weighted",
+        action="store_true",
+        help=(
+            "Enable the DA-14 retrain v2 signal-driven path: per-example"
+            " sample weights, group-aware 90/10 stratified split, monolog"
+            " re-cast from training-side natural shards, and a pre-training"
+            " audit. Falls back via exit code 6 (N_eff < 1000) or 7"
+            " (top-5%% weight share >= 50%%) -- escalate to Candidate C."
+        ),
+    )
+    parser.add_argument(
+        "--no-real-tokenizer-for-weights",
+        dest="no_real_tokenizer_for_weights",
+        action="store_true",
+        help=(
+            "Use the whitespace × 1.3 token-count proxy instead of Qwen3-8B"
+            " for weight metadata. Faster and deterministic for tests, but"
+            " production runs should NOT pass this (Codex MEDIUM-1 caveat)."
         ),
     )
     parser.add_argument(
@@ -980,17 +1925,19 @@ def _resolve_paths(
     return matches
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 — distinct exit-code paths
     """Argparse-driven CLI entry point. Returns a POSIX exit code.
 
-    The default exit codes follow ``decisions.md`` CS-3 — each gate
-    error has a distinct rc so wrapping shell scripts can branch:
+    The default exit codes follow ``decisions.md`` CS-3 / DA-14 — each
+    gate error has a distinct rc so wrapping shell scripts can branch:
 
     * 0 — success (training run completed or dry-run gate cleared)
     * 2 — :class:`EvaluationContaminationError`
     * 3 — :class:`BlockerNotResolvedError`
     * 4 — :class:`InsufficientTrainingDataError`
     * 5 — other ``ValueError`` / ``FileNotFoundError`` (operator error)
+    * 6 — :class:`InsufficientEffectiveSampleSizeError` (DA-14 fallback)
+    * 7 — :class:`WeightConcentrationError` (DA-14 fallback)
     * 1 — unexpected exception (re-raised to surface stack trace)
     """
     parser = _build_arg_parser()
@@ -1020,6 +1967,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             min_examples=args.min_examples,
             seed=args.seed,
             dry_run=args.dry_run,
+            weighted=args.weighted,
+            use_real_tokenizer_for_weights=not args.no_real_tokenizer_for_weights,
         )
     except EvaluationContaminationError as exc:
         _LOGGER.error("contamination: %s", exc)  # noqa: TRY400  # rc mapping
@@ -1030,6 +1979,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     except InsufficientTrainingDataError as exc:
         _LOGGER.error("insufficient data: %s", exc)  # noqa: TRY400  # rc mapping
         return 4
+    except InsufficientEffectiveSampleSizeError as exc:
+        _LOGGER.error("audit N_eff fallback: %s", exc)  # noqa: TRY400
+        return 6
+    except WeightConcentrationError as exc:
+        _LOGGER.error("audit top-5%% fallback: %s", exc)  # noqa: TRY400
+        return 7
     except (ValueError, FileNotFoundError) as exc:
         _LOGGER.error("operator error: %s", exc)  # noqa: TRY400  # rc mapping
         return 5
