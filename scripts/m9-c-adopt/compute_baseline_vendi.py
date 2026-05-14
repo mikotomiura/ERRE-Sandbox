@@ -67,9 +67,7 @@ def _windowize(utterances: list[str], window_size: int) -> list[list[str]]:
     """Slice into non-overlapping windows of size `window_size`. Drops tail."""
     n = len(utterances)
     full = n // window_size
-    return [
-        utterances[i * window_size : (i + 1) * window_size] for i in range(full)
-    ]
+    return [utterances[i * window_size : (i + 1) * window_size] for i in range(full)]
 
 
 @dataclasses.dataclass
@@ -101,6 +99,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--output", required=True, type=Path)
     p.add_argument(
+        "--max-focal-per-shard",
+        type=int,
+        default=0,
+        help=(
+            "If > 0, truncate each shard's focal utterance stream to this many"
+            " items before windowing. Used by m9-c-adopt-pilot-multiturn"
+            " investigation (HIGH-2 matched baseline downsampling)."
+        ),
+    )
+    p.add_argument(
         "--log-level",
         default="info",
         choices=("debug", "info", "warning", "error"),
@@ -131,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
 
     for shard in shards:
         utterances = _load_focal_utterances(shard, args.persona)
+        if args.max_focal_per_shard > 0 and len(utterances) > args.max_focal_per_shard:
+            utterances = utterances[: args.max_focal_per_shard]
         windows = _windowize(utterances, args.window_size)
         cluster_scores: list[float] = []
         logger.info(

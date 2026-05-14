@@ -270,6 +270,34 @@
     待ち
   - 解消: Phase E A-6 で DA-1 4 軸 intersection 3-of-3 以上 (axes 1-3) +
     throughput PASS → ADOPT-CHANGES または ADOPT 確定
+- **2026-05-14 update (multi-turn investigation PR 進行中)**:
+  - `feature/m9-c-adopt-pilot-multiturn-investigation` PR で **closure path
+    1 (methodology fix path)** を empirical に試行中
+  - Codex independent review (`.steering/20260514-m9-c-adopt-pilot-multiturn/codex-review.md`)
+    で HIGH 4 件を反映: no-LoRA SGLang control 追加 + matched baseline
+    downsampling + 採取前 preregister thresholds + post-capture validation gate
+  - 結論は DA-13 ADR (`.steering/20260513-m9-c-adopt/decisions.md` DA-13) で
+    pre-registered scenario (I/II/III/IV) の 1 件として確定 — 採取完了後 commit
+  - 採取完了 + verdict 確定後、本 blocker は **closure (シナリオ I)** または
+    **partial closure (シナリオ III)** または **closure with retrain v2
+    confirmation (シナリオ II)** または **継続 (シナリオ IV、Phase E A-6
+    7500-turn が唯一の closure path)** のいずれかに update
+
+- **2026-05-14 CLOSURE (multi-turn investigation PR 完遂、DA-13 verdict 確定)**:
+  - **pre-registered Scenario II** (no reversal vs matched Ollama baseline)
+    + **Backend Confound Discovery**
+  - DA-12 の "direction failure" 主因が **LoRA failure ではなく
+    backend confound (Ollama → SGLang で Vendi +2.14 / Burrows +5.39 が発生)**
+    であることを empirical 確認:
+    - LoRA-on multi-turn SGLang vs no-LoRA SGLang control の Vendi Δ:
+      rank=4 +0.245、rank=8 +0.446、rank=16 -0.050 (all near-zero)
+    - LoRA-on multi-turn SGLang vs no-LoRA SGLang control の Burrows Δ:
+      rank=4 +0.511、rank=8 -0.960、rank=16 -0.492 (all near-zero、direction
+      mixed)
+  - **本 blocker は close** (identifiability 解消、根本原因確定)
+  - 後続 PR (`feature/m9-c-adopt-retrain-v2`) の baseline を **SGLang-on-base
+    (no-LoRA SGLang multi-turn)** に変更する spec amendment が必要
+    (DA-13 後続経路 + `next-session-prompt-scenario-II-retrain-v2.md` 参照)
 
 ### U-5: 8-mode FSM regression (Codex 言及なし、D-5 由来)
 

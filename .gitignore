@@ -143,3 +143,7 @@ data/eval/partial-stash-*/*.duckdb.wal
 data/eval/m9-c-adopt-tier-b-pilot/*.duckdb
 data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.wal
 data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.tmp
+# m9-c-adopt-pilot-multiturn investigation (本 PR、同 policy):
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.tmp
