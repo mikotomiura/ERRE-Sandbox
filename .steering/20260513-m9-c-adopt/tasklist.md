@@ -43,19 +43,26 @@
   - [x] S-2 (CS-1 `--max-lora-rank >= 16` amendment) 実施 — DB8 runbook §2 update + `decisions.md` DA-1 amendment 2026-05-13 追記、M9-C-spike `decisions.md` CS-1 は immutable 保持
   - [x] CS-3 4-種 hard-fail gate dry-run PASS (kant 5022 examples、10 shard、PR #163 parity)
   - [x] `scripts/build_adapter_manifest.py` 起草 (DA-10 schema、CS-9/DA-6 hard block #2 (.bin pickle refuse) 込み)
-- [ ] kant rank=8 baseline 再 confirm (`kant_r8_real` 既存)
-- [ ] kant rank=4 train (G-GEAR overnight)、`data/lora/m9-c-adopt/archive/rank_4/kant/`
-- [ ] kant rank=16 train (overnight)、`data/lora/m9-c-adopt/archive/rank_16/kant/`
-- [ ] 各 adapter で SGLang `/load_lora_adapter` HTTP 200 確認 + chat round trip success
-- [ ] VRAM peak per-step `nvidia-smi --query-gpu=memory.used` sampling、peak > 14GB で early abort (S-3 mitigation)
-- [ ] adapter manifest.json + sha256 生成 (DA-10、`scripts/build_adapter_manifest.py` 新規候補)
-- [ ] Tier B baseline (no LoRA) 確認 — kant の golden baseline shard で Vendi / ICC(C,k) / ICC(A,1) / Burrows Δ 算出
-- [ ] **conditional rank=32 tail-sweep 判定** (HIGH-1):
+- [x] kant rank=8 baseline 再 confirm (`kant_r8_real` 既存、Phase B 第 2 セッション)
+- [x] kant rank=4 train (G-GEAR overnight、Phase B 第 1 セッション、sha256 `b89a248695...`)
+- [x] kant rank=16 train (overnight、第 2 セッション、sha256 `9532b438f3...`)
+- [x] 各 adapter で SGLang `/load_lora_adapter` HTTP 200 確認 + chat round trip success (第 2 セッション Step 4)
+- [x] VRAM peak per-step `nvidia-smi --query-gpu=memory.used` sampling、peak > 14GB で early abort (S-3 mitigation; 実測 14016 MiB sustained で threshold 14300 MiB に amendment)
+- [x] adapter manifest.json + sha256 生成 (DA-10、3 archive `rank_{4,8,16}/kant/manifest.json` 揃い)
+- **DA-11 narrowing 適用 (Phase B 第 3 セッション 2026-05-14)**:
+  - [x] **Step 5a (narrowed)**: Vendi lexical-5gram baseline 算出 (point=75.77 / CI=[75.19, 76.37])、semantic Vendi は Mac post-hoc へ defer
+  - [x] **Step 5b**: SGLang re-launch + 3 adapter pinned (`/v1/models` 経由 adapter check)
+  - [x] **Step 5c**: SGLang LoRA Tier B pilot driver 新規実装 + 1800 turn 採取 (3 rank × 2 run × 300 turn、6 shard、~21 min)
+  - [x] **Step 5e (partial)**: CS-7 per-rank single_lora bench (rank=4/8/16)、no_lora は PR #163 K-β 値継続使用
+  - [ ] **Step 5d (defer Phase B 第 4 セッション)**: Big5 ICC consumer 実装 + per-rank ICC + bootstrap CI (~25-35h compute)
+  - [ ] **Burrows Δ (defer Phase B 第 4 セッション)**: 言語処理判断 (langdetect / English vendoring / N/A fallback) + 算出
+  - [ ] **semantic Vendi (defer Phase B 第 4 セッション)**: Mac master 側で MPNet cache + 再算出
+  - [ ] **Step 5f (defer Phase B 第 4 セッション)**: DA-1 4 軸 intersection で final 採用 rank 確定
+- [ ] **conditional rank=32 tail-sweep 判定** (HIGH-1、Phase B 第 4 セッション fire 判定):
   - [ ] rank=16 throughput PASS かつ Vendi/ICC/Burrows のいずれか未達 → tail-sweep fire
   - [ ] rank=8→16 で effect size delta > 0.5 → tail-sweep fire
   - [ ] tail-sweep 時は `--max-lora-rank 32` への再 amendment、VRAM monitor 強化
-- [ ] DA-1 採用基準 (4 軸 intersection) で kant の rank=X を empirical 決定
-- [ ] **AC-1 PASS** (rank 決定 + manifest 揃い + VRAM headroom 健全)
+- [ ] **AC-1 PASS** (Phase B 第 4 セッション完了で確定: rank 決定 + manifest 揃い + VRAM headroom 健全)
 
 ### Phase C — A-2 3 persona expansion (adopted rank で nietzsche / rikyu 訓練)
 

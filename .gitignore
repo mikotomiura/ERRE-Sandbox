@@ -135,3 +135,11 @@ data/eval/partial-stash-*/*.duckdb.wal
 # 実行時の transient state は local-only。
 .steering/**/phase-b-logs/*.log
 .steering/**/phase-b-logs/*.pid
+.steering/**/phase-b-logs/pilot/*.log
+
+# m9-c-adopt Phase B Tier B pilot capture (DuckDB binaries; ~3 MB total
+# across 6 shard, recoverable via re-running scripts/m9-c-adopt/tier_b_pilot.py
+# on G-GEAR; same gitignore policy as data/eval/golden/*.duckdb).
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.tmp

@@ -521,6 +521,95 @@
 
 ---
 
+## DA-11 — Phase B Tier B consumer scope narrowing (Phase B 第 3 セッション 2026-05-14、本 session のみ運用、3 第 4 セッションで closure)
+
+- **判断日時**: 2026-05-14 (Phase B 第 3 セッション着手時)
+- **背景**: handoff prompt (`next-session-prompt-phase-b-3.md`) の Step 5
+  scope は Tier B baseline 算出 (Vendi + Big5 ICC + Burrows Δ) +
+  per-rank pilot 採取 (1800 turn) + per-rank metric + bench + DA-1 4 軸
+  intersection を本セッション内で完遂と想定。実装着手時に以下のギャップを発見:
+  1. **Big5 ICC consumer 未実装**: `compute_big5_icc` ヘルパは存在するが
+     DuckDB shard → per-window IPIP-50 administering → ICC の orchestrator
+     script が未整備。LLM-backed `PersonaResponder` 実装も別途必要 (no-LoRA
+     baseline は Ollama 経由、LoRA-on は SGLang 経由でルーティング切替)
+  2. **Big5 ICC 計算規模**: 50 IPIP question × 25 window × 5 run × 4
+     condition (no-LoRA + 3 rank) = ~25,000 inference @ ~3-5s/inf =
+     **~25-35h compute budget**、本セッションスコープ大幅超過
+  3. **Burrows Δ 言語不一致**: kant 発話は de/en/ja 混合 (sample 確認済)
+     一方 Burrows reference は de のみ (kant_de.txt)。English Kant
+     reference (Cambridge Edition) は M9-eval-system 別 PR scope で未整備
+  4. **SGLang LoRA pilot driver 未実装**: 既存 `eval_run_golden` CLI は
+     Ollama only、SGLang LoRA adapter ルーティング未対応
+- **決定**:
+  - **本セッションは以下に scope narrowing**:
+    1. **G-GEAR foundational work** を先行: SGLang LoRA pilot driver 新規
+       実装 (`scripts/m9-c-adopt/tier_b_pilot.py`)、smoke test、full
+       1800-turn pilot 採取 (3 rank × 2 run × 300 turn)
+    2. **Vendi lexical-5gram baseline** (no-LoRA) を本セッション中に算出 +
+       semantic kernel は Mac post-hoc
+    3. **CS-7 per-rank single_lora bench** (rank=4/8/16) を本セッション中
+       に実走、no_lora baseline は PR #163 K-β 値 (24.25 tok/s threshold)
+       継続利用
+    4. **DA-1 採用判定 provisional** (Vendi lexical + throughput + Step 4
+       multi_pin qualitative の 2.5 軸) で provisional rank 候補を選定し、
+       最終確定は Phase B 第 4 セッションへ defer
+  - **Phase B 第 4 セッション scope**:
+    1. Big5 ICC consumer 実装 (`scripts/m9-c-adopt/compute_baseline_big5_icc.py`
+       + per-rank consumer)、no-LoRA baseline + per-rank LoRA-on の
+       full administering compute (~25-35h、Mac master + remote G-GEAR
+       split 想定)
+    2. Burrows Δ 言語処理判断 (langdetect routing / English ref vendoring
+       / N/A fallback の 3 案から選定)
+    3. semantic kernel Vendi 再算出 (Mac master 側で MPNet cache 整備)
+    4. DA-1 4 軸 intersection で **final** 採用 rank 確定
+    5. 採用 rank の production placement + manifest backfill + PR 起票
+  - **本セッションは PR 起票しない**: pilot data + baseline + bench + scope
+    narrowing 記録の commit + push のみ、PR は Phase B 第 4 セッション
+    完了時に統合 PR で起票
+- **根拠**:
+  - 発見した consumer ギャップ + IPIP-50 compute scale を closure するには
+    1 セッションでは不可能 (実装 + ~25-35h compute)
+  - SGLang LoRA pilot driver は **G-GEAR でしか書けない / 動かせない**
+    foundational piece、本セッションで完遂するのが最も effective
+  - Phase A の DA-1 採用基準 (4 軸 intersection、point + CI + direction の
+    3 条件 AND) を **緩める** のではなく、 **完遂タイミング** を 1 PR 後に
+    ずらす方が ADR との整合性 (HIGH-2 / DA-9 marginal pass の意味) を保つ
+  - user feedback (`feedback_batch_integration_over_per_session_sync`) と
+    整合: multi-session の中間 PR を増やすより全 phase 完了後に統合 PR で
+    一括同期する方を user は好む
+- **棄却**:
+  - **本セッション内に IPIP-50 administering 強行**: ~25-35h compute は
+    G-GEAR 単独では非現実的 (SGLang server + Ollama 混在で VRAM
+    contention)、品質も劣化リスク
+  - **DA-1 採用基準を 4 軸 → 2 軸 (Vendi + throughput) に恒久的に緩める**:
+    Phase A で HIGH-2 (point + CI + direction の 3 条件 AND) を反映した
+    ADR の意味が失われる、M9-D で巻き戻し risk
+  - **本 session で本 PR を起票 (incomplete data で)**: Mac master review
+    判定が provisional になり、後続 PR で final adoption を起票し直す
+    overhead が二度手間、user feedback と矛盾
+- **影響**:
+  - `tasklist.md` Phase B Step 5-7 を本 ADR に従い再構成 (Step 5a 部分達成、
+    Step 5b/c/e 完遂、Step 5d/f/Step 6/Step 7 は Phase B 第 4 セッション)
+  - `next-session-prompt-phase-b-4.md` 新規起草 (本セッション末尾で)
+  - `tier-b-baseline-kant.md` 新規 (Vendi lexical 結果 + Big5/Burrows
+    defer 内容明記)
+  - `phase-b-progress.md` を本 session 進捗で update
+  - DA-1 採用基準 + 4 軸 intersection は **そのまま維持** (DA-11 は
+    timing narrowing であり criterion narrowing ではない)
+- **re-open 条件**:
+  - Phase B 第 4 セッションで Big5 ICC consumer + Burrows 言語処理 +
+    semantic Vendi 揃い、DA-1 4 軸 intersection で final 採用 rank 確定
+    → DA-11 close
+  - IPIP-50 compute が実測で予想より高速 / 軽い (e.g. < 5h) → DA-11 を
+    Phase B 第 4 セッションでより縮約 (1 PR 内で baseline + per-rank
+    consumer + DA-1 final を完遂)
+  - rank=32 tail-sweep fire 条件が provisional Vendi lexical で既に明確に
+    判定可能 (e.g. rank=8 → 16 で sharp gain あるいは saturate) →
+    Phase B 第 4 セッションの最初に rank=32 training kick (Step 6 earlier
+    fire)
+
+---
+
 ## DA-10 — Adapter manifest + sha256 checksum + 例外定義 (Codex HIGH-4 + LOW-2 反映)
 
 - **判断日時**: 2026-05-13

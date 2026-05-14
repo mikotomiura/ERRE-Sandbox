@@ -44,6 +44,14 @@
   - Tier B baseline ICC 算出 (Vendi semantic kernel / Big5 ICC(C,k) /
     ICC(A,1) diagnostic / Burrows Δ) は Step 5 で `tier_b_bootstrap_pair.py`
     consumer 経由実施
+- **2026-05-14 partial closure (Phase B 第 3 セッション、DA-11 narrowing)**:
+  - kant **Vendi lexical-5gram baseline** 算出済
+    (`tier-b-baseline-kant-vendi-lexical.json`、point=75.77 / CI=[75.19, 76.37])
+  - kant **Vendi semantic baseline + Big5 ICC + Burrows Δ** は DA-11 で
+    Phase B 第 4 セッションへ defer (consumer 未実装 + IPIP 規模 ~25-35h
+    compute + Burrows 言語不一致)
+  - H-1 の kant 部分は **partial closure** (lexical Vendi のみ)、final
+    closure は Phase B 第 4 セッション完了時
 
 ### H-2: rikyu Japanese tokenizer 未実装 (Burrows Δ N/A、Codex MEDIUM-2 / LOW-3 反映)
 
@@ -135,6 +143,15 @@
     打ち切り (rank=8 final)
   - fire: rank=32 で OOM → tail-sweep 中止、rank=16 final
   - 解消: rank=16 peak < 13GB 観察 → continue
+- **2026-05-14 amendment (Phase B 第 2 + 第 3 セッション実測)**:
+  - rank=16 training 中の sustained VRAM plateau: ~14016 MiB
+    (16311 MiB total、headroom ~2.3 GB)
+  - SGLang fp8 + 3 adapter pinned + serving + bench 中: ~10-11 GB peak
+    (本 session bench 中 nvidia-smi 観察)
+  - operational threshold を 14000 → **14300 MiB** に amendment
+    (rank=16 sustained に operational margin +280 MiB)
+  - rank=32 tail-sweep fire 時は再 amendment v2 へ拡張、
+    --max-total-tokens 1024 縮約も準備
 
 ---
 

@@ -1,26 +1,137 @@
-# Phase B 進捗 — m9-c-adopt rank sweep on kant (in-flight、第 2 セッション update 2026-05-14)
+# Phase B 進捗 — m9-c-adopt rank sweep on kant (in-flight、第 3 セッション update 2026-05-14)
 
 > Phase A (PR #164 merged) → Phase B 第 1 セッション (2026-05-13 夜) → 第 2
-> セッション (2026-05-14 朝 〜)。本 file は in-flight 状態を引き継ぐための
-> **state pin**。Step 3a (rank=4 archive) 完了、Step 3b (rank=16 training)
-> 走行中。
+> セッション (2026-05-14 朝) → 第 3 セッション (2026-05-14 昼)。本 file は
+> in-flight 状態を引き継ぐための **state pin**。第 3 セッションは
+> **DA-11 scope narrowing 適用** + SGLang LoRA pilot driver 新規実装 +
+> 1800-turn pilot 採取 + Vendi lexical-5gram baseline 算出 + per-rank bench
+> を完遂、Big5 ICC + Burrows + semantic Vendi + DA-1 final + PR 起票は
+> Phase B 第 4 セッションへ defer。
 
 ---
 
-## 現在の状態 (2026-05-14 第 2 セッション 進捗、Step 3a+3b+3c+4 完了時点)
+## 現在の状態 (2026-05-14 第 3 セッション完了時点、DA-11 scope narrowing 適用後)
 
 | Step | 内容 | 状態 |
 |---|---|---|
 | Step 0 | pre-flight (branch + CS-1 amendment + manifest scaffold) | **完了** (commit `0246768`) |
 | Step 1 | rank=4 training (kant、G-GEAR overnight) | **完走** (train_loss=0.2364、peak_vram=10.51GB、train_runtime=7733s、sha256 `b89a248695...`) |
 | Step 2 | rank=8 baseline re-confirm + manifest backfill | **完了** (commit `8e7352b`、sha256 `cd8c6e5f...`) |
-| Step 3a | rank=4 archive + manifest | **完了 (2026-05-14)** sha256 `b89a248695...` ✅ phase 1 verbatim 一致 |
-| Step 3b | rank=16 training | **完走 (2026-05-14)** train_loss=0.1993、peak_vram_bytes=10.63GB、train_runtime=7424s (~2.06h) |
-| Step 3c | rank=16 archive + manifest | **完了 (2026-05-14)** sha256 `9532b438f3...` |
-| Step 4 | 3 adapter multi-pin load + chat sanity | **完了 (2026-05-14)** 3 rank で異なる出力 (adapter routing 確認) |
-| Step 5-7 | Tier B pilot / verdict / PR | **次セッションに handoff** (`next-session-prompt-phase-b-3.md`) |
+| Step 3a | rank=4 archive + manifest | **完了** sha256 `b89a248695...` ✅ phase 1 verbatim 一致 |
+| Step 3b | rank=16 training | **完走** train_loss=0.1993、peak_vram_bytes=10.63GB、train_runtime=7424s (~2.06h) |
+| Step 3c | rank=16 archive + manifest | **完了** sha256 `9532b438f3...` |
+| Step 4 | 3 adapter multi-pin load + chat sanity | **完了** 3 rank で異なる出力 (adapter routing 確認) |
+| Step 5a (narrowed) | Vendi lexical-5gram baseline | **完了 (2026-05-14 第 3 セッション)** point=75.77 / CI=[75.19, 76.37] / 25 windows |
+| Step 5b | SGLang re-launch + 3 adapter pinned | **完了 (2026-05-14 第 3 セッション)** /v1/models 経由 adapter check + ninja symlink WORKAROUND 適用 |
+| Step 5c | Tier B pilot 1800 turn 採取 | **完了 (2026-05-14 第 3 セッション)** 6 shard (kant_r{4,8,16}_run{0,1}_stim.duckdb)、1.5 turn/s sustained、~21 min total |
+| Step 5d | per-rank Tier B metric | **defer (DA-11、Phase B 第 4 セッション)** Big5 ICC consumer 未実装 + 計算規模 ~25-35h compute |
+| Step 5e | CS-7 4 trigger bench | **partial (rank=4/8/16 single_lora 完了)** no_lora は PR #163 K-β 値継続使用 |
+| Step 5f | DA-1 4 軸 intersection final | **defer (DA-11、Phase B 第 4 セッション)** ICC + Burrows + semantic Vendi 未揃い |
+| Step 6 | conditional rank=32 tail-sweep | **defer (DA-11、Phase B 第 4 セッション)** fire 判定は DA-1 final 後 |
+| Step 7 | 採用 rank 確定 + PR | **defer (DA-11、Phase B 第 4 セッション)** PR は ICC + Burrows + DA-1 final 揃い後の統合 PR で起票 |
 
-branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin に push 済、4 commit、Step 3a/3c/4 + 進捗 update は本セッションで追加 commit 予定)
+branch: `feature/m9-c-adopt-phase-b-rank-sweep` (origin push 済、第 1 + 第 2 + 第 3 セッション commit ある、第 3 セッション最終 commit は pilot data + scripts + DA-11 + handoff)
+
+---
+
+## 第 3 セッション完了サマリ (2026-05-14、DA-11 scope narrowing 適用)
+
+### 発見されたギャップ (handoff prompt との差分)
+
+handoff prompt (`next-session-prompt-phase-b-3.md`) は Step 5 全体 (baseline +
+1800-turn pilot + per-rank metric + bench + DA-1 4 軸 intersection + PR
+起票) を本セッション内で完遂前提だったが、実装着手時に以下を発見:
+
+1. **Big5 ICC consumer 未実装** + 計算規模 ~25-35h Ollama compute (50 IPIP
+   question × 25 window × 5 run × 4 condition)
+2. **Burrows Δ 言語不一致**: kant 発話が de/en/ja 混合、Burrows ref は de のみ
+3. **SGLang LoRA pilot driver 未実装**: 既存 `eval_run_golden` CLI は Ollama only
+4. **sentence-transformers MPNet 未インストール** in WSL2 venv (semantic
+   Vendi は Mac post-hoc へ defer)
+
+→ DA-11 ADR (decisions.md) で本セッションを **G-GEAR foundational work +
+Vendi lexical baseline + per-rank bench + scope narrowing 記録** に narrow、
+Big5 ICC + Burrows + semantic Vendi + DA-1 final + PR 起票は Phase B 第 4
+セッションへ defer
+
+### Step 5b — SGLang re-launch (DB8 runbook v6 launch args)
+
+- ninja symlink (`/usr/local/bin/ninja -> /root/erre-sandbox/.venv/bin/ninja`)
+  既に存在を verify
+- launch args (multi_pin_sanity.sh と同):
+  ```
+  --model-path Qwen/Qwen3-8B --enable-lora --lora-target-modules q_proj k_proj v_proj o_proj
+  --max-lora-rank 16 --max-loras-per-batch 3 --max-loaded-loras 3
+  --quantization fp8 --mem-fraction-static 0.85 --max-total-tokens 2048
+  --disable-cuda-graph --max-running-requests 1
+  ```
+- VRAM after weight load: 9.09 GB (model) + 0.14 GB KV cache = ~9.4 GB
+- 3 adapter (kant_r4/8/16_real) load 200 OK via multi_pin_sanity.sh
+
+### Step 5c — Tier B pilot driver 新規実装 + 採取
+
+- script: `scripts/m9-c-adopt/tier_b_pilot.py` 新規
+  - SGLang HTTP `/v1/chat/completions` + `model={adapter_name}` で routing
+  - chat_template_kwargs: `enable_thinking: False` (qwen3 CoT 抑制)
+  - defensive: `<think>...</think>` block を strip
+  - stratified slice (kant.yaml 70 stim → 50/cycle)、cycle_count=6 で
+    300 focal turn/run
+  - DuckDB sink: `epoch_phase=evaluation`、per-25-turn checkpoint resume
+  - adapter check: `/v1/models` で loaded LoRA list verify
+- smoke: 10 turn × rank=8 で 7.5s = ~0.75 sec/turn 確認 (Ollama 14s/turn の
+  約 19× 高速、prompt の 7h estimate は Ollama 由来で実機 SGLang fp8 では
+  大幅短縮)
+- full pilot: `phase-b-logs/run_pilot.sh` 経由で 6 cell (3 rank × 2 run ×
+  300 turn = 1800 turn) sequential、~1.5 turn/s sustained、~21 min total
+- 出力: `data/eval/m9-c-adopt-tier-b-pilot/kant_r{4,8,16}_run{0,1}_stim.duckdb`
+  6 shard、各 300 focal turn
+
+### Step 5a (narrowed) — Vendi lexical-5gram baseline
+
+- script: `scripts/m9-c-adopt/compute_baseline_vendi.py` 新規 (--kernel
+  semantic / lexical-5gram switch、Mac post-hoc で semantic 再算出可能)
+- 5 shard (kant_stimulus_run{0..4}.duckdb) × 5 window/shard = 25 window 集計
+- bootstrap: cluster_only=True (ME-14)、n_resamples=2000、ci=0.95
+- artefact: `tier-b-baseline-kant-vendi-lexical.json` +
+  `tier-b-baseline-kant.md` (defer 内容明記)
+
+| metric | value |
+|---|---|
+| point | 75.7692 |
+| CI95 lo | 75.1892 |
+| CI95 hi | 76.3720 |
+| width | 1.1828 |
+| n_clusters | 5 |
+| total_windows | 25 |
+
+### Step 5e (partial) — CS-7 per-rank single_lora bench
+
+- script: `scripts/m9-c-adopt/bench_per_rank.sh` 新規 (sglang.bench_serving
+  per rank wrapper)
+- conditions: `single_lora-r{4,8,16}` (3 rank); no_lora は CS-1 launch
+  flag toggle 必須 (`--enable-lora` 不在で再起動) のため defer、PR #163
+  K-β 値 (24.25 tok/s threshold) 継続使用
+- 出力: `data/eval/m9-c-adopt-bench/single_lora-r{4,8,16}.jsonl`
+
+### DA-11 ADR (本セッション追加)
+
+- decisions.md に DA-11 (Phase B Tier B consumer scope narrowing) 起票
+- handoff: `next-session-prompt-phase-b-4.md` 新規 (Big5 ICC consumer 実装 +
+  Burrows 言語処理判断 + semantic Vendi 再算出 + DA-1 final + PR 起票)
+
+### 既知の落とし穴 amendment (本セッション追加)
+
+- **SGLang `/get_server_info` には `loaded_lora_adapters` フィールドが無い**
+  (本 SGLang 0.5.10.post1 version): `/v1/models` を使う。`tier_b_pilot.py`
+  の adapter check で対応済 ('Qwen/Qwen3-8B' base + 3 adapter ids が `data`
+  array に listing される)
+- **SGLang chat API での qwen3 CoT 抑制**: `chat_template_kwargs:
+  {"enable_thinking": False}` payload 必須。Ollama の `think=false` 等価
+- **sentence-transformers は WSL2 venv 未インストール**: lexical-5gram
+  kernel で代替、semantic kernel は Mac master post-hoc で実走
+- **pilot driver throughput estimate**: Ollama qwen3:8b Q4_K_M で ~14s/turn
+  → SGLang fp8 で ~0.7s/turn (約 20× 高速)、handoff prompt の
+  「~7h compute」見積りは無効化 (実測 ~21 min for 1800 turn)
 
 ---
 
