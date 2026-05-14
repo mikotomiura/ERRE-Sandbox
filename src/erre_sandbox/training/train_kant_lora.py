@@ -57,7 +57,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal, cast
 
 from erre_sandbox.contracts.eval_paths import INDIVIDUAL_LAYER_ENABLED_KEY
 from erre_sandbox.training.dataset import build_examples, build_weighted_examples
@@ -529,7 +529,7 @@ def _make_synthetic_monologs(  # noqa: C901, PLR0912, PLR0915 — sequential pat
             if group_key not in train_group_keys:
                 continue
             try:
-                dlg_rows.sort(key=lambda r: int(r.get("turn_index", -1)))
+                dlg_rows.sort(key=lambda r: int(cast("int", r.get("turn_index", -1))))
             except (TypeError, ValueError):
                 continue
             for i in range(len(dlg_rows) - 2):
@@ -544,8 +544,8 @@ def _make_synthetic_monologs(  # noqa: C901, PLR0912, PLR0915 — sequential pat
                     if not a_utt or not c_utt:
                         continue
                     try:
-                        a_idx = int(a.get("turn_index", -1))
-                        c_idx = int(c.get("turn_index", -1))
+                        a_idx = int(cast("int", a.get("turn_index", -1)))
+                        c_idx = int(cast("int", c.get("turn_index", -1)))
                     except (TypeError, ValueError):
                         continue
                     candidates.append(
@@ -752,13 +752,13 @@ def _collect_from_shards_weighted(  # noqa: C901 — orchestrator stays linear f
                 "weight_metadata": ex["weight_metadata"],
             }
         )
-        train_metadata_list.append(ex["weight_metadata"])  # type: ignore[arg-type]
+        train_metadata_list.append(cast("dict[str, object]", ex["weight_metadata"]))
 
     # Eval examples carry sample_weight=1.0 so the WeightedTrainer's
     # compute_loss reduces to a standard (un-weighted) mean over the eval
     # batch (design.md S-5).
     for ex in eval_examples:
-        ex["sample_weight"] = 1.0  # type: ignore[index]
+        ex["sample_weight"] = 1.0
 
     # Compute audit (written to disk in _pre_training_audit; this struct
     # mirrors what the JSON file will contain so the caller can apply
@@ -821,11 +821,12 @@ def _group_aware_stratified_split(
         # Ensure at least one train key remains
         n_eval = min(n_eval, len(keys_arr) - 1) if len(keys_arr) > 1 else 0
         for i, k in enumerate(keys_arr):
-            tup = tuple(k.tolist()) if hasattr(k, "tolist") else tuple(k)  # type: ignore[arg-type]
+            tup_raw = k.tolist() if hasattr(k, "tolist") else list(k)
+            tup: tuple[str, str] = (str(tup_raw[0]), str(tup_raw[1]))
             if i < n_eval:
-                eval_keys.add(tup)  # type: ignore[arg-type]
+                eval_keys.add(tup)
             else:
-                train_keys.add(tup)  # type: ignore[arg-type]
+                train_keys.add(tup)
         _LOGGER.info(
             "split stratum=%s n_train=%d n_eval=%d",
             stratum,
@@ -833,6 +834,21 @@ def _group_aware_stratified_split(
             n_eval,
         )
     return train_keys, eval_keys
+
+
+def _audit_de_en_mass(audit: dict[str, object]) -> float:
+    """Extract de+en combined weighted mass from an audit dict.
+
+    Encapsulates the nested ``audit["per_language_weighted_mass"]["de"|"en"]``
+    access so the type narrowing happens in one place rather than every
+    summary-building site.
+    """
+    lang_mass_obj = audit.get("per_language_weighted_mass", {})
+    if not isinstance(lang_mass_obj, dict):
+        return 0.0
+    de = float(cast("float", lang_mass_obj.get("de", 0.0)))
+    en = float(cast("float", lang_mass_obj.get("en", 0.0)))
+    return de + en
 
 
 def _pre_training_audit(
@@ -1193,10 +1209,7 @@ def _run_weighted_path(
             "seed": seed,
             "audit_n_eff": audit.get("n_eff"),
             "audit_top_5_pct": audit.get("top_5_pct_weight_share"),
-            "audit_de_en_mass": (
-                float(audit.get("per_language_weighted_mass", {}).get("de", 0.0))  # type: ignore[union-attr]
-                + float(audit.get("per_language_weighted_mass", {}).get("en", 0.0))  # type: ignore[union-attr]
-            ),
+            "audit_de_en_mass": _audit_de_en_mass(audit),
         },
         weighted=True,
         weight_audit_path=str(audit_path),
@@ -1586,7 +1599,7 @@ def _run_trainer_weighted(
     class WeightedTrainer(Trainer):  # type: ignore[misc,unused-ignore]
         """HF Trainer with per-example sample-weight aware compute_loss (HIGH-C)."""
 
-        def compute_loss(  # type: ignore[override]
+        def compute_loss(  # type: ignore[no-untyped-def]
             self,
             model,
             inputs,
@@ -1602,7 +1615,7 @@ def _run_trainer_weighted(
             )
             return (weighted_loss, outputs) if return_outputs else weighted_loss
 
-    eval_kwargs: dict[str, object] = {}
+    eval_kwargs: dict[str, Any] = {}
     if tokenized_eval is not None:
         eval_kwargs = {
             "eval_strategy": "steps",
@@ -1628,7 +1641,7 @@ def _run_trainer_weighted(
         warmup_ratio=0.03,
         lr_scheduler_type="cosine",
         remove_unused_columns=False,  # keep sample_weight column
-        **eval_kwargs,  # type: ignore[arg-type]
+        **eval_kwargs,
     )
 
     trainer = WeightedTrainer(

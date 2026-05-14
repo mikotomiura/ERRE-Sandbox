@@ -306,9 +306,9 @@ def _load_qwen_tokenizer() -> Any | None:
     if _TOKENIZER_CACHE is not None:
         return _TOKENIZER_CACHE if _TOKENIZER_CACHE is not False else None
     try:
-        from transformers import AutoTokenizer  # type: ignore[import-not-found]  # noqa: PLC0415, I001
+        from transformers import AutoTokenizer  # noqa: PLC0415
 
-        _TOKENIZER_CACHE = AutoTokenizer.from_pretrained(
+        _TOKENIZER_CACHE = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             "Qwen/Qwen3-8B",
             trust_remote_code=True,
             use_fast=True,

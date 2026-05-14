@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import json
 import statistics
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, cast
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -174,9 +174,11 @@ def compute_example_weight(example_metadata: dict[str, object]) -> float:
         will drift relative to the K-β rank=8 baseline (Codex HIGH-C #2).
     """
     lang = example_metadata["language"]
-    tokens = int(example_metadata["token_count"])  # type: ignore[arg-type]
+    tokens = int(cast("int", example_metadata["token_count"]))
     has_addressee = bool(example_metadata["has_addressee"])
-    marker_density = float(example_metadata["marker_density_per_100_tokens"])  # type: ignore[arg-type]
+    marker_density = float(
+        cast("float", example_metadata["marker_density_per_100_tokens"])
+    )
 
     lang_factor = _LANG_FACTORS[str(lang)]
     length_factor = _LENGTH_FACTOR_SATURATED
@@ -273,8 +275,7 @@ def _compute_marker_quartile_breakpoints(
     weight-audit histogram.
     """
     densities = sorted(
-        float(m["marker_density_per_100_tokens"])  # type: ignore[arg-type]
-        for m in metadata
+        float(cast("float", m["marker_density_per_100_tokens"])) for m in metadata
     )
     if not densities:
         return []
@@ -355,9 +356,9 @@ def emit_weight_audit(
     bucket_histogram: dict[str, int] = {}
     for m in metadata:
         lang_b = str(m.get("language", "mixed"))
-        len_b = _length_bucket(int(m["token_count"]))  # type: ignore[arg-type]
+        len_b = _length_bucket(int(cast("int", m["token_count"])))
         q_b = _marker_quartile_label(
-            float(m["marker_density_per_100_tokens"]),  # type: ignore[arg-type]
+            float(cast("float", m["marker_density_per_100_tokens"])),
             marker_breaks,
         )
         key = f"{lang_b}|{len_b}|{q_b}"
