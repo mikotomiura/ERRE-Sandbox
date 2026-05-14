@@ -790,3 +790,146 @@
   - inputs: `tier-b-baseline-kant-{vendi-semantic,icc,burrows}.json` + per-rank pilot 同 series
   - script: `scripts/m9-c-adopt/da1_matrix.py` (本 PR で新規)
   - HEAD: 19afb26c4940dd7859ba4331d39189dd79d6df59
+
+---
+
+## DA-13 — DA-12 identifiability empirical follow-up (multi-turn pilot investigation 第 1 セッション 2026-05-14)
+
+> **STATUS**: 採取前 preregister (HIGH-3 反映、`.steering/20260514-m9-c-adopt-pilot-multiturn/decisions.md`
+> D-1 にて Codex review 4 HIGH 反映 in full)。採取完了後、本 ADR の "verdict"
+> + "後続経路" 行を埋め込み、commit する。
+
+- **判断日時**: 2026-05-14 (`feature/m9-c-adopt-pilot-multiturn-investigation`
+  PR 起票時 = 採取前 preregister、verdict 確定時 = 採取完了後 commit)
+- **背景**: DA-12 verdict = DEFER で identifiability 不能と認定された 2 因子
+  ((a) pilot single-turn vs baseline multi-turn methodology confound、(b)
+  LoRA failure on IPIP self-report neutral midpoint) を **multi-turn pilot
+  data で empirical に切り分ける**。Codex independent review (verbatim
+  `.steering/20260514-m9-c-adopt-pilot-multiturn/codex-review.md`) で
+  MODIFY before implementation verdict + HIGH 4 件を反映:
+  - **HIGH-1**: 単 protocol change だけでは methodology dominant とまで言えない
+    → rank=8 no-LoRA SGLang control 追加、primary comparison は matched baseline
+    に切替、Scenario I 結論を「historical baseline-like no-prior multi-turn
+    sampling is sufficient to reverse the pilot direction」に弱める
+  - **HIGH-2**: pilot 6 windows vs baseline 25 windows の不公平 → matched
+    baseline downsampling (`--max-focal-per-shard 300`)
+  - **HIGH-3**: scenario criteria を **採取前** preregister (本 ADR 内)
+  - **HIGH-4**: post-capture validation query (`validate_multiturn_shards.py`)
+    を DA-13 publish acceptance gate に
+
+### 採取前 preregister (HIGH-3、本 ADR 内で固定)
+
+**primary comparison**: rank=8 multi-turn LoRA-on vs **matched baseline**
+(historical baseline shard 5 本を `--max-focal-per-shard 300` で downsample、
+window-size=100 で 15 windows = pilot multi-turn 18 windows に近い)
+
+**Scenario thresholds**:
+
+| シナリオ | 判定 criterion | 結論 |
+|---|---|---|
+| **I (reversal confirmed)** | Vendi Δ point < 0 AND CI upper < 0 AND Cohen's d < -0.5 AND Burrows reduction point > 5% AND CI lower > 0 AND >= 1 sister rank in same direction (Vendi + Burrows 両軸) | historical baseline-like no-prior multi-turn sampling protocol が pilot direction を反転させるのに十分 → methodology confound が dominant な候補 |
+| **II (no reversal)** | Vendi point >= matched baseline OR CI spans 0 OR Burrows reduction <= 0 OR CI spans 0 | LoRA failure が live hypothesis のまま、retrain v2 必要 |
+| **III (mixed)** | Vendi / Burrows の片方のみ reverse、または rank-mixed direction、または thresholds 部分 clear | 両因子寄与、retrain v2 + multi-turn protocol fix の combination 必要 |
+| **IV (no information gain)** | 採取 fail (>= 1 shard で focal_observed < 0.9 × focal_target) OR 全 rank で CI width > 1.5× single-turn pilot CI width | identifiability 不能のまま、Phase E A-6 7500-turn が唯一の closure path |
+
+**Acceptance gate (HIGH-4)**: `validate_multiturn_shards.py` の 4 check
+(speaker alternation, focal count tolerance band ±5%, no incomplete dialogs,
+focal-only consumer simulation) 全 8 shard PASS = DA-13 publish 可能。
+
+### 採取後 commit (verdict 確定 2026-05-14)
+
+**pre-registered verdict = Scenario II (no reversal — LoRA failure remains the
+live hypothesis)** per `da1-matrix-multiturn-kant.json` automatic 判定:
+
+| key | value |
+|---|---|
+| primary_rank | 8 |
+| scenario | **II** |
+| primary_vendi_diff_point | +2.589 (LoRA r=8 multi-turn 33.757 vs matched 31.167) |
+| primary_vendi_diff_lo / hi | [+1.823, +3.385] (CI spans positive, NOT reversal) |
+| primary_vendi_cohens_d | +2.17 (positive = wrong direction for DA-1) |
+| primary_burrows_reduction_point | -4.04% (negative = wrong direction) |
+| primary_burrows_reduction_lo | -5.46% |
+| sister_ranks_aligned | 0/2 |
+
+### CRITICAL CAVEAT (採取後発見、Codex HIGH-1 mitigation 2 の真価)
+
+pre-registered Scenario II verdict は literally 正しいが、**no-LoRA SGLang
+control 結果** が DA-12 direction failure の **根本原因** を再帰属させる:
+
+| comparison | Vendi Δ | Burrows Δ | 解釈 |
+|---|---|---|---|
+| **backend confound** (matched Ollama → no-LoRA SGLang、両者 no-LoRA) | **+2.144** | **+5.391** | **direction failure の primary cause** |
+| **LoRA effect at rank=8** (LoRA-on SGLang ↔ no-LoRA SGLang、同 protocol) | +0.446 | -0.960 | **near-zero、direction-neutral** |
+| LoRA effect at rank=4 | +0.245 | +0.511 | near-zero、burrows wrong direction |
+| LoRA effect at rank=16 | -0.050 | -0.492 | near-zero、both barely correct direction |
+
+つまり **DA-12 の direction failure は LoRA failure ではなく "Ollama baseline vs
+SGLang pilot" の backend confound が dominant**。LoRA 自体は Vendi/Burrows を
+ほとんど動かしていない (rank=16 で Burrows -0.5% reduction が出ている程度)。
+
+literal pre-registered verdict = Scenario II は維持するが、**実際の interpretation
+は Scenario III の variant** (methodology confound = backend 主因 + LoRA effect
+proper baseline 比で near-zero) として扱う:
+
+1. **DA-12 の "LoRA が IPIP self-report neutral midpoint を shift しない"** は
+   ICC(A,1) の数値 (0.90-0.92) から re-affirmed (本 PR multi-turn LoRA-on は
+   0.89-0.99 で historical pilot と同 magnitude)
+2. **DA-12 の "pilot single-turn vs baseline multi-turn methodology confound"**
+   は **正しい因子** だが、それは **backend (Ollama vs SGLang) 起因**であり、
+   single-turn vs multi-turn 単独では direction failure を引き起こさない
+   (multi-turn pilot LoRA-on でも Vendi 33.3-33.8 で baseline 31.2 より高い)
+3. **本来の "LoRA persona-discriminative effect" は proper baseline (no-LoRA
+   SGLang) と比較すれば near-zero**。これが本 PR の最大の empirical 発見
+
+### 後続経路: **Scenario II + Backend Confound Discovery → retrain v2 with proper SGLang baseline**
+
+- DA-12 status: **close** (identifiability 解消)
+  - "direction failure" 主因 = backend confound (NOT LoRA failure)
+  - "LoRA persona-fit weak" = re-confirmed (proper baseline で near-zero effect)
+- Phase D 着手前 prereq: **feature/m9-c-adopt-retrain-v2** 経路 confirmed、ただし spec amendment:
+  - DA-9 retrain v2 spec を amend: **baseline は SGLang-on-base (no-LoRA SGLang
+    multi-turn) を使う**、Ollama baseline は ローカル apples-to-oranges
+    として除外
+  - 加えて training data の persona discriminative signal 強化 (min_examples
+    1000 → 3000 + stimulus prompt diversity + multi-turn dialog 比率 up)
+- `next-session-prompt-scenario-II-retrain-v2.md` 起草 (本 PR 内、backend
+  confound finding を spec に反映)
+
+- **採用**: **Scenario II (literal) + Backend Confound Discovery (interpretation)**
+- **根拠**:
+  - **Codex HIGH** 4 件反映で identifiability 切り分けの operational risk を
+    閉じた (no-LoRA control + matched baseline + preregister + validation gate)
+  - DA-9 / DA-12 spirit と整合: marginal pass / direction failure の意味を
+    弱めず、後続 PR で確定経路を明示
+- **棄却**:
+  - 全 8 shard 単 protocol change のみ (Codex HIGH-1 で却下): scenario I の
+    結論強度が weak
+  - matched baseline なし (HIGH-2 で却下): windowing/coverage confound が
+    primary comparison に混入
+  - post-hoc threshold movement (HIGH-3 で却下): cherry-pick risk
+- **影響**:
+  - Phase D 着手前 prereq 順序は DA-13 verdict 確定後に固定
+  - `blockers.md` U-6 status は本 ADR で **closure / partial closure / 維持**
+    のいずれかに update
+  - DA-12 自体は immutable record として残し、本 ADR で empirical follow-up
+- **re-open 条件**:
+  - retrain v2 / Phase E A-6 の結果が DA-13 verdict と矛盾 → DA-14 起票
+  - post-hoc threshold 緩めるニーズが発生 → DA-14 起票で正式化
+- **trace**:
+  - matrix artefact: `.steering/20260514-m9-c-adopt-pilot-multiturn/da1-matrix-multiturn-kant.json`
+  - validation gate: `.steering/20260514-m9-c-adopt-pilot-multiturn/validation-multiturn-kant.json`
+    (8/8 shards PASS、focal_target 300 ±5%、speaker alternation、no incomplete dialogs)
+  - codex review: `.steering/20260514-m9-c-adopt-pilot-multiturn/codex-review.md`
+    (MODIFY before implementation verdict + HIGH 1-4 全反映)
+  - investigation decisions: `.steering/20260514-m9-c-adopt-pilot-multiturn/decisions.md`
+  - scripts (新規 / 拡張):
+    - `tier_b_pilot.py` (`--multi-turn-max` + `--no-lora-control` + atomic
+      stimulus-level resume)
+    - `compute_baseline_vendi.py` + `compute_burrows_delta.py`
+      (`--max-focal-per-shard` flag、matched baseline downsampling 用)
+    - `da1_matrix_multiturn.py` (新規、scenario verdict automatic)
+    - `validate_multiturn_shards.py` (新規、HIGH-4 acceptance gate)
+  - test: `tests/test_m9_c_adopt_pilot.py` (13 cases、focal/total turn count +
+    stratified slice + seed + user prompt marker)
+  - HEAD: (採取完了後、final commit SHA を埋め込み)

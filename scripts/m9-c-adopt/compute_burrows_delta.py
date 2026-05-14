@@ -162,6 +162,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ci", type=float, default=DEFAULT_CI)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument(
+        "--max-focal-per-shard",
+        type=int,
+        default=0,
+        help=(
+            "If > 0, truncate each shard's focal utterance stream to this many"
+            " items before windowing. Used by m9-c-adopt-pilot-multiturn"
+            " investigation (HIGH-2 matched baseline downsampling)."
+        ),
+    )
+    p.add_argument(
         "--log-level",
         default="info",
         choices=("debug", "info", "warning", "error"),
@@ -197,6 +207,8 @@ def main(argv: list[str] | None = None) -> int:
 
     for shard in shards:
         utterances = _load_focal_utterances(shard, args.persona)
+        if args.max_focal_per_shard > 0 and len(utterances) > args.max_focal_per_shard:
+            utterances = utterances[: args.max_focal_per_shard]
         windows = _windowize(utterances, args.window_size)
         cluster_means: list[float] = []
         logger.info(
