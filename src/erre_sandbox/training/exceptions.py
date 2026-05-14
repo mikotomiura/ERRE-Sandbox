@@ -68,8 +68,47 @@ class InsufficientTrainingDataError(ValueError):
     """
 
 
+class InsufficientEffectiveSampleSizeError(ValueError):
+    """Weighted training corpus N_eff falls below the Candidate C trigger (DA-14).
+
+    Raised by the pre-training audit in
+    :func:`erre_sandbox.training.train_kant_lora._pre_training_audit` when
+    ``N_eff = (Σw)² / Σw² < 1000``. At that threshold the effective
+    sample size is too small for stable LoRA training even with the
+    signal-driven weighting — the variance of per-example contributions
+    has overwhelmed the corpus.
+
+    Recovery: STOP the run, record the audit in ``decisions.md`` D-1,
+    and escalate to Candidate C (targeted +2500 de/en/≥60 hybrid
+    collection) in a separate PR — Codex HIGH-A fallback path.
+
+    The exception is mapped to CLI exit code **6** by
+    :func:`erre_sandbox.training.train_kant_lora.main`.
+    """
+
+
+class WeightConcentrationError(ValueError):
+    """Weighted training corpus top-5% mass concentration breaches DA-14.
+
+    Raised by the pre-training audit in
+    :func:`erre_sandbox.training.train_kant_lora._pre_training_audit` when
+    ``top_5_pct_weight_share >= 0.50``. At that share the gradient is
+    structurally dominated by ~5% of the corpus — equivalent to training
+    on a few-hundred-example LoRA with the rest of the corpus along for
+    the ride, defeating the signal-driven weighting's diversity intent.
+
+    Recovery: STOP the run, record the audit in ``decisions.md`` D-1,
+    and escalate to Candidate C (Codex HIGH-A fallback path).
+
+    The exception is mapped to CLI exit code **7** by
+    :func:`erre_sandbox.training.train_kant_lora.main`.
+    """
+
+
 __all__ = [
     "BlockerNotResolvedError",
     "EvaluationContaminationError",
+    "InsufficientEffectiveSampleSizeError",
     "InsufficientTrainingDataError",
+    "WeightConcentrationError",
 ]
