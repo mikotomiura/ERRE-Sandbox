@@ -87,9 +87,7 @@ def _load_focal_utterances(shard_path: Path, persona_id: str) -> list[str]:
 def _windowize(utterances: list[str], window_size: int) -> list[list[str]]:
     n = len(utterances)
     full = n // window_size
-    return [
-        utterances[i * window_size : (i + 1) * window_size] for i in range(full)
-    ]
+    return [utterances[i * window_size : (i + 1) * window_size] for i in range(full)]
 
 
 @dataclasses.dataclass
@@ -311,9 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         seed=args.seed,
     )
 
-    de_fraction = (
-        float(n_total_de) / float(n_total_seen) if n_total_seen > 0 else 0.0
-    )
+    de_fraction = float(n_total_de) / float(n_total_seen) if n_total_seen > 0 else 0.0
 
     payload: dict[str, Any] = {
         "persona": args.persona,

@@ -39,7 +39,11 @@ def _validate_shard(path: Path, persona_id: str, focal_target: int) -> dict:
             " GROUP BY 1, 2 ORDER BY 1, 2"
         ).fetchall()
         dist = [
-            {"speaker_persona_id": str(r[0]), "turn_index": int(r[1]), "count": int(r[2])}
+            {
+                "speaker_persona_id": str(r[0]),
+                "turn_index": int(r[1]),
+                "count": int(r[2]),
+            }
             for r in dist_rows
         ]
         # focal speaker should ONLY appear on even turn_index (0, 2, ...)
@@ -74,7 +78,12 @@ def _validate_shard(path: Path, persona_id: str, focal_target: int) -> dict:
         ).fetchall()
         check3_pass = len(incomplete_rows) == 0
         check3_violations = [
-            {"dialog_id": str(r[0]), "min_t": int(r[1]), "max_t": int(r[2]), "count": int(r[3])}
+            {
+                "dialog_id": str(r[0]),
+                "min_t": int(r[1]),
+                "max_t": int(r[2]),
+                "count": int(r[3]),
+            }
             for r in incomplete_rows
         ]
 

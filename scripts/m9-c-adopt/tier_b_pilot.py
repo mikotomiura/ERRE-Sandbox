@@ -238,9 +238,7 @@ def _build_system_prompt(persona: dict[str, Any]) -> str:
         "moral-dilemma battery. Stay in character; speak as yourself, not "
         "about yourself."
     )
-    persona_block = (
-        f"Persona: {display} ({era}).\nCognitive habits:\n{habits_block}"
-    )
+    persona_block = f"Persona: {display} ({era}).\nCognitive habits:\n{habits_block}"
     closing = (
         "Respond in a single concise utterance: at most 80 Japanese characters "
         "or 160 Latin characters. Return ONLY the utterance text — no names, "
@@ -527,7 +525,7 @@ def run_pilot(args: argparse.Namespace) -> int:  # noqa: C901, PLR0915 — seque
 
     total_turn_log = (
         f"multi-turn-max={multi_turn_max} (focal per stim avg ="
-        f" {sum(_focal_turn_count(s, multi_turn_max) for s in sliced)/len(sliced):.2f})"
+        f" {sum(_focal_turn_count(s, multi_turn_max) for s in sliced) / len(sliced):.2f})"
     )
     logger.info(
         "pilot start persona=%s tag=%s run=%d sliced=%d %s",
@@ -642,8 +640,7 @@ def run_pilot(args: argparse.Namespace) -> int:  # noqa: C901, PLR0915 — seque
     con.close()
     elapsed = time.monotonic() - started_at
     logger.info(
-        "pilot done persona=%s tag=%s run=%d completed=%d elapsed=%.1f min"
-        " output=%s",
+        "pilot done persona=%s tag=%s run=%d completed=%d elapsed=%.1f min output=%s",
         persona_id,
         run_tag,
         run_idx,

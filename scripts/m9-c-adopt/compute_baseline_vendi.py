@@ -67,9 +67,7 @@ def _windowize(utterances: list[str], window_size: int) -> list[list[str]]:
     """Slice into non-overlapping windows of size `window_size`. Drops tail."""
     n = len(utterances)
     full = n // window_size
-    return [
-        utterances[i * window_size : (i + 1) * window_size] for i in range(full)
-    ]
+    return [utterances[i * window_size : (i + 1) * window_size] for i in range(full)]
 
 
 @dataclasses.dataclass

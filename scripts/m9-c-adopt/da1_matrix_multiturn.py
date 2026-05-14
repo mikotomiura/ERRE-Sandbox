@@ -89,8 +89,12 @@ def _bootstrap_diff_ci(
 def _icc_summary(payload: dict | None) -> dict:
     if payload is None:
         return {
-            "point": None, "lo": None, "hi": None,
-            "agreement_point": None, "agreement_lo": None, "agreement_hi": None,
+            "point": None,
+            "lo": None,
+            "hi": None,
+            "agreement_point": None,
+            "agreement_lo": None,
+            "agreement_hi": None,
         }
     icc = payload["icc"]
     return {
@@ -103,7 +107,9 @@ def _icc_summary(payload: dict | None) -> dict:
     }
 
 
-def _row(label: str, vendi: dict | None, burrows: dict | None, icc: dict | None) -> dict:
+def _row(
+    label: str, vendi: dict | None, burrows: dict | None, icc: dict | None
+) -> dict:
     return {
         "label": label,
         "vendi": vendi["bootstrap"] if vendi else None,
@@ -135,14 +141,9 @@ def _scenario_verdict(
       out-of-band).
     """
     vendi_point, _vendi_lo, vendi_hi = primary_vendi_diff
-    vendi_reverses = (
-        vendi_point < 0
-        and vendi_hi < 0
-        and primary_vendi_d < -0.5
-    )
+    vendi_reverses = vendi_point < 0 and vendi_hi < 0 and primary_vendi_d < -0.5
     burrows_reverses = (
-        primary_burrows_reduction_point > 0.05
-        and primary_burrows_reduction_lo > 0
+        primary_burrows_reduction_point > 0.05 and primary_burrows_reduction_lo > 0
     )
     if vendi_reverses and burrows_reverses and sister_ranks_aligned >= 1:
         return ("I", "Reversal confirmed across Vendi + Burrows + sister rank")
@@ -182,7 +183,9 @@ def main() -> int:  # noqa: PLR0915
     single_pilot_burrows: dict[int, dict | None] = {}
     single_pilot_icc: dict[int, dict | None] = {}
     for r in ranks:
-        single_pilot_vendi[r] = _load(sh / f"tier-b-pilot-kant-r{r}-vendi-semantic.json")
+        single_pilot_vendi[r] = _load(
+            sh / f"tier-b-pilot-kant-r{r}-vendi-semantic.json"
+        )
         single_pilot_burrows[r] = _load(sh / f"tier-b-pilot-kant-r{r}-burrows.json")
         single_pilot_icc[r] = _load(sh / f"tier-b-icc-kant-r{r}.json")
 
@@ -191,7 +194,9 @@ def main() -> int:  # noqa: PLR0915
     mt_burrows: dict[int, dict | None] = {}
     mt_icc: dict[int, dict | None] = {}
     for r in ranks:
-        mt_vendi[r] = _load(si / f"tier-b-pilot-multiturn-kant-r{r}-vendi-semantic.json")
+        mt_vendi[r] = _load(
+            si / f"tier-b-pilot-multiturn-kant-r{r}-vendi-semantic.json"
+        )
         mt_burrows[r] = _load(si / f"tier-b-pilot-multiturn-kant-r{r}-burrows.json")
         mt_icc[r] = _load(si / f"tier-b-icc-multiturn-kant-r{r}.json")
 
@@ -202,23 +207,43 @@ def main() -> int:  # noqa: PLR0915
 
     # === Build rows ===
     rows: list[dict] = [
-        _row("historical baseline (Ollama, multi-turn metadata)",
-             hist_vendi, hist_burrows, hist_icc),
-        _row("matched baseline (historical, downsampled)",
-             matched_vendi, matched_burrows, hist_icc),
-        _row("no-LoRA SGLang control (multi-turn protocol)",
-             nolora_vendi, nolora_burrows, nolora_icc),
+        _row(
+            "historical baseline (Ollama, multi-turn metadata)",
+            hist_vendi,
+            hist_burrows,
+            hist_icc,
+        ),
+        _row(
+            "matched baseline (historical, downsampled)",
+            matched_vendi,
+            matched_burrows,
+            hist_icc,
+        ),
+        _row(
+            "no-LoRA SGLang control (multi-turn protocol)",
+            nolora_vendi,
+            nolora_burrows,
+            nolora_icc,
+        ),
     ]
     for r in ranks:
-        rows.append(_row(
-            f"single-turn pilot LoRA r={r} (PR #165)",
-            single_pilot_vendi[r], single_pilot_burrows[r], single_pilot_icc[r],
-        ))
+        rows.append(
+            _row(
+                f"single-turn pilot LoRA r={r} (PR #165)",
+                single_pilot_vendi[r],
+                single_pilot_burrows[r],
+                single_pilot_icc[r],
+            )
+        )
     for r in ranks:
-        rows.append(_row(
-            f"multi-turn pilot LoRA r={r} (本 PR)",
-            mt_vendi[r], mt_burrows[r], mt_icc[r],
-        ))
+        rows.append(
+            _row(
+                f"multi-turn pilot LoRA r={r} (本 PR)",
+                mt_vendi[r],
+                mt_burrows[r],
+                mt_icc[r],
+            )
+        )
 
     # === Compute primary scenario evaluation ===
     pr = args.primary_rank
@@ -233,26 +258,25 @@ def main() -> int:  # noqa: PLR0915
         "rationale": "",
     }
     if (
-        primary_mt and matched_baseline_for_compare
-        and primary_mt_burrows and matched_burrows_for_compare
+        primary_mt
+        and matched_baseline_for_compare
+        and primary_mt_burrows
+        and matched_burrows_for_compare
     ):
         a_vendi = _vendi_window_scores(primary_mt)
         b_vendi = _vendi_window_scores(matched_baseline_for_compare)
         vendi_diff = _bootstrap_diff_ci(a_vendi, b_vendi)
         vendi_d = _cohens_d(a_vendi, b_vendi)
-        baseline_burrows_point = (
-            matched_burrows_for_compare["bootstrap"]["point"]
-        )
+        baseline_burrows_point = matched_burrows_for_compare["bootstrap"]["point"]
         primary_burrows_point = primary_mt_burrows["bootstrap"]["point"]
         burrows_reduction_point = (
-            (baseline_burrows_point - primary_burrows_point) / baseline_burrows_point
-        )
+            baseline_burrows_point - primary_burrows_point
+        ) / baseline_burrows_point
         # CI lower for reduction = (baseline_lo - mt_hi) / baseline_point
         burrows_lo = (
-            (matched_burrows_for_compare["bootstrap"]["lo"]
-             - primary_mt_burrows["bootstrap"]["hi"])
-            / baseline_burrows_point
-        )
+            matched_burrows_for_compare["bootstrap"]["lo"]
+            - primary_mt_burrows["bootstrap"]["hi"]
+        ) / baseline_burrows_point
         # Sister ranks check: how many of {ranks} \ {primary} also reverse
         sister_aligned = 0
         for r in ranks:
@@ -263,13 +287,9 @@ def main() -> int:  # noqa: PLR0915
             sa_v = _vendi_window_scores(mt_vendi[r])
             sister_diff = _bootstrap_diff_ci(sa_v, b_vendi)
             sister_burrows_red = (
-                (baseline_burrows_point - mt_burrows[r]["bootstrap"]["point"])
-                / baseline_burrows_point
-            )
-            if (
-                sister_diff[0] < 0 and sister_diff[2] < 0
-                and sister_burrows_red > 0.05
-            ):
+                baseline_burrows_point - mt_burrows[r]["bootstrap"]["point"]
+            ) / baseline_burrows_point
+            if sister_diff[0] < 0 and sister_diff[2] < 0 and sister_burrows_red > 0.05:
                 sister_aligned += 1
         verdict, rationale = _scenario_verdict(
             primary_vendi_diff=vendi_diff,
@@ -323,17 +343,12 @@ def main() -> int:  # noqa: PLR0915
         v = row["vendi"]
         b = row["burrows"]
         i = row["icc"]
-        v_str = (
-            f"{v['point']:.3f} [{v['lo']:.3f}, {v['hi']:.3f}]"
-            if v else "—"
-        )
-        b_str = (
-            f"{b['point']:.3f} [{b['lo']:.3f}, {b['hi']:.3f}]"
-            if b else "—"
-        )
+        v_str = f"{v['point']:.3f} [{v['lo']:.3f}, {v['hi']:.3f}]" if v else "—"
+        b_str = f"{b['point']:.3f} [{b['lo']:.3f}, {b['hi']:.3f}]" if b else "—"
         i_str = (
             f"{i['point']:.4f} [{i['lo']:.4f}, {i['hi']:.4f}]"
-            if i["point"] is not None else "—"
+            if i["point"] is not None
+            else "—"
         )
         print(f"| {row['label']} | {v_str} | {i_str} | {b_str} |")
 
