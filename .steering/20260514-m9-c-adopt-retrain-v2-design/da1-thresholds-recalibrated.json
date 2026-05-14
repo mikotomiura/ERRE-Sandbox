@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "adr": "DA-14",
+  "adr_source": ".steering/20260513-m9-c-adopt/decisions.md",
+  "drafted_at": "2026-05-14",
+  "baseline_backend": "sglang_no_lora_multiturn",
+  "baseline_artefact_dir": ".steering/20260514-m9-c-adopt-pilot-multiturn/",
+  "baseline_artefacts": {
+    "vendi_semantic": "tier-b-pilot-multiturn-kant-nolora-vendi-semantic.json",
+    "burrows": "tier-b-pilot-multiturn-kant-nolora-burrows.json",
+    "icc": "tier-b-icc-multiturn-kant-nolora.json"
+  },
+  "primary_axes": {
+    "vendi_semantic": {
+      "metric": "cohens_d",
+      "direction": "less_than_or_equal",
+      "point_threshold": -0.5,
+      "ci_constraint": "ci_upper < 0",
+      "rationale": "empirical LoRA effect proper at rank=8 is +0.446 (wrong direction); -0.5 d represents ~1.0 Vendi reduction below baseline, achievable per Anthropic persona-vector evidence; |d|>=1.0 is unreachable for 5k-example LoRA per literature",
+      "supersedes": "DA-1 |d| >= 0.3 vs Ollama baseline"
+    },
+    "burrows_reduction": {
+      "metric": "burrows_delta_reduction_pct",
+      "direction": "greater_than_or_equal",
+      "point_threshold": 5.0,
+      "ci_constraint": "ci_lower > 0",
+      "rationale": "current LoRA effect proper at rank=8 is -0.83% (wrong direction); 5% pass means a real signal shift; literature shoulder is 5-15% (Burrows 1987 / Eder 2016)",
+      "supersedes": "DA-1 >= 10%"
+    },
+    "icc_a1": {
+      "metric": "icc_a1",
+      "direction": "greater_than_or_equal",
+      "point_threshold": 0.55,
+      "ci_constraint": "ci_lower >= 0.50",
+      "rationale": "ICC(C,k) >0.97 was saturated and uninformative for persona-fit; ICC(A,1) at no-LoRA SGLang baseline is 0.9061 and rank=8 LoRA-on is 0.9002, giving headroom to detect persona-fit shifts",
+      "supersedes": "DA-1 ICC(C,k) >= 0.6, promotes MEDIUM-4 diagnostic to primary"
+    },
+    "throughput": {
+      "metric": "throughput_pct_of_baseline",
+      "direction": "greater_than_or_equal",
+      "point_threshold": 70.0,
+      "ci_constraint": null,
+      "rationale": "unchanged from DA-1, ~24 tok/s floor"
+    }
+  },
+  "diagnostic_axes": {
+    "icc_ck": {
+      "metric": "icc_ck",
+      "note": "demoted from primary in DA-14; kept as diagnostic, no threshold gate"
+    }
+  },
+  "quorum_rule": {
+    "kant": "2_of_3_primary",
+    "nietzsche": "2_of_3_primary",
+    "rikyu": "2_of_2_primary_burrows_named_limitation"
+  },
+  "per_metric_compound_check": [
+    "point_threshold_met",
+    "bootstrap_95_ci_constraint_met",
+    "direction_persona_discriminative"
+  ],
+  "ai_decision_protocol": {
+    "all_primary_axes_pass": "ADOPT",
+    "any_primary_axis_fail_with_quorum_below_2": "REJECT",
+    "vendi_fail_but_others_pass": "ESCALATE_DA15_vendi_kernel_swap",
+    "weight_concentration_audit_fail": "ESCALATE_CANDIDATE_C_targeted_hybrid"
+  },
+  "weight_audit_thresholds": {
+    "n_eff_min": 1500,
+    "n_eff_fallback_trigger": 1000,
+    "top_5_pct_weight_share_max": 0.35,
+    "top_5_pct_weight_share_fallback_trigger": 0.50,
+    "de_en_weighted_mass_target": 0.60
+  },
+  "next_session_consumer": "scripts/m9-c-adopt/da1_matrix_multiturn.py --thresholds-file .steering/20260514-m9-c-adopt-retrain-v2-design/da1-thresholds-recalibrated.json"
+}
