@@ -1,0 +1,69 @@
+{
+  "persona": "kant",
+  "condition": "stimulus",
+  "metric": "vendi_lexical_5gram",
+  "kernel_name": "lexical-5gram",
+  "encoder_model": "char-5gram-jaccard",
+  "window_size": 100,
+  "n_clusters": 2,
+  "total_windows": 6,
+  "shards": [
+    "kant_r4_run0_stim.duckdb",
+    "kant_r4_run1_stim.duckdb"
+  ],
+  "bootstrap": {
+    "method": "hierarchical-cluster-only",
+    "n_resamples": 2000,
+    "ci": 0.95,
+    "point": 86.92673041587587,
+    "lo": 86.25395009906917,
+    "hi": 87.59951073268259,
+    "width": 1.3455606336134167,
+    "n": 6
+  },
+  "per_window": [
+    {
+      "run_id": "kant_r4_run0_stim",
+      "window_index": 0,
+      "vendi_score": 85.71891423668474,
+      "n": 100,
+      "spectrum_entropy": 4.451073504130905
+    },
+    {
+      "run_id": "kant_r4_run0_stim",
+      "window_index": 1,
+      "vendi_score": 88.26616965693532,
+      "n": 100,
+      "spectrum_entropy": 4.480356904603989
+    },
+    {
+      "run_id": "kant_r4_run0_stim",
+      "window_index": 2,
+      "vendi_score": 88.81344830442772,
+      "n": 100,
+      "spectrum_entropy": 4.486538083401189
+    },
+    {
+      "run_id": "kant_r4_run1_stim",
+      "window_index": 0,
+      "vendi_score": 84.55953818816799,
+      "n": 100,
+      "spectrum_entropy": 4.43745588019617
+    },
+    {
+      "run_id": "kant_r4_run1_stim",
+      "window_index": 1,
+      "vendi_score": 88.61019687784098,
+      "n": 100,
+      "spectrum_entropy": 4.484246939903498
+    },
+    {
+      "run_id": "kant_r4_run1_stim",
+      "window_index": 2,
+      "vendi_score": 85.59211523119852,
+      "n": 100,
+      "spectrum_entropy": 4.4495931671200815
+    }
+  ],
+  "scope_narrowing_note": "Per DA-11 (Phase B \u7b2c 3 \u30bb\u30c3\u30b7\u30e7\u30f3 scope narrowing): Vendi only. Big5 ICC consumer + Burrows \u0394 language handling are deferred to Phase B \u7b2c 4 \u30bb\u30c3\u30b7\u30e7\u30f3 (separate PR)."
+}

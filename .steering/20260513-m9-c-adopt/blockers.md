@@ -34,6 +34,36 @@
 - **教訓**: M9-eval-system の Tier B framework 完成度を adopt phase
   着手前に check する habit、PR #160 merge 後の Tier B 完了 verification
   step を tasklist に明示すべき
+- **2026-05-13 partial verification (Phase B Step 0、kant のみ)**:
+  - kant の no-LoRA shard が `data/eval/golden/kant_{natural,stimulus}_run{0..4}.duckdb`
+    に 10 shard 揃い済 (M9-eval P3、PR #160) を確認
+  - nietzsche / rikyu は M9-eval Phase B+C で採取済の前提だが、本 Phase B
+    scope は kant のみのため verification は kant 完了で本 step は PASS
+  - nietzsche / rikyu の同等 verification は Phase C 着手前に再 fire 必要
+    (本 PR scope 外、`next-session-prompt-phase-c.md` で別 PR record)
+  - Tier B baseline ICC 算出 (Vendi semantic kernel / Big5 ICC(C,k) /
+    ICC(A,1) diagnostic / Burrows Δ) は Step 5 で `tier_b_bootstrap_pair.py`
+    consumer 経由実施
+- **2026-05-14 partial closure (Phase B 第 3 セッション、DA-11 narrowing)**:
+  - kant **Vendi lexical-5gram baseline** 算出済
+    (`tier-b-baseline-kant-vendi-lexical.json`、point=75.77 / CI=[75.19, 76.37])
+  - kant **Vendi semantic baseline + Big5 ICC + Burrows Δ** は DA-11 で
+    Phase B 第 4 セッションへ defer (consumer 未実装 + IPIP 規模 ~25-35h
+    compute + Burrows 言語不一致)
+  - H-1 の kant 部分は **partial closure** (lexical Vendi のみ)、final
+    closure は Phase B 第 4 セッション完了時
+- **2026-05-14 partial verify (Phase B 第 4 セッション完了時、DA-12 verdict)**:
+  - kant **Vendi semantic baseline + Big5 ICC + Burrows Δ** 算出完了
+    (本 PR で `compute_big5_icc.py` / `compute_burrows_delta.py` / Vendi
+    semantic 再算出 consumer 経由)
+  - Tier B persona-discriminative の 4 軸 intersection は **2-of-4 軸のみ
+    PASS** (ICC + throughput)、Vendi semantic + Burrows Δ は全 rank で
+    direction failure (DA-12)
+  - H-1 全体としては **partial verify**: 算出/評価インフラは揃った、
+    ただし persona-discriminative の empirical confirmation は **未完了**
+    で Phase E A-6 (multi-turn full Tier B) に持ち越し
+  - nietzsche / rikyu の同等 verification は Phase C 着手前に再 fire 必要
+    (feature/m9-c-adopt-retrain-v2 + Phase E A-6 完了後)
 
 ### H-2: rikyu Japanese tokenizer 未実装 (Burrows Δ N/A、Codex MEDIUM-2 / LOW-3 反映)
 
@@ -101,6 +131,12 @@
   - fire: CS-1 amendment 未実施で rank=16 sweep 実施 → SGLang が
     rank=16 adapter を reject
   - 解消: CS-1 amendment merge + runbook update
+- **2026-05-13 解消 (Phase B Step 0)**: DB8 runbook §2 launch v5
+  invocation を `--max-lora-rank 16` に update、`.steering/20260513-m9-c-adopt/decisions.md`
+  に DA-1 amendment 2026-05-13 を追記済。M9-C-spike decisions.md CS-1
+  自体は immutable (spike scope の record)、Phase B 内 amendment trace は
+  M9-C-adopt decisions.md 側に集約。tail-sweep fire 時は再 amendment v2
+  で 32 へ拡張予定 (Step 6 内 record)
 
 ### S-3: VRAM peak rank=16 / rank=32 で headroom 圧迫リスク
 
@@ -119,6 +155,15 @@
     打ち切り (rank=8 final)
   - fire: rank=32 で OOM → tail-sweep 中止、rank=16 final
   - 解消: rank=16 peak < 13GB 観察 → continue
+- **2026-05-14 amendment (Phase B 第 2 + 第 3 セッション実測)**:
+  - rank=16 training 中の sustained VRAM plateau: ~14016 MiB
+    (16311 MiB total、headroom ~2.3 GB)
+  - SGLang fp8 + 3 adapter pinned + serving + bench 中: ~10-11 GB peak
+    (本 session bench 中 nvidia-smi 観察)
+  - operational threshold を 14000 → **14300 MiB** に amendment
+    (rank=16 sustained に operational margin +280 MiB)
+  - rank=32 tail-sweep fire 時は再 amendment v2 へ拡張、
+    --max-total-tokens 1024 縮約も準備
 
 ---
 
@@ -203,6 +248,28 @@
   growth)、CS-7 全 NON-FIRE で AC-4 PASS
 - **trigger**: A-4b stress bench で memory growth > 500MB/1h sustained
   OR queue wait p99 > 30s → DB3 re-arm trigger fire
+
+### U-6: pilot single-turn vs baseline multi-turn methodology confound (DA-12 2026-05-14)
+
+- **症状**: Phase B pilot driver (`tier_b_pilot.py`) は DA-11 で single-turn
+  採取に scope narrowing。baseline 5 shard は M9-eval P3 multi-turn dialog。
+  両者の比較で Vendi semantic (全 rank LoRA-on > baseline、Cohen's d +2.1〜+3.0)
+  + Burrows Δ (全 rank LoRA-on > baseline、-3.7〜-4.8% reduction) が
+  **direction failure** を示す。原因が (a) pilot single-turn protocol
+  方法論 confound か、(b) LoRA が IPIP self-report neutral midpoint を
+  shift しない (本来の LoRA failure) か、pilot data 単独では切り分け不能
+- **closure path**: 以下のいずれか:
+  1. **methodology fix path**: small PR で pilot を multi-turn 採取に
+     拡張、direction が baseline と align すれば methodology confound 主因
+     と認定 → 4 軸 intersection 再評価で DA-1 ADOPT 候補
+  2. **retrain v2 path (DA-9 流用)**: feature/m9-c-adopt-retrain-v2 で
+     min_examples 1000 → 3000、stimulus prompt diversity 改善、rank=8 固定
+     → Phase E A-6 multi-turn full Tier B で再評価
+- **trigger**:
+  - fire 継続: DA-12 verdict = DEFER、Phase D / Phase E 着手は prereq
+    待ち
+  - 解消: Phase E A-6 で DA-1 4 軸 intersection 3-of-3 以上 (axes 1-3) +
+    throughput PASS → ADOPT-CHANGES または ADOPT 確定
 
 ### U-5: 8-mode FSM regression (Codex 言及なし、D-5 由来)
 

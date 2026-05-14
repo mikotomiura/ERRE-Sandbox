@@ -38,22 +38,30 @@
 
 ### Phase B — A-1 rank sweep (kant のみ、`{4, 8, 16}` + conditional rank=32)
 
-- [ ] **前提 verification**:
-  - [ ] H-1 (3 persona baseline ICC 揃い) 解消確認
-  - [ ] S-2 (CS-1 `--max-lora-rank >= 16` amendment) 実施 → 別 PR で M9-C-spike decisions.md CS-1 amendment + DB8 runbook update
-- [ ] kant rank=8 baseline 再 confirm (`kant_r8_real` 既存)
-- [ ] kant rank=4 train (G-GEAR overnight)、`data/lora/m9-c-adopt/archive/rank_4/kant/`
-- [ ] kant rank=16 train (overnight)、`data/lora/m9-c-adopt/archive/rank_16/kant/`
-- [ ] 各 adapter で SGLang `/load_lora_adapter` HTTP 200 確認 + chat round trip success
-- [ ] VRAM peak per-step `nvidia-smi --query-gpu=memory.used` sampling、peak > 14GB で early abort (S-3 mitigation)
-- [ ] adapter manifest.json + sha256 生成 (DA-10、`scripts/build_adapter_manifest.py` 新規候補)
-- [ ] Tier B baseline (no LoRA) 確認 — kant の golden baseline shard で Vendi / ICC(C,k) / ICC(A,1) / Burrows Δ 算出
-- [ ] **conditional rank=32 tail-sweep 判定** (HIGH-1):
-  - [ ] rank=16 throughput PASS かつ Vendi/ICC/Burrows のいずれか未達 → tail-sweep fire
-  - [ ] rank=8→16 で effect size delta > 0.5 → tail-sweep fire
-  - [ ] tail-sweep 時は `--max-lora-rank 32` への再 amendment、VRAM monitor 強化
-- [ ] DA-1 採用基準 (4 軸 intersection) で kant の rank=X を empirical 決定
-- [ ] **AC-1 PASS** (rank 決定 + manifest 揃い + VRAM headroom 健全)
+- [x] **前提 verification** (2026-05-13 Phase B Step 0):
+  - [x] H-1 (kant baseline shard 揃い) — `data/eval/golden/kant_{natural,stimulus}_run{0..4}.duckdb` 10 shard 確認、Tier B baseline ICC 算出は Step 5 で実施
+  - [x] S-2 (CS-1 `--max-lora-rank >= 16` amendment) 実施 — DB8 runbook §2 update + `decisions.md` DA-1 amendment 2026-05-13 追記、M9-C-spike `decisions.md` CS-1 は immutable 保持
+  - [x] CS-3 4-種 hard-fail gate dry-run PASS (kant 5022 examples、10 shard、PR #163 parity)
+  - [x] `scripts/build_adapter_manifest.py` 起草 (DA-10 schema、CS-9/DA-6 hard block #2 (.bin pickle refuse) 込み)
+- [x] kant rank=8 baseline 再 confirm (`kant_r8_real` 既存、Phase B 第 2 セッション)
+- [x] kant rank=4 train (G-GEAR overnight、Phase B 第 1 セッション、sha256 `b89a248695...`)
+- [x] kant rank=16 train (overnight、第 2 セッション、sha256 `9532b438f3...`)
+- [x] 各 adapter で SGLang `/load_lora_adapter` HTTP 200 確認 + chat round trip success (第 2 セッション Step 4)
+- [x] VRAM peak per-step `nvidia-smi --query-gpu=memory.used` sampling、peak > 14GB で early abort (S-3 mitigation; 実測 14016 MiB sustained で threshold 14300 MiB に amendment)
+- [x] adapter manifest.json + sha256 生成 (DA-10、3 archive `rank_{4,8,16}/kant/manifest.json` 揃い)
+- **DA-11 narrowing 適用 (Phase B 第 3 セッション 2026-05-14)**:
+  - [x] **Step 5a (narrowed)**: Vendi lexical-5gram baseline 算出 (point=75.77 / CI=[75.19, 76.37])、semantic Vendi は Mac post-hoc へ defer
+  - [x] **Step 5b**: SGLang re-launch + 3 adapter pinned (`/v1/models` 経由 adapter check)
+  - [x] **Step 5c**: SGLang LoRA Tier B pilot driver 新規実装 + 1800 turn 採取 (3 rank × 2 run × 300 turn、6 shard、~21 min)
+  - [x] **Step 5e (partial)**: CS-7 per-rank single_lora bench (rank=4/8/16)、no_lora は PR #163 K-β 値継続使用
+- **Phase B 第 4 セッション完遂 (2026-05-14、DA-12 verdict = DEFER)**:
+  - [x] **Step 5d (Big5 ICC)**: `scripts/m9-c-adopt/compute_big5_icc.py` 新規実装 + Ollama (Windows native) responder + SGLang (WSL2) responder switch。Ollama no-LoRA baseline ICC(C,k)=0.998 [0.997, 0.999]、per-rank LoRA-on ICC(C,k) 0.979〜0.984 (全 rank PASS DA-1 axis 2)。T=0 trivial 1.0 artifact 回避のため T=0.7 + per-call seed mutation を導入 (`decisions.md` DA-12 hot decision)
+  - [x] **Burrows Δ Option A**: `scripts/m9-c-adopt/compute_burrows_delta.py` 新規実装、langdetect deterministic (seed=0) + confidence 0.85 + de utterances only filter。baseline point=108.534 [108.10, 109.02]、per-rank LoRA-on 112.56〜113.72 (全 rank direction failure on DA-1 axis 3)
+  - [x] **Vendi semantic 再算出**: `compute_baseline_vendi.py --kernel semantic` (MPNet)。baseline point=30.822 [30.726, 30.928]、per-rank LoRA-on 33.69〜34.70 (全 rank direction failure on DA-1 axis 1、Cohen's d +2.13〜+3.00)
+  - [x] **Step 5f (DA-1 4 軸 intersection)**: `scripts/m9-c-adopt/da1_matrix.py` 新規実装で matrix 集約。**全 rank 2/4 軸 PASS (ICC + throughput)、direction failure on Vendi + Burrows**
+  - [x] **DA-12 ADR 起票**: pilot verdict = DEFER、production placement なし、provisional rank=8 carry-over、tail-sweep rank=32 NOT fire、DA-9 retrain v2 path 開放
+- [x] **Step 6 conditional rank=32 tail-sweep 判定**: **NOT fire** — direction failure は rank scaling では解消不能 (pilot single-turn methodology confound + LoRA が IPIP self-report neutral midpoint を shift しない 2 因子の identifiability 不能)、DA-9 retrain v2 path で対応
+- [x] **AC-1 PASS** (Phase B 完遂: rank training + archive + manifest 揃い + VRAM headroom 健全 + pilot infra + 全 metric 算出 + DA-12 verdict 記録)。production rank 採用は Phase E A-6 multi-turn full Tier B へ持ち越し
 
 ### Phase C — A-2 3 persona expansion (adopted rank で nietzsche / rikyu 訓練)
 

@@ -75,6 +75,39 @@
 
 ---
 
+### DA-1 amendment 2026-05-13 (M9-C-adopt Phase B 着手時、CS-1 `--max-lora-rank` pin 拡張)
+
+- **amendment 日時**: 2026-05-13 (Phase B 着手時、Codex HIGH-1 反映実施)
+- **背景**: DA-1 で rank ∈ {4, 8, 16} default sweep + conditional rank=32
+  tail-sweep を確定したが、M9-C-spike CS-1 で pin した `--max-lora-rank 8`
+  では SGLang server が rank=16 adapter を runtime で reject する。
+  DA-1 影響欄に "CS-1 amendment 候補" と記載していた事項を本 amendment で
+  正式化する。
+- **amendment 内容**:
+  1. SGLang launch SOP の `--max-lora-rank` 値を **8 → 16** に拡張
+     (`docs/runbooks/m9-c-adapter-swap-runbook.md` §2 launch v5 invocation
+     + 既知の落とし穴 を本 PR で update 済)
+  2. CS-1 amendment record は本 ADR 内に記録、M9-C-spike `decisions.md`
+     (`.steering/20260508-m9-c-spike/decisions.md` CS-1) は immutable
+     として保持
+  3. conditional rank=32 tail-sweep fire 時は再 amendment v2 で
+     `--max-lora-rank 32` に拡張 (Phase B Step 6 内で別途 record)
+- **根拠**: SGLang docs (sgl-project.github.io/advanced_features/lora.html)
+  で `--max-lora-rank` が serving 時 rank ceiling、CS-6 (`/load_lora_adapter`
+  PEFT format compatibility) を満たすには事前 launch args 整合性必須
+- **影響**:
+  - Phase B Step 1+3 で rank=4 / rank=16 を rank=16-cap SGLang server に
+    load する経路が valid 化
+  - DB8 runbook (`docs/runbooks/m9-c-adapter-swap-runbook.md`) §2 を本 PR
+    で update
+  - production loader manifest (DA-6 / DA-10) の rank field は `{4, 8, 16}`
+    accept (tail-sweep fire 時は `{4, 8, 16, 32}`)、`_validate_adapter_manifest()`
+    実装で integrate (Phase F)
+- **S-2 解消**: 本 amendment + DB8 runbook update により blockers.md S-2
+  (CS-1 amendment) は解消
+
+---
+
 ## DA-2 — Live path 切替方式: feature flag + Ollama fallback、vLLM は late-binding only (Codex MEDIUM-1 反映)
 
 - **判断日時**: 2026-05-13
@@ -488,6 +521,95 @@
 
 ---
 
+## DA-11 — Phase B Tier B consumer scope narrowing (Phase B 第 3 セッション 2026-05-14、本 session のみ運用、3 第 4 セッションで closure)
+
+- **判断日時**: 2026-05-14 (Phase B 第 3 セッション着手時)
+- **背景**: handoff prompt (`next-session-prompt-phase-b-3.md`) の Step 5
+  scope は Tier B baseline 算出 (Vendi + Big5 ICC + Burrows Δ) +
+  per-rank pilot 採取 (1800 turn) + per-rank metric + bench + DA-1 4 軸
+  intersection を本セッション内で完遂と想定。実装着手時に以下のギャップを発見:
+  1. **Big5 ICC consumer 未実装**: `compute_big5_icc` ヘルパは存在するが
+     DuckDB shard → per-window IPIP-50 administering → ICC の orchestrator
+     script が未整備。LLM-backed `PersonaResponder` 実装も別途必要 (no-LoRA
+     baseline は Ollama 経由、LoRA-on は SGLang 経由でルーティング切替)
+  2. **Big5 ICC 計算規模**: 50 IPIP question × 25 window × 5 run × 4
+     condition (no-LoRA + 3 rank) = ~25,000 inference @ ~3-5s/inf =
+     **~25-35h compute budget**、本セッションスコープ大幅超過
+  3. **Burrows Δ 言語不一致**: kant 発話は de/en/ja 混合 (sample 確認済)
+     一方 Burrows reference は de のみ (kant_de.txt)。English Kant
+     reference (Cambridge Edition) は M9-eval-system 別 PR scope で未整備
+  4. **SGLang LoRA pilot driver 未実装**: 既存 `eval_run_golden` CLI は
+     Ollama only、SGLang LoRA adapter ルーティング未対応
+- **決定**:
+  - **本セッションは以下に scope narrowing**:
+    1. **G-GEAR foundational work** を先行: SGLang LoRA pilot driver 新規
+       実装 (`scripts/m9-c-adopt/tier_b_pilot.py`)、smoke test、full
+       1800-turn pilot 採取 (3 rank × 2 run × 300 turn)
+    2. **Vendi lexical-5gram baseline** (no-LoRA) を本セッション中に算出 +
+       semantic kernel は Mac post-hoc
+    3. **CS-7 per-rank single_lora bench** (rank=4/8/16) を本セッション中
+       に実走、no_lora baseline は PR #163 K-β 値 (24.25 tok/s threshold)
+       継続利用
+    4. **DA-1 採用判定 provisional** (Vendi lexical + throughput + Step 4
+       multi_pin qualitative の 2.5 軸) で provisional rank 候補を選定し、
+       最終確定は Phase B 第 4 セッションへ defer
+  - **Phase B 第 4 セッション scope**:
+    1. Big5 ICC consumer 実装 (`scripts/m9-c-adopt/compute_baseline_big5_icc.py`
+       + per-rank consumer)、no-LoRA baseline + per-rank LoRA-on の
+       full administering compute (~25-35h、Mac master + remote G-GEAR
+       split 想定)
+    2. Burrows Δ 言語処理判断 (langdetect routing / English ref vendoring
+       / N/A fallback の 3 案から選定)
+    3. semantic kernel Vendi 再算出 (Mac master 側で MPNet cache 整備)
+    4. DA-1 4 軸 intersection で **final** 採用 rank 確定
+    5. 採用 rank の production placement + manifest backfill + PR 起票
+  - **本セッションは PR 起票しない**: pilot data + baseline + bench + scope
+    narrowing 記録の commit + push のみ、PR は Phase B 第 4 セッション
+    完了時に統合 PR で起票
+- **根拠**:
+  - 発見した consumer ギャップ + IPIP-50 compute scale を closure するには
+    1 セッションでは不可能 (実装 + ~25-35h compute)
+  - SGLang LoRA pilot driver は **G-GEAR でしか書けない / 動かせない**
+    foundational piece、本セッションで完遂するのが最も effective
+  - Phase A の DA-1 採用基準 (4 軸 intersection、point + CI + direction の
+    3 条件 AND) を **緩める** のではなく、 **完遂タイミング** を 1 PR 後に
+    ずらす方が ADR との整合性 (HIGH-2 / DA-9 marginal pass の意味) を保つ
+  - user feedback (`feedback_batch_integration_over_per_session_sync`) と
+    整合: multi-session の中間 PR を増やすより全 phase 完了後に統合 PR で
+    一括同期する方を user は好む
+- **棄却**:
+  - **本セッション内に IPIP-50 administering 強行**: ~25-35h compute は
+    G-GEAR 単独では非現実的 (SGLang server + Ollama 混在で VRAM
+    contention)、品質も劣化リスク
+  - **DA-1 採用基準を 4 軸 → 2 軸 (Vendi + throughput) に恒久的に緩める**:
+    Phase A で HIGH-2 (point + CI + direction の 3 条件 AND) を反映した
+    ADR の意味が失われる、M9-D で巻き戻し risk
+  - **本 session で本 PR を起票 (incomplete data で)**: Mac master review
+    判定が provisional になり、後続 PR で final adoption を起票し直す
+    overhead が二度手間、user feedback と矛盾
+- **影響**:
+  - `tasklist.md` Phase B Step 5-7 を本 ADR に従い再構成 (Step 5a 部分達成、
+    Step 5b/c/e 完遂、Step 5d/f/Step 6/Step 7 は Phase B 第 4 セッション)
+  - `next-session-prompt-phase-b-4.md` 新規起草 (本セッション末尾で)
+  - `tier-b-baseline-kant.md` 新規 (Vendi lexical 結果 + Big5/Burrows
+    defer 内容明記)
+  - `phase-b-progress.md` を本 session 進捗で update
+  - DA-1 採用基準 + 4 軸 intersection は **そのまま維持** (DA-11 は
+    timing narrowing であり criterion narrowing ではない)
+- **re-open 条件**:
+  - Phase B 第 4 セッションで Big5 ICC consumer + Burrows 言語処理 +
+    semantic Vendi 揃い、DA-1 4 軸 intersection で final 採用 rank 確定
+    → DA-11 close
+  - IPIP-50 compute が実測で予想より高速 / 軽い (e.g. < 5h) → DA-11 を
+    Phase B 第 4 セッションでより縮約 (1 PR 内で baseline + per-rank
+    consumer + DA-1 final を完遂)
+  - rank=32 tail-sweep fire 条件が provisional Vendi lexical で既に明確に
+    判定可能 (e.g. rank=8 → 16 で sharp gain あるいは saturate) →
+    Phase B 第 4 セッションの最初に rank=32 training kick (Step 6 earlier
+    fire)
+
+---
+
 ## DA-10 — Adapter manifest + sha256 checksum + 例外定義 (Codex HIGH-4 + LOW-2 反映)
 
 - **判断日時**: 2026-05-13
@@ -537,3 +659,134 @@
     threshold 超過) → blake2 / sha1 への変更検討
   - manifest 改竄検出 needed → manifest 自体に署名 (GPG / cosign 等)
     追加 (DA-6 re-open と連動)
+
+---
+
+## DA-12 — Phase B 第 4 セッション DA-1 verdict = DEFER (pilot 3-of-4 軸未達、direction failure、Phase E A-6 multi-turn full Tier B へ持ち越し)
+
+- **判断日時**: 2026-05-14 (Phase B 第 4 セッション完了時)
+- **背景**: Phase B 第 4 セッションで Big5 ICC consumer (`scripts/m9-c-adopt/compute_big5_icc.py`)
+  + Burrows Option A consumer (`scripts/m9-c-adopt/compute_burrows_delta.py`)
+  + Vendi semantic 再算出を完遂し、DA-1 4 軸 intersection で final 採用
+  rank を確定する scope だった。実測 matrix (`da1-matrix-kant.json`):
+
+  | rank | Vendi semantic | ICC(C,k) | Burrows Δ | throughput | axes PASS |
+  |---|---|---|---|---|---|
+  | baseline | 30.822 [30.726, 30.928] | 0.9980 [0.9974, 0.9987] | 108.534 [108.10, 109.02] | K-β 34.64 (threshold 24.25) | -- |
+  | rank=4 | 33.895 [33.85, 33.94] | 0.9792 [0.967, 0.994] | 113.595 [113.26, 113.93] | 33.82 tok/s | **2/4** (V:FAIL, I:PASS, B:FAIL, T:PASS) |
+  | rank=8 | 34.701 [34.67, 34.73] | 0.9843 [0.980, 0.995] | 113.723 [113.31, 114.13] | 33.77 tok/s | **2/4** (V:FAIL, I:PASS, B:FAIL, T:PASS) |
+  | rank=16 | 33.685 [33.09, 34.28] | 0.9837 [0.981, 0.994] | 112.564 [112.31, 112.82] | 33.72 tok/s | **2/4** (V:FAIL, I:PASS, B:FAIL, T:PASS) |
+
+  Cohen's d (Vendi rank vs baseline): +2.13 〜 +3.00 (positive = LoRA-on >
+  baseline → DA-1 axis 1 direction "LoRA-on < no-LoRA" に **逆方向**).
+  Burrows reduction: -3.7% 〜 -4.8% (negative = LoRA-on Burrows > baseline →
+  DA-1 axis 3 direction "reduction" に **逆方向**).
+
+- **決定**:
+  - **DA-1 verdict = DEFER** (4 軸全達成の smallest rank なし、3 軸達成も
+    なし、2 軸達成 (ICC + throughput) で direction failure on Vendi semantic
+    + Burrows Δ across all 3 ranks)
+  - **production adoption しない**: `data/lora/m9-c-adopt/kant_r{X}_real/`
+    への production placement は本 PR 内では実施せず、archive
+    (`data/lora/m9-c-adopt/archive/rank_{4,8,16}/kant/`) のみ commit 済。
+  - **rank=32 tail-sweep NOT fire**: DA-1 HIGH-1 の fire 条件
+    "rank=16 throughput PASS + Vendi/ICC/Burrows いずれか未達 (= signal
+    saturate 未達)" は **本質的には scaling signal 問題** の場合に有効。
+    本セッションの未達は **direction failure** であり、rank scaling では
+    direction inversion を解消できない (rank=32 でも同じ pilot
+    methodology を踏襲する限り同じ direction を得る公算が高い)。
+  - **provisional rank=8 retained as Phase E protocol carry-over**: K-β
+    heritage (PR #163 single_lora baseline) + best ICC stability in pilot
+    (0.9843) + throughput parity + smaller-rank-preferred の DA-1 spirit
+    に従い、Phase E A-6 (full 7500-turn multi-turn Tier B) で rank=8 を
+    primary 評価対象とする。rank=4 / rank=16 も archive 経由で再評価可能。
+  - **DA-9 retrain path 開放を Phase D blocker 化**: feature/m9-c-adopt-retrain-v2 別 PR を
+    Phase D 着手前の prereq として明示。retrain v2 内容 (DA-9 ベース):
+    - min_examples を 1000 → 3000 に増 (DA-3 MEDIUM-6 BIG5-CHAT 1/30 規模)
+    - rank=8 (provisional carry-over) で固定
+    - stimulus prompt diversity 改善 (M9-eval P3 で新規 prompt 群追加)
+    - 追加検討事項: training data の per-turn token length 分布、persona
+      自己言及比率、対話 vs 独白比率 (現状の pilot single-turn 出力に
+      Kant 様 style が不足する根本原因の調査軸)
+
+- **direction failure の解釈** (本 ADR の hot decision):
+  方法論的 confound (methodology) と LoRA 機能不全 (LoRA failure) の
+  identifiability に対する判断:
+
+  - **Pilot single-turn vs baseline multi-turn confound (方法論側)**:
+    - baseline 5 shards は M9-eval P3 由来の 5 run × ~504 turn = ~2520
+      turn の **multi-turn dialog** (focal kant が dialogue 内で
+      alternating turn 発話)
+    - pilot 6 shards は本 PR で新規実装の `tier_b_pilot.py` 単発 stim →
+      kant 1-turn = 300 turn/run × 6 = 1800 turn の **single-turn** 採取
+    - single-turn 設計は DA-11 scope narrowing で確定 ("multi-turn は
+      Phase E A-6 7500-turn の scope")。pilot ↔ baseline 比較は per-utterance
+      level での language/lexical/semantic 特性が **prompt context の長短
+      で構造的に異なる**
+    - その結果、Vendi (window 内 diversity) も Burrows (per-utterance
+      function-word distribution) も pilot は baseline より系統的に高い
+      値を取る方向 bias を持つ
+  - **LoRA failure の独立可能性**:
+    - ICC(C,k) は base model も LoRA-on も > 0.97 で stable 揺るぎなし →
+      LoRA が **IPIP-50 self-report** に persona shift を与えていない事実
+      も同時に観察される (MEDIUM-4 で「ICC(C,k) は consistency であり
+      persona-fit ではない」と明示済)
+    - ICC(A,1) は baseline 0.953 → LoRA-on 0.90-0.92 とわずかに下落 →
+      LoRA は absolute Big5 vector を **わずかに** 動かしているが、その
+      shift は **persona-discriminative shoulder には到達しない** 振幅
+    - per-window Big5 mean は baseline / 全 rank で類似 (E~3.0/A~3.4/
+      C~3.3/N~3.0/O~3.0) → LoRA が IPIP self-report の neutral midpoint
+      応答を実質的に shift していない疑い
+  - **identifiability 不能**: 上記 2 因子は pilot data 単独では切り分け
+    不可能。Phase E A-6 multi-turn full Tier B で同条件比較すれば
+    confound 因子を解消可能 → **本 ADR は明示的に judgment を Phase E
+    へ defer**
+
+- **根拠**:
+  - **Codex P4a HIGH-2** spirit: point + CI + direction の 3 条件 AND を
+    満たさない rank を ADOPT すると M9-D で巻き戻し risk
+  - **DA-9 marginal pass**: point + direction PASS で CI 未達のケース
+    を retrain path に流す。本 ADR は **direction も未達** なので
+    DA-9 strict marginal とは別カテゴリ (direction failure) として扱う
+    (ただし mitigation path は DA-9 retrain v2 を流用)
+  - **DA-11 spirit**: pilot で identifiability 限界に達したら timing
+    narrowing で Phase E に持ち越す (DA-11 criterion narrowing ではなく
+    timing narrowing と整合)
+  - **user feedback `feedback_batch_integration_over_per_session_sync`**:
+    multi-session 中間 PR を増やすより全 phase 完了後の統合 PR で
+    一括同期。本 PR は Phase B (pilot infra + DA-12 verdict) の自然な
+    closure mark になり、Phase D / E は別 PR が適切
+- **棄却**:
+  - **strict REJECT (DB3 re-arm 即発)**: ICC + throughput が PASS で
+    あり LoRA 自体が機能していないわけではない。DB3 re-arm は overkill
+  - **rank=8 hard-ADOPT (2/4 axes)**: HIGH-2 で却下した「point + CI
+    で marginal pass を緩める」と同じ罠。direction failure は更に
+    厳しく扱う必要
+  - **rank=32 tail-sweep fire**: scaling では direction を変えられない
+    (上記)
+  - **本セッション内に Phase E A-6 7500-turn 追加**: 本 PR scope tight、
+    Phase E は別 PR が dependency 整理として正しい
+- **影響**:
+  - `data/lora/m9-c-adopt/kant_r{X}_real/` への production placement は
+    **本 PR scope 外** (archive のみ commit、`is_mock=false` 状態)
+  - Phase D (live path 統合 / `MultiBackendChatClient` 等) は本 ADR
+    DEFER 状態では fire できない → **Phase D 着手前に feature/m9-c-adopt-retrain-v2 PR が
+    merge 必須**、retrain v2 → Phase E A-6 → Phase D の依存順
+  - `blockers.md` H-1 (Tier B persona-discriminative) は **partial verify**
+    (ICC + throughput) で持ち越し
+  - `phase-b-report.md` 新規 (本 PR)、`phase-b-progress.md` Final state
+    へ書き換え
+- **re-open 条件**:
+  - feature/m9-c-adopt-retrain-v2 merge + Phase E A-6 multi-turn full
+    Tier B 完遂 → DA-1 4 軸 intersection 再評価 → ADOPT / REJECT / 別案
+  - methodology confound 確認のため pilot multi-turn 採取の小 PR が
+    先に立ち上がる場合: DA-12 を early close (direction が baseline と
+    align すれば DA-1 ADOPT、しなければ DA-9 retrain v2 経路で同じ結末)
+  - 別 persona (nietzsche / rikyu) の training が始まり同じ direction
+    failure を再現 → MEDIUM-4 LIWC alternative honest framing で
+    ICC(A,1) を primary に昇格する検討 (DA-8 amendment 候補)
+- **trace**:
+  - matrix artefact: `.steering/20260513-m9-c-adopt/da1-matrix-kant.json`
+  - inputs: `tier-b-baseline-kant-{vendi-semantic,icc,burrows}.json` + per-rank pilot 同 series
+  - script: `scripts/m9-c-adopt/da1_matrix.py` (本 PR で新規)
+  - HEAD: 19afb26c4940dd7859ba4331d39189dd79d6df59

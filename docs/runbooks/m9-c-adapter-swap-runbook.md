@@ -50,11 +50,22 @@
 
 ---
 
-## 2. SGLang launch SOP (CS-1 / launch v5)
+## 2. SGLang launch SOP (CS-1 / launch v5、M9-C-adopt Phase B amendment 2026-05-13)
 
 K-α PR #154/#155 で確定した launch v5 invocation。GPU メモリ 0.85 で
 mem-fraction-static、`--enable-lora` で LoRA 経路を有効化、Q3-8B を fp8 で
 serve する。
+
+> **CS-1 amendment 2026-05-13 (M9-C-adopt Phase B、Codex HIGH-1 反映)**:
+> `--max-lora-rank` の pin を **8 → 16** に拡張。理由: M9-C-adopt Phase B で
+> rank ∈ {4, 8, 16} の empirical sweep を行うため、SGLang server が rank=16
+> adapter を serve する必要がある。`--max-lora-rank` は SGLang 側の rank
+> ceiling であり、これより小さい rank の adapter は問題なく load 可能 (rank=8
+> baseline + rank=4 + rank=16 を同時 pin で扱う)。conditional rank=32
+> tail-sweep fire 時は `--max-lora-rank 32` に再 amendment (DA-1)。
+> 本 amendment は launch args の rank field のみ、CS-1 全体 (SGLang version pin
+> 0.5.10.post1 / quantization fp8 / mem-fraction-static 0.85 等) は immutable。
+> trace: `.steering/20260513-m9-c-adopt/decisions.md` DA-1 amendment。
 
 ```bash
 wsl -d Ubuntu-22.04 -- bash -c '
@@ -65,7 +76,7 @@ wsl -d Ubuntu-22.04 -- bash -c '
     --enable-lora \
     --lora-target-modules q_proj k_proj v_proj o_proj \
     --max-loras-per-batch 3 \
-    --max-lora-rank 8 \
+    --max-lora-rank 16 \
     --max-loaded-loras 3 \
     --mem-fraction-static 0.85 \
     --max-total-tokens 2048 \
@@ -84,9 +95,10 @@ curl -sf http://localhost:30000/health
 
 ### 既知の落とし穴
 
-- `--max-loras-per-batch 3` / `--max-loaded-loras 3` / `--max-lora-rank 8` は
-  CS-1 と整合。これらが launch 時 unset だと runtime で `/load_lora_adapter`
-  が PEFT format を reject する場合がある (CS-6 / K-α S-3)
+- `--max-loras-per-batch 3` / `--max-loaded-loras 3` / `--max-lora-rank 16`
+  (M9-C-adopt Phase B amendment、元 CS-1 は `--max-lora-rank 8`) は CS-1
+  + amendment と整合。これらが launch 時 unset だと runtime で
+  `/load_lora_adapter` が PEFT format を reject する場合がある (CS-6 / K-α S-3)
 - `--disable-cuda-graph` を外すと RTX 5060 Ti (Blackwell) で graph capture が
   unstable な observation あり (K-α S-2)
 - `--max-running-requests 1` で **N=3 multi-LoRA bench** の concurrency は別
