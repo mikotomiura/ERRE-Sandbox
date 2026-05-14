@@ -23,7 +23,8 @@ _PILOT_PATH = _REPO_ROOT / "scripts" / "m9-c-adopt" / "tier_b_pilot.py"
 @pytest.fixture(scope="module")
 def pilot_module():
     spec = importlib.util.spec_from_file_location("tier_b_pilot", _PILOT_PATH)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["tier_b_pilot"] = module
     spec.loader.exec_module(module)
@@ -98,13 +99,12 @@ def test_derive_seed_distinct_for_lora_vs_nolora(pilot_module):
 
 
 def test_derive_seed_stable(pilot_module):
-    assert pilot_module._derive_seed("kant", 8, 0, False) == pilot_module._derive_seed(
-        "kant", 8, 0, False
-    )
+    a = pilot_module._derive_seed("kant", 8, 0, no_lora=False)
+    b = pilot_module._derive_seed("kant", 8, 0, no_lora=False)
+    assert a == b
     # Different run_idx must yield distinct seeds.
-    assert pilot_module._derive_seed("kant", 8, 0, False) != pilot_module._derive_seed(
-        "kant", 8, 1, False
-    )
+    c = pilot_module._derive_seed("kant", 8, 1, no_lora=False)
+    assert a != c
 
 
 def test_build_user_prompt_includes_turn_marker(pilot_module):
