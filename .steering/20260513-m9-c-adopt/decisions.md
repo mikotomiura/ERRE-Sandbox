@@ -933,3 +933,148 @@ proper baseline 比で near-zero) として扱う:
   - test: `tests/test_m9_c_adopt_pilot.py` (13 cases、focal/total turn count +
     stratified slice + seed + user prompt marker)
   - HEAD: (採取完了後、final commit SHA を埋め込み)
+
+---
+
+## DA-14 — DA-9 spec amendment + DA-1 thresholds re-calibration (retrain v2 signal-driven、2026-05-14)
+
+DA-13 で empirical 確定した **LoRA effect proper near-zero** (rank=8 で
+Vendi +0.446 / Burrows -0.960 vs no-LoRA SGLang baseline) と、本 PR
+(`feature/m9-c-adopt-retrain-v2-design`) Step 1 corpus analysis で発見した
+**4 gap** (ja 56.7% / short 69% / monolog 0% / marker 0.76x) を受け、
+DA-9 retrain v2 spec を **signal-driven engineering** に amend、加えて
+DA-1 thresholds を proper baseline 基準で再校正する。
+
+- **採用**: **Signal-driven retrain v2 spec (Candidate B) + re-calibrated thresholds**
+
+### 採用 spec (DA-9 amendment、詳細は `feature/m9-c-adopt-retrain-v2-design/design-final.md` §3)
+
+1. **baseline backend**: no-LoRA SGLang multi-turn を primary baseline
+   (Ollama は historical reference のみ)
+2. **`min_examples` を quality proxy として放棄** (MEDIUM-6 + Step 1
+   evidence; `realised_examples=5022` 既に SLO 1000 の 5x)。
+   `realised_examples` を post-weighting で 3,000 floor 維持 (operational
+   SLO、quality proof ではない)
+3. **per-example signal weighting** (clamped `[0.1, 3.0]`、mean=1.0 に
+   normalised):
+   ```
+   weight = lang_factor   * 0.35     # de=1.4, en=1.0, mixed=0.5, ja=0.2
+          + length_factor * 0.20     # <30=0.3 / 30-59=0.8 / 60-119=1.5 / 120+=2.0
+          + monolog_bonus * 0.15     # addressee=None → 1.5, else 1.0
+          + marker_factor * 0.30     # max(density/2.0, 0.2)
+   ```
+   coefficients は **heuristic (NOT empirical)** で、interpretable な
+   sum-to-1 weighting。training kickoff 直前に `weight-audit.json` を出力
+   (per-language weighted mass / top 5% weight share / N_eff = (Σw)²/Σw²)
+4. **WeightedTrainer** (HF Trainer.compute_loss override) を自前実装:
+   token CE `reduction="none"` → per-example mean over non-`-100` labels →
+   `(per_example_loss * weight).sum() / weight.sum().clamp_min(eps)`。HF
+   Trainer の `sample_weight` 自動 consume には依存しない
+5. **Group-aware validation split** (training kickoff の最初): 5,022
+   examples を `(source_shard, dialog_id)` で group 化、90/10 random split
+   (seed=42、stratified by `source_shard_type`)。**eval split に monolog
+   re-cast は含めない**
+6. **Monolog re-cast diversity injection**: training group の natural
+   shards から Kant 連続 2 turn を `addressee=None` で結合、~150-300
+   synthetic monolog examples を追加。`synthetic_source_dialog_id` +
+   `synthetic_source_turn_indices` metadata 付与。
+   `assert len(set(train_dialog_ids) & set(eval_dialog_ids)) == 0`
+7. **rank=8 固定** (DA-12 provisional carry-over)、PEFT setup PR #163 K-β
+   baseline 同一 (`target_modules=[q,k,v,o_proj]`, `lora_alpha=16`,
+   `lora_dropout=0.05`, NF4 + double quant)
+8. **max_steps 2000 → 4000** (weighted batch の effective LR scaling)
+9. **eval batch=1 + loss-only eval** (VRAM 抑制、HIGH-B 反映)
+10. **Candidate C (targeted hybrid) fallback**: weight-concentration audit
+    で N_eff <1000 or top-5% weight share ≥50%、OR DA-14 4 軸 REJECT、OR
+    overfit diagnostics 兆候 → +2,500 turn を **de/en × ≥60 token ×
+    monolog/long-form** で targeted 採取して再 training
+
+### 採用 thresholds (DA-1 re-calibration、`da1-thresholds-recalibrated.json` で pin)
+
+| Axis | 旧 (DA-1) | 新 (DA-14、vs no-LoRA SGLang baseline) | 根拠 |
+|---|---|---|---|
+| Vendi semantic | Cohen's d > 0、direction "LoRA-on < no-LoRA" | **d ≤ -0.5** point + 95% CI upper < 0 | empirical pin ±0.5 を踏まえた現実的 target、Anthropic persona-vector で達成可能、\|d\| ≥ 1.0 は 5k LoRA で literature 上 unreachable |
+| Burrows reduction | ≥ 10% | **≥ 5%** point + CI lower > 0 | literature shoulder 5-15% (Burrows 1987 / Eder 2016)、現状 LoRA effect proper -0.83% (wrong direction) なので 5% pass は真の shift を意味 |
+| ICC primary | ICC(C,k) ≥ 0.6 | **ICC(A,1) ≥ 0.55** point + CI lower ≥ 0.50 | ICC(C,k) >0.97 で saturated → diagnostic に格下げ、ICC(A,1) は no-LoRA SGLang baseline で 0.9061 / LoRA-on r=8 で 0.9002 で persona-fit shift が観測可能な帯域 |
+| throughput | ≥ 70% baseline | **≥ 70%** 不変 | DA-1 と同 |
+
+quorum 規則 (DA-8 不変): kant / nietzsche 2-of-3 (Vendi + ICC + Burrows
+Δ)、rikyu 2-of-2 (Vendi + ICC)。各 metric は 3 条件 AND (point + CI lower +
+direction)。
+
+### 根拠
+
+- **DA-13 CRITICAL CAVEAT**: backend confound (Ollama → SGLang) が direction
+  failure の primary cause、LoRA effect proper は 3 rank 全部 near-zero
+  (rank=4/8/16 で同等)
+- **Step 1 corpus analysis empirical finding** (`scripts/analysis/analyze_kant_training_corpus.py`,
+  5,022 examples re-extract):
+  - ja 56.7% (Burrows discriminator de-only との致命的 mismatch)
+  - short utterance <30 tokens で 69.0%、max=132 tokens (max_seq_length=2048
+    がほぼ未使用、Kantian long-form syntax 表現不可)
+  - dialog 100% / monolog 0% (Critique-style self-addressed expository
+    signal ゼロ)
+  - marker density 0.76x literature anchor、self-ref 0.30 per 100 tokens
+    (anchor expects ≥1.0、3.3x 不足、median 0.00)
+  - 4 gap の multiplicative interaction → effective discriminative signal
+    ≈ 5% (~250 examples)
+- **MEDIUM-4 ICC(A,1) precedent** (PR #166 D-1): 既に Tier B 評価で
+  diagnostic として併報告、本 amendment で primary 昇格
+- **Codex independent review** (`feature/m9-c-adopt-retrain-v2-design/codex-review.md`,
+  260,485 tokens, gpt-5.5 xhigh):
+  - Verdict: **ADOPT-WITH-CHANGES**
+  - HIGH-A/B/C/D 全 MODIFY → 反映済 (design-final.md §3.2/§3.3/§3.5/§4)
+  - MEDIUM-1/2/3 採用 (decisions.md DR-2)
+
+### 棄却
+
+- **Candidate A (Volume-driven、DA-9 literal)**: realized=5022 既に literature
+  shoulder 越え、新規 stim battery 拡張は ja 占有率を変えず、4 gap を一つも
+  address しない (Codex HIGH-A defeated framing)
+- **旧 `|d| ≥ 0.3 vs Ollama baseline`**: backend confound 込みの数値、proper
+  baseline 切替で defeat
+- **`|d| ≥ 1.0` strict**: 5k example LoRA で literature 上 unreachable
+- **ICC(C,k) ≥ 0.6 maintain**: >0.97 で saturated、persona-fit shift を
+  detect 不能
+- **synthetic monolog generation** (新規 LLM 生成): Codex MEDIUM-3 で leak
+  risk 指摘、natural shards re-cast に限定
+- **HF Trainer `sample_weight` 自動 consume 前提**: causal-LM Trainer は
+  consume しない (Codex HIGH-C verbatim)、WeightedTrainer 自前実装に修正
+
+### 影響
+
+- 次 PR (`feature/m9-c-adopt-retrain-v2-implementation`) で
+  `src/erre_sandbox/training/{dataset,train_kant_lora}.py` を改修:
+  - `build_weighted_examples(rows, persona_id)` adapter 追加
+  - `WeightedTrainer(Trainer)` class 追加 + `compute_loss` override
+  - `weight-audit.json` 出力ロジック
+  - group-aware split + monolog re-cast ロジック
+- `da1_matrix_multiturn.py` consumer の閾値定数を本 ADR の 4 thresholds に
+  amend (本 PR の `da1-thresholds-recalibrated.json` を `--thresholds-file`
+  で読む)
+- `report.md` template が ICC(A,1) primary 報告に switch
+- `blockers.md` H-1 status: kant については本 retrain v2 で empirical
+  confirmation を取りに行く
+
+### re-open 条件
+
+- retrain v2 が Vendi/Burrows でも direction failure 再現 → **DA-15 起票**
+  (Vendi semantic-kernel swap / Burrows reference corpus extension の検討)
+- retrain v2 が ICC(A,1)/Burrows pass + Vendi fail → DA-15 (Vendi kernel
+  swap、jaja/eude 比較)
+- weight-concentration audit で N_eff <1000 (signal density 過小) →
+  Candidate C (targeted hybrid) に switch、本 ADR re-evaluate
+
+### trace
+
+- design: `.steering/20260514-m9-c-adopt-retrain-v2-design/design-final.md`
+- corpus analysis: `.steering/20260514-m9-c-adopt-retrain-v2-design/corpus-analysis-kant.{json,md}`
+- thresholds pin: `.steering/20260514-m9-c-adopt-retrain-v2-design/da1-thresholds-recalibrated.json`
+- codex review: `.steering/20260514-m9-c-adopt-retrain-v2-design/codex-review.md`
+- session decisions: `.steering/20260514-m9-c-adopt-retrain-v2-design/decisions.md`
+- handoff: `.steering/20260514-m9-c-adopt-retrain-v2-design/next-session-prompt.md`
+- analysis script: `scripts/analysis/analyze_kant_training_corpus.py`
+- analysis tests: `tests/test_analysis/test_kant_corpus.py`
+- baseline reference (DA-13 artefacts):
+  `.steering/20260514-m9-c-adopt-pilot-multiturn/tier-b-pilot-multiturn-kant-nolora-*.json`
+- HEAD: (本 design PR merge 後、final commit SHA を埋め込み)
