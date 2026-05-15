@@ -135,3 +135,86 @@ jobs:
             exit 1
           fi
           echo "[eval-egress-grep-gate] PASS (B-1 individual-layer literal guard included; weak backstop only — primary guard is the behavioural sentinel + construction-time aggregate assert)"
+
+  policy-grep-gate:
+    # SH-1 CI layer (security-hardening-pre-m10-followup): static backstop for
+    # the Codex pre_tool_use_policy hook. The hook catches shell-bypass writes
+    # at IDE time; this job re-runs the same rules on git diff so a PR cannot
+    # reach merge without surfacing a violation. See
+    # ``.steering/20260513-security-hardening-pre-m10/decisions.md`` SH-1 and
+    # ``.steering/20260515-security-hardening-pre-m10-followup/decisions.md``
+    # SH-FOLLOWUP-2 (T201 backstop via ruff re-run, not grep).
+    name: policy grep gate (SH-1 backstop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch-depth=0 so the ``.steering`` completeness step below can
+          # diff against ``origin/main`` even on a fresh PR runner.
+          fetch-depth: 0
+      - name: Banned imports in src/erre_sandbox/
+        run: |
+          set -euo pipefail
+          if grep -rnE '^[[:space:]]*(import[[:space:]]+(openai|anthropic)|from[[:space:]]+(openai|anthropic))[[:space:]]' \
+              src/erre_sandbox/; then
+            echo "::error::SH-1: cloud LLM API imports (openai/anthropic) are forbidden inside src/erre_sandbox/"
+            exit 1
+          fi
+          if grep -rnE '^[[:space:]]*(import[[:space:]]+bpy|from[[:space:]]+bpy)' src/erre_sandbox/; then
+            echo "::error::SH-1: bpy imports are forbidden inside src/erre_sandbox/ — Blender/GPL stays isolated under erre-sandbox-blender/"
+            exit 1
+          fi
+          echo "[policy-grep-gate] banned-import scan PASS"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version-file: .python-version
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: ruff T201 backstop (SH-FOLLOWUP-2)
+        # Re-run ruff with the print rule explicitly selected so the gate
+        # fires regardless of whether the main lint job's rule-set drifts.
+        # The exemption ``src/erre_sandbox/cli/** = ["T201"]`` in
+        # pyproject.toml is honoured automatically, as are inline
+        # ``# noqa: T201`` directives — preserving the empirical CI-green
+        # baseline (e.g. ``training/train_kant_lora.py:2009``).
+        run: uv run ruff check --select T201 src/erre_sandbox
+      - name: .steering completeness for impl changes
+        run: |
+          set -euo pipefail
+          base_ref="origin/main"
+          if ! git rev-parse --verify --quiet "$base_ref" >/dev/null; then
+            # Local push to main / detached HEAD: no diff baseline available;
+            # skip the gate (the eval-egress-grep-gate / banned-import step
+            # remain in force).
+            echo "[policy-grep-gate] skipped: $base_ref not available"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base_ref"...HEAD -- 'src/erre_sandbox/**/*.py' 2>/dev/null || true)
+          if [ -z "$changed" ]; then
+            echo "[policy-grep-gate] no src/erre_sandbox/ Python changes; .steering completeness check skipped"
+            exit 0
+          fi
+          # Pick the latest .steering/YYYYMMDD-*/ directory (lexical sort on
+          # the date prefix). The CLAUDE.md rule is one directory per task;
+          # this check fails loudly only when zero complete task directories
+          # exist while impl changes are present.
+          recent=$(find .steering -maxdepth 1 -type d -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-*' 2>/dev/null \
+              | sort -r | head -1)
+          if [ -z "$recent" ]; then
+            echo "::error::SH-1: impl changes in src/erre_sandbox/ require a .steering/YYYYMMDD-task/ directory (none found)"
+            exit 1
+          fi
+          missing=()
+          for f in requirement.md design.md tasklist.md; do
+            if [ ! -f "$recent/$f" ]; then
+              missing+=("$f")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::SH-1: $recent/ is missing required file(s): ${missing[*]}"
+            exit 1
+          fi
+          echo "[policy-grep-gate] .steering completeness PASS ($recent)"
