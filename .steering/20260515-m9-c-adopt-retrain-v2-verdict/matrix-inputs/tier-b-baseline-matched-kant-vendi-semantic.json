@@ -1,0 +1,135 @@
+{
+  "persona": "kant",
+  "condition": "stimulus",
+  "metric": "vendi_semantic",
+  "kernel_name": "semantic",
+  "encoder_model": "sentence-transformers/all-mpnet-base-v2",
+  "window_size": 100,
+  "n_clusters": 5,
+  "total_windows": 15,
+  "shards": [
+    "kant_stimulus_run0.duckdb",
+    "kant_stimulus_run1.duckdb",
+    "kant_stimulus_run2.duckdb",
+    "kant_stimulus_run3.duckdb",
+    "kant_stimulus_run4.duckdb"
+  ],
+  "bootstrap": {
+    "method": "hierarchical-cluster-only",
+    "n_resamples": 2000,
+    "ci": 0.95,
+    "point": 31.167353821053872,
+    "lo": 31.010389123415223,
+    "hi": 31.3184565525417,
+    "width": 0.3080674291264778,
+    "n": 15
+  },
+  "per_window": [
+    {
+      "run_id": "kant_stimulus_run0",
+      "window_index": 0,
+      "vendi_score": 30.910262936880287,
+      "n": 100,
+      "spectrum_entropy": 3.4310882626390735
+    },
+    {
+      "run_id": "kant_stimulus_run0",
+      "window_index": 1,
+      "vendi_score": 30.186475868187383,
+      "n": 100,
+      "spectrum_entropy": 3.407394005145787
+    },
+    {
+      "run_id": "kant_stimulus_run0",
+      "window_index": 2,
+      "vendi_score": 32.5573228812828,
+      "n": 100,
+      "spectrum_entropy": 3.4830023166631774
+    },
+    {
+      "run_id": "kant_stimulus_run1",
+      "window_index": 0,
+      "vendi_score": 32.59037374826167,
+      "n": 100,
+      "spectrum_entropy": 3.4840169609721636
+    },
+    {
+      "run_id": "kant_stimulus_run1",
+      "window_index": 1,
+      "vendi_score": 29.052269291183034,
+      "n": 100,
+      "spectrum_entropy": 3.3690965969830438
+    },
+    {
+      "run_id": "kant_stimulus_run1",
+      "window_index": 2,
+      "vendi_score": 30.978120428499622,
+      "n": 100,
+      "spectrum_entropy": 3.433281162667227
+    },
+    {
+      "run_id": "kant_stimulus_run2",
+      "window_index": 0,
+      "vendi_score": 31.729410858535033,
+      "n": 100,
+      "spectrum_entropy": 3.4572440380900797
+    },
+    {
+      "run_id": "kant_stimulus_run2",
+      "window_index": 1,
+      "vendi_score": 29.17723874516884,
+      "n": 100,
+      "spectrum_entropy": 3.3733889102815526
+    },
+    {
+      "run_id": "kant_stimulus_run2",
+      "window_index": 2,
+      "vendi_score": 32.26743925692187,
+      "n": 100,
+      "spectrum_entropy": 3.4740586492406385
+    },
+    {
+      "run_id": "kant_stimulus_run3",
+      "window_index": 0,
+      "vendi_score": 31.747298101481913,
+      "n": 100,
+      "spectrum_entropy": 3.457807622551637
+    },
+    {
+      "run_id": "kant_stimulus_run3",
+      "window_index": 1,
+      "vendi_score": 29.48455669068745,
+      "n": 100,
+      "spectrum_entropy": 3.3838666242601603
+    },
+    {
+      "run_id": "kant_stimulus_run3",
+      "window_index": 2,
+      "vendi_score": 32.88760279460032,
+      "n": 100,
+      "spectrum_entropy": 3.4930957720050175
+    },
+    {
+      "run_id": "kant_stimulus_run4",
+      "window_index": 0,
+      "vendi_score": 31.444499963783983,
+      "n": 100,
+      "spectrum_entropy": 3.4482240859381657
+    },
+    {
+      "run_id": "kant_stimulus_run4",
+      "window_index": 1,
+      "vendi_score": 29.868221063749953,
+      "n": 100,
+      "spectrum_entropy": 3.396795074503704
+    },
+    {
+      "run_id": "kant_stimulus_run4",
+      "window_index": 2,
+      "vendi_score": 32.62921468658392,
+      "n": 100,
+      "spectrum_entropy": 3.485208043094767
+    }
+  ],
+  "scope_narrowing_note": "Per DA-11 (Phase B \u7b2c 3 \u30bb\u30c3\u30b7\u30e7\u30f3 scope narrowing): Vendi only. Big5 ICC consumer + Burrows \u0394 language handling are deferred to Phase B \u7b2c 4 \u30bb\u30c3\u30b7\u30e7\u30f3 (separate PR)."
+}

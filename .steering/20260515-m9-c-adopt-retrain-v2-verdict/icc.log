@@ -1,0 +1,9 @@
+2026-05-16 07:54:10,572 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb focal=300 windows=3
+2026-05-16 07:54:15,629 [__main__] INFO: window 1/?  shard=kant_r8v2_run0_stim.duckdb w_idx=0 big5=E:3.10/A:3.50/C:3.20/N:3.00/O:3.20 rate=0.19 win/s
+2026-05-16 07:54:20,613 [__main__] INFO: window 2/?  shard=kant_r8v2_run0_stim.duckdb w_idx=1 big5=E:3.20/A:3.40/C:3.40/N:3.00/O:3.10 rate=0.20 win/s
+2026-05-16 07:54:25,609 [__main__] INFO: window 3/?  shard=kant_r8v2_run0_stim.duckdb w_idx=2 big5=E:3.10/A:3.40/C:3.40/N:3.00/O:3.10 rate=0.20 win/s
+2026-05-16 07:54:25,621 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb focal=300 windows=3
+2026-05-16 07:54:30,549 [__main__] INFO: window 4/?  shard=kant_r8v2_run1_stim.duckdb w_idx=0 big5=E:3.10/A:3.50/C:3.30/N:3.00/O:3.10 rate=0.20 win/s
+2026-05-16 07:54:35,465 [__main__] INFO: window 5/?  shard=kant_r8v2_run1_stim.duckdb w_idx=1 big5=E:3.10/A:3.50/C:3.30/N:3.00/O:3.00 rate=0.20 win/s
+2026-05-16 07:54:40,329 [__main__] INFO: window 6/?  shard=kant_r8v2_run1_stim.duckdb w_idx=2 big5=E:3.10/A:3.40/C:3.30/N:3.00/O:3.00 rate=0.20 win/s
+2026-05-16 07:54:40,401 [__main__] INFO: ICC(C,k)=0.9831 [0.9751, 0.9951] | ICC(A,1)=0.9129 [0.8808, 0.9692] | n_windows=6 | me1_fallback_fire=False | output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-icc-multiturn-kant-r8.json

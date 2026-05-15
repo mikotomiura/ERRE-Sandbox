@@ -147,3 +147,7 @@ data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.tmp
 data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb
 data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.wal
 data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.tmp
+# m9-c-adopt-retrain-v2 multi-turn pilot recapture (同 policy):
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb.tmp
