@@ -83,11 +83,15 @@ class BootConfig:
     # so back-compat workflows (Mac↔G-GEAR LAN, no Origin / no token) keep
     # working without flag changes. ``bootstrap()`` rejects the combination
     # ``host="0.0.0.0"`` + all three gates disabled at startup so a careless
-    # ``--host=0.0.0.0`` flag cannot silently expose the server.
+    # ``--host=0.0.0.0`` flag cannot silently expose the server. The
+    # ``allow_unauthenticated_lan`` escape hatch (Codex 14th HIGH-1) is the
+    # explicit way to keep the pre-SH-2 LAN dev posture while we wait on
+    # the Godot WS client patch that unblocks ``require_token=True``.
     ws_token: str | None = None
     require_token: bool = False
     allowed_origins: tuple[str, ...] = ()
     max_sessions: int = protocol.MAX_ACTIVE_SESSIONS
+    allow_unauthenticated_lan: bool = False
 
     def __post_init__(self) -> None:
         """Fill ``agents`` with the 1-Kant default when the caller omitted it.
@@ -154,23 +158,60 @@ def _validate_ws_auth_config(cfg: BootConfig, *, token: str | None) -> None:
     envelope; the ADR (SH-2) requires operators to consciously opt out of
     safety, not into it.
 
+    Codex 14th MEDIUM-3 also requires that ``require_token=True`` without a
+    resolved token fails fast at startup regardless of the Origin allow-list
+    — otherwise every WS connection fails closed at runtime with the
+    misleading "token mismatch" log line.
+
     Operator escape hatches:
 
-    * ``--allowed-origins=http://mac.local,http://g-gear.local`` (Origin gate)
-    * ``--require-token`` plus a provisioned ``var/secrets/ws_token`` (token gate)
-    * ``--host=127.0.0.1`` (loopback only; breaks Mac↔G-GEAR LAN rsync workflow)
+    * ``--allowed-origins=http://mac.local,http://g-gear.local`` (Origin gate;
+      note: Codex 14th HIGH-1 observed that Godot's native WS client sends
+      no Origin header, so this gate currently breaks the Godot path)
+    * ``--require-token`` plus a provisioned ``var/secrets/ws_token`` /
+      ``ERRE_WS_TOKEN`` env (token gate; needs the Godot client patch
+      tracked as the ``feat/ws-token-enforce`` follow-up task)
+    * ``--host=127.0.0.1`` (loopback only; breaks Mac↔G-GEAR LAN rsync)
+    * ``--allow-unauthenticated-lan`` (Codex 14th HIGH-1) — explicit opt-in
+      to the pre-SH-2 LAN dev posture while the Godot patch is pending.
+      Logs a loud warning on every startup so the unsafe posture cannot
+      hide in production.
     """
+    # MEDIUM-3: require_token=True without a token is always a misconfig,
+    # independent of Origin allow-list. Fail fast before bind so the failure
+    # surfaces near the offending flags rather than at the first WS frame.
+    if cfg.require_token and not token:
+        msg = (
+            "SH-2 / Codex 14th MEDIUM-3: --require-token=True but no token "
+            "is provisioned. Populate var/secrets/ws_token (chmod 700 +"
+            " chmod 600), set ERRE_WS_TOKEN, or pass --ws-token=<literal>."
+        )
+        raise RuntimeError(msg)
     if cfg.host != "0.0.0.0":  # noqa: S104 — string compare, not bind
         return
     if cfg.allowed_origins:
         return
-    if cfg.require_token and token:
+    if cfg.require_token:
+        # ``token`` is non-None at this point (MEDIUM-3 branch above ensures it).
+        return
+    if cfg.allow_unauthenticated_lan:
+        logger.warning(
+            "[bootstrap] SH-2 unsafe LAN dev posture acknowledged via "
+            "--allow-unauthenticated-lan (host=%s, no Origin / no token). "
+            "Replace with --require-token once the Godot WS client patch "
+            "lands (feat/ws-token-enforce).",
+            cfg.host,
+        )
         return
     msg = (
         "SH-2: refusing to start with host=0.0.0.0 and all three WS auth "
         "gates disabled. Pick one of:\n"
-        "  --allowed-origins=http://mac.local,http://g-gear.local  (Origin gate)\n"
-        "  --require-token  (with var/secrets/ws_token or ERRE_WS_TOKEN env)\n"
+        "  --allow-unauthenticated-lan  (explicit unsafe LAN dev — logs"
+        " a loud warning on every startup; Codex 14th HIGH-1 escape hatch)\n"
+        "  --allowed-origins=http://mac.local,http://g-gear.local  (Origin"
+        " gate; note Godot's native WS client sends no Origin header)\n"
+        "  --require-token  (with var/secrets/ws_token or ERRE_WS_TOKEN env;"
+        " needs the Godot client patch in feat/ws-token-enforce)\n"
         "  --host=127.0.0.1  (loopback only; breaks LAN rsync workflow)"
     )
     raise RuntimeError(msg)

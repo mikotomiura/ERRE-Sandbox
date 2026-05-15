@@ -149,6 +149,20 @@ def _build_run_parser() -> argparse.ArgumentParser:
             "close code 1013 (Try Again Later). Default 8."
         ),
     )
+    parser.add_argument(
+        "--allow-unauthenticated-lan",
+        dest="allow_unauthenticated_lan",
+        action="store_true",
+        default=False,
+        help=(
+            "Codex 14th HIGH-1 escape hatch: explicit opt-in to the pre-SH-2 "
+            "LAN dev posture (host=0.0.0.0, no Origin, no token). Bypasses "
+            "the bootstrap RuntimeError gate but logs a loud warning on "
+            "every startup. Use only on a trusted LAN until the Godot WS "
+            "client patch enables --require-token by default "
+            "(see feat/ws-token-enforce follow-up task)."
+        ),
+    )
     return parser
 
 
@@ -261,6 +275,7 @@ def cli(argv: list[str] | None = None) -> int:
         require_token=args.require_token,
         allowed_origins=allowed_origins,
         max_sessions=args.max_sessions,
+        allow_unauthenticated_lan=args.allow_unauthenticated_lan,
     )
     try:
         asyncio.run(bootstrap(cfg))

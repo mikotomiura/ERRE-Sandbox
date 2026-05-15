@@ -153,19 +153,6 @@ jobs:
           # fetch-depth=0 so the ``.steering`` completeness step below can
           # diff against ``origin/main`` even on a fresh PR runner.
           fetch-depth: 0
-      - name: Banned imports in src/erre_sandbox/
-        run: |
-          set -euo pipefail
-          if grep -rnE '^[[:space:]]*(import[[:space:]]+(openai|anthropic)|from[[:space:]]+(openai|anthropic))[[:space:]]' \
-              src/erre_sandbox/; then
-            echo "::error::SH-1: cloud LLM API imports (openai/anthropic) are forbidden inside src/erre_sandbox/"
-            exit 1
-          fi
-          if grep -rnE '^[[:space:]]*(import[[:space:]]+bpy|from[[:space:]]+bpy)' src/erre_sandbox/; then
-            echo "::error::SH-1: bpy imports are forbidden inside src/erre_sandbox/ — Blender/GPL stays isolated under erre-sandbox-blender/"
-            exit 1
-          fi
-          echo "[policy-grep-gate] banned-import scan PASS"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -173,6 +160,12 @@ jobs:
           python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
+      - name: Banned imports in src/erre_sandbox/ (AST scan, Codex 14th HIGH-2)
+        # Replaces the prior grep-based check which missed ``import
+        # openai, os`` comma forms. The standalone script under
+        # ``scripts/`` is unit-tested in
+        # ``tests/test_codex_hooks/test_banned_imports_ast.py``.
+        run: uv run python scripts/policy_banned_imports.py
       - name: ruff T201 backstop (SH-FOLLOWUP-2)
         # Re-run ruff with the print rule explicitly selected so the gate
         # fires regardless of whether the main lint job's rule-set drifts.
