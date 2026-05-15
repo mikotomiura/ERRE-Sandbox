@@ -19,14 +19,18 @@ import json
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from erre_sandbox.integration.gateway import (
+    WS_TOKEN_HEADER,
     Registry,
+    WSAuthConfig,
     _make_error,
     _make_server_handshake,
     _NullRuntime,
     _parse_envelope,
+    make_app,
 )
 from erre_sandbox.schemas import (
     SCHEMA_VERSION,
@@ -40,8 +44,6 @@ from erre_sandbox.schemas import (
 )
 
 if TYPE_CHECKING:
-    from fastapi.testclient import TestClient
-
     from .conftest import MockRuntime
 
 
@@ -467,6 +469,144 @@ class TestFanOut:
             assert isinstance(got1, WorldTickMsg)
             assert isinstance(got2, WorldTickMsg)
             assert got1.tick == 3 == got2.tick
+
+
+# =============================================================================
+# Layer B (SH-2): WebSocket connection-time auth gates
+# =============================================================================
+
+
+def _make_authed_client(
+    mock_runtime: MockRuntime,
+    auth_config: WSAuthConfig,
+) -> TestClient:
+    """Build a TestClient whose make_app() was wired with ``auth_config``.
+
+    Each call returns a fresh TestClient so concurrent tests cannot leak
+    registry state between cases. The caller is responsible for using the
+    returned client as a context manager so the FastAPI lifespan starts
+    the broadcaster task.
+    """
+    app = make_app(runtime=mock_runtime, auth_config=auth_config)
+    return TestClient(app)
+
+
+class TestWebSocketAuth:
+    """SH-2 — Origin / token / session cap connection-time gates.
+
+    All three gates default to disabled (see :class:`WSAuthConfig`). Each
+    test below opts into exactly one gate so the failure mode is isolated.
+    """
+
+    # Shared literal so the S106 noqa only needs to live in one place.
+    _TOKEN = "hunter2-shared"  # noqa: S105 — test fixture token literal
+
+    def test_back_compat_no_token_required_by_default(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        """Default ``WSAuthConfig()`` accepts unauthenticated peers.
+
+        Mirrors the Mac↔G-GEAR LAN workflow contract — bumping to the new
+        gateway must not require token provisioning on existing setups.
+        """
+        with (
+            _make_authed_client(mock_runtime, WSAuthConfig()) as client,
+            client.websocket_connect("/ws/observe") as ws,
+        ):
+            server_hs = _recv_envelope(ws)
+            assert isinstance(server_hs, HandshakeMsg)
+
+    def test_token_missing_closes_with_1008(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        cfg = WSAuthConfig(token=self._TOKEN, require_token=True)
+        with (
+            _make_authed_client(mock_runtime, cfg) as client,
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect("/ws/observe"),
+        ):
+            pass
+        assert exc_info.value.code == 1008
+
+    def test_token_mismatch_closes_with_1008(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        cfg = WSAuthConfig(token=self._TOKEN, require_token=True)
+        with (
+            _make_authed_client(mock_runtime, cfg) as client,
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/ws/observe",
+                headers={WS_TOKEN_HEADER: "wrong-token"},
+            ),
+        ):
+            pass
+        assert exc_info.value.code == 1008
+
+    def test_token_match_continues_to_handshake(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        cfg = WSAuthConfig(token=self._TOKEN, require_token=True)
+        with (
+            _make_authed_client(mock_runtime, cfg) as client,
+            client.websocket_connect(
+                "/ws/observe",
+                headers={WS_TOKEN_HEADER: self._TOKEN},
+            ) as ws,
+        ):
+            server_hs = _recv_envelope(ws)
+            assert isinstance(server_hs, HandshakeMsg)
+
+    def test_origin_rejected_closes_with_1008(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        cfg = WSAuthConfig(
+            allowed_origins=("http://mac.local", "http://g-gear.local"),
+        )
+        with (
+            _make_authed_client(mock_runtime, cfg) as client,
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/ws/observe",
+                headers={"origin": "http://evil.example"},
+            ),
+        ):
+            pass
+        assert exc_info.value.code == 1008
+
+    def test_session_cap_exceeded_closes_with_1013(
+        self,
+        mock_runtime: MockRuntime,
+    ) -> None:
+        """Pre-accept cap pre-check closes the over-cap socket with 1013.
+
+        ``max_sessions=2`` keeps the test cheap; the gate logic is the same
+        at production ``max_sessions=8``. The third connection arrives while
+        two sockets are already registered (in ACTIVE phase), so the
+        pre-accept ``len(registry) >= cap`` branch fires.
+        """
+        cfg = WSAuthConfig(max_sessions=2)
+        with (
+            _make_authed_client(mock_runtime, cfg) as client,
+            client.websocket_connect("/ws/observe") as ws1,
+            client.websocket_connect("/ws/observe") as ws2,
+        ):
+            _ = _recv_envelope(ws1)  # server handshake
+            _ = _recv_envelope(ws2)
+            _promote_to_active(ws1)
+            _promote_to_active(ws2)
+            # Both sessions are now ACTIVE → registry holds 2 slots.
+            with (
+                pytest.raises(WebSocketDisconnect) as exc_info,
+                client.websocket_connect("/ws/observe"),
+            ):
+                pass
+            assert exc_info.value.code == 1013
 
 
 # =============================================================================

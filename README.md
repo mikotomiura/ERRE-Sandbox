@@ -135,6 +135,36 @@ scipy, ollama, empath, arch) are isolated under the `eval` extras group:
 uv sync --extra eval
 ```
 
+### WebSocket connection-time auth (SH-2)
+
+The orchestrator's WebSocket endpoint ships with three independent gates
+(shared token / Origin allow-list / session cap 8) — all disabled by
+default so existing Mac↔G-GEAR LAN workflows keep working. `bootstrap()`
+refuses to start with `host=0.0.0.0` *and* all three gates off so a bare
+`--host=0.0.0.0` cannot silently expose the server.
+
+For LAN development without auth, opt into the Origin gate:
+
+```bash
+uv run python -m erre_sandbox \
+  --allowed-origins=http://mac.local,http://g-gear.local
+```
+
+To turn on the shared-token gate, first provision the on-disk token
+(preferred over env vars so it does not leak via `ps -E`):
+
+```bash
+mkdir -p var/secrets && chmod 700 var/secrets
+python -c "import secrets; print(secrets.token_urlsafe(32))" \
+  > var/secrets/ws_token
+chmod 600 var/secrets/ws_token
+uv run python -m erre_sandbox --require-token
+```
+
+Then connect with the matching `x-erre-token` header. Operational notes
+(rotation, multi-token, override priority) live in
+`docs/development-guidelines.md`.
+
 ## Layout
 
 See `docs/repository-structure.md` for the authoritative layout and
