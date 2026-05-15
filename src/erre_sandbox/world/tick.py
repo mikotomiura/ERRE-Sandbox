@@ -23,6 +23,7 @@ rationale (single coroutine, Voronoi zones, unbounded queue, anti-drift).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import heapq
 import logging
 import math
@@ -42,6 +43,7 @@ from erre_sandbox.schemas import (
     DialogTurnGenerator,
     DialogTurnMsg,
     EpochPhase,
+    ErrorMsg,
     MoveMsg,
     Observation,
     PersonaSpec,
@@ -71,6 +73,14 @@ if TYPE_CHECKING:
     from erre_sandbox.cognition import CognitionCycle, CycleResult
 
 logger = logging.getLogger(__name__)
+
+
+def _make_runtime_error(*, code: str, detail: str) -> ErrorMsg:
+    # Intentional duplicate of integration.gateway._make_error: keeping the
+    # world layer independent of the integration layer (architecture-rules:
+    # integration consumes world, not the reverse) so importing the gateway
+    # helper into tick.py would invert the dependency.
+    return ErrorMsg(tick=0, code=code, detail=detail)
 
 
 # =============================================================================
@@ -379,11 +389,19 @@ class WorldRuntime:
         self._agent_prop_distances: dict[tuple[str, str], float] = {}
         self._agents: dict[str, AgentRuntime] = {}
         self._events: list[ScheduledEvent] = []
-        # TODO(T14): the unbounded queue is a deliberate MVP trade-off
-        # (see decisions.md D7). When T14 wires a real WebSocket consumer,
-        # switch to ``maxsize=10_000`` and add an oldest-drop / back-pressure
-        # policy so a stalled client cannot grow memory without bound.
-        self._envelopes: asyncio.Queue[ControlEnvelope] = asyncio.Queue()
+        # SH-5 (2026-05-13): bounded 2-queue split. Heartbeat is coalesced
+        # to the latest tick (maxsize=1, latest-wins) because consumers only
+        # care about the most recent world tick. Dialog / move / error
+        # envelopes go to a bounded main queue (maxsize=1024) with drop-oldest
+        # + ErrorMsg("runtime_backlog_overflow") warning so a stalled
+        # WebSocket consumer cannot grow runtime memory without bound. The
+        # same drop-oldest shape is used at the gateway layer (Registry.fan_out)
+        # — see decisions.md SH-5 for the 3-alternative evaluation.
+        self._heartbeat_envelopes: asyncio.Queue[ControlEnvelope] = asyncio.Queue(
+            maxsize=1,
+        )
+        self._envelopes: asyncio.Queue[ControlEnvelope] = asyncio.Queue(maxsize=1024)
+        self._envelope_overflow_count: int = 0
         self._dialog_scheduler: DialogScheduler | None = None
         # M5 orchestrator-integration: optional LLM-backed generator consulted
         # at the end of each cognition tick via ``_drive_dialog_turns``. When
@@ -699,18 +717,103 @@ class WorldRuntime:
     # ----- Envelope consumers (T14 hooks) -----
 
     async def recv_envelope(self) -> ControlEnvelope:
-        """Await and return the next envelope (FIFO).
+        """Await and return the next envelope.
 
-        Blocking variant intended for T14's WebSocket producer.
+        Blocking variant intended for T14's WebSocket producer. Main queue
+        (``_envelopes``) is prioritised over heartbeat
+        (``_heartbeat_envelopes``) when both are ready, so dialog and error
+        envelopes never starve under a heartbeat-heavy load. When the race
+        produces a *both-done* result, the heartbeat result is coalesce-
+        requeued onto its own queue (latest-wins, maxsize=1) so the
+        liveness signal is not silently dropped. The losing getter is
+        cancelled and awaited (Python 3.11+ ``asyncio.Queue.get()`` is
+        cancellation-safe — a cancelled getter does not pop from the queue).
         """
-        return await self._envelopes.get()
+        main_task = asyncio.create_task(self._envelopes.get())
+        hb_task = asyncio.create_task(self._heartbeat_envelopes.get())
+        try:
+            done, pending = await asyncio.wait(
+                (main_task, hb_task),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if main_task in done:
+                # If heartbeat also finished, requeue its result so the
+                # liveness tick is not silently dropped; coalescing
+                # semantics (maxsize=1) make this safe even if a fresher
+                # heartbeat is enqueued before the next recv.
+                if hb_task in done and not hb_task.cancelled():
+                    self._reinject_heartbeat(hb_task.result())
+                else:
+                    for task in pending:
+                        task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+                return main_task.result()
+            # heartbeat is the only completion. Cancel pending main getter
+            # (Queue.get is cancellation-safe) and await it so no Task is
+            # destroyed while pending.
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            return hb_task.result()
+        except BaseException:
+            for task in (main_task, hb_task):
+                if not task.done():
+                    task.cancel()
+            with contextlib.suppress(BaseException):
+                await asyncio.gather(main_task, hb_task, return_exceptions=True)
+            raise
+
+    def _reinject_heartbeat(self, env: ControlEnvelope) -> None:
+        # Place a recovered heartbeat back on its coalescing queue. If a
+        # newer tick already occupies the slot, drop ours (latest-wins).
+        with contextlib.suppress(asyncio.QueueFull):
+            self._heartbeat_envelopes.put_nowait(env)
 
     def drain_envelopes(self) -> list[ControlEnvelope]:
-        """Non-blocking drain of all currently queued envelopes (FIFO)."""
+        """Non-blocking drain of all currently queued envelopes.
+
+        Drains the (coalesced, latest-only) heartbeat queue first, then the
+        bounded main queue. Existing callers asserted that the periodic
+        heartbeat appeared at the head of the drain when both clocks had
+        advanced — that contract is preserved by emitting heartbeat first.
+        Strict FIFO across both streams is not promised: the heartbeat
+        queue collapses to the latest tick (SH-5).
+        """
         out: list[ControlEnvelope] = []
+        while not self._heartbeat_envelopes.empty():
+            out.append(self._heartbeat_envelopes.get_nowait())
         while not self._envelopes.empty():
             out.append(self._envelopes.get_nowait())
         return out
+
+    def _enqueue_with_drop_oldest(self, env: ControlEnvelope) -> None:
+        # Mirror of ``Registry.fan_out`` (integration/gateway.py): on a full
+        # queue, drop the oldest entries to make room for a warning + the
+        # new envelope. The ``runtime_backlog_overflow`` code distinguishes
+        # this runtime-side overflow from the gateway-side ``backlog_overflow``.
+        if self._envelopes.maxsize > 0 and self._envelopes.full():
+            while self._envelopes.qsize() > max(self._envelopes.maxsize - 2, 0):
+                try:
+                    self._envelopes.get_nowait()
+                    self._envelope_overflow_count += 1
+                except asyncio.QueueEmpty:  # pragma: no cover — defensive
+                    break
+            warning = _make_runtime_error(
+                code="runtime_backlog_overflow",
+                detail=(
+                    f"runtime _envelopes full (maxsize="
+                    f"{self._envelopes.maxsize}); "
+                    f"drops={self._envelope_overflow_count}"
+                ),
+            )
+            try:
+                self._envelopes.put_nowait(warning)
+            except asyncio.QueueFull:  # pragma: no cover — maxsize < 2
+                logger.debug("runtime dropped runtime_backlog_overflow warning")
+        try:
+            self._envelopes.put_nowait(env)
+        except asyncio.QueueFull:  # pragma: no cover — we just made room
+            logger.warning("runtime dropped envelope after drop-oldest")
 
     def inject_envelope(self, envelope: ControlEnvelope) -> None:
         """Append ``envelope`` to the fan-out queue from non-runtime code.
@@ -719,7 +822,7 @@ class WorldRuntime:
         ``dialog_*`` messages with the cognition-generated stream without a
         second delivery path. Raw queue access stays private.
         """
-        self._envelopes.put_nowait(envelope)
+        self._enqueue_with_drop_oldest(envelope)
 
     def attach_dialog_scheduler(self, scheduler: DialogScheduler) -> None:
         """Install the scheduler consulted at the end of each cognition tick.
@@ -1268,12 +1371,19 @@ class WorldRuntime:
         return pending
 
     async def _on_heartbeat_tick(self) -> None:
-        await self._envelopes.put(
-            WorldTickMsg(
-                tick=self._current_world_tick(),
-                active_agents=len(self._agents),
-            ),
+        env = WorldTickMsg(
+            tick=self._current_world_tick(),
+            active_agents=len(self._agents),
         )
+        try:
+            self._heartbeat_envelopes.put_nowait(env)
+        except asyncio.QueueFull:
+            # Coalesce to the latest tick: drop the stale heartbeat and
+            # enqueue the new one. Consumers only care about the most
+            # recent world tick, so latest-wins is the correct semantics.
+            with contextlib.suppress(asyncio.QueueEmpty):
+                self._heartbeat_envelopes.get_nowait()
+            self._heartbeat_envelopes.put_nowait(env)
 
     # ----- Cognition helpers -----
 
@@ -1337,7 +1447,7 @@ class WorldRuntime:
                 dwell = rt.persona.behavior_profile.dwell_time_s
                 if dwell > 0.0:
                     rt.dwell_until = self._clock.monotonic() + dwell
-            self._envelopes.put_nowait(env)
+            self._enqueue_with_drop_oldest(env)
 
     # ----- Scheduling helper -----
 

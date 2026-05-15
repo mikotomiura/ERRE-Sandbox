@@ -25,9 +25,11 @@ import duckdb
 import pytest
 
 from erre_sandbox.cli.eval_run_golden import (
+    ALLOWED_MEMORY_DB_PREFIX_STRINGS,
     CaptureFatalError,
     _build_arg_parser,
     _focal_turn_count,
+    _resolve_memory_db_path,
     _resolve_output_paths,
     _stratified_stimulus_slice,
     capture_stimulus,
@@ -124,6 +126,169 @@ def test_resolve_output_paths_clears_stale_temp_sibling(tmp_path: Path) -> None:
     stale_temp.write_bytes(b"junk")
     _resolve_output_paths(output, overwrite=False)
     assert not stale_temp.exists()
+
+
+# ---------------------------------------------------------------------------
+# _resolve_memory_db_path red-team cases (SH-4 ADR, codex_issue.md §4)
+# ---------------------------------------------------------------------------
+
+
+def test_memory_db_rejects_symlink(tmp_path: Path) -> None:
+    """A symlink under the allowed prefix must be rejected so we never
+    unlink through it (SH-4)."""
+    import os
+
+    target = tmp_path / "real.sqlite"
+    target.write_bytes(b"x")
+    link = Path(
+        f"/tmp/erre-test-symlink-{os.getpid()}.sqlite",  # noqa: S108
+    )
+    try:
+        link.symlink_to(target)
+        with pytest.raises(argparse.ArgumentTypeError, match="symlink"):
+            _resolve_memory_db_path(
+                link,
+                persona="kant",
+                run_idx=0,
+                overwrite=False,
+            )
+    finally:
+        link.unlink(missing_ok=True)
+
+
+def test_memory_db_rejects_path_outside_allowed_prefix(
+    tmp_path: Path,
+) -> None:
+    """A path under pytest's tmp_path (not /tmp/p3a_natural_, /tmp/erre-,
+    or var/eval/) must be rejected with ArgumentTypeError (SH-4)."""
+    bad_path = tmp_path / "anywhere.sqlite"
+    # Sanity: tmp_path is genuinely outside our allowlist.
+    assert not any(
+        str(tmp_path).startswith(p) for p in ALLOWED_MEMORY_DB_PREFIX_STRINGS
+    )
+    with pytest.raises(argparse.ArgumentTypeError, match="must be under"):
+        _resolve_memory_db_path(
+            bad_path,
+            persona="kant",
+            run_idx=0,
+            overwrite=False,
+        )
+
+
+def test_memory_db_refuses_existing_without_overwrite_flag() -> None:
+    """An explicit ``--memory-db`` pointing at an existing file must be
+    refused unless ``--overwrite-memory-db`` is also passed (SH-4)."""
+    import os
+
+    path = Path(
+        f"/tmp/erre-test-exists-{os.getpid()}.sqlite",  # noqa: S108
+    )
+    try:
+        path.write_bytes(b"stale")
+        with pytest.raises(FileExistsError, match="--overwrite-memory-db"):
+            _resolve_memory_db_path(
+                path,
+                persona="kant",
+                run_idx=0,
+                overwrite=False,
+            )
+        # The file must NOT have been unlinked — caller's data is preserved.
+        assert path.exists()
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def test_memory_db_overwrite_flag_allows_replacement() -> None:
+    """``--overwrite-memory-db`` unlinks the existing file and returns the
+    same Path so the caller can recreate it (SH-4)."""
+    import os
+
+    path = Path(
+        f"/tmp/erre-test-overwrite-{os.getpid()}.sqlite",  # noqa: S108
+    )
+    try:
+        path.write_bytes(b"stale")
+        result = _resolve_memory_db_path(
+            path,
+            persona="kant",
+            run_idx=0,
+            overwrite=True,
+        )
+        assert result == path
+        # After the helper returns, the path is guaranteed not to exist on
+        # disk — the caller opens it fresh.
+        assert not result.exists()
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def test_memory_db_default_path_auto_unlinks_existing() -> None:
+    """The ``path is None`` branch preserves pre-SH-4 ME-2 back-compat:
+    the default /tmp/p3a_natural_*.sqlite is treated as scratch and
+    auto-cleaned without any --overwrite-memory-db flag (SH-4)."""
+    default = Path(
+        "/tmp/p3a_natural_test-default-cleanup_run0.sqlite",  # noqa: S108
+    )
+    try:
+        default.write_bytes(b"stale")
+        result = _resolve_memory_db_path(
+            None,
+            persona="test-default-cleanup",
+            run_idx=0,
+            overwrite=False,
+        )
+        assert result == default
+        assert not result.exists()
+    finally:
+        default.unlink(missing_ok=True)
+
+
+def test_memory_db_default_path_rejects_broken_symlink() -> None:
+    """Codex 13th HIGH-3: a stale (broken) symlink at the default location
+    must surface as ArgumentTypeError rather than be silently followed.
+    Pre-fix, ``Path.exists()`` returned False for broken symlinks so the
+    default branch returned the symlink path and downstream code would
+    open() through it."""
+    default = Path(
+        "/tmp/p3a_natural_test-default-broken_run0.sqlite",  # noqa: S108
+    )
+    missing_target = Path(
+        "/tmp/p3a_natural_test-default-broken_target_nonexistent.sqlite",  # noqa: S108
+    )
+    try:
+        default.unlink(missing_ok=True)
+        missing_target.unlink(missing_ok=True)
+        default.symlink_to(missing_target)
+        assert default.is_symlink()
+        assert not default.exists()
+        with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
+            _resolve_memory_db_path(
+                None,
+                persona="test-default-broken",
+                run_idx=0,
+                overwrite=False,
+            )
+    finally:
+        default.unlink(missing_ok=True)
+        missing_target.unlink(missing_ok=True)
+
+
+def test_memory_db_explicit_path_rejects_broken_symlink(tmp_path: Path) -> None:
+    """Codex 13th HIGH-3 (defence-in-depth): explicit ``--memory-db`` pointing
+    at a broken symlink must be rejected by the ``is_symlink`` guard rather
+    than slipping past the existence gate."""
+    link = tmp_path / "broken_link.sqlite"
+    missing_target = tmp_path / "nonexistent_target.sqlite"
+    link.symlink_to(missing_target)
+    assert link.is_symlink()
+    assert not link.exists()
+    with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
+        _resolve_memory_db_path(
+            link,
+            persona="test-explicit-broken",
+            run_idx=0,
+            overwrite=False,
+        )
 
 
 # ---------------------------------------------------------------------------

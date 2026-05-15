@@ -1,13 +1,22 @@
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 
+# `web_search = "live"` は維持 (decoupled feature)。
+# 根拠: memory `project_m9_b_plan_pr.md` で Codex web_search が SGLang v0.3+
+# multi-LoRA support を発見し、Claude solo の stale 認識を補正した empirical
+# 実績あり。完全 off は研究利便を損なう (SH-3 ADR)。
 web_search = "live"
 
 [features]
 codex_hooks = true
 
 [sandbox_workspace_write]
-network_access = true
+# `network_access = false` (SH-3 ADR, 2026-05-13)。
+# workspace_write sandbox の外送 (curl / pip / unauthorized http) を構造的に
+# 閉じる。`web_search` は本 sandbox とは独立に live で動作する。
+# network 必要時 (e.g. dependency 更新) は per-session ユーザー明示承認で
+# 一時的に opt-in する運用 (AGENTS.md `Network access policy` 参照)。
+network_access = false
 
 [agents]
 max_threads = 6

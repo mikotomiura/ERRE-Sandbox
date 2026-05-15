@@ -52,9 +52,11 @@ Applies only once the session is :attr:`SessionPhase.ACTIVE`. During
 MAX_ENVELOPE_BACKLOG: Final[int] = 256
 """Maximum number of pending envelopes before the gateway drops the oldest.
 
-The runtime queue (``WorldRuntime._envelopes``) is unbounded; the bound
-applies per-client at the gateway layer so a slow Godot viewer cannot exhaust
-server memory.
+The runtime queue (``WorldRuntime._envelopes``) is now bounded as well
+(SH-5: ``maxsize=1024`` for the main queue plus a ``maxsize=1`` coalescing
+heartbeat queue). The two layers stack: this gateway bound applies
+per-client so a slow Godot viewer cannot exhaust server memory, while the
+runtime bound protects against an upstream that never drains.
 """
 
 SCHEMA_VERSION_HEADER: Final[str] = "X-Erre-Schema-Version"
