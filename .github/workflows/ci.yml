@@ -26,7 +26,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
       - name: ruff check
@@ -44,7 +43,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
       - name: mypy src
@@ -60,7 +58,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
       - name: pytest -m "not godot and not eval and not spike and not training and not inference"
@@ -157,7 +154,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version-file: .python-version
       - name: Sync dependencies
         run: uv sync --frozen --all-groups
       - name: Banned imports in src/erre_sandbox/ (AST scan, Codex 14th HIGH-2)
