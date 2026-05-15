@@ -243,6 +243,54 @@ def test_memory_db_default_path_auto_unlinks_existing() -> None:
         default.unlink(missing_ok=True)
 
 
+def test_memory_db_default_path_rejects_broken_symlink() -> None:
+    """Codex 13th HIGH-3: a stale (broken) symlink at the default location
+    must surface as ArgumentTypeError rather than be silently followed.
+    Pre-fix, ``Path.exists()`` returned False for broken symlinks so the
+    default branch returned the symlink path and downstream code would
+    open() through it."""
+    default = Path(
+        "/tmp/p3a_natural_test-default-broken_run0.sqlite",  # noqa: S108
+    )
+    missing_target = Path(
+        "/tmp/p3a_natural_test-default-broken_target_nonexistent.sqlite",  # noqa: S108
+    )
+    try:
+        default.unlink(missing_ok=True)
+        missing_target.unlink(missing_ok=True)
+        default.symlink_to(missing_target)
+        assert default.is_symlink()
+        assert not default.exists()
+        with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
+            _resolve_memory_db_path(
+                None,
+                persona="test-default-broken",
+                run_idx=0,
+                overwrite=False,
+            )
+    finally:
+        default.unlink(missing_ok=True)
+        missing_target.unlink(missing_ok=True)
+
+
+def test_memory_db_explicit_path_rejects_broken_symlink(tmp_path: Path) -> None:
+    """Codex 13th HIGH-3 (defence-in-depth): explicit ``--memory-db`` pointing
+    at a broken symlink must be rejected by the ``is_symlink`` guard rather
+    than slipping past the existence gate."""
+    link = tmp_path / "broken_link.sqlite"
+    missing_target = tmp_path / "nonexistent_target.sqlite"
+    link.symlink_to(missing_target)
+    assert link.is_symlink()
+    assert not link.exists()
+    with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
+        _resolve_memory_db_path(
+            link,
+            persona="test-explicit-broken",
+            run_idx=0,
+            overwrite=False,
+        )
+
+
 # ---------------------------------------------------------------------------
 # capture_stimulus integration with mock inference_fn (Codex HIGH-2 + HIGH-3)
 # ---------------------------------------------------------------------------

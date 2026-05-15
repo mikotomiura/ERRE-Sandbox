@@ -2,8 +2,8 @@
   "daily_token_budget": 1000000,
   "per_invocation_max": 200000,
   "today": {
-    "date": "2026-05-11",
-    "used": 271822,
+    "date": "2026-05-15",
+    "used": 261690,
     "invocations": 1
   },
   "policy": {
@@ -90,6 +90,14 @@
       "tokens": 271822,
       "per_invocation_max_overrun": 71822,
       "policy_action": "warn (個人プロジェクト規定どおり、HIGH 5 切出 + 事実誤認補正で value 大)"
+    },
+    {
+      "date": "2026-05-15",
+      "task": "20260513-security-hardening-pre-m10",
+      "purpose": "P6 Codex 13th review — P0+P1+P2+P3 4 commits independent review pre-push (HIGH 5 / MEDIUM 2 / LOW 1 / Verdict: ADOPT-WITH-CHANGES、HIGH-1 recv_envelope heartbeat silent-drop、HIGH-3 default branch broken symlink miss os.path.lexists、HIGH-5 P4/P5 defer と complete hardening scope ずれ。HIGH-2/HIGH-4 は MEDIUM 降格)",
+      "tokens": 261690,
+      "per_invocation_max_overrun": 61690,
+      "policy_action": "warn (個人プロジェクト規定どおり、HIGH 5 切出 で value 大)"
     }
   ]
 }

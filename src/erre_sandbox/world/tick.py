@@ -717,14 +717,17 @@ class WorldRuntime:
     # ----- Envelope consumers (T14 hooks) -----
 
     async def recv_envelope(self) -> ControlEnvelope:
-        """Await and return the next envelope (FIFO).
+        """Await and return the next envelope.
 
         Blocking variant intended for T14's WebSocket producer. Main queue
         (``_envelopes``) is prioritised over heartbeat
         (``_heartbeat_envelopes``) when both are ready, so dialog and error
-        envelopes never starve under a heartbeat-heavy load. The losing
-        getter is cancelled; Python 3.11+ ``asyncio.Queue.get()`` is
-        cancellation-safe — a cancelled getter does not pop from the queue.
+        envelopes never starve under a heartbeat-heavy load. When the race
+        produces a *both-done* result, the heartbeat result is coalesce-
+        requeued onto its own queue (latest-wins, maxsize=1) so the
+        liveness signal is not silently dropped. The losing getter is
+        cancelled and awaited (Python 3.11+ ``asyncio.Queue.get()`` is
+        cancellation-safe — a cancelled getter does not pop from the queue).
         """
         main_task = asyncio.create_task(self._envelopes.get())
         hb_task = asyncio.create_task(self._heartbeat_envelopes.get())
@@ -734,21 +737,37 @@ class WorldRuntime:
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if main_task in done:
-                for task in pending:
-                    task.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await task
+                # If heartbeat also finished, requeue its result so the
+                # liveness tick is not silently dropped; coalescing
+                # semantics (maxsize=1) make this safe even if a fresher
+                # heartbeat is enqueued before the next recv.
+                if hb_task in done and not hb_task.cancelled():
+                    self._reinject_heartbeat(hb_task.result())
+                else:
+                    for task in pending:
+                        task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
                 return main_task.result()
+            # heartbeat is the only completion. Cancel pending main getter
+            # (Queue.get is cancellation-safe) and await it so no Task is
+            # destroyed while pending.
             for task in pending:
                 task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+            await asyncio.gather(*pending, return_exceptions=True)
             return hb_task.result()
         except BaseException:
             for task in (main_task, hb_task):
                 if not task.done():
                     task.cancel()
+            with contextlib.suppress(BaseException):
+                await asyncio.gather(main_task, hb_task, return_exceptions=True)
             raise
+
+    def _reinject_heartbeat(self, env: ControlEnvelope) -> None:
+        # Place a recovered heartbeat back on its coalescing queue. If a
+        # newer tick already occupies the slot, drop ours (latest-wins).
+        with contextlib.suppress(asyncio.QueueFull):
+            self._heartbeat_envelopes.put_nowait(env)
 
     def drain_envelopes(self) -> list[ControlEnvelope]:
         """Non-blocking drain of all currently queued envelopes.

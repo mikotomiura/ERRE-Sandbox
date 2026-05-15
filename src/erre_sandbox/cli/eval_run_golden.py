@@ -55,6 +55,7 @@ import argparse
 import asyncio
 import contextlib
 import logging
+import os
 import random
 import subprocess
 import sys
@@ -784,7 +785,18 @@ def _resolve_memory_db_path(
         default = Path(
             f"/tmp/p3a_natural_{persona}_run{run_idx}.sqlite",  # noqa: S108
         )
-        if default.exists():
+        # Use ``os.path.lexists`` rather than ``Path.exists``: ``Path.exists``
+        # follows symlinks and reports False for broken symlinks, so a stale
+        # link to a missing target would pass through unnoticed and later
+        # cause MemoryStore to open() through it. Codex 13th HIGH-3.
+        if os.path.lexists(default):
+            if default.is_symlink():
+                msg = (
+                    f"symlink not allowed at default --memory-db location "
+                    f"{default!s}; remove or replace the link before re-running"
+                    " (SH-4 / Codex 13th HIGH-3)"
+                )
+                raise argparse.ArgumentTypeError(msg)
             default.unlink()
         return default
 
@@ -801,7 +813,10 @@ def _resolve_memory_db_path(
             " (SH-4: prevents accidental unlink of unrelated SQLite files)"
         )
         raise argparse.ArgumentTypeError(msg)
-    if path.exists():
+    # Use ``os.path.lexists`` for symmetry with the default branch and as
+    # defence-in-depth: ``path.is_symlink()`` above already rejects symlinks,
+    # so by here ``exists()`` and ``lexists()`` agree. Codex 13th HIGH-3.
+    if os.path.lexists(path):
         if not overwrite:
             msg = (
                 f"--memory-db {path!s} already exists;"

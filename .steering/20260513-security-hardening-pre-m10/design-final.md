@@ -1,8 +1,43 @@
-# 設計 — security-hardening-pre-m10 (v1 initial draft)
+# 設計 — security-hardening-pre-m10 (final, post P0-P3 + Codex 13th)
+
+## Status (2026-05-15 closure)
+
+本 branch は **P0-P3 partial hardening** として close。元の 5 finding (§1〜§5) のうち
+§3 / §4 / §5 が実装済、§1 / §2 は post-merge follow-up task に defer (Codex 13th
+HIGH-5 の判定に従う)。
+
+| Phase | ADR | Scope | Status | Commit |
+|---|---|---|---|---|
+| P0 | SH-0 | docs scaffold (requirement / design / decisions / tasklist / blockers / codex-12th-review-source.md) + AGENTS / .agents 微修正 | **DONE** | `f5295b5` |
+| P1 | SH-3 | `.codex/config.toml` `network_access=false` split + `web_search=live` 据置 | **DONE** | `ad00499` |
+| P2 | SH-4 | `cli/eval_run_golden.py --memory-db` symlink+prefix+overwrite guard + 5 unit test | **DONE** | `609037c` |
+| P3 | SH-5 | `world/tick.py` 2-queue split (heartbeat coalesce + main drop-oldest + `runtime_backlog_overflow` warning) + 2 unit test | **DONE** | `9061173` |
+| P4 | SH-2 | WS shared-token + Origin allow-list + session cap (3-layer auth) | **DEFERRED** | — |
+| P5 | SH-1 | Codex hook + CI shell-bypass policy gate | **DEFERRED** | — |
+| P6 | — | Codex 13th independent review (HIGH 5 / MEDIUM 2 / LOW 1, Verdict ADOPT-WITH-CHANGES) | **DONE** | `codex-review.md` |
+| P6-fix | — | HIGH-1 / HIGH-3 / HIGH-5 反映 commit | **DONE** | (本 PR の追加 commit) |
+
+### 不変条件 (Codex 独立 fact-check 済)
+
+- `SCHEMA_VERSION = "0.10.0-m7h"` (`schemas.py:44`) 不変
+- `data/eval/golden/` 30 cells 変更ゼロ (`git diff main..HEAD -- data/eval/golden` = empty)
+- `src/erre_sandbox/evidence/` 変更ゼロ
+- `ErrorMsg` schema 不変 (`code: str` に新値 `"runtime_backlog_overflow"` を入れるのみ、Literal/Enum 拡張なし)
+- world → integration の逆向き import なし (`_make_runtime_error` を `tick.py` 内に私的定義)
+- ruff / mypy / format clean、pytest 1378 passed / 32 skipped / 52 deselected
+
+### M10-0 着手の go/no-go (Codex META-1 反映)
+
+P4 (SH-2 WS auth) + P5 (SH-1 hook+CI) は M10-0 着手前に follow-up task で消化必須。
+詳細は `blockers.md` の M10-0 gate セクション参照。
+
+---
+
+## v1 initial draft (履歴保持)
 
 承認済み plan `/Users/johnd/.claude/plans/agile-chasing-sifakis.md` をもとに、
-`.steering/_template/design.md` 構造で詳細化した v1。**次ステップで `/reimagine`
-を §2 (WS token+Origin+cap) + §5 (queue split) のみ適用** し、v2 と比較して
+`.steering/_template/design.md` 構造で詳細化した v1。次ステップで `/reimagine`
+を §2 (WS token+Origin+cap) + §5 (queue split) のみ適用、v2 と比較して
 `design-final.md` に確定する。
 
 ## 実装アプローチ

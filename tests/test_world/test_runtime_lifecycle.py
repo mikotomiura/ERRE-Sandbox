@@ -130,3 +130,22 @@ class TestWorldRuntimeEnvelopeQueue:
         drained = runtime.drain_envelopes()
         heartbeats = [e for e in drained if isinstance(e, WorldTickMsg)]
         assert len(heartbeats) == 1
+
+    async def test_recv_envelope_returns_main_and_preserves_heartbeat(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """SH-5 Codex 13th HIGH-1: heartbeat must not be silent-dropped when
+        both queues are ready at the moment of ``recv_envelope``."""
+        runtime = world_harness.runtime
+        await runtime._on_heartbeat_tick()
+        runtime.inject_envelope(WorldTickMsg(tick=42, active_agents=0))
+        first = await runtime.recv_envelope()
+        # Main is prioritised: the directly-injected envelope must come
+        # back first.
+        assert isinstance(first, WorldTickMsg)
+        assert first.tick == 42
+        # The heartbeat that raced alongside must remain observable on the
+        # heartbeat queue.
+        drained = runtime.drain_envelopes()
+        heartbeats = [e for e in drained if isinstance(e, WorldTickMsg)]
+        assert len(heartbeats) == 1
