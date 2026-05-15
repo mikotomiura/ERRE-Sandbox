@@ -478,9 +478,12 @@ class TestWorldRuntimeHeartbeat:
 
         envs = world_harness.runtime.drain_envelopes()
         heartbeats = [e for e in envs if isinstance(e, WorldTickMsg)]
-        assert len(heartbeats) == 5
-        for hb in heartbeats:
-            assert hb.active_agents == 1
+        # SH-5: the heartbeat queue is coalescing (maxsize=1, latest-wins).
+        # Five heartbeat ticks fired but drain returns at most one — the
+        # most recent — so consumers always see the freshest world tick
+        # rather than a backlog.
+        assert len(heartbeats) == 1
+        assert heartbeats[0].active_agents == 1
 
         world_harness.runtime.stop()
         world_harness.clock.advance(1.0)
