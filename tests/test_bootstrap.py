@@ -22,6 +22,7 @@ from erre_sandbox.bootstrap import (
     _load_persona_registry,
     _load_persona_yaml,
     _supervise,
+    _validate_ws_auth_config,
 )
 from erre_sandbox.inference import OllamaChatClient
 from erre_sandbox.inference.ollama_adapter import OllamaUnavailableError
@@ -296,3 +297,70 @@ def test_load_persona_registry_deduplicates_repeated_persona_ids() -> None:
     )
     registry = _load_persona_registry(cfg)
     assert list(registry.keys()) == ["kant"]
+
+
+# ---------------------------------------------------------------------------
+# _validate_ws_auth_config (SH-2 + Codex 14th HIGH-1 / MEDIUM-3)
+# ---------------------------------------------------------------------------
+
+
+class TestValidateWsAuthConfig:
+    """Codex 14th HIGH-1 escape hatch + MEDIUM-3 fail-fast regression suite."""
+
+    def test_default_host_0_0_0_0_with_all_gates_off_is_rejected(self) -> None:
+        """Bare ``host=0.0.0.0`` default must fail startup (SH-2 gate)."""
+        cfg = BootConfig()
+        with pytest.raises(RuntimeError, match="SH-2"):
+            _validate_ws_auth_config(cfg, token=None)
+
+    def test_loopback_host_127_0_0_1_passes_without_gates(self) -> None:
+        """Loopback bind is safe without auth — no gate, no error."""
+        cfg = BootConfig(host="127.0.0.1")
+        _validate_ws_auth_config(cfg, token=None)  # must not raise
+
+    def test_origin_allowlist_satisfies_the_gate(self) -> None:
+        """Non-empty Origin allow-list opts into the Origin gate."""
+        cfg = BootConfig(allowed_origins=("http://mac.local",))
+        _validate_ws_auth_config(cfg, token=None)  # must not raise
+
+    def test_require_token_with_resolved_token_passes(self) -> None:
+        """``require_token=True`` + token present = token gate active."""
+        cfg = BootConfig(require_token=True)
+        _validate_ws_auth_config(cfg, token="abc-shared-secret")  # noqa: S106 — test literal
+
+    def test_require_token_without_token_fails_fast_codex_medium_3(self) -> None:
+        """Codex 14th MEDIUM-3: ``require_token=True`` + no token = fail fast.
+
+        The error must fire even when an Origin allow-list is configured,
+        so the misconfig surfaces at startup rather than as a stream of
+        ``token mismatch`` log lines on every WS connection.
+        """
+        cfg = BootConfig(
+            require_token=True,
+            allowed_origins=("http://mac.local",),
+        )
+        with pytest.raises(RuntimeError, match="MEDIUM-3"):
+            _validate_ws_auth_config(cfg, token=None)
+
+    def test_allow_unauthenticated_lan_bypass_codex_high_1(self) -> None:
+        """Codex 14th HIGH-1: explicit escape hatch keeps LAN dev unblocked.
+
+        ``host=0.0.0.0`` + all gates disabled is normally a startup
+        ``RuntimeError``, but the explicit consent flag makes the unsafe
+        posture acceptable while ``feat/ws-token-enforce`` lands the
+        Godot WS client patch.
+        """
+        cfg = BootConfig(allow_unauthenticated_lan=True)
+        _validate_ws_auth_config(cfg, token=None)  # must not raise
+
+    def test_allow_unauthenticated_lan_logs_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The escape-hatch path emits a loud WARNING so it cannot hide."""
+        import logging
+
+        cfg = BootConfig(allow_unauthenticated_lan=True)
+        with caplog.at_level(logging.WARNING, logger="erre_sandbox.bootstrap"):
+            _validate_ws_auth_config(cfg, token=None)
+        warnings = [r for r in caplog.records if "unsafe LAN dev posture" in r.message]
+        assert warnings, "expected --allow-unauthenticated-lan to log a WARNING"

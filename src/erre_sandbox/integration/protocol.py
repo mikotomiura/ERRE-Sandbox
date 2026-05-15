@@ -59,6 +59,29 @@ per-client so a slow Godot viewer cannot exhaust server memory, while the
 runtime bound protects against an upstream that never drains.
 """
 
+DEFAULT_ALLOWED_ORIGINS: Final[tuple[str, ...]] = ()
+"""Default origin allow-list — empty tuple disables Origin check (SH-2).
+
+LAN-internal deployment runs without a reverse proxy so Godot's native WS
+client sends no Origin header. Operators that expose the gateway through a
+browser-driven dashboard (M10+) pass a non-empty tuple via ``BootConfig``
+to enable per-Origin filtering. An empty tuple combined with
+``host=0.0.0.0`` and ``require_token=False`` triggers a startup
+``RuntimeError`` in :func:`erre_sandbox.bootstrap.bootstrap` so a careless
+``--host=0.0.0.0`` flag cannot silently expose the server.
+"""
+
+MAX_ACTIVE_SESSIONS: Final[int] = 8
+"""Session-count cap enforced by :class:`Registry` (SH-2).
+
+Sized for the M10 working assumption: Mac+G-GEAR Godot viewers + curl probe
++ Slack bridge + 3 per-persona UI panels = 7, plus headroom = 8. The cap
+is reached only when an attacker (or buggy client) opens connections in a
+tight loop; legitimate UI clients reconnect, not stack. On overflow the
+gateway closes the new socket with WebSocket close code ``1013``
+(Try Again Later) so well-behaved clients back off instead of looping.
+"""
+
 SCHEMA_VERSION_HEADER: Final[str] = "X-Erre-Schema-Version"
 """HTTP header the gateway sets on the WS upgrade response.
 
@@ -114,6 +137,23 @@ consistent.
 # =============================================================================
 
 
+class SessionCapExceededError(Exception):
+    """Raised by :meth:`Registry.reserve_slot` when ``MAX_ACTIVE_SESSIONS`` is reached.
+
+    The gateway converts this into a WebSocket close with code ``1013``
+    (Try Again Later) so well-behaved clients back off rather than retry
+    immediately in a tight loop. Carries the configured cap so callers can
+    log the limit without re-importing the constant.
+    """
+
+    def __init__(self, *, current: int, cap: int) -> None:
+        self.current = current
+        self.cap = cap
+        super().__init__(
+            f"active session cap exceeded: {current} ≥ {cap}",
+        )
+
+
 class SessionPhase(StrEnum):
     """Explicit state-machine phases of a single WS session on the gateway.
 
@@ -129,9 +169,11 @@ class SessionPhase(StrEnum):
 
 
 __all__ = [
+    "DEFAULT_ALLOWED_ORIGINS",
     "HANDSHAKE_TIMEOUT_S",
     "HEARTBEAT_INTERVAL_S",
     "IDLE_DISCONNECT_S",
+    "MAX_ACTIVE_SESSIONS",
     "MAX_ENVELOPE_BACKLOG",
     "MAX_SUBSCRIBE_ID_LENGTH",
     "MAX_SUBSCRIBE_ITEMS",
@@ -139,5 +181,6 @@ __all__ = [
     "SCHEMA_VERSION_HEADER",
     "SUBSCRIBE_DELIMITER",
     "SUBSCRIBE_QUERY_PARAM",
+    "SessionCapExceededError",
     "SessionPhase",
 ]

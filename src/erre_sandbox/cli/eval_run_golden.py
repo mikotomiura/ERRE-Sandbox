@@ -780,6 +780,20 @@ def _resolve_memory_db_path(
     Returns a ``Path`` guaranteed not to exist on disk when the caller opens
     it. Raises :class:`argparse.ArgumentTypeError` (validation) or
     :class:`FileExistsError` (overwrite gate) on policy violation.
+
+    .. note::
+        **TOCTOU disclosure (Codex 13th MEDIUM, security-hardening-pre-m10-
+        followup)** — there is a small race window between the
+        ``os.path.lexists`` / ``is_symlink`` checks here and the caller's
+        subsequent ``open()`` on the returned ``Path``. A privileged actor
+        with write access to the parent directory could swap in a symlink
+        in that window. The eval CLI runs on a single-user developer
+        machine (``/tmp`` owned by the same UID, ``var/eval`` inside the
+        repo) so the impact is negligible. Callers should ``open()`` the
+        returned path immediately to keep the window short. A
+        regression test would require multi-thread / multi-process timing
+        primitives that the eval pipeline does not otherwise import; the
+        docstring contract is the canonical reference instead.
     """
     if path is None:
         default = Path(

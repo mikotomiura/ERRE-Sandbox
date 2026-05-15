@@ -12,6 +12,9 @@ coalescing heartbeat).
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -149,3 +152,135 @@ class TestWorldRuntimeEnvelopeQueue:
         drained = runtime.drain_envelopes()
         heartbeats = [e for e in drained if isinstance(e, WorldTickMsg)]
         assert len(heartbeats) == 1
+
+    # ------------------------------------------------------------------
+    # Codex 13th MEDIUM coverage gaps (security-hardening-pre-m10-followup)
+    # ------------------------------------------------------------------
+    # The four cases below close the boundary / monotonic / cancel /
+    # observability gaps the Codex 13th review flagged after PR #170.
+    # ``maxsize`` is 1024 in production; the test exercises that exact value
+    # rather than a re-bound smaller queue so any regression in the
+    # ``qsize() > maxsize - 2`` drain loop surfaces under the live config.
+
+    def test_envelope_queue_at_maxsize_minus_one_does_not_overflow(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """1023 inserts (maxsize=1024 → ``maxsize-1``): no overflow path."""
+        runtime = world_harness.runtime
+        for i in range(runtime._envelopes.maxsize - 1):
+            runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        assert runtime._envelope_overflow_count == 0
+        # No warning was enqueued because the queue never hit ``full()``.
+        drained = runtime.drain_envelopes()
+        assert all(isinstance(env, WorldTickMsg) for env in drained)
+
+    def test_envelope_queue_at_exact_maxsize_does_not_overflow(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """1024 inserts (exact maxsize): boundary stays under overflow."""
+        runtime = world_harness.runtime
+        for i in range(runtime._envelopes.maxsize):
+            runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        # The Nth insert sees the queue not-yet-full pre-put, so it lands
+        # without invoking the drop-oldest path.
+        assert runtime._envelope_overflow_count == 0
+
+    def test_envelope_queue_at_maxsize_plus_one_triggers_overflow_once(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """1025th insert: overflow path fires exactly once and warning lands."""
+        runtime = world_harness.runtime
+        for i in range(runtime._envelopes.maxsize):
+            runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        assert runtime._envelope_overflow_count == 0
+        runtime.inject_envelope(WorldTickMsg(tick=9999, active_agents=0))
+        assert runtime._envelope_overflow_count >= 1
+        drained = runtime.drain_envelopes()
+        errors = [e for e in drained if isinstance(e, ErrorMsg)]
+        assert errors
+        assert errors[0].code == "runtime_backlog_overflow"
+
+    def test_repeated_overflow_increments_count_monotonically(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """``_envelope_overflow_count`` is monotonically non-decreasing
+        across distinct overflow bursts so an SRE timeseries can derive
+        rate-of-overflow without rebasing."""
+        runtime = world_harness.runtime
+        # First burst: drain to room=0, then inject one extra.
+        for i in range(runtime._envelopes.maxsize + 1):
+            runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        first_burst = runtime._envelope_overflow_count
+        assert first_burst >= 1
+        # Inject another N+2 envelopes; the queue is full from burst 1, so
+        # subsequent inserts continue draining oldest and the counter must
+        # keep climbing.
+        for i in range(runtime._envelopes.maxsize + 2):
+            runtime.inject_envelope(
+                WorldTickMsg(tick=10_000 + i, active_agents=0),
+            )
+        second_burst = runtime._envelope_overflow_count
+        assert second_burst > first_burst
+
+    def test_consume_result_path_uses_drop_oldest_helper(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """Both ingress paths funnel through ``_enqueue_with_drop_oldest``.
+
+        ``inject_envelope`` and ``_consume_result`` share the helper so the
+        SH-5 overflow accounting (and SH-FOLLOWUP / Codex 13th MEDIUM
+        ``logger.warning`` emission) applies uniformly. Test this by
+        priming the queue via ``inject_envelope`` to overflow, then calling
+        the helper directly (the same call ``_consume_result`` makes per
+        :meth:`WorldRuntime._consume_result.envelopes` loop). The shared
+        counter must reflect both calls without rebase.
+        """
+        runtime = world_harness.runtime
+        for i in range(runtime._envelopes.maxsize + 1):
+            runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        baseline = runtime._envelope_overflow_count
+        # Direct helper invocation models the ``_consume_result`` exit path.
+        runtime._enqueue_with_drop_oldest(
+            WorldTickMsg(tick=42_000, active_agents=0),
+        )
+        assert runtime._envelope_overflow_count > baseline
+
+    def test_overflow_emits_logger_warning_for_sre_observability(
+        self,
+        world_harness: RuntimeHarness,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Codex 13th MEDIUM: in-band ``ErrorMsg`` is paired with an
+        out-of-band ``logger.warning`` so the journal-only SRE pipeline
+        catches overflow even when the ErrorMsg consumer is the slow one.
+        """
+        runtime = world_harness.runtime
+        with caplog.at_level(logging.WARNING, logger="erre_sandbox.world.tick"):
+            for i in range(runtime._envelopes.maxsize + 1):
+                runtime.inject_envelope(WorldTickMsg(tick=i, active_agents=0))
+        overflow_records = [
+            r
+            for r in caplog.records
+            if r.levelno == logging.WARNING and "backlog overflow" in r.message
+        ]
+        assert overflow_records, (
+            "expected at least one logger.warning('runtime backlog overflow ...')"
+        )
+
+    async def test_recv_envelope_cancel_releases_resources_cleanly(
+        self, world_harness: RuntimeHarness
+    ) -> None:
+        """A cancelled ``recv_envelope`` must not leave a pending getter
+        warning in the loop close path and must not poison either queue."""
+        runtime = world_harness.runtime
+        task = asyncio.create_task(runtime.recv_envelope())
+        # Yield long enough for ``recv_envelope`` to spawn its two
+        # internal getters and block on ``asyncio.wait``.
+        await asyncio.sleep(0)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        # Both queues are still empty — no orphan items left behind by the
+        # cancellation race.
+        assert runtime._envelopes.qsize() == 0
+        assert runtime._heartbeat_envelopes.qsize() == 0

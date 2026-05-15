@@ -3,8 +3,8 @@
   "per_invocation_max": 200000,
   "today": {
     "date": "2026-05-15",
-    "used": 261690,
-    "invocations": 1
+    "used": 461690,
+    "invocations": 2
   },
   "policy": {
     "on_overrun": "warn",
@@ -98,6 +98,14 @@
       "tokens": 261690,
       "per_invocation_max_overrun": 61690,
       "policy_action": "warn (個人プロジェクト規定どおり、HIGH 5 切出 で value 大)"
+    },
+    {
+      "date": "2026-05-15",
+      "task": "20260515-security-hardening-pre-m10-followup",
+      "purpose": "P6 Codex 14th review — SH-2/SH-1/MEDIUM 3 commits independent review pre-push (HIGH 2 / MEDIUM 3 / LOW 2 / Verdict: BLOCK、HIGH-1 SH-2 startup gate が Godot LAN workflow を破壊 — Origin gate は empty-Origin で機能せず、--require-token は Godot patch 必須、--host=127.0.0.1 は LAN 破壊。HIGH-2 CI banned-import regex が `import openai, os` の comma 形式を miss。MEDIUM-3 require_token+no-token を Origin 非依存で fail-fast 化。LOW-1 decisions.md LAN smoke snippet が stale。tokens 推定 ~200K)",
+      "tokens": 200000,
+      "per_invocation_max_overrun": 0,
+      "policy_action": "estimated (codex CLI tokens not surfaced in stderr; tail review verbosity vs prompt suggests ~200K)"
     }
   ]
 }

@@ -135,6 +135,41 @@ scipy, ollama, empath, arch) are isolated under the `eval` extras group:
 uv sync --extra eval
 ```
 
+### WebSocket connection-time auth (SH-2)
+
+The orchestrator's WebSocket endpoint ships with three independent gates
+(shared token / Origin allow-list / session cap 8) — all disabled by
+default so existing Mac↔G-GEAR LAN workflows keep working. `bootstrap()`
+refuses to start with `host=0.0.0.0` *and* all three gates off so a bare
+`--host=0.0.0.0` cannot silently expose the server.
+
+For LAN development without auth, opt into the explicit escape hatch
+(Godot 4.6's native WS client sends no Origin header, so the Origin gate
+does not yet work for Godot — Codex 14th HIGH-1):
+
+```bash
+uv run python -m erre_sandbox --allow-unauthenticated-lan
+```
+
+This logs a loud warning on every startup so the unsafe posture cannot
+hide. The flag is scheduled for deprecation once `feat/ws-token-enforce`
+adds the Godot WS client patch that enables `--require-token` by default.
+
+To turn on the shared-token gate, first provision the on-disk token
+(preferred over env vars so it does not leak via `ps -E`):
+
+```bash
+mkdir -p var/secrets && chmod 700 var/secrets
+python -c "import secrets; print(secrets.token_urlsafe(32))" \
+  > var/secrets/ws_token
+chmod 600 var/secrets/ws_token
+uv run python -m erre_sandbox --require-token
+```
+
+Then connect with the matching `x-erre-token` header. Operational notes
+(rotation, multi-token, override priority) live in
+`docs/development-guidelines.md`.
+
 ## Layout
 
 See `docs/repository-structure.md` for the authoritative layout and

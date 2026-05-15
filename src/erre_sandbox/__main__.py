@@ -22,6 +22,7 @@ from typing import Final
 
 from erre_sandbox.bootstrap import BootConfig, bootstrap
 from erre_sandbox.cli import baseline_metrics, export_log, scaling_metrics
+from erre_sandbox.integration import protocol
 from erre_sandbox.schemas import AgentSpec, PersonaSpec
 
 try:
@@ -100,6 +101,66 @@ def _build_run_parser() -> argparse.ArgumentParser:
             "Comma-separated persona_ids to boot as parallel agents, e.g. "
             "'kant,nietzsche,rikyu'. Each persona's first preferred_zone is "
             "used as its initial_zone. Omit for the default 1-Kant config."
+        ),
+    )
+    # SH-2 — WS connection-time auth gates. All three default to disabled
+    # for back-compat (Mac↔G-GEAR LAN, no Origin / no token). ``bootstrap``
+    # refuses to start with ``host=0.0.0.0`` plus all three gates off so a
+    # bare ``--host=0.0.0.0`` cannot silently expose the server.
+    parser.add_argument(
+        "--ws-token",
+        dest="ws_token",
+        default=None,
+        help=(
+            "Explicit shared token for the WS endpoint. For tests only; "
+            "production should populate var/secrets/ws_token (chmod 700) "
+            "or the ERRE_WS_TOKEN env var so the token does not leak into "
+            "shell history."
+        ),
+    )
+    parser.add_argument(
+        "--require-token",
+        dest="require_token",
+        action="store_true",
+        default=False,
+        help=(
+            "Require x-erre-token header on every WS connection. Off by "
+            "default (back-compat). Pair with --ws-token, ERRE_WS_TOKEN, "
+            "or var/secrets/ws_token to provide the expected value."
+        ),
+    )
+    parser.add_argument(
+        "--allowed-origins",
+        dest="allowed_origins",
+        default="",
+        help=(
+            "Comma-separated Origin allow-list. Empty (default) disables "
+            "the Origin check entirely so Godot's native WS client (which "
+            "sends no Origin header) keeps working."
+        ),
+    )
+    parser.add_argument(
+        "--max-sessions",
+        dest="max_sessions",
+        type=int,
+        default=protocol.MAX_ACTIVE_SESSIONS,
+        help=(
+            "Cap on simultaneous WS sessions. Overflow connections receive "
+            "close code 1013 (Try Again Later). Default 8."
+        ),
+    )
+    parser.add_argument(
+        "--allow-unauthenticated-lan",
+        dest="allow_unauthenticated_lan",
+        action="store_true",
+        default=False,
+        help=(
+            "Codex 14th HIGH-1 escape hatch: explicit opt-in to the pre-SH-2 "
+            "LAN dev posture (host=0.0.0.0, no Origin, no token). Bypasses "
+            "the bootstrap RuntimeError gate but logs a loud warning on "
+            "every startup. Use only on a trusted LAN until the Godot WS "
+            "client patch enables --require-token by default "
+            "(see feat/ws-token-enforce follow-up task)."
         ),
     )
     return parser
@@ -196,6 +257,9 @@ def cli(argv: list[str] | None = None) -> int:
     args = _build_run_parser().parse_args(effective_argv)
     personas_dir = Path(args.personas_dir)
     agents = _resolve_agents(args.personas, personas_dir)
+    allowed_origins = tuple(
+        token.strip() for token in args.allowed_origins.split(",") if token.strip()
+    )
     cfg = BootConfig(
         host=args.host,
         port=args.port,
@@ -207,6 +271,11 @@ def cli(argv: list[str] | None = None) -> int:
         log_level=args.log_level,
         personas_dir=personas_dir,
         agents=agents,
+        ws_token=args.ws_token,
+        require_token=args.require_token,
+        allowed_origins=allowed_origins,
+        max_sessions=args.max_sessions,
+        allow_unauthenticated_lan=args.allow_unauthenticated_lan,
     )
     try:
         asyncio.run(bootstrap(cfg))

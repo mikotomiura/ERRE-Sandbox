@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import signal
 import sqlite3
@@ -31,9 +32,10 @@ from erre_sandbox.cognition.belief import maybe_promote_belief
 from erre_sandbox.cognition.relational import compute_affinity_delta
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
 from erre_sandbox.inference import OllamaChatClient
+from erre_sandbox.integration import protocol
 from erre_sandbox.integration.dialog import InMemoryDialogScheduler
 from erre_sandbox.integration.dialog_turn import OllamaDialogTurnGenerator
-from erre_sandbox.integration.gateway import make_app
+from erre_sandbox.integration.gateway import WSAuthConfig, make_app
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
 from erre_sandbox.schemas import (
     AgentSpec,
@@ -77,6 +79,19 @@ class BootConfig:
     log_level: str = "info"
     personas_dir: Path = field(default_factory=lambda: Path("personas"))
     agents: tuple[AgentSpec, ...] = ()
+    # SH-2 — WS connection-time auth. All three gates default to disabled
+    # so back-compat workflows (Mac↔G-GEAR LAN, no Origin / no token) keep
+    # working without flag changes. ``bootstrap()`` rejects the combination
+    # ``host="0.0.0.0"`` + all three gates disabled at startup so a careless
+    # ``--host=0.0.0.0`` flag cannot silently expose the server. The
+    # ``allow_unauthenticated_lan`` escape hatch (Codex 14th HIGH-1) is the
+    # explicit way to keep the pre-SH-2 LAN dev posture while we wait on
+    # the Godot WS client patch that unblocks ``require_token=True``.
+    ws_token: str | None = None
+    require_token: bool = False
+    allowed_origins: tuple[str, ...] = ()
+    max_sessions: int = protocol.MAX_ACTIVE_SESSIONS
+    allow_unauthenticated_lan: bool = False
 
     def __post_init__(self) -> None:
         """Fill ``agents`` with the 1-Kant default when the caller omitted it.
@@ -94,6 +109,112 @@ class BootConfig:
 
 _PERSONA_ID_RE: Final[re.Pattern[str]] = re.compile(r"\A[a-z][a-z0-9_-]{0,63}\Z")
 """Path-traversal guard for ``persona_id``; mirrors the CLI-side regex."""
+
+
+_WS_TOKEN_FILE_PATH: Final[Path] = Path("var/secrets/ws_token")
+"""Default on-disk location for the SH-2 shared WS token.
+
+Provisioned via ``mkdir -p var/secrets && chmod 700 var/secrets`` + writing
+the token (a high-entropy string ≥ 32 chars). File reads strip trailing
+whitespace so ``echo TOKEN > file`` works without surprises. Lives at
+``var/`` so it is excluded from VCS by the existing ``.gitignore`` rule.
+"""
+
+_WS_TOKEN_ENV: Final[str] = "ERRE_WS_TOKEN"  # noqa: S105 — env-var name, not the secret
+"""Environment-variable fallback when the on-disk token file is absent.
+
+Prefer the file path over the env var in production so the token does not
+leak into shell history or process inspections (``ps -E``). The env var
+is the convenient escape hatch for short-lived CI / smoke runs.
+"""
+
+
+def _resolve_ws_token(cfg: BootConfig) -> str | None:
+    """Resolve the WS shared token from explicit / env / file in that order.
+
+    Returns ``None`` when no source carries a non-empty token. ``cfg.ws_token``
+    wins so tests can override without touching the filesystem. The env var
+    is consulted next for CI ergonomics; the file is the production source
+    of truth. File read errors are not silently swallowed — they propagate
+    so an operator notices a permissions / encoding regression.
+    """
+    if cfg.ws_token:
+        return cfg.ws_token
+    env_value = os.environ.get(_WS_TOKEN_ENV)
+    if env_value:
+        return env_value.strip() or None
+    if _WS_TOKEN_FILE_PATH.is_file():
+        contents = _WS_TOKEN_FILE_PATH.read_text(encoding="utf-8").strip()
+        return contents or None
+    return None
+
+
+def _validate_ws_auth_config(cfg: BootConfig, *, token: str | None) -> None:
+    """Reject the unsafe default combination so misconfig is loud (SH-2).
+
+    The combination is ``host=0.0.0.0`` (LAN-accessible) **and** every
+    independent auth gate disabled: no Origin allow-list, no required token.
+    With all three off any peer on the LAN can connect and observe every
+    envelope; the ADR (SH-2) requires operators to consciously opt out of
+    safety, not into it.
+
+    Codex 14th MEDIUM-3 also requires that ``require_token=True`` without a
+    resolved token fails fast at startup regardless of the Origin allow-list
+    — otherwise every WS connection fails closed at runtime with the
+    misleading "token mismatch" log line.
+
+    Operator escape hatches:
+
+    * ``--allowed-origins=http://mac.local,http://g-gear.local`` (Origin gate;
+      note: Codex 14th HIGH-1 observed that Godot's native WS client sends
+      no Origin header, so this gate currently breaks the Godot path)
+    * ``--require-token`` plus a provisioned ``var/secrets/ws_token`` /
+      ``ERRE_WS_TOKEN`` env (token gate; needs the Godot client patch
+      tracked as the ``feat/ws-token-enforce`` follow-up task)
+    * ``--host=127.0.0.1`` (loopback only; breaks Mac↔G-GEAR LAN rsync)
+    * ``--allow-unauthenticated-lan`` (Codex 14th HIGH-1) — explicit opt-in
+      to the pre-SH-2 LAN dev posture while the Godot patch is pending.
+      Logs a loud warning on every startup so the unsafe posture cannot
+      hide in production.
+    """
+    # MEDIUM-3: require_token=True without a token is always a misconfig,
+    # independent of Origin allow-list. Fail fast before bind so the failure
+    # surfaces near the offending flags rather than at the first WS frame.
+    if cfg.require_token and not token:
+        msg = (
+            "SH-2 / Codex 14th MEDIUM-3: --require-token=True but no token "
+            "is provisioned. Populate var/secrets/ws_token (chmod 700 +"
+            " chmod 600), set ERRE_WS_TOKEN, or pass --ws-token=<literal>."
+        )
+        raise RuntimeError(msg)
+    if cfg.host != "0.0.0.0":  # noqa: S104 — string compare, not bind
+        return
+    if cfg.allowed_origins:
+        return
+    if cfg.require_token:
+        # ``token`` is non-None at this point (MEDIUM-3 branch above ensures it).
+        return
+    if cfg.allow_unauthenticated_lan:
+        logger.warning(
+            "[bootstrap] SH-2 unsafe LAN dev posture acknowledged via "
+            "--allow-unauthenticated-lan (host=%s, no Origin / no token). "
+            "Replace with --require-token once the Godot WS client patch "
+            "lands (feat/ws-token-enforce).",
+            cfg.host,
+        )
+        return
+    msg = (
+        "SH-2: refusing to start with host=0.0.0.0 and all three WS auth "
+        "gates disabled. Pick one of:\n"
+        "  --allow-unauthenticated-lan  (explicit unsafe LAN dev — logs"
+        " a loud warning on every startup; Codex 14th HIGH-1 escape hatch)\n"
+        "  --allowed-origins=http://mac.local,http://g-gear.local  (Origin"
+        " gate; note Godot's native WS client sends no Origin header)\n"
+        "  --require-token  (with var/secrets/ws_token or ERRE_WS_TOKEN env;"
+        " needs the Godot client patch in feat/ws-token-enforce)\n"
+        "  --host=127.0.0.1  (loopback only; breaks LAN rsync workflow)"
+    )
+    raise RuntimeError(msg)
 
 
 def _load_persona_yaml(personas_dir: Path, persona_id: str) -> PersonaSpec:
@@ -579,7 +700,28 @@ async def bootstrap(cfg: BootConfig) -> None:  # noqa: PLR0915, C901 — composi
                 spec.initial_zone.value,
             )
 
-        app = make_app(runtime=runtime)
+        # SH-2: resolve the shared WS token (explicit → env → file), validate
+        # that the resulting auth posture is not the unsafe default, and
+        # surface the gates to the gateway via ``WSAuthConfig``. Done after
+        # agents are registered so the validation error surfaces close to
+        # ``uvicorn.serve()`` for log proximity, but before the network
+        # listener is allocated.
+        ws_token = _resolve_ws_token(cfg)
+        _validate_ws_auth_config(cfg, token=ws_token)
+        auth_config = WSAuthConfig(
+            token=ws_token,
+            require_token=cfg.require_token,
+            allowed_origins=cfg.allowed_origins,
+            max_sessions=cfg.max_sessions,
+        )
+        logger.info(
+            "[bootstrap] ws_auth (origins=%d, require_token=%s, max_sessions=%d)",
+            len(cfg.allowed_origins),
+            cfg.require_token,
+            cfg.max_sessions,
+        )
+
+        app = make_app(runtime=runtime, auth_config=auth_config)
         server = uvicorn.Server(
             uvicorn.Config(
                 app,

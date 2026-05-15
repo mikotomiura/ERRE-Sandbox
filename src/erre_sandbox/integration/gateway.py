@@ -30,6 +30,7 @@ import logging
 import re
 import secrets
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Final, Protocol
 
 from fastapi import FastAPI, WebSocket
@@ -108,6 +109,46 @@ _SERVER_CAPABILITIES: Final[tuple[str, ...]] = (
 )
 
 
+WS_TOKEN_HEADER: Final[str] = "x-erre-token"  # noqa: S105 — header name, not the secret
+"""Per-frame WebSocket subprotocol header for SH-2 shared-token auth.
+
+Lower-case canonical form; Starlette normalises ``WebSocket.headers`` to
+lower-case on receive so callers compare against this exact string. Header
+based (rather than query-string) so the token does not leak into reverse-
+proxy access logs or browser history.
+"""
+
+
+@dataclass(frozen=True)
+class WSAuthConfig:
+    """Connection-time auth gates for the WS endpoint (SH-2, 3-layer independent).
+
+    All three fields default to "disabled" so the back-compat path (Mac↔G-GEAR
+    LAN, no Origin / no token) keeps working. Opt into each layer
+    independently via :class:`erre_sandbox.bootstrap.BootConfig`.
+
+    ``host=0.0.0.0`` combined with **all three** gates disabled is rejected
+    at startup by :func:`erre_sandbox.bootstrap.bootstrap` so a careless
+    operator cannot expose the server to a shared Wi-Fi without consent.
+    """
+
+    token: str | None = None
+    """Shared token compared via :func:`secrets.compare_digest`. ``None`` ⇒
+    token gate disabled (``require_token`` is the authoritative switch)."""
+
+    require_token: bool = False
+    """When ``True``, sessions missing or mismatching the token are closed
+    with WS code ``1008``. Default ``False`` ⇒ back-compat (no enforcement)."""
+
+    allowed_origins: tuple[str, ...] = ()
+    """Empty tuple ⇒ Origin check disabled. Otherwise an Origin header that
+    is missing from this allow-list closes the socket with code ``1008``."""
+
+    max_sessions: int = protocol.MAX_ACTIVE_SESSIONS
+    """Authoritative cap consumed by :class:`Registry`. Sessions beyond the
+    cap are closed with WS code ``1013`` (Try Again Later)."""
+
+
 class _GracefulCloseError(Exception):
     """Raised by the recv / send coroutines to end the ACTIVE phase cleanly.
 
@@ -184,12 +225,44 @@ class Registry:
     server handshake) bypass the filter unconditionally.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        max_sessions: int = protocol.MAX_ACTIVE_SESSIONS,
+    ) -> None:
         self._queues: dict[str, asyncio.Queue[ControlEnvelope]] = {}
         self._subscriptions: dict[str, frozenset[str] | None] = {}
+        self._max_sessions = max_sessions
 
     def __len__(self) -> int:
         return len(self._queues)
+
+    def reserve_slot(
+        self,
+        session_id: str,
+        queue: asyncio.Queue[ControlEnvelope],
+        *,
+        subscribed_agents: frozenset[str] | None = None,
+    ) -> None:
+        """Insert a session under the configured cap (SH-2).
+
+        Raises :class:`erre_sandbox.integration.protocol.SessionCapExceededError`
+        when ``len(self) >= max_sessions``. The check is synchronous and
+        atomic relative to other registry callers on the same event loop
+        (Python's asyncio is single-threaded; there is no concurrent reserve
+        between the ``len(...) >= cap`` test and the assignment below).
+        """
+        if len(self._queues) >= self._max_sessions:
+            raise protocol.SessionCapExceededError(
+                current=len(self._queues),
+                cap=self._max_sessions,
+            )
+        self._queues[session_id] = queue
+        self._subscriptions[session_id] = subscribed_agents
+
+    def release_slot(self, session_id: str) -> None:
+        """Remove a session and free its slot (SH-2)."""
+        self.remove(session_id)
 
     def add(
         self,
@@ -198,8 +271,16 @@ class Registry:
         *,
         subscribed_agents: frozenset[str] | None = None,
     ) -> None:
-        self._queues[session_id] = queue
-        self._subscriptions[session_id] = subscribed_agents
+        """Back-compat alias of :meth:`reserve_slot`.
+
+        Kept so existing unit tests (TestRegistry, test_multi_agent_stream)
+        and any external callers continue to work without invasive
+        refactoring. New gateway code uses :meth:`reserve_slot` directly so
+        the cap-exceed branch is reachable in the WS handler. Unit tests stay
+        well under ``max_sessions`` so this alias's cap enforcement does not
+        regress them.
+        """
+        self.reserve_slot(session_id, queue, subscribed_agents=subscribed_agents)
 
     def remove(self, session_id: str) -> None:
         self._queues.pop(session_id, None)
@@ -498,7 +579,9 @@ async def _broadcaster(runtime: _RuntimeLike, registry: Registry) -> None:
 # =============================================================================
 
 
-async def ws_observe(ws: WebSocket) -> None:  # noqa: PLR0915 — protocol state machine inherently long
+async def ws_observe(  # noqa: C901, PLR0911, PLR0912, PLR0915 — protocol state machine inherently long
+    ws: WebSocket,
+) -> None:
     """Top-level WS handler. Also the session state machine.
 
     The three protocol phases map onto the function's linear control flow:
@@ -511,11 +594,70 @@ async def ws_observe(ws: WebSocket) -> None:  # noqa: PLR0915 — protocol state
       inserted into the registry, and removed in ``finally``.
     * **CLOSING** — the outer ``finally`` blocks; ``ws.close()`` is attempted
       best-effort so an already-closed socket does not raise.
+
+    SH-2 adds three independent connection-time gates **before** ``accept``:
+    Origin allow-list, shared-token (constant-time compare), and session
+    cap pre-check. Each gate closes the socket with the appropriate
+    WebSocket close code without consuming resources or notifying the peer
+    of a successful upgrade.
     """
     # runtime lives on app.state for the broadcaster; the handler itself
     # does not need a direct reference, so we only look up the registry here.
     registry: Registry = ws.app.state.registry
+    auth: WSAuthConfig = ws.app.state.ws_auth
     session_id = secrets.token_hex(8)
+
+    # ---------- SH-2: pre-accept connection gates ----------
+    # Reject before accept so a denied peer never sees a successful WS
+    # upgrade. ``ws.close(code=...)`` issued before ``accept()`` is mapped
+    # by Starlette to an HTTP 403 response that carries the close code,
+    # which is what well-behaved WS clients (and curl probes) interpret as
+    # an unambiguous policy decision.
+
+    # Layer 1 — Origin allow-list (empty tuple ⇒ check disabled).
+    if auth.allowed_origins:
+        origin = ws.headers.get("origin", "")
+        if origin not in auth.allowed_origins:
+            logger.warning(
+                "session %s: rejected origin %r (allowed=%s)",
+                session_id,
+                origin,
+                auth.allowed_origins,
+            )
+            with contextlib.suppress(Exception):
+                await ws.close(code=1008)  # Policy Violation
+            return
+
+    # Layer 2 — Shared-token check (``require_token=False`` ⇒ gate disabled,
+    # back-compat with Mac↔G-GEAR LAN workflow).
+    if auth.require_token:
+        presented = ws.headers.get(WS_TOKEN_HEADER, "")
+        # Defence-in-depth: if bootstrap.py allowed ``require_token=True``
+        # without a token, treat every connection as unauthorised rather
+        # than crash. Bootstrap's startup validation should catch this
+        # earlier; this branch is the runtime backstop.
+        token = auth.token or ""
+        if not token or not secrets.compare_digest(presented, token):
+            logger.warning(
+                "session %s: WS token mismatch (require_token=True)",
+                session_id,
+            )
+            with contextlib.suppress(Exception):
+                await ws.close(code=1008)  # Policy Violation
+            return
+
+    # Layer 3 — Session cap pre-check (fast path; ``reserve_slot`` below is
+    # the authoritative race-safe gate).
+    if len(registry) >= auth.max_sessions:
+        logger.warning(
+            "session %s: cap reached (%d/%d)",
+            session_id,
+            len(registry),
+            auth.max_sessions,
+        )
+        with contextlib.suppress(Exception):
+            await ws.close(code=1013)  # Try Again Later
+        return
 
     # Parse the optional ``?subscribe=`` query parameter before accepting,
     # so a malformed subscription is rejected before we allocate resources
@@ -619,7 +761,33 @@ async def ws_observe(ws: WebSocket) -> None:  # noqa: PLR0915 — protocol state
         out_queue: asyncio.Queue[ControlEnvelope] = asyncio.Queue(
             maxsize=protocol.MAX_ENVELOPE_BACKLOG,
         )
-        registry.add(session_id, out_queue, subscribed_agents=subscribed_agents)
+        # SH-2: ``reserve_slot`` is the authoritative race-safe gate. The
+        # pre-accept ``len(registry) >= max_sessions`` check above closes the
+        # easy path; the race window (another session reserves between
+        # the pre-check and now) is closed here with an in-band ErrorMsg
+        # plus a 1013 close so an over-cap client backs off rather than
+        # loops.
+        try:
+            registry.reserve_slot(
+                session_id,
+                out_queue,
+                subscribed_agents=subscribed_agents,
+            )
+        except protocol.SessionCapExceededError as exc:
+            logger.warning(
+                "session %s: cap raced (%d/%d) — closing 1013",
+                session_id,
+                exc.current,
+                exc.cap,
+            )
+            await _send_error(
+                ws,
+                code="session_cap_exceeded",
+                detail=f"active session cap reached ({exc.current}/{exc.cap})",
+            )
+            with contextlib.suppress(Exception):
+                await ws.close(code=1013)
+            return
         try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(_recv_loop(ws), name=f"recv-{session_id}")
@@ -630,7 +798,7 @@ async def ws_observe(ws: WebSocket) -> None:  # noqa: PLR0915 — protocol state
         except* _GracefulCloseError:
             pass  # voluntary exit — send_error was already surfaced
         finally:
-            registry.remove(session_id)
+            registry.release_slot(session_id)
 
     except WebSocketDisconnect:
         # Peer closed the socket mid-flow; nothing actionable on our side.
@@ -714,16 +882,27 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await task
 
 
-def make_app(runtime: _RuntimeLike | None = None) -> FastAPI:
+def make_app(
+    runtime: _RuntimeLike | None = None,
+    *,
+    auth_config: WSAuthConfig | None = None,
+) -> FastAPI:
     """ASGI factory — the canonical entry point.
 
     The runtime dependency is injected so tests can swap a :class:`MockRuntime`
     via fixture. The default :class:`_NullRuntime` makes the app runnable
     standalone (useful for curl probes of ``/health``).
+
+    SH-2: ``auth_config`` carries the WS connection-time gates. ``None``
+    yields :class:`WSAuthConfig` defaults (back-compat: no Origin / no
+    token / cap=8) so existing tests and the standalone debug entry stay
+    unaffected.
     """
     app = FastAPI(lifespan=_lifespan)
     app.state.runtime = runtime if runtime is not None else _NullRuntime()
-    app.state.registry = Registry()
+    cfg = auth_config if auth_config is not None else WSAuthConfig()
+    app.state.ws_auth = cfg
+    app.state.registry = Registry(max_sessions=cfg.max_sessions)
 
     async def health_endpoint() -> dict[str, object]:
         return await _health(app)

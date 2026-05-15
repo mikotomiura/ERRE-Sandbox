@@ -308,7 +308,7 @@ semantic_memory に row だけ作る (検索対象外; m4-memory-semantic-layer 
 |---|---|---|---|
 | SGLang server | HTTP API | なし (LAN 内) | Ollama にフォールバック |
 | Ollama | HTTP API | なし (localhost) | エラーログ + リトライ |
-| Godot 4.6 | WebSocket | なし (LAN 内) | 接続切断時に自動再接続 (`godot-ws-keepalive` で改善予定) |
+| Godot 4.6 | WebSocket | shared-token (opt-in) + Origin allow-list + session cap=8 (SH-2、LAN 内前提) | 接続切断時に自動再接続 (`godot-ws-keepalive` で改善予定) |
 | HuggingFace Hub | HTTPS | API token | LoRA/デモの公開のみ、推論には不要 |
 | OSF (事前登録) | Web UI | アカウント | 手動操作、システム連携なし |
 
@@ -327,7 +327,7 @@ semantic_memory に row だけ作る (検索対象外; m4-memory-semantic-layer 
 
 ### 許容する技術的負債
 - MVP 段階ではインコンテキストペルソナのみ (LoRA は M9 以降)
-- 認証なし (LAN 内前提)
+- WebSocket 認証は **shared-token (opt-in) + Origin allow-list + session cap=8** の 3 層独立 (LAN 内前提)。`require_token=False` がデフォルトのため Mac↔G-GEAR LAN rsync workflow は無影響。`host=0.0.0.0` で全ゲート無効の組合せは `bootstrap()` が startup `RuntimeError` で誤公開を予防 (SH-2、`.steering/20260513-security-hardening-pre-m10/decisions.md`)
 - ダッシュボードは Streamlit の最小実装から開始
 - Godot シーンは最小限のアセットから段階的に拡充
 

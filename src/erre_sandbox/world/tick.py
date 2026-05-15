@@ -806,6 +806,16 @@ class WorldRuntime:
                     f"drops={self._envelope_overflow_count}"
                 ),
             )
+            # Codex 13th MEDIUM (observability): emit an out-of-band
+            # ``logger.warning`` alongside the in-band ErrorMsg so SRE
+            # tooling that drains the journal (and only the journal — the
+            # ErrorMsg consumer may be the very subscriber that is too slow
+            # to dequeue the warning envelope) still sees the overflow.
+            logger.warning(
+                "runtime backlog overflow: drops=%d maxsize=%d",
+                self._envelope_overflow_count,
+                self._envelopes.maxsize,
+            )
             try:
                 self._envelopes.put_nowait(warning)
             except asyncio.QueueFull:  # pragma: no cover — maxsize < 2
