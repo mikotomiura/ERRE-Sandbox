@@ -161,6 +161,73 @@ Codex 13th MEDIUM-1 指摘「ADR-PM-2 should be superseded by new ADR-PM-6, not 
   - User からの直接指示 (emotional layer を M10-0 に含めるべき) があれば即見直し
   - M10-0 + M11 完了後、Social-ToM 5 metric が emotional channel と confound していると empirical evidence で示された場合、ADR-PM-5 を revise して emotional layer を M11 で statistical baseline として実装
 
+## ADR-PM-8: M10-0 concrete design final freeze gate を G-GEAR QLoRA retrain v2 verdict 後に置く + 本 repair pass で steering 修正 / design boundary fix まで
+
+> **Status**: ACTIVE
+> **Date**: 2026-05-15 (本 repair pass、ADR-PM-7 の後)
+> **Base commit**: `fb651e7` (main)
+> **Influences**: `design.md` §C.0 PC-4 / PC-5、§F、§H 冒頭、§C.7 A17、§X repair-log; `design-final.md` の supersede 宣言
+
+- **判断日時**: 2026-05-15 (本 repair pass)
+- **背景**: 本 pre-M10 design synthesis セッションで作成した `design-final.md` (Hybrid-A revised + Codex 13th HIGH 4 反映) に対し、以下の問題が後続 review で判明:
+  - M-L2-1 が現行 `SemanticMemoryRecord.belief_kind` schema (`trust/clash/wary/curious/ambivalent`) と乖離した `provisional/promoted` transition を前提
+  - Layer 2 3 metric の "active 計測 / `status='valid'` ≥90%" 主張が schema/data 実状と乖離
+  - Phase B+C 30 cell × 504 tick = 15,120 tick base が unconditional 前提として書かれていたが、Mac 上で natural 15 DuckDB 本体不在 (sidecar `.capture.json` のみ)
+  - "DDL 変更ゼロ" 表現が誤読 (`metrics.individuation` table 自体は M10-0 main で新規 DDL 追加必須、現行 `bootstrap_schema()` は `metrics.tier_{a,b,c}` のみ)
+  - 実装配置 `src/erre_sandbox/eval/individuation/` が現行 repo evidence layer pattern (`evidence/tier_b/` 等) とズレ
+
+  さらに、これら repair で「M10-0 sub-task の baseline 前提 (LoRA persona の有無)」が決まらない限り、final concrete design freeze は早すぎる。G-GEAR で進行中の二度目の QLoRA retrain v2 (`data/lora/m9-c-adopt-v2/kant_r8_v2/`) の verdict (ADOPT / REJECT) によって M10-0 評価体制の baseline が変わるため、final freeze の gate を retrain v2 verdict 後に置く必要がある。
+
+- **選択肢**:
+  - A: 本 session で final freeze を確定し、次 task scaffold (`m10-0-individuation-metrics` / `m10-0-source-navigator-mvp`) を即起票
+  - B: 本 session では steering / design boundary fix まで実施し、final freeze は G-GEAR QLoRA retrain v2 verdict 後に置く (sub-task scaffold 起票も verdict 後)
+  - C: 本 session では何もせず (Codex 13th 反映後の `design-final.md` のまま) retrain v2 verdict を待つ
+
+- **採用**: **B**
+
+- **理由**:
+  - A は repair pass の問題 (schema 不整合 / data availability / DDL 表現 / 配置) が未解決のまま scaffold に進むため、誤実装誘発 risk が高い
+  - C は repair pass を放置すると本 synthesis 文書が誤読源として残る (次セッションで Claude / 別 contributor が `design-final.md` を canonical と勘違いする risk)
+  - B は repair pass で steering の整合性を確保しつつ、final freeze (具体的な acceptance threshold band / next task scaffold) は retrain v2 verdict 後に置く。retrain v2 の ADOPT/REJECT が baseline 前提を変えるため、verdict 前に concrete acceptance を凍結すると premature
+
+- **反映内容** (本 repair pass で完了):
+  1. `design.md` を canonical として新規起票、`design-final.md` を historical reference (SUPERSEDED) にダウングレード
+  2. `design.md` §C.0 に Precondition (PC-1〜PC-5) を新設、PC-4 (retrain v2 verdict) / PC-5 (artefact) を blocker として明示
+  3. `design.md` §C.1 / §C.2 / §C.6 / §C.7 で Layer 2 3 metric を **M10-0 unsupported pin に統一** (M-L2-1: schema 不整合 / M-L2-2: M10-C 待ち / M-L2-3: M11-C 待ち)
+  4. `design.md` §C.4 / §E / §H で `metrics.individuation` table を **M10-0 main で新規 DDL 追加** と明記、Layer 2 用追加 table なしを別文で表現
+  5. `design.md` §E / §G / §H で実装配置を `src/erre_sandbox/evidence/individuation/` に修正
+  6. `design.md` §C.7 A17 で M10-0 sub-task scaffold 起票を retrain v2 verdict gate に置く
+  7. `tasklist.md` の stale 記述 (`m10-0-social-tom-eval` scaffold / 「次 task scaffold 3 件」/ 重複 memo 整理セクション) を撤去、本 task の次アクションを「QLoRA retrain v2 verdict 後に M10-0 design freeze」へ変更
+
+- **本 repair pass で実施しないこと**:
+  - 次 task scaffold (`m10-0-individuation-metrics` / `m10-0-source-navigator-mvp`) の `.steering/` ディレクトリ作成 — retrain v2 verdict 後
+  - `data/eval/golden/` 配下の natural 15 DuckDB body 受領 (PC-2 解消) — G-GEAR から rsync 別途
+  - `data/eval/golden/_checksums_mac_received.txt` 等 untracked file の削除 / revert — 保持
+  - `src/erre_sandbox/` 以下のコード変更 — 一切なし
+  - `data/` artefact 削除 — 一切なし
+  - commit — 本 repair pass では steering 修正のみ、commit は別途
+
+- **retrain v2 verdict 後の action plan**:
+  - ADOPT の場合: `design.md` の acceptance threshold band / next task scaffold で **LoRA persona + (M10-A 以降の) individual layer を baseline** に M10-0 評価体制を最終 freeze
+  - REJECT の場合: 同じく `design.md` 上で **no-LoRA / prompt persona baseline** に baseline 前提を再調整、M10-0 sub-task の Layer 1 metric extraction が prompt-only baseline で sensible か再 verify
+  - 共通: PC-2/PC-3 (natural 15 DuckDB 受領 + checksum) が解消されているか確認、未解消なら scaffold blocker として記録
+
+- **トレードオフ**:
+  - M10-0 sub-task 着手が retrain v2 verdict 待ちで遅延 (~数日〜1 週間程度の想定)
+  - design synthesis 完了 → M10-0 sub-task scaffold 起票 → 実装着手の 3 stage gating が増える
+  - 一方、retrain v2 ADOPT/REJECT のどちらでも consistent な M10-0 評価体制を組める
+
+- **影響範囲**:
+  - `design.md` (canonical、本 repair pass 反映)
+  - `design-final.md` (SUPERSEDED 宣言、本 ADR で historical 化)
+  - `tasklist.md` (stale 記述撤去、次アクション変更)
+  - 次セッションの最優先 action: G-GEAR QLoRA retrain v2 verdict 確認 + 本 ADR の retrain v2 verdict-after action plan 実行
+
+- **見直しタイミング**:
+  - retrain v2 verdict が出た時点 (ADOPT/REJECT に応じて本 ADR の action plan を `design.md` に反映 → final freeze)
+  - retrain v2 が wall-budget / VRAM / 別 incident で長期 stuck した場合、no-LoRA baseline 前提で先行 freeze する選択肢を再評価
+  - PC-2 (natural 15 DuckDB body) 受領が長期不能と判明した場合、M10-0 sub-task の Layer 1 metric extraction を stimulus 15 only に縮退させる選択肢を `design.md` §C.0 に追記
+
 ## ADR-PM-7: Codex 13th independent review HIGH 4 + MEDIUM 5 + LOW 3 全反映
 
 > **Status**: ACTIVE

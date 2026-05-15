@@ -1,10 +1,22 @@
-# 設計 — pre-M10 design synthesis (FINAL: hybrid 採用、Codex 13th 反映済)
+# 設計 — pre-M10 design synthesis (FINAL: hybrid 採用、Codex 13th 反映済) **[SUPERSEDED by design.md repair pass 2026-05-15]**
 
-> **Date**: 2026-05-15  **Base commit**: `fb651e7` (main)  **Status**: ACTIVE — implementation reference
+> **Status**: HISTORICAL / SUPERSEDED — canonical implementation reference は `design.md` (同ディレクトリ、本 repair pass 2026-05-15 後の正本)。
+> **Superseded by**: `design.md` (本 repair pass)
+> **Reason for supersession**: 本書には以下の不整合が含まれていたため、`design.md` を canonical として新規起票 (内容は本書を起点に repair):
+>   - M-L2-1 が `provisional → promoted` rate を前提にしていたが、現行 `SemanticMemoryRecord.belief_kind` の値域は `trust/clash/wary/curious/ambivalent` で provisional/promoted を含まない
+>   - "Layer 2 3 metric が active 計測 / `status='valid'` ≥ 90%" の主張が schema/data の実状と乖離
+>   - Phase B+C 30 cell × 504 tick base が unconditional 前提として書かれていたが、Mac 上で natural 15 DuckDB 本体が欠落 (sidecar `.capture.json` のみ)
+>   - "DDL 変更ゼロ" 表現が誤読を誘発 (`metrics.individuation` table 自体は M10-0 main で新規 DDL 追加が必要、現行 `bootstrap_schema()` は `metrics.tier_{a,b,c}` のみ)
+>   - 実装配置 `src/erre_sandbox/eval/individuation/` が現行 repo の evidence layer pattern (`evidence/tier_b/` 等) とズレ
+>   - M10-0 final freeze 条件と G-GEAR QLoRA retrain v2 verdict の関係が未明示
 >
-> **本書の位置づけ**: `design-original.md` (capability-oriented scenario-lib、SUPERSEDED) と `design-reimagine.md` (process-trace + power-first、SUPERSEDED) の **両案を並列審査** した上で、採用 hybrid を確定する。本書が M10-0 sub-task scaffold 起票の正式 reference。Codex 13th review (66,261 tokens、Verdict: ADOPT-WITH-CHANGES、HIGH 4 / MEDIUM 5 / LOW 3) を反映済。
+> 本書は historical reference として保持 (合意プロセス trace のため)。新規 reader は `design.md` を読むこと。`design-original.md` / `design-reimagine.md` も historical reference のまま。
 >
-> 旧 `design.md` の役割は本書に置換、`design-original.md` / `design-reimagine.md` は historical reference として保持 (それぞれの header に deprecation marker)。
+> ---
+>
+> **Date (original)**: 2026-05-15  **Base commit**: `fb651e7` (main)
+>
+> **本書の位置づけ (original)**: `design-original.md` (capability-oriented scenario-lib、SUPERSEDED) と `design-reimagine.md` (process-trace + power-first、SUPERSEDED) の **両案を並列審査** した上で、採用 hybrid を確定する。本書が M10-0 sub-task scaffold 起票の正式 reference。Codex 13th review (66,261 tokens、Verdict: ADOPT-WITH-CHANGES、HIGH 4 / MEDIUM 5 / LOW 3) を反映済。
 
 ---
 
