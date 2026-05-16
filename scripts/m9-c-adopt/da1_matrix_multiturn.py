@@ -10,6 +10,13 @@ reflection) by comparing:
 * matched baseline (historical baseline downsampled to pilot's per-shard focal
   count via consumer ``--max-focal-per-shard``、HIGH-2)
 
+The primary scenario evaluation compares the LoRA-on pilot against the
+**no-LoRA SGLang control** (DA-14 authoritative baseline). The matched
+historical Ollama baseline is retained in the rendered table as a
+cross-pipeline reference only — DA-14 verdict gating used the no-LoRA SGLang
+arm, and DA-15 keeps that as the comparator so the scenario verdict is
+apples-to-apples with the rest of the m9-c-adopt evidence chain.
+
 Outputs ``da1-matrix-multiturn-kant.json`` + a markdown table to stdout, and
 runs the pre-registered scenario thresholds against the primary rank (rank=8)
 to print Scenario I / II / III / IV verdict.
@@ -249,8 +256,18 @@ def main() -> int:  # noqa: PLR0915
     pr = args.primary_rank
     primary_mt = mt_vendi.get(pr)
     primary_mt_burrows = mt_burrows.get(pr)
-    matched_baseline_for_compare = matched_vendi or hist_vendi
-    matched_burrows_for_compare = matched_burrows or hist_burrows
+    # DA-14 authoritative comparator: no-LoRA SGLang control of the same
+    # multi-turn protocol. The matched historical Ollama baseline is kept as
+    # a cross-pipeline reference (rendered table) but does not gate the
+    # scenario verdict. Fall back to the matched historical baseline only
+    # when the no-LoRA SGLang arm is missing (older artefact directories).
+    matched_baseline_for_compare = nolora_vendi or matched_vendi or hist_vendi
+    matched_burrows_for_compare = nolora_burrows or matched_burrows or hist_burrows
+    comparator_label = (
+        "no-LoRA SGLang (DA-14 authoritative)"
+        if nolora_vendi
+        else "matched historical Ollama (DA-11 fallback)"
+    )
 
     scenario_verdict_payload: dict = {
         "primary_rank": pr,
@@ -302,6 +319,7 @@ def main() -> int:  # noqa: PLR0915
             "primary_rank": pr,
             "scenario": verdict,
             "rationale": rationale,
+            "comparator": comparator_label,
             "primary_vendi_diff_point": vendi_diff[0],
             "primary_vendi_diff_lo": vendi_diff[1],
             "primary_vendi_diff_hi": vendi_diff[2],

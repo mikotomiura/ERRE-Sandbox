@@ -139,15 +139,39 @@ def test_vendi_default_encoder_model_id_is_all_mpnet_base_v2() -> None:
 
     Implementation can silently diverge if a future refactor swaps the
     multilingual model in; this test pins the exact model id by inspecting
-    the lazy loader source.
+    the module source so the DA-14 regression baseline cannot drift.
+    """
+    import inspect
+
+    from erre_sandbox.evidence.tier_b import vendi as vendi_module
+    from erre_sandbox.evidence.tier_b.vendi import _DEFAULT_ENCODER_MODEL_ID
+
+    module_source = inspect.getsource(vendi_module)
+    assert "sentence-transformers/all-mpnet-base-v2" in module_source
+    assert _DEFAULT_ENCODER_MODEL_ID == "sentence-transformers/all-mpnet-base-v2"
+    assert DEFAULT_KERNEL_NAME == "semantic"
+
+
+def test_load_default_kernel_signature_accepts_encoder_name() -> None:
+    """DA-15: ``_load_default_kernel`` must accept an optional encoder_name.
+
+    Plan A swaps the MPNet baseline for ``intfloat/multilingual-e5-large`` or
+    ``BAAI/bge-m3`` via this argument. The default (``None``) must continue to
+    resolve to the MPNet baseline so DA-14 numbers remain reproducible.
     """
     import inspect
 
     from erre_sandbox.evidence.tier_b.vendi import _load_default_kernel
 
+    sig = inspect.signature(_load_default_kernel)
+    assert "encoder_name" in sig.parameters
+    param = sig.parameters["encoder_name"]
+    assert param.default is None
+    # The fallback for None must be the DA-14 MPNet model id; pin it here
+    # so a future rename can't silently break the DA-14 regression baseline.
     source = inspect.getsource(_load_default_kernel)
-    assert "sentence-transformers/all-mpnet-base-v2" in source
-    assert DEFAULT_KERNEL_NAME == "semantic"
+    assert 'encoder_name or _DEFAULT_ENCODER_MODEL_ID' in source
+    assert '_DEFAULT_ENCODER_MODEL_ID' in source
 
 
 def test_make_lexical_5gram_kernel_is_symmetric_and_diagonal_one() -> None:

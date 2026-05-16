@@ -42,9 +42,13 @@ from erre_sandbox.evidence.bootstrap_ci import (
     hierarchical_bootstrap_ci,
 )
 from erre_sandbox.evidence.tier_b.vendi import (
+    _load_default_kernel,
     compute_vendi,
     make_lexical_5gram_kernel,
 )
+
+_DEFAULT_ENCODER_MODEL_ID = "sentence-transformers/all-mpnet-base-v2"
+"""DA-14 baseline. DA-15 Plan A swaps this via ``--encoder``."""
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +101,18 @@ def main(argv: list[str] | None = None) -> int:
             " ~440MB model download); 'lexical-5gram' is dependency-free."
         ),
     )
+    p.add_argument(
+        "--encoder",
+        default=_DEFAULT_ENCODER_MODEL_ID,
+        help=(
+            "HuggingFace model id for the semantic kernel. Default is MPNet"
+            " (DA-14 baseline). DA-15 Plan A swaps this for a multilingual"
+            " encoder (intfloat/multilingual-e5-large or BAAI/bge-m3); see"
+            " .steering/20260516-m9-c-adopt-da15-impl/decisions.md D-2 for"
+            " the pre-registered revision pins. Ignored when --kernel is"
+            " 'lexical-5gram'."
+        ),
+    )
     p.add_argument("--output", required=True, type=Path)
     p.add_argument(
         "--max-focal-per-shard",
@@ -133,9 +149,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.kernel == "lexical-5gram":
         kernel = make_lexical_5gram_kernel()
         kernel_name = "lexical-5gram"
+        encoder_model_id = "char-5gram-jaccard"
     else:
-        kernel = None  # lazy MPNet load inside compute_vendi
-        kernel_name = "semantic"
+        # Encoder-aware semantic kernel. DA-14 default keeps the MPNet
+        # baseline reproducible; DA-15 Plan A swaps the model id via
+        # --encoder. We do not pass ``kernel=None`` here because the
+        # compute_vendi default falls back to MPNet, which would silently
+        # ignore --encoder.
+        kernel = _load_default_kernel(encoder_name=args.encoder)
+        encoder_model_id = args.encoder
+        # Use the DA-14 "semantic" label only when the encoder matches the
+        # DA-14 baseline; otherwise tag with DA-15's versioned amended name
+        # so downstream consumers can identify the rescore output.
+        kernel_name = (
+            "semantic"
+            if args.encoder == _DEFAULT_ENCODER_MODEL_ID
+            else "semantic_v2_encoder_swap"
+        )
 
     for shard in shards:
         utterances = _load_focal_utterances(shard, args.persona)
@@ -184,11 +214,7 @@ def main(argv: list[str] | None = None) -> int:
         "condition": args.condition,
         "metric": f"vendi_{kernel_name.replace('-', '_')}",
         "kernel_name": kernel_name,
-        "encoder_model": (
-            "sentence-transformers/all-mpnet-base-v2"
-            if kernel_name == "semantic"
-            else "char-5gram-jaccard"
-        ),
+        "encoder_model": encoder_model_id,
         "window_size": args.window_size,
         "n_clusters": len(per_cluster_scores),
         "total_windows": len(window_results),
