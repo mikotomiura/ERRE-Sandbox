@@ -58,9 +58,14 @@ from erre_sandbox.evidence.tier_b.vendi import (
     make_lexical_5gram_kernel,
     vendi_kernel_sensitivity_panel,
 )
+from erre_sandbox.evidence.tier_b.vendi_lexical_5gram import (
+    LEXICAL_5GRAM_KERNEL_NAME,
+    make_tfidf_5gram_cosine_kernel,
+)
 
 __all__ = [
     "DEFAULT_KERNEL_NAME",
+    "LEXICAL_5GRAM_KERNEL_NAME",
     "ME1_FALLBACK_LOWER_CI_THRESHOLD",
     "ME1_FALLBACK_POINT_THRESHOLD",
     "Big5ICCResult",
@@ -79,6 +84,7 @@ __all__ = [
     "get_default_decoys",
     "get_ipip_50_items",
     "make_lexical_5gram_kernel",
+    "make_tfidf_5gram_cosine_kernel",
     "render_item_prompt",
     "vendi_kernel_sensitivity_panel",
 ]
