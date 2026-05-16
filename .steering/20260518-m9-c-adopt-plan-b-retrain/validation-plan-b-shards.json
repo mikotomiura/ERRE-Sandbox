@@ -1,0 +1,43 @@
+{
+  "persona": "kant",
+  "focal_target": 250,
+  "shard_count": 1,
+  "all_shards_pass": true,
+  "results": [
+    {
+      "shard": "kant_de_monolog_run0.duckdb",
+      "all_pass": true,
+      "checks": {
+        "1_alternation": {
+          "pass": true,
+          "violations": [],
+          "distribution": [
+            {
+              "speaker_persona_id": "kant",
+              "turn_index": 0,
+              "count": 250
+            }
+          ]
+        },
+        "2_focal_count": {
+          "pass": true,
+          "focal_count": 250,
+          "target": 250,
+          "tolerance_band": [
+            237,
+            262
+          ]
+        },
+        "3_incomplete_dialog": {
+          "pass": true,
+          "violations": []
+        },
+        "4_focal_only_consumer": {
+          "focal_count": 250,
+          "non_focal_count": 0,
+          "total_count": 250
+        }
+      }
+    }
+  ]
+}
