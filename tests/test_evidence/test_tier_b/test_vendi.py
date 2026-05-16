@@ -170,8 +170,8 @@ def test_load_default_kernel_signature_accepts_encoder_name() -> None:
     # The fallback for None must be the DA-14 MPNet model id; pin it here
     # so a future rename can't silently break the DA-14 regression baseline.
     source = inspect.getsource(_load_default_kernel)
-    assert 'encoder_name or _DEFAULT_ENCODER_MODEL_ID' in source
-    assert '_DEFAULT_ENCODER_MODEL_ID' in source
+    assert "encoder_name or _DEFAULT_ENCODER_MODEL_ID" in source
+    assert "_DEFAULT_ENCODER_MODEL_ID" in source
 
 
 def test_make_lexical_5gram_kernel_is_symmetric_and_diagonal_one() -> None:
