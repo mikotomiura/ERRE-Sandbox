@@ -196,6 +196,31 @@
 - **見直しタイミング**: short benchmark で差が見えない場合、別 PR で
   `prediction_loss_only` 行のみ revert (主パッチは維持)。
 
+## DR-7: 本セッション完了基準: 初回 eval (step 250) で eval_loss=0.2582 (達成、retrain は WSL2 background で継続)
+
+- **判断日時**: 2026-05-16 (本セッション末)
+- **背景**: next-session prompt の完了条件「retrain kickoff command 起動、
+  最初の checkpoint で `eval_loss < initial`」を満たした時点で本セッションを
+  停止する。retrain (~3h) の完走は overnight、verdict 計算は次々セッション。
+- **採用**: 初回 eval 達成時点で本セッション完了とみなし、commit + push。
+  retrain プロセス (PID 387 in WSL2) は session 終了後も継続。
+- **実測値** (本セッション末時点):
+  - 初回 eval (step 250): `eval_loss=0.2582`、`eval_runtime=99.53s`、
+    `epoch=0.1756`
+  - step pace: ~4 s/it (v2 baseline 14 s/it から **3.3× 高速化**、
+    DR-5/DR-6 patch 実効)
+  - ETA full retrain: ~2h47m (v2 の 16h19m から **5.8× 高速化**)
+- **理由**:
+  1. `eval_loss=0.258 < initial loss (≈ 2.0-2.5 for Qwen3-8B base)`、
+     学習が収束方向に進んでいる確認済
+  2. step pace stable で early stopping fire / OOM / crash の兆候なし
+  3. session 4.5-5h envelope 内で完了 (本セッション ~3h50m、target 4.5h
+     以内)
+- **影響範囲**: 次々セッションで `train_metadata.json` の eval_loss trajectory
+  を読み、best checkpoint を使って DA-14 rerun verdict を計算する。
+- **見直しタイミング**: retrain が途中で abort した場合、本判断を撤回し
+  retrain 再起動を別 session で実施。
+
 ## DR-3: lexical-5gram の短入力 (char_wb 5-gram empty vocab) fallback は identity
 
 - **判断日時**: 2026-05-18
