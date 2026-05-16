@@ -82,3 +82,43 @@
   blockers.md (将来 work) として記録。
 - **影響範囲**: rescore script は exploratory encoder を accept しない
   (CLI 引数の choices で primary 3 + lexical-5gram に制限)。
+
+## D-α-FAIL: Plan A は kant について REJECT (実測 verdict)
+
+- **判断日時**: 2026-05-16 (rescore + verdict aggregation 後)
+- **背景**: ADR D-1 の rollback 計画 (`design.md` `## ロールバック計画`) に
+  従い、Plan A failure を D-α-FAIL として固定する。
+- **実測結果**:
+
+  | encoder | calibration AUC | natural d | lang-bal d | length-bal d | eligible |
+  |---|---|---|---|---|---|
+  | multilingual-e5-large | 0.8865 (PASS) | -0.1567 | -0.1754 | -0.4454 | **no** |
+  | BAAI/bge-m3 | 0.9055 (PASS) | +0.2286 | +0.1456 | -0.2655 | **no** |
+  | (regression) MPNet | 0.8960 (PASS) | -0.1788 | -0.3368 | -0.7268 | **no** |
+
+  両 candidate primary encoder (E5-large + BGE-M3) が calibration gate を
+  pass したものの、rescore で `cohens_d ≤ -0.5 + diff CI upper < 0` の
+  DA-14 threshold を **standard / language-balanced / length-balanced
+  bootstrap いずれも未達**。MPNet regression baseline は DA-14 verdict
+  数値 (cohens_d=-0.1788) を完全に再現。
+
+- **判定**: kant ADOPT 不成立 (primary axes passed = 1 of 3、quorum 2-of-3
+  未達)。
+- **next step**: Phase 2 (Plan B = Candidate C targeted hybrid retrain) を
+  別 PR で起票 (ADR D-1 の Plan A → Plan B sequential 経路)。
+
+- **non-gating observation** (Phase 2 設計 input):
+  - **MPNet within-de d = -0.80** (point gate clear、CI gate fail) は LoRA が
+    German 内で diversity を下げている兆候。
+  - **E5-large within-en d = -0.58** (point gate clear、CI gate fail) も同様
+    の per-language signal を示唆。
+  - **BGE-M3 は natural d 符号が反転** (+0.23)。Codex HIGH-2 が警告した
+    retrieval-encoder artefact の可能性。
+  - 結論: 「LoRA は per-language slice で persona-style diversity を下げる
+    効果があるが、global mixed-language 6-window bootstrap では bootstrap
+    sampling variance が大きすぎて統計的有意性が出ない」という仮説と整合。
+
+- **Hybrid H-α の扱い**: 本 ADR D-1 で「Plan A 走行中に Plan B driver を
+  別 branch で pre-stage」と決めた経路 (Codex MEDIUM-3 反映) は本セッション
+  では着手しなかった。Phase 2 起票時に H-α 是非を再検討する (Plan A 結果
+  確定後の Phase 2 design セッションで判断)。

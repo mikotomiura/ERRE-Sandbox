@@ -25,19 +25,21 @@
       version + sentence-transformers version + commit SHA を pin commit
 
 ## 実行 — calibration → rescore → verdict
-- [ ] calibration panel 実行 (multilingual-e5-large + bge-m3)
-- [ ] AUC ≥ 0.75 を満たす encoder を確定 (満たさなければ Phase 2 へ fall
-      through)
-- [ ] rescore 実行 (passing encoder で v2 + no-LoRA を再 score)
-- [ ] DA-15 verdict 計算
-- [ ] `da15-verdict-kant.json` + `da15-verdict-kant.md` 出力
-- [ ] kant ADOPT 時: Burrows named limitation を md に必須記載
+- [x] calibration panel 実行 (multilingual-e5-large AUC=0.8865 PASS + bge-m3
+      AUC=0.9055 PASS + MPNet regression AUC=0.8960 PASS)
+- [x] AUC ≥ 0.75 を満たす encoder を確定 (両 candidate ともに PASS)
+- [x] rescore 実行 (3 encoder で v2 + no-LoRA apples-to-apples 再 score)
+- [x] DA-15 verdict 計算 (verdict=REJECT、両 candidate が rescore で
+      cohens_d ≤ -0.5 + CI upper < 0 を未達)
+- [x] `da15-verdict-kant.json` + `da15-verdict-kant.md` 出力
+- [-] kant ADOPT 時: Burrows named limitation を md に必須記載 (kant ADOPT
+      ではないので未適用、Phase 2 起票時の参照として md には記録残)
 
 ## 補足修正
-- [ ] `scripts/m9-c-adopt/da1_matrix_multiturn.py` comparator note 切替
+- [x] `scripts/m9-c-adopt/da1_matrix_multiturn.py` comparator note 切替
 
 ## レビュー
-- [ ] `codex-review-prompt.md` 起草
+- [x] `codex-review-prompt.md` 起草
 - [ ] `codex exec` で independent review 実行
 - [ ] `codex-review.md` verbatim 保存
 - [ ] HIGH 指摘を反映

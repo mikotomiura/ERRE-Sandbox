@@ -1,0 +1,153 @@
+{
+  "persona": "kant",
+  "metric_amended": "vendi_semantic_v2_encoder_swap",
+  "metric_historical": "vendi_semantic (DA-14 MPNet instrument)",
+  "thresholds": {
+    "vendi_cohens_d_le": -0.5,
+    "vendi_ci_upper_lt": 0.0,
+    "vendi_calibration_auc_ge": 0.75,
+    "burrows_reduction_pct_ge": 5.0,
+    "icc_point_ge": 0.55,
+    "throughput_pct_ge": 70.0,
+    "note": "DA-14 thresholds, unchanged. DA-15 swaps the encoder and renames the metric."
+  },
+  "da14_record": {
+    "vendi_d": -0.1788470533504207,
+    "vendi_ci_hi": 0.6211691251338816,
+    "vendi_pass": "FAIL",
+    "burrows_point": 114.60777995370626,
+    "burrows_reduction_pct": 0.4284267404450269,
+    "icc_point": 0.9128856624319415,
+    "icc_pass": "PASS",
+    "throughput_pct": 98.79518072289156,
+    "throughput_pass": "PASS"
+  },
+  "per_encoder": [
+    {
+      "encoder": "BAAI/bge-m3",
+      "encoder_revision_sha": "<unavailable: Cannot reach https://huggingface.co/api/models/BAAI/bge-m3: offline mode is enabled. To disable it, please unset the `HF_HUB_OFFLINE` environment variable.>",
+      "calibration_pass": true,
+      "calibration_overall_auc": 0.9055,
+      "calibration_within_lang_auc": {
+        "de": {
+          "auc": 0.8400000000000001,
+          "n_kant": 23,
+          "n_control": 23
+        },
+        "en": {
+          "auc": 0.9480000000000001,
+          "n_kant": 74,
+          "n_control": 74
+        },
+        "ja": {
+          "auc": null,
+          "n_kant": 3,
+          "n_control": 3,
+          "note": "insufficient class mass for CV"
+        }
+      },
+      "natural_cohens_d": 0.22859647387268098,
+      "natural_diff_lo": -0.913818813870478,
+      "natural_diff_hi": 1.767610595298399,
+      "natural_pass": false,
+      "language_balanced_d": 0.14564141728662858,
+      "language_balanced_pass": false,
+      "length_balanced_d": -0.26546202135170893,
+      "length_balanced_pass": false,
+      "within_language_d": {
+        "de": 0.24536488801537698,
+        "en": -0.27811671507750907,
+        "ja": null
+      },
+      "eligible_for_adopt": false
+    },
+    {
+      "encoder": "intfloat/multilingual-e5-large",
+      "encoder_revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+      "calibration_pass": true,
+      "calibration_overall_auc": 0.8865000000000001,
+      "calibration_within_lang_auc": {
+        "de": {
+          "auc": 0.85,
+          "n_kant": 23,
+          "n_control": 23
+        },
+        "en": {
+          "auc": 0.8695873015873017,
+          "n_kant": 74,
+          "n_control": 74
+        },
+        "ja": {
+          "auc": null,
+          "n_kant": 3,
+          "n_control": 3,
+          "note": "insufficient class mass for CV"
+        }
+      },
+      "natural_cohens_d": -0.15669557018669839,
+      "natural_diff_lo": -1.1362018523154653,
+      "natural_diff_hi": 1.7404220309781135,
+      "natural_pass": false,
+      "language_balanced_d": -0.17540819048198836,
+      "language_balanced_pass": false,
+      "length_balanced_d": -0.4454336423117247,
+      "length_balanced_pass": false,
+      "within_language_d": {
+        "de": -0.18579115193026133,
+        "en": -0.5763473844663954,
+        "ja": null
+      },
+      "eligible_for_adopt": false
+    },
+    {
+      "encoder": "sentence-transformers/all-mpnet-base-v2",
+      "encoder_revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+      "calibration_pass": true,
+      "calibration_overall_auc": 0.8960000000000001,
+      "calibration_within_lang_auc": {
+        "de": {
+          "auc": 0.8400000000000001,
+          "n_kant": 23,
+          "n_control": 23
+        },
+        "en": {
+          "auc": 0.9294603174603175,
+          "n_kant": 74,
+          "n_control": 74
+        },
+        "ja": {
+          "auc": null,
+          "n_kant": 3,
+          "n_control": 3,
+          "note": "insufficient class mass for CV"
+        }
+      },
+      "natural_cohens_d": -0.17884690563776426,
+      "natural_diff_lo": -1.5562791776955311,
+      "natural_diff_hi": 1.2289562152435216,
+      "natural_pass": false,
+      "language_balanced_d": -0.33675603974239693,
+      "language_balanced_pass": false,
+      "length_balanced_d": -0.7267805633061032,
+      "length_balanced_pass": false,
+      "within_language_d": {
+        "de": -0.8020724137501338,
+        "en": -0.4526324418314832,
+        "ja": null
+      },
+      "eligible_for_adopt": false
+    }
+  ],
+  "quorum": {
+    "primary_axes_passed": 1,
+    "quorum_threshold": "2_of_3",
+    "vendi_swapped_pass": false,
+    "burrows_pass": false,
+    "icc_pass": true,
+    "eligible_encoders": []
+  },
+  "verdict": "REJECT",
+  "named_limitations": {
+    "burrows": "Burrows reduction remains FAIL; German function-word stylometry is not improved by Plan A. Plan A ADOPT rests only on the DA-15 amended Vendi axis + ICC(A,1)."
+  }
+}

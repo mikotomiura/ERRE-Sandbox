@@ -1,0 +1,38 @@
+{
+  "encoder": "BAAI/bge-m3",
+  "encoder_revision_sha": "<unavailable: Cannot reach https://huggingface.co/api/models/BAAI/bge-m3: offline mode is enabled. To disable it, please unset the `HF_HUB_OFFLINE` environment variable.>",
+  "library_versions": {},
+  "corpus": "data\\calibration\\kant_heidegger_corpus.json",
+  "n_total": 200,
+  "n_kant": 100,
+  "n_control": 100,
+  "language_distribution": {
+    "de": 46,
+    "en": 148,
+    "ja": 6
+  },
+  "pass_gate_auc": 0.75,
+  "overall_auc": 0.9055,
+  "within_language_auc": {
+    "de": {
+      "auc": 0.8400000000000001,
+      "n_kant": 23,
+      "n_control": 23
+    },
+    "en": {
+      "auc": 0.9480000000000001,
+      "n_kant": 74,
+      "n_control": 74
+    },
+    "ja": {
+      "auc": null,
+      "n_kant": 3,
+      "n_control": 3,
+      "note": "insufficient class mass for CV"
+    }
+  },
+  "within_language_pass": true,
+  "verdict": "PASS",
+  "seed": 42,
+  "preregistration_note": "DA-15 Plan A eligibility gate (Codex HIGH-2). encoder passes only if overall AUC ≥ 0.75 AND every within-language AUC slice with sufficient class mass ≥ 0.75. Otherwise the encoder is excluded from the ADOPT primary panel."
+}
