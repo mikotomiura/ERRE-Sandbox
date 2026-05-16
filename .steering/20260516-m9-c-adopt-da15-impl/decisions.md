@@ -39,7 +39,8 @@
 
 ## D-2: Encoder + revision pre-registration (rescore 実施前 mandatory)
 
-- **判断日時**: TBD (rescore 実行前に固定)
+- **判断日時**: 2026-05-16 (rescore 実行前に固定、commit SHA は本 commit
+  自身が pre-registration 記録)
 - **背景**: Codex HIGH-1 反映で「primary gating encoders の pre-registration」
   が rescore 前 mandatory。HF model id + revision SHA + transformers /
   sentence-transformers version + commit SHA を本 D-2 に固定する。
@@ -47,19 +48,29 @@
 
   | encoder | HF model id | HF revision SHA | sentence-transformers ver | transformers ver |
   |---|---|---|---|---|
-  | E5-large | `intfloat/multilingual-e5-large` | TBD (pinned commit) | 3.4.1 | 4.57.6 |
-  | BGE-M3 | `BAAI/bge-m3` | TBD (pinned commit) | 3.4.1 | 4.57.6 |
-  | (regression) MPNet | `sentence-transformers/all-mpnet-base-v2` | TBD (pinned commit) | 3.4.1 | 4.57.6 |
+  | E5-large | `intfloat/multilingual-e5-large` | `3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3` | 3.4.1 | 4.57.6 |
+  | BGE-M3 | `BAAI/bge-m3` | `5617a9f61b028005a4858fdac845db406aefb181` | 3.4.1 | 4.57.6 |
+  | (regression) MPNet | `sentence-transformers/all-mpnet-base-v2` | `e8c3b32edf5434bc2275fc9bab85f82640a19130` | 3.4.1 | 4.57.6 |
+
+  *HF revision SHA は 2026-05-16 時点の `HfApi.repo_info(repo).sha` 値。
+  HuggingFace Hub の commit 単位で再現性を担保する。*
 
 - **採用**: 上記 3 encoder を pre-registration、primary gate は E5-large +
-  BGE-M3 (calibration AUC ≥ 0.75 が前提)。MPNet は **regression baseline**
-  として併報告 (DA-14 fail を historical record)。
-- **トレードオフ**: HF revision pin により reproducibility 担保、ただし
-  download 失敗時は対応 commit を decisions.md に retroactive 記録する
-  (本 PR commit history で trace 可能)。
+  BGE-M3 (calibration AUC ≥ 0.75 pass が前提)。MPNet は **regression
+  baseline** として併報告 (DA-14 fail を historical record として保持)。
+- **トレードオフ**: HF revision pin により reproducibility 担保。万一 HF Hub
+  上で commit が消えた場合 (rare) はローカルキャッシュ
+  (`~/.cache/huggingface/hub/`) から再 hydrate 可能。
 - **影響範囲**: `da15-verdict-kant.json` の "preregistration" field に本 D-2
-  の内容を埋め込む。
-- **commit SHA**: TBD (本 D-2 commit 後、rescore 実行直前の HEAD を記録)
+  の内容を埋め込む (encoder name + revision SHA + library versions)。
+- **environment**:
+  - Python: 3.11
+  - sentence-transformers: 3.4.1
+  - transformers: 4.57.6
+  - huggingface_hub: (本 commit 時の lock)
+- **commit SHA**: 本 commit (D-2 pre-registration を含む commit) の HEAD を
+  rescore 実行前 anchor として記録。rescore script は出力 JSON にこの
+  commit SHA を埋め込む。
 
 ## D-3: Exploratory encoders は ADOPT 不寄与
 

@@ -424,8 +424,30 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         and length_balanced["diff_hi"] < 0
     )
 
+    # === Runtime environment record (for pre-registration audit) ===
+    try:
+        import sentence_transformers as _st  # noqa: PLC0415
+        import transformers as _tf  # noqa: PLC0415
+        from huggingface_hub import HfApi  # noqa: PLC0415
+
+        revision_sha = HfApi().repo_info(args.encoder).sha
+        library_versions = {
+            "sentence_transformers": _st.__version__,
+            "transformers": _tf.__version__,
+        }
+    except Exception as exc:  # noqa: BLE001  # best-effort metadata only
+        revision_sha = f"<unavailable: {exc}>"
+        library_versions = {}
+
     payload: dict[str, Any] = {
         "encoder": args.encoder,
+        "encoder_revision_sha": revision_sha,
+        "library_versions": library_versions,
+        "preregistration_anchor": (
+            "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md)."
+            " Encoder + revision SHA + library versions must match the pinned"
+            " values for the verdict to count as ADOPT-eligible."
+        ),
         "persona": args.persona,
         "metric": "vendi_semantic_v2_encoder_swap",
         "window_size": args.window_size,

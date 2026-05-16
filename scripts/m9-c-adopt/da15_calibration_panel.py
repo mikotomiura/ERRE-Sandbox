@@ -298,8 +298,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     verdict = "PASS" if overall_auc >= _PASS_AUC and within_lang_pass else "FAIL"
 
+    # === Runtime environment record (for pre-registration audit) ===
+    try:
+        import sentence_transformers as _st  # noqa: PLC0415
+        import transformers as _tf  # noqa: PLC0415
+        from huggingface_hub import HfApi  # noqa: PLC0415
+
+        revision_sha = HfApi().repo_info(args.encoder).sha
+        library_versions = {
+            "sentence_transformers": _st.__version__,
+            "transformers": _tf.__version__,
+        }
+    except Exception as exc:  # noqa: BLE001
+        revision_sha = f"<unavailable: {exc}>"
+        library_versions = {}
+
     payload: dict[str, Any] = {
         "encoder": args.encoder,
+        "encoder_revision_sha": revision_sha,
+        "library_versions": library_versions,
         "corpus": str(args.corpus),
         "n_total": len(texts),
         "n_kant": int(labels.sum()),
