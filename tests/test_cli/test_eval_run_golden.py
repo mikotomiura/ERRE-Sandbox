@@ -144,7 +144,10 @@ def test_memory_db_rejects_symlink(tmp_path: Path) -> None:
         f"/tmp/erre-test-symlink-{os.getpid()}.sqlite",  # noqa: S108
     )
     try:
-        link.symlink_to(target)
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation not supported on this platform / FS")
         with pytest.raises(argparse.ArgumentTypeError, match="symlink"):
             _resolve_memory_db_path(
                 link,
@@ -258,7 +261,10 @@ def test_memory_db_default_path_rejects_broken_symlink() -> None:
     try:
         default.unlink(missing_ok=True)
         missing_target.unlink(missing_ok=True)
-        default.symlink_to(missing_target)
+        try:
+            default.symlink_to(missing_target)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation not supported on this platform / FS")
         assert default.is_symlink()
         assert not default.exists()
         with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
@@ -279,7 +285,10 @@ def test_memory_db_explicit_path_rejects_broken_symlink(tmp_path: Path) -> None:
     than slipping past the existence gate."""
     link = tmp_path / "broken_link.sqlite"
     missing_target = tmp_path / "nonexistent_target.sqlite"
-    link.symlink_to(missing_target)
+    try:
+        link.symlink_to(missing_target)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation not supported on this platform / FS")
     assert link.is_symlink()
     assert not link.exists()
     with pytest.raises(argparse.ArgumentTypeError, match="symlink not allowed"):
