@@ -105,10 +105,31 @@ class WeightConcentrationError(ValueError):
     """
 
 
+class PlanBCorpusGateError(ValueError):
+    """Plan B 4-axis achieved-corpus-stats gate failed (DA-15 Phase 2).
+
+    Raised by :func:`erre_sandbox.training.train_kant_lora._handle_weighted_path`
+    when ``--plan-b-gate`` is set and the achieved corpus does not satisfy
+    every preregistered threshold (see
+    :mod:`erre_sandbox.training.plan_b_gate`):
+
+    * ``n_eff >= 1500``
+    * ``top_5_pct_weight_share <= 0.35``
+    * ``de_en_mass >= 0.60``
+    * ``de_mass >= 0.30``
+
+    Recovery: STOP the run, inspect ``plan-b-corpus-gate.json`` for the
+    failed axes, re-collect de monolog corpus to address the failing
+    axis, then re-run the gate. The exception is mapped to CLI exit code
+    **8** by :func:`erre_sandbox.training.train_kant_lora.main`.
+    """
+
+
 __all__ = [
     "BlockerNotResolvedError",
     "EvaluationContaminationError",
     "InsufficientEffectiveSampleSizeError",
     "InsufficientTrainingDataError",
+    "PlanBCorpusGateError",
     "WeightConcentrationError",
 ]

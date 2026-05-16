@@ -67,8 +67,10 @@ from erre_sandbox.training.exceptions import (
     EvaluationContaminationError,
     InsufficientEffectiveSampleSizeError,
     InsufficientTrainingDataError,
+    PlanBCorpusGateError,
     WeightConcentrationError,
 )
+from erre_sandbox.training.plan_b_gate import audit_corpus as audit_plan_b_corpus
 from erre_sandbox.training.weighting import (
     compute_example_weight,
     emit_weight_audit,
@@ -609,6 +611,7 @@ def _collect_from_shards_weighted(  # noqa: C901 — orchestrator stays linear f
     eval_split_fraction: float = DEFAULT_EVAL_SPLIT_FRACTION,
     synthetic_monolog_hard_cap: int = DEFAULT_SYNTHETIC_MONOLOG_HARD_CAP,
     use_real_tokenizer: bool = False,
+    stratify_by_language: bool = False,
 ) -> WeightedSplitResult:
     """Retrain v2 corpus loader: group-aware split + monolog re-cast + audit.
 
@@ -704,6 +707,7 @@ def _collect_from_shards_weighted(  # noqa: C901 — orchestrator stays linear f
         weighted_examples_by_shard,
         eval_split_fraction=eval_split_fraction,
         seed=seed,
+        stratify_by_language=stratify_by_language,
     )
 
     if train_group_keys & eval_group_keys:
@@ -787,12 +791,25 @@ def _group_aware_stratified_split(
     *,
     eval_split_fraction: float,
     seed: int,
+    stratify_by_language: bool = False,
 ) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
     """Stratified random split of dialog groups (Codex HIGH-A #1 + MEDIUM-2).
 
     Splits ``(source_shard, dialog_id)`` group keys into train and eval
     sets, stratified by ``source_shard_type`` ("natural" / "stimulus") so
     the eval split keeps the natural-vs-stimulus ratio of the corpus.
+
+    When ``stratify_by_language=True`` (Plan B, design.md §1.6) the
+    stratum key is extended to ``(source_shard_type, language)`` so each
+    language slice keeps its train/eval ratio independently. This is the
+    safe-by-design eval contamination control for the de-monolog
+    re-cast injection — without it, a rare ``de`` class can collapse
+    into either train or eval by chance, distorting eval_loss as a
+    Plan B-relevant signal.
+
+    For multi-row dialogs whose rows disagree on ``language`` (e.g. mixed
+    de/en within one dialog), the stratum is determined by the first row
+    seen for that group key — deterministic for a given iteration order.
     """
     import numpy as np  # noqa: PLC0415
 
@@ -803,7 +820,12 @@ def _group_aware_stratified_split(
         for ex in examples:
             metadata = ex["weight_metadata"]
             assert isinstance(metadata, dict)
-            stratum = str(metadata["source_shard_type"])
+            shard_type_part = str(metadata["source_shard_type"])
+            if stratify_by_language:
+                lang_part = str(metadata.get("language", "mixed"))
+                stratum = f"{shard_type_part}|{lang_part}"
+            else:
+                stratum = shard_type_part
             group_key = (shard_basename, str(metadata["dialog_id"]))
             if group_key in seen:
                 continue
@@ -927,11 +949,14 @@ def train_kant_lora(
     max_steps: int = DEFAULT_MAX_STEPS,
     learning_rate: float = DEFAULT_LEARNING_RATE,
     save_steps: int = DEFAULT_SAVE_STEPS,
+    eval_steps: int | None = None,
     min_examples: int = DEFAULT_MIN_EXAMPLES,
     target_modules: Sequence[str] = DEFAULT_TARGET_MODULES,
     seed: int = 42,
     dry_run: bool = False,
     weighted: bool = False,
+    plan_b_gate: bool = False,
+    lang_stratified_split: bool = False,
     use_real_tokenizer_for_weights: bool = True,
 ) -> TrainRunSummary:
     """Phase β real Kant LoRA training entry (CS-4 / CS-5 / CS-6).
@@ -987,6 +1012,10 @@ def train_kant_lora(
         dry_run: When ``True``, only the gate runs and the function
             returns immediately with ``training_executed=False``. No
             GPU-stack import is performed.
+        eval_steps: Override the eval cadence (defaults to ``save_steps``
+            when ``None``). Plan B overnights typically pass 250 with
+            ``max_steps=2500`` so EarlyStoppingCallback has 10 eval
+            windows.
         weighted: Retrain v2 path (DA-14). When ``True``, the corpus is
             split via :func:`_collect_from_shards_weighted` (group-aware
             90/10 stratified), monolog re-cast is applied to training
@@ -994,6 +1023,18 @@ def train_kant_lora(
             normalised, and a ``weight-audit.json`` is emitted. Pre-
             training fallback triggers (N_eff < 1000 / top-5%% concentration
             >= 50%) raise distinct exceptions mapped to exit codes 6 / 7.
+        plan_b_gate: DA-15 Phase 2. When ``True`` (requires
+            ``weighted=True``), invokes
+            :func:`erre_sandbox.training.plan_b_gate.audit_corpus` after
+            the weighted audit and raises
+            :class:`PlanBCorpusGateError` if any of the 4 hard-axis
+            thresholds (n_eff / top_5_pct / de_en / de) fails. Also
+            attaches ``EarlyStoppingCallback(patience=2,
+            threshold=0.005)`` on ``eval_loss``.
+        lang_stratified_split: Forwarded to
+            :func:`_group_aware_stratified_split`'s
+            ``stratify_by_language``. Recommended for Plan B runs that
+            inject a rare-class de-monolog shard.
         use_real_tokenizer_for_weights: Forwarded to weight-metadata
             extraction. Defaults to ``True`` so production weights reflect
             the actual Qwen3-8B tokenisation (Codex MEDIUM-1 caveat).
@@ -1070,10 +1111,13 @@ def train_kant_lora(
             max_steps=max_steps,
             learning_rate=learning_rate,
             save_steps=save_steps,
+            eval_steps=eval_steps,
             min_examples=min_examples,
             target_modules=target_modules,
             seed=seed,
             dry_run=dry_run,
+            plan_b_gate=plan_b_gate,
+            lang_stratified_split=lang_stratified_split,
             use_real_tokenizer_for_weights=use_real_tokenizer_for_weights,
         )
 
@@ -1156,10 +1200,13 @@ def _run_weighted_path(
     max_steps: int,
     learning_rate: float,
     save_steps: int,
+    eval_steps: int | None,
     min_examples: int,
     target_modules: Sequence[str],
     seed: int,
     dry_run: bool,
+    plan_b_gate: bool,
+    lang_stratified_split: bool,
     use_real_tokenizer_for_weights: bool,
 ) -> TrainRunSummary:
     """DA-14 retrain v2 weighted path (signal-driven + monolog re-cast + audit).
@@ -1167,6 +1214,17 @@ def _run_weighted_path(
     Encapsulates the new pipeline so :func:`train_kant_lora`'s K-β path
     remains untouched. Always builds ``output_dir_path`` (the audit JSON
     must be inspectable even on dry-run).
+
+    Plan B extensions (``plan_b_gate=True``):
+
+    * ``stratify_by_language`` is forwarded to the group-aware split
+    * After ``_pre_training_audit`` emits ``weight-audit.json``,
+      :func:`erre_sandbox.training.plan_b_gate.audit_corpus` is invoked
+      with the preregistered 4-axis thresholds. A failing gate raises
+      :class:`PlanBCorpusGateError` (CLI exit 8) and writes
+      ``plan-b-corpus-gate.json`` next to the audit for forensic record
+    * ``_run_trainer_weighted`` attaches ``EarlyStoppingCallback``
+      (patience=2, threshold=0.005) on ``eval_loss``
     """
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -1176,9 +1234,35 @@ def _run_weighted_path(
         min_examples=min_examples,
         seed=seed,
         use_real_tokenizer=use_real_tokenizer_for_weights,
+        stratify_by_language=lang_stratified_split,
     )
 
     audit_path, audit = _pre_training_audit(split, output_dir=output_dir_path)
+
+    if plan_b_gate:
+        merge_sha = os.environ.get("PLAN_B_MERGE_SHA", "")
+        gate_result = audit_plan_b_corpus(
+            audit,
+            weight_audit_path=str(audit_path),
+            merge_sha=merge_sha,
+        )
+        gate_path = output_dir_path / "plan-b-corpus-gate.json"
+        gate_path.write_text(
+            json.dumps(gate_result, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        _LOGGER.info(
+            "plan-b-corpus-gate: %s (failed_axes=%s)",
+            str(gate_result["plan_b_gate"]).upper(),
+            gate_result["failed_axes"],
+        )
+        if gate_result["failed_axes"]:
+            failed_str = ", ".join(gate_result["failed_axes"])
+            msg = (
+                f"plan-b-corpus-gate FAIL on axes [{failed_str}];"
+                f" see {gate_path} for details"
+            )
+            raise PlanBCorpusGateError(msg)
 
     summary = TrainRunSummary(
         persona_id=persona_id,
@@ -1242,8 +1326,10 @@ def _run_weighted_path(
         max_steps=max_steps,
         learning_rate=learning_rate,
         save_steps=save_steps,
+        eval_steps=eval_steps,
         target_modules=target_modules,
         seed=seed,
+        plan_b_gate=plan_b_gate,
     )
     return summary
 
@@ -1515,7 +1601,7 @@ def _execute_training_run(
 # ---------------------------------------------------------------------------
 
 
-def _run_trainer_weighted(
+def _run_trainer_weighted(  # noqa: C901, PLR0915 — HF Trainer setup stays linear
     *,
     model: Any,
     tokenizer: Any,
@@ -1529,7 +1615,9 @@ def _run_trainer_weighted(
     max_steps: int,
     learning_rate: float,
     save_steps: int,
+    eval_steps: int | None,
     seed: int,
+    plan_b_gate: bool,
 ) -> tuple[int, float | None, float | None]:
     """Drive the HF Trainer loop with per-example sample weights (DA-14).
 
@@ -1615,13 +1703,20 @@ def _run_trainer_weighted(
             )
             return (weighted_loss, outputs) if return_outputs else weighted_loss
 
+    eval_cadence = eval_steps if eval_steps is not None else save_steps
     eval_kwargs: dict[str, Any] = {}
     if tokenized_eval is not None:
         eval_kwargs = {
             "eval_strategy": "steps",
-            "eval_steps": save_steps,
+            "eval_steps": eval_cadence,
             "per_device_eval_batch_size": 1,  # HIGH-B guard: eval batch=1, loss-only
         }
+    # Plan B (DA-15 Phase 2): hand the trainer the metric machinery
+    # EarlyStoppingCallback needs to operate on eval_loss.
+    if plan_b_gate and tokenized_eval is not None:
+        eval_kwargs["metric_for_best_model"] = "eval_loss"
+        eval_kwargs["greater_is_better"] = False
+        eval_kwargs["load_best_model_at_end"] = True
 
     training_args = TrainingArguments(
         output_dir=str(output_dir_path),
@@ -1644,12 +1739,24 @@ def _run_trainer_weighted(
         **eval_kwargs,
     )
 
+    callbacks: list[Any] = []
+    if plan_b_gate and tokenized_eval is not None:
+        from transformers import EarlyStoppingCallback  # noqa: PLC0415
+
+        callbacks.append(
+            EarlyStoppingCallback(
+                early_stopping_patience=2,
+                early_stopping_threshold=0.005,
+            ),
+        )
+
     trainer = WeightedTrainer(
         model=model,
         args=training_args,
         train_dataset=tokenized_train,
         eval_dataset=tokenized_eval,
         data_collator=_weighted_collator,
+        callbacks=callbacks or None,
     )
 
     if torch.cuda.is_available():
@@ -1693,8 +1800,10 @@ def _execute_training_run_weighted(
     max_steps: int,
     learning_rate: float,
     save_steps: int,
+    eval_steps: int | None,
     target_modules: Sequence[str],
     seed: int,
+    plan_b_gate: bool,
 ) -> None:
     """Run the full GPU-side weighted pipeline and update ``summary`` in place."""
     tokenizer, model = _load_quantised_model(base_model, quantization)
@@ -1718,7 +1827,9 @@ def _execute_training_run_weighted(
         max_steps=max_steps,
         learning_rate=learning_rate,
         save_steps=save_steps,
+        eval_steps=eval_steps,
         seed=seed,
+        plan_b_gate=plan_b_gate,
     )
 
     summary.training_executed = True
@@ -1859,6 +1970,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help=f"Checkpoint cadence (default: {DEFAULT_SAVE_STEPS})",
     )
     parser.add_argument(
+        "--eval-steps",
+        dest="eval_steps",
+        type=int,
+        default=None,
+        help=(
+            "HF Trainer eval cadence. When omitted, defaults to --save-steps"
+            " (legacy behaviour). Plan B overnights typically pass 250 with"
+            " --max-steps 2500 to give EarlyStoppingCallback 10 eval windows."
+        ),
+    )
+    parser.add_argument(
         "--min-examples",
         dest="min_examples",
         type=int,
@@ -1894,6 +2016,29 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             " re-cast from training-side natural shards, and a pre-training"
             " audit. Falls back via exit code 6 (N_eff < 1000) or 7"
             " (top-5%% weight share >= 50%%) -- escalate to Candidate C."
+        ),
+    )
+    parser.add_argument(
+        "--plan-b-gate",
+        dest="plan_b_gate",
+        action="store_true",
+        help=(
+            "Plan B (DA-15 Phase 2): apply the 4-axis achieved-corpus-stats"
+            " hard gate (n_eff>=1500, top_5%%<=0.35, de+en>=0.60, de>=0.30)"
+            " after the weighted audit and attach EarlyStoppingCallback"
+            " (patience=2, threshold=0.005) to TrainingArguments. Requires"
+            " --weighted. Exit code 8 on gate fail (PlanBCorpusGateError)."
+        ),
+    )
+    parser.add_argument(
+        "--lang-stratified-split",
+        dest="lang_stratified_split",
+        action="store_true",
+        help=(
+            "Stratify the group-aware train/eval split by language in"
+            " addition to source_shard_type, so each (shard_type, language)"
+            " cell receives its own 90/10 cut. Recommended for Plan B"
+            " collections that inject a rare-class de-monolog shard."
         ),
     )
     parser.add_argument(
@@ -1951,6 +2096,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 — distinc
     * 5 — other ``ValueError`` / ``FileNotFoundError`` (operator error)
     * 6 — :class:`InsufficientEffectiveSampleSizeError` (DA-14 fallback)
     * 7 — :class:`WeightConcentrationError` (DA-14 fallback)
+    * 8 — :class:`PlanBCorpusGateError` (DA-15 Phase 2)
     * 1 — unexpected exception (re-raised to surface stack trace)
     """
     parser = _build_arg_parser()
@@ -1964,6 +2110,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 — distinc
 
     try:
         db_paths = _resolve_paths(args.duckdb_glob, args.db_path)
+        if args.plan_b_gate and not args.weighted:
+            msg = "--plan-b-gate requires --weighted"
+            raise ValueError(msg)
         summary = train_kant_lora(
             db_paths,
             args.output_dir,
@@ -1977,10 +2126,13 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 — distinc
             max_steps=args.max_steps,
             learning_rate=args.learning_rate,
             save_steps=args.save_steps,
+            eval_steps=args.eval_steps,
             min_examples=args.min_examples,
             seed=args.seed,
             dry_run=args.dry_run,
             weighted=args.weighted,
+            plan_b_gate=args.plan_b_gate,
+            lang_stratified_split=args.lang_stratified_split,
             use_real_tokenizer_for_weights=not args.no_real_tokenizer_for_weights,
         )
     except EvaluationContaminationError as exc:
@@ -1998,6 +2150,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 — distinc
     except WeightConcentrationError as exc:
         _LOGGER.error("audit top-5%% fallback: %s", exc)  # noqa: TRY400
         return 7
+    except PlanBCorpusGateError as exc:
+        _LOGGER.error("plan-b corpus gate fail: %s", exc)  # noqa: TRY400
+        return 8
     except (ValueError, FileNotFoundError) as exc:
         _LOGGER.error("operator error: %s", exc)  # noqa: TRY400  # rc mapping
         return 5
