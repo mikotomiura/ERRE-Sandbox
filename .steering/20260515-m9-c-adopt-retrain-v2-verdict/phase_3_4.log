@@ -1,0 +1,83 @@
+[phase3] using adapter: data/lora/m9-c-adopt-v2/kant_r8_v2
+[phase3] launching SGLang in WSL (max-lora-rank 8)
+SGLang launched: PID 362
+[phase3] SGLang WSL PID: 362
+[phase3] waiting for SGLa[phase3] SGLang ready at attempt 16
+.steering/20260515-m9-c-adopt-retrain-v2-verdict/run_phase_3_4.sh: line 72: syntax error near unexpected token `('
+nt_r8_v2
+{"rid":null,"http_worker_ipc":null,"success":true,"error_message":"","loaded_adapters":{"kant_r8_v2":"/mnt/c/ERRE-Sand_Box/data/lora/m9-c-adopt-v2/kant_r8_v2"}}
+
+[phase3] pilot run 0 ‚Üí data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/kant_r8v2_run0_stim.duckdb
+2026-05-16 07:46:46,251 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=225/300 rate=0.80 focal/s eta=1.6 min
+2026-05-16 07:47:10,524 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=250/300 rate=0.82 focal/s eta=1.0 min
+2026-05-16 07:47:44,956 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=275/300 rate=0.81 focal/s eta=0.5 min
+2026-05-16 07:48:09,536 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=300/300 rate=0.82 focal/s eta=0.0 min
+2026-05-16 07:48:09,549 [__main__] INFO: pilot done persona=kant tag=r8 run=0 completed=300 elapsed=6.1 min output=data\eval\m9-c-adopt-tier-b-pilot-multiturn-v2\kant_r8v2_run0_stim.duckdb
+[phase3] pilot run 1 ‚Üí data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/kant_r8v2_run1_stim.duckdb
+2026-05-16 07:52:49,038 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=225/300 rate=0.81 focal/s eta=1.6 min
+2026-05-16 07:53:12,265 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=250/300 rate=0.83 focal/s eta=1.0 min
+2026-05-16 07:53:46,044 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=275/300 rate=0.82 focal/s eta=0.5 min
+2026-05-16 07:54:09,444 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=300/300 rate=0.83 focal/s eta=0.0 min
+2026-05-16 07:54:09,457 [__main__] INFO: pilot done persona=kant tag=r8 run=1 completed=300 elapsed=6.0 min output=data\eval\m9-c-adopt-tier-b-pilot-multiturn-v2\kant_r8v2_run1_stim.duckdb
+[phase3] validate shards
+PASS: 2/2 shards passed all 3 checks Å® .steering\20260515-m9-c-adopt-retrain-v2-verdict\validation-v2-kant.json
+[phase4] Big5 ICC (SGLang LoRA-on)
+2026-05-16 07:54:25,621 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb focal=300 windows=3
+2026-05-16 07:54:30,549 [__main__] INFO: window 4/?  shard=kant_r8v2_run1_stim.duckdb w_idx=0 big5=E:3.10/A:3.50/C:3.30/N:3.00/O:3.10 rate=0.20 win/s
+2026-05-16 07:54:35,465 [__main__] INFO: window 5/?  shard=kant_r8v2_run1_stim.duckdb w_idx=1 big5=E:3.10/A:3.50/C:3.30/N:3.00/O:3.00 rate=0.20 win/s
+2026-05-16 07:54:40,329 [__main__] INFO: window 6/?  shard=kant_r8v2_run1_stim.duckdb w_idx=2 big5=E:3.10/A:3.40/C:3.30/N:3.00/O:3.00 rate=0.20 win/s
+2026-05-16 07:54:40,401 [__main__] INFO: ICC(C,k)=0.9831 [0.9751, 0.9951] | ICC(A,1)=0.9129 [0.8808, 0.9692] | n_windows=6 | me1_fallback_fire=False | output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-icc-multiturn-kant-r8.json
+[phase4] stopping SGLang PID 362
+[phase4] Vendi semantic
+2026-05-16 07:55:26,571 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:26,571 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:31,184 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:31,184 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:39,128 [__main__] INFO: baseline vendi point=33.1829 lo=32.9315 hi=33.4343 width=0.5028 n=6 clusters=2 output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-pilot-multiturn-kant-r8-vendi-semantic.json
+[phase4] Burrows delta
+2026-05-16 07:55:40,995 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb focal=300 windows=3
+2026-05-16 07:55:41,070 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=0 total=100 de=51 en=36 ja=5 other=0 dropped=8 mean_burrows=113.2953
+2026-05-16 07:55:41,135 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=1 total=100 de=55 en=35 ja=1 other=0 dropped=9 mean_burrows=116.3416
+2026-05-16 07:55:41,209 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=2 total=100 de=54 en=36 ja=4 other=0 dropped=6 mean_burrows=111.3366
+2026-05-16 07:55:41,220 [__main__] INFO: burrows_de point=114.6078 lo=113.6579 hi=115.5577 width=1.8998 n_clusters=2 de_fraction=0.540 output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-pilot-multiturn-kant-r8-burrows.json
+[phase4] populate matrix-inputs with baseline files from previous task
+  copied: tier-b-pilot-multiturn-kant-nolora-vendi-semantic.json
+  copied: tier-b-pilot-multiturn-kant-nolora-burrows.json
+  copied: tier-b-icc-multiturn-kant-nolora.json
+  copied: tier-b-baseline-matched-kant-vendi-semantic.json
+  copied: tier-b-baseline-matched-kant-burrows.json
+[phase4] DA-14 4-axis matrix
+# DA-1 4-axis matrix - m9-c-adopt-pilot-multiturn investigation
+
+| condition | Vendi semantic | ICC(C,k) | Burrows |
+|---|---|---|---|
+| historical baseline (Ollama, multi-turn metadata) | 30.822 [30.726, 30.928] | 0.9980 [0.9974, 0.9987] | 108.534 [108.100, 109.018] |
+| matched baseline (historical, downsampled) | 31.167 [31.010, 31.318] | 0.9980 [0.9974, 0.9987] | 109.710 [109.036, 110.544] |
+| no-LoRA SGLang control (multi-turn protocol) | 33.311 [33.121, 33.501] | 0.9819 [0.9760, 0.9936] | 115.101 [113.930, 116.272] |
+| single-turn pilot LoRA r=8 (PR #165) | 34.701 [34.673, 34.729] | 0.9843 [0.9795, 0.9946] | 113.723 [113.314, 114.131] |
+| multi-turn pilot LoRA r=8 (ñ{ PR) | 33.183 [32.931, 33.434] | 0.9831 [0.9751, 0.9951] | 114.608 [113.658, 115.558] |
+
+## Pre-registered scenario verdict (DA-13)
+
+{
+  "primary_rank": 8,
+  "scenario": "II",
+  "rationale": "No reversal \u2014 LoRA failure remains the live hypothesis",
+  "primary_vendi_diff_point": 2.0155055489451357,
+  "primary_vendi_diff_lo": 1.1081728964450086,
+  "primary_vendi_diff_hi": 2.8679869527316946,
+  "primary_vendi_cohens_d": 1.6365203415640008,
+  "primary_burrows_reduction_point": -0.044639220799059964,
+  "primary_burrows_reduction_lo": -0.05944127279275,
+  "sister_ranks_aligned": 0
+}
+
+==============================================
+Phase 3-4 complete. Key artefacts:
+  validation:   .steering/20260515-m9-c-adopt-retrain-v2-verdict/validation-v2-kant.json
+  vendi r8:     .steering/20260515-m9-c-adopt-retrain-v2-verdict/matrix-inputs/tier-b-pilot-multiturn-kant-r8-vendi-semantic.json
+  burrows r8:   .steering/20260515-m9-c-adopt-retrain-v2-verdict/matrix-inputs/tier-b-pilot-multiturn-kant-r8-burrows.json
+  icc r8:       .steering/20260515-m9-c-adopt-retrain-v2-verdict/matrix-inputs/tier-b-icc-multiturn-kant-r8.json
+  matrix:       .steering/20260515-m9-c-adopt-retrain-v2-verdict/da1-matrix-v2-kant.json
+  matrix md:    .steering/20260515-m9-c-adopt-retrain-v2-verdict/da1-matrix-v2-kant.md
+==============================================

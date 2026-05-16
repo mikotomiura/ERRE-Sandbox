@@ -1,0 +1,61 @@
+{
+  "comparator": "no-LoRA SGLang baseline (DA-14 authoritative)",
+  "comparator_artefact_dir": ".steering/20260514-m9-c-adopt-pilot-multiturn/",
+  "axes": {
+    "vendi_semantic": {
+      "v2_mean": 33.182859369999,
+      "no_lora_mean": 33.31090056393359,
+      "diff_v2_minus_nolora": -0.12804119393459246,
+      "diff_ci_95": [
+        -0.8540036491321873,
+        0.6211691251338816
+      ],
+      "cohens_d": -0.1788470533504207,
+      "threshold_point": -0.5,
+      "threshold_ci": "ci_upper < 0",
+      "pass": false
+    },
+    "burrows_reduction": {
+      "v2_mean": 114.60777995370626,
+      "no_lora_mean": 115.10090300065475,
+      "reduction_pct": 0.4284267404450269,
+      "reduction_ci_95_pct": [
+        -1.8741679421100097,
+        2.4694606443580356
+      ],
+      "threshold_point": 5.0,
+      "threshold_ci": "ci_lower > 0",
+      "pass": false
+    },
+    "icc_a1": {
+      "v2_point": 0.9128856624319415,
+      "v2_ci_95": [
+        0.8807947019867548,
+        0.9691714836223514
+      ],
+      "no_lora_point": 0.9061166429587485,
+      "threshold_point": 0.55,
+      "threshold_ci": "ci_lower >= 0.50",
+      "pass": true
+    },
+    "throughput": {
+      "v2_rate_focal_per_s": 0.82,
+      "no_lora_rate_focal_per_s": 0.83,
+      "throughput_pct_of_baseline": 98.79518072289156,
+      "threshold_point": 70.0,
+      "pass": true
+    }
+  },
+  "primary_axes_passed": 1,
+  "primary_quorum": "2_of_3",
+  "verdict": "REJECT",
+  "directional_v_prior_lora_r8": {
+    "vendi_prior": 34.701,
+    "vendi_v2": 33.182859369999,
+    "vendi_direction": "REVERSED toward goal (was wrong, now correct sign but insufficient magnitude)",
+    "burrows_prior": 113.7227,
+    "burrows_v2": 114.60777995370626,
+    "burrows_direction": "slight degradation (was small reduction, now small increase)"
+  },
+  "matrix_script_note": "scripts/m9-c-adopt/da1_matrix_multiturn.py compares against MATCHED HISTORICAL Ollama baseline (DA-11 era). DA-14 mandates no-LoRA SGLang baseline. This file applies DA-14 thresholds correctly."
+}

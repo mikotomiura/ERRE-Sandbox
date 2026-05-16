@@ -1,0 +1,18 @@
+2026-05-16 07:54:45,660 [__main__] INFO: loading 2 shards: ['kant_r8v2_run0_stim.duckdb', 'kant_r8v2_run1_stim.duckdb']
+2026-05-16 07:54:45,873 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb focal=300 windows=3
+2026-05-16 07:55:01,376 [datasets] INFO: PyTorch version 2.11.0 available.
+2026-05-16 07:55:01,376 [datasets] INFO: Duckdb version 1.5.2 available.
+2026-05-16 07:55:02,542 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:02,542 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:08,734 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:08,734 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:13,761 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:13,761 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:21,793 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb focal=300 windows=3
+2026-05-16 07:55:21,795 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:21,795 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:26,571 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:26,571 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:31,184 [sentence_transformers.SentenceTransformer] INFO: Use pytorch device_name: cpu
+2026-05-16 07:55:31,184 [sentence_transformers.SentenceTransformer] INFO: Load pretrained SentenceTransformer: sentence-transformers/all-mpnet-base-v2
+2026-05-16 07:55:39,128 [__main__] INFO: baseline vendi point=33.1829 lo=32.9315 hi=33.4343 width=0.5028 n=6 clusters=2 output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-pilot-multiturn-kant-r8-vendi-semantic.json

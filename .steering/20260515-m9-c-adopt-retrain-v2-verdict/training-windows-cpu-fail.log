@@ -1,0 +1,18 @@
+<frozen runpy>:128: RuntimeWarning: 'erre_sandbox.training.train_kant_lora' found in sys.modules after import of package 'erre_sandbox.training', but prior to execution of 'erre_sandbox.training.train_kant_lora'; this may result in unpredictable behaviour
+2026-05-15 15:09:28,038 INFO __main__ split stratum=natural n_train=753 n_eval=84
+2026-05-15 15:09:28,040 INFO __main__ split stratum=stimulus n_train=1809 n_eval=201
+2026-05-15 15:09:28,128 INFO __main__ weight audit: n_eff=3886.4 top_5%=0.139 de+en=0.489 synthetic_n=500
+2026-05-15 15:09:28,128 WARNING __main__ pre-training audit: de+en weighted mass=0.489 below soft warning threshold 0.60; continuing training but flag in train_metadata
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]C:\ERRE-Sand_Box\.venv\Lib\site-packages\bitsandbytes\backends\default\ops.py:223: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+C:\ERRE-Sand_Box\.venv\Lib\site-packages\bitsandbytes\backends\cpu\ops.py:36: FutureWarning: _check_is_size will be removed in a future PyTorch release along with guard_size_oblivious.     Use _check(i >= 0) instead.
+  torch._check_is_size(blocksize)
+Loading checkpoint shards:  20%|##        | 1/5 [00:44<02:57, 44.40s/it]Loading checkpoint shards:  40%|####      | 2/5 [01:49<02:50, 56.70s/it]Loading checkpoint shards:  60%|######    | 3/5 [02:55<02:02, 61.05s/it]Loading checkpoint shards:  80%|########  | 4/5 [03:44<00:56, 56.19s/it]Loading checkpoint shards: 100%|##########| 5/5 [03:44<00:00, 44.94s/it]
+2026-05-15 15:13:16,777 WARNING accelerate.big_modeling Some parameters are on the meta device because they were offloaded to the cpu.
+2026-05-15 15:13:20,100 INFO datasets PyTorch version 2.11.0 available.
+2026-05-15 15:13:20,101 INFO datasets Duckdb version 1.5.2 available.
+trainable params: 7,667,712 || all params: 8,198,403,072 || trainable%: 0.0935
+Map:   0%|          | 0/5019 [00:00<?, ? examples/s]Map:  40%|###9      | 2000/5019 [00:00<00:00, 13013.20 examples/s]Map:  80%|#######9  | 4000/5019 [00:00<00:00, 15275.42 examples/s]Map: 100%|##########| 5019/5019 [00:00<00:00, 14773.50 examples/s]
+Map:   0%|          | 0/503 [00:00<?, ? examples/s]Map: 100%|##########| 503/503 [00:00<00:00, 16829.54 examples/s]
+2026-05-15 15:13:21,411 ERROR __main__ operator error: Your setup doesn't support bf16/gpu.

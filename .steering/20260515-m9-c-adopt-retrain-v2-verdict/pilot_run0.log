@@ -1,0 +1,14 @@
+2026-05-16 07:42:04,402 [__main__] INFO: pilot start persona=kant tag=r8 run=0 sliced=45 multi-turn-max=6 (focal per stim avg = 1.11)
+2026-05-16 07:42:46,116 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=25/300 rate=0.60 focal/s eta=7.6 min
+2026-05-16 07:43:11,062 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=50/300 rate=0.75 focal/s eta=5.6 min
+2026-05-16 07:43:44,467 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=75/300 rate=0.75 focal/s eta=5.0 min
+2026-05-16 07:44:06,988 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=100/300 rate=0.82 focal/s eta=4.1 min
+2026-05-16 07:44:42,821 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=125/300 rate=0.79 focal/s eta=3.7 min
+2026-05-16 07:45:06,124 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=150/300 rate=0.83 focal/s eta=3.0 min
+2026-05-16 07:45:41,633 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=175/300 rate=0.81 focal/s eta=2.6 min
+2026-05-16 07:46:05,675 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=200/300 rate=0.83 focal/s eta=2.0 min
+2026-05-16 07:46:46,251 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=225/300 rate=0.80 focal/s eta=1.6 min
+2026-05-16 07:47:10,524 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=250/300 rate=0.82 focal/s eta=1.0 min
+2026-05-16 07:47:44,956 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=275/300 rate=0.81 focal/s eta=0.5 min
+2026-05-16 07:48:09,536 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=300/300 rate=0.82 focal/s eta=0.0 min
+2026-05-16 07:48:09,549 [__main__] INFO: pilot done persona=kant tag=r8 run=0 completed=300 elapsed=6.1 min output=data\eval\m9-c-adopt-tier-b-pilot-multiturn-v2\kant_r8v2_run0_stim.duckdb

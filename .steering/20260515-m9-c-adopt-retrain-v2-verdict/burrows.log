@@ -1,0 +1,10 @@
+2026-05-16 07:55:40,245 [__main__] INFO: loaded reference persona=kant lang=de |fw|=49
+2026-05-16 07:55:40,427 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb focal=300 windows=3
+2026-05-16 07:55:40,846 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb w=0 total=100 de=54 en=35 ja=3 other=0 dropped=8 mean_burrows=114.3998
+2026-05-16 07:55:40,919 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb w=1 total=100 de=56 en=35 ja=2 other=0 dropped=7 mean_burrows=116.1064
+2026-05-16 07:55:40,985 [__main__] INFO: shard=kant_r8v2_run0_stim.duckdb w=2 total=100 de=54 en=36 ja=4 other=0 dropped=6 mean_burrows=116.1669
+2026-05-16 07:55:40,995 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb focal=300 windows=3
+2026-05-16 07:55:41,070 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=0 total=100 de=51 en=36 ja=5 other=0 dropped=8 mean_burrows=113.2953
+2026-05-16 07:55:41,135 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=1 total=100 de=55 en=35 ja=1 other=0 dropped=9 mean_burrows=116.3416
+2026-05-16 07:55:41,209 [__main__] INFO: shard=kant_r8v2_run1_stim.duckdb w=2 total=100 de=54 en=36 ja=4 other=0 dropped=6 mean_burrows=111.3366
+2026-05-16 07:55:41,220 [__main__] INFO: burrows_de point=114.6078 lo=113.6579 hi=115.5577 width=1.8998 n_clusters=2 de_fraction=0.540 output=.steering\20260515-m9-c-adopt-retrain-v2-verdict\matrix-inputs\tier-b-pilot-multiturn-kant-r8-burrows.json
