@@ -20,6 +20,14 @@ exposes the preregistered weight grid for the P4b sensitivity test on golden
 baseline data; the production gate consumes the default kernel only until
 that empirical comparison lands.
 
+DA-15 (Plan A = Vendi kernel swap) parameterises ``_load_default_kernel`` to
+accept an alternate HuggingFace encoder id. The DA-14 MPNet instrument is
+preserved as the default (``encoder_name=None``); DA-15 reports a versioned
+amended metric ``vendi_semantic_v2_encoder_swap`` under the new encoder so
+the original DA-14 numbers stay reproducible. Pre-registered encoders for
+the kant escalation are pinned in
+``.steering/20260516-m9-c-adopt-da15-impl/decisions.md`` D-2.
+
 ME-15 metadata: emit ``window_index`` / ``window_start_turn`` /
 ``window_end_turn`` / ``window_size`` / ``metric_schema_version`` / ``kernel_name``
 in the sidecar ``notes`` JSON when persisting to ``metrics.tier_b``.
@@ -291,22 +299,46 @@ def _char_5gram_set(text: str) -> frozenset[str]:
     return frozenset(cleaned[i : i + 5] for i in range(len(cleaned) - 4))
 
 
-def _load_default_kernel() -> VendiKernel:
-    """Lazy-load the MPNet semantic cosine kernel.
+_DEFAULT_ENCODER_MODEL_ID: str = "sentence-transformers/all-mpnet-base-v2"
+"""DA-14 instrument: MPNet semantic cosine kernel (regression baseline)."""
+
+_E5_PASSAGE_PREFIX: str = "passage: "
+"""E5 family expects the ``passage:`` prefix for document embedding (arxiv:
+2402.05672 §3). Without it, retrieval performance degrades materially. We use
+the same prefix for every item in a window so pairwise similarity stays
+self-consistent."""
+
+
+def _load_default_kernel(encoder_name: str | None = None) -> VendiKernel:
+    """Lazy-load the semantic cosine kernel for the given encoder.
 
     Heavy ``sentence-transformers`` import is deferred until the caller
     actually needs the real model — the eval extras gate keeps it out of base
-    install resolution. The default model id is asserted by
-    ``test_vendi_default_encoder_model_id_is_all_mpnet_base_v2``.
+    install resolution.
+
+    Args:
+        encoder_name: HuggingFace model id. ``None`` falls back to MPNet
+            (DA-14 baseline, asserted by
+            ``test_vendi_default_encoder_model_id_is_all_mpnet_base_v2``).
+            DA-15 Plan A swaps in a multilingual encoder
+            (``intfloat/multilingual-e5-large`` or ``BAAI/bge-m3``) via this
+            argument — see ``.steering/20260516-m9-c-adopt-da15-impl/
+            decisions.md`` D-2 for the pre-registered revision pins.
     """
     from sentence_transformers import (  # noqa: PLC0415  # heavy ML dep behind eval extras
         SentenceTransformer,
     )
 
-    model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+    model_id = encoder_name or _DEFAULT_ENCODER_MODEL_ID
+    model = SentenceTransformer(model_id)
+    needs_e5_prefix = "e5" in model_id.lower()
 
     def kernel(items: Sequence[str]) -> np.ndarray:
-        encoded = model.encode(list(items), show_progress_bar=False)
+        if needs_e5_prefix:
+            encode_inputs = [_E5_PASSAGE_PREFIX + str(text) for text in items]
+        else:
+            encode_inputs = list(items)
+        encoded = model.encode(encode_inputs, show_progress_bar=False)
         matrix = np.asarray(encoded, dtype=float)
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
         safe = np.where(norms == 0, 1.0, norms)
@@ -326,6 +358,8 @@ __all__ = [
     "DEFAULT_KERNEL_NAME",
     "VendiKernel",
     "VendiResult",
+    "_load_default_kernel",
+    "_vendi_score_from_kernel",
     "compute_vendi",
     "make_lexical_5gram_kernel",
     "vendi_kernel_sensitivity_panel",

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "preregistration_note": "DA-15 D-2 pre-registration (Codex HIGH-1). primary entries contribute to the ADOPT quorum; regression is reported alongside as the DA-14 historical instrument but cannot move the ADOPT verdict. exploratory entries (none in this PR) cannot enter either panel.",
+  "library_versions": {
+    "sentence_transformers": "3.4.1",
+    "transformers": "4.57.6"
+  },
+  "encoders": {
+    "intfloat/multilingual-e5-large": {
+      "role": "primary",
+      "revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+    },
+    "BAAI/bge-m3": {
+      "role": "primary",
+      "revision_sha": "5617a9f61b028005a4858fdac845db406aefb181"
+    },
+    "sentence-transformers/all-mpnet-base-v2": {
+      "role": "regression",
+      "revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130"
+    }
+  }
+}

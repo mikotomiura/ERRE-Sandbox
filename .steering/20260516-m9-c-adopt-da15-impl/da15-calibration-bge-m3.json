@@ -1,0 +1,37 @@
+{
+  "encoder": "BAAI/bge-m3",
+  "encoder_revision_sha": "5617a9f61b028005a4858fdac845db406aefb181",
+  "encoder_role": "primary",
+  "library_versions": {
+    "sentence_transformers": "3.4.1",
+    "transformers": "4.57.6"
+  },
+  "library_versions_match_d2": true,
+  "corpus": "data\\calibration\\kant_heidegger_corpus.json",
+  "n_total": 200,
+  "n_kant": 100,
+  "n_control": 100,
+  "language_distribution": {
+    "de": 46,
+    "en": 154
+  },
+  "pass_gate_auc": 0.75,
+  "overall_auc": 0.9205,
+  "within_language_auc": {
+    "de": {
+      "auc": 0.8400000000000001,
+      "n_kant": 23,
+      "n_control": 23
+    },
+    "en": {
+      "auc": 0.9160555555555556,
+      "n_kant": 77,
+      "n_control": 77
+    }
+  },
+  "within_language_pass": true,
+  "within_language_unscored": [],
+  "verdict": "PASS",
+  "seed": 42,
+  "preregistration_note": "DA-15 Plan A eligibility gate (Codex HIGH-2). encoder passes only if overall AUC ≥ 0.75 AND every within-language AUC slice with sufficient class mass ≥ 0.75. Otherwise the encoder is excluded from the ADOPT primary panel."
+}
