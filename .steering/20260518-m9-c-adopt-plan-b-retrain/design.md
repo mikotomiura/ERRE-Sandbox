@@ -28,10 +28,15 @@ design.md`) を **執行する** session。新規設計判断はなく、既存 
 
 ### 2. G-GEAR 採取 (~30 min smoke + ~3h main)
 
-`g-gear-collection-runbook.md` §2-§5 をそのまま実行。
+`g-gear-collection-runbook.md` §2-§5 をそのまま実行 — **ただし SGLang
+起動 command は本セッションで empirical に確定した
+`--quantization fp8 --max-total-tokens 2048 --max-running-requests 1
+--disable-cuda-graph --disable-piecewise-cuda-graph` を採用** (DR-4 / blockers.md ブロッカー 1)。
 
-- SGLang server: WSL2 内、base model `Qwen/Qwen3-8B`、`--mem-fraction-static
-  0.85`、LoRA は無効 (`--max-loras-per-batch` 不要)
+- SGLang server: WSL2 内、base model `Qwen/Qwen3-8B`、fp8 quant 必須
+  (BF16 では 16 GB VRAM に fit せず OOM)、Blackwell SM120 では
+  piecewise CUDA graph も disable (sampler argmax kernel deadlock 回避)
+  - LoRA は無効 (`--max-loras-per-batch` 不要)
 - driver: Windows native `.venv`、`PYTHONUTF8=1`、SGLang host は WSL2 LAN IP
 - dry-run: `--target-net 50 --max-attempts 200 --dry-run` で acceptance rate
   測定
