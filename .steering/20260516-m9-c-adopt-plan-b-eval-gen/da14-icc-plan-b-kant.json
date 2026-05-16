@@ -1,0 +1,7 @@
+{
+  "v2_point": 0.908256880733948,
+  "icc_source_path": ".steering\\20260516-m9-c-adopt-plan-b-eval-gen\\tier-b-plan-b-kant-r8v3-icc.json",
+  "icc_field_used": "icc_agreement_single",
+  "threshold": 0.55,
+  "note": "ICC(A,1) absolute-agreement Big-5 ICC. DA-14 gate: point ≥ 0.55. Kernel-independent (computed via SGLang T=0.7 inference on focal utterances)."
+}
