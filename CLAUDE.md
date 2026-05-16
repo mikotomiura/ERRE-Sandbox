@@ -128,6 +128,32 @@ Claude Code がセッション開始時に自動で読み込む指示書。
 - `main` ブランチに直接 push しない
 - Plan mode 外で設計判断を確定しない（設計 → 実装の境界を Plan 承認で明示化する）
 - 高難度設計で `/reimagine` を省略しない（同一エージェントの 1 発案は構造的にバイアスが残る）
+- **`git push` / `gh pr create` を pre-push CI parity check 抜きで実行しない**
+  (`pwsh scripts/dev/pre-push-check.ps1` または `bash scripts/dev/pre-push-check.sh`、
+  ruff format --check + ruff check + mypy src + pytest -q を CI と同条件で
+  local 実行、1 段でも fail なら push 禁止。memory
+  `feedback_pre_push_ci_parity.md` 参照。PR #181 で CI fail 事後追従が起きた reflection)
+- **extras-only 依存 (sentence-transformers / sklearn / torch / peft / sglang
+  等) を新規 `src/` に import する時、3 点セット (lazy import + mypy
+  `ignore_missing_imports` 追加 + test `pytest.importorskip("<dep>")`) を
+  欠落させない**
+
+## Pre-push CI parity (必須)
+
+push / `gh pr create` の **前に必ず** 以下を local で実行する:
+
+```powershell
+# Windows PowerShell (G-GEAR)
+pwsh scripts/dev/pre-push-check.ps1
+```
+
+```bash
+# WSL2 / macOS / Linux
+bash scripts/dev/pre-push-check.sh
+```
+
+4 段階 (ruff format --check / ruff check / mypy src / pytest -q) 全 pass で
+push 可。`feedback_pre_push_ci_parity.md` に詳細手順 + 失敗事例。
 
 ## コマンド・エージェント
 

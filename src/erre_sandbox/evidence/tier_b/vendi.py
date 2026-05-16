@@ -309,22 +309,46 @@ the same prefix for every item in a window so pairwise similarity stays
 self-consistent."""
 
 
-def _load_default_kernel(encoder_name: str | None = None) -> VendiKernel:
-    """Lazy-load the semantic cosine kernel for the given encoder.
+def _load_default_kernel(
+    encoder_name: str | None = None,
+    *,
+    kernel_type: str = "semantic",
+) -> VendiKernel:
+    """Lazy-load the configured kernel for the given encoder / kernel_type.
 
     Heavy ``sentence-transformers`` import is deferred until the caller
     actually needs the real model — the eval extras gate keeps it out of base
     install resolution.
 
     Args:
-        encoder_name: HuggingFace model id. ``None`` falls back to MPNet
-            (DA-14 baseline, asserted by
+        encoder_name: HuggingFace model id (semantic path only). ``None``
+            falls back to MPNet (DA-14 baseline, asserted by
             ``test_vendi_default_encoder_model_id_is_all_mpnet_base_v2``).
             DA-15 Plan A swaps in a multilingual encoder
             (``intfloat/multilingual-e5-large`` or ``BAAI/bge-m3``) via this
             argument — see ``.steering/20260516-m9-c-adopt-da15-impl/
             decisions.md`` D-2 for the pre-registered revision pins.
+            Ignored when ``kernel_type != "semantic"``.
+        kernel_type: ``"semantic"`` (default, MPNet/E5/BGE-M3 cosine on the
+            encoder embedding space) or ``"lexical_5gram"`` (TF-IDF char-5-
+            gram cosine; m9-c-adopt Plan B D-2 primary, retrieval-trained
+            free). See ``.steering/20260517-m9-c-adopt-plan-b-design/
+            decisions.md`` DI-4 / DI-6 and
+            ``.steering/20260518-m9-c-adopt-plan-b-retrain/decisions.md``
+            DR-1 / DR-2.
     """
+    if kernel_type == "lexical_5gram":
+        from erre_sandbox.evidence.tier_b.vendi_lexical_5gram import (  # noqa: PLC0415
+            make_tfidf_5gram_cosine_kernel,
+        )
+
+        return make_tfidf_5gram_cosine_kernel()
+    if kernel_type != "semantic":
+        raise ValueError(
+            f"unknown kernel_type: {kernel_type!r} "
+            "(expected 'semantic' or 'lexical_5gram')",
+        )
+
     from sentence_transformers import (  # noqa: PLC0415  # heavy ML dep behind eval extras
         SentenceTransformer,
     )

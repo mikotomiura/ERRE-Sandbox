@@ -96,6 +96,13 @@ data/eval/golden/*.duckdb.tmp
 data/eval/golden/*.log
 data/eval/golden/*.snapshot.duckdb
 
+# m9-c-adopt Plan B de-focused monolog shards (same convention as golden:
+# DuckDB binary stays local, manifest.json + corpus-gate.json are committed
+# as reproducibility evidence).
+data/eval/m9-c-adopt-plan-b/**/*.duckdb
+data/eval/m9-c-adopt-plan-b/**/*.duckdb.wal
+data/eval/m9-c-adopt-plan-b/**/*.duckdb.tmp
+
 # m9-eval-system Phase 2 run1 calibration (kant-only × 5 wall sequential、
 # 2026-05-07 起点)。DuckDB binaries + sidecar JSON は local のみ、empirical
 # table と receipt のみ commit する (PR #140 blockers.md D-8、本 PR で適用)。

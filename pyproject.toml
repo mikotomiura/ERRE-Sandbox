@@ -56,6 +56,7 @@ eval = [
     "ollama>=0.3,<1",                # Tier C judge LLM HTTP client
     "empath>=0.89",                  # Tier A secondary diagnostic (Big5 claim 不使用)
     "arch>=7,<8",                    # 時系列 bootstrap helpers (HIGH-2)
+    "scikit-learn>=1.5,<2",          # m9-c-adopt Plan B lexical-5gram TF-IDF cosine kernel (vendi_lexical_5gram, DR-1/DR-2)
 ]
 # m9-c-spike — SGLang multi-LoRA serving (CS-1, decisions.md). Pinned to
 # the PyPI 2026-04-08 release; G-GEAR install + ``--enable-lora`` smoke
@@ -227,7 +228,7 @@ ignore_missing_imports = true
 # resolve them — mark the modules as ``ignore_missing_imports`` so the
 # strict src check stays green without forcing the heavy install.
 [[tool.mypy.overrides]]
-module = ["transformers.*", "sentence_transformers.*", "empath.*", "ollama.*", "arch.*", "scipy.*"]
+module = ["transformers.*", "sentence_transformers.*", "empath.*", "ollama.*", "arch.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true
 
 # m9-c-spike — SGLang serving + LoRA training stack live behind
