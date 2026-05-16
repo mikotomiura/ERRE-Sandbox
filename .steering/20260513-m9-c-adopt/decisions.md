@@ -1325,8 +1325,8 @@ group-aware split 拡張を pre-stage。**Isolation guardrails (Codex MEDIUM-3
   design/da1-thresholds-recalibrated.json:ai_decision_protocol`
 - Codex review: `.steering/20260516-m9-c-adopt-da15-adr/codex-review.md`
   (gpt-5.5 xhigh、ADOPT-WITH-CHANGES、HIGH 2 / MEDIUM 3 / LOW 1)
-- HEAD: **TBD** (本 ADR PR merge 後の別 chore PR で DA-15 trace.HEAD を
-  埋め込み、DA-14 convention 踏襲)
+- HEAD: `c0cd077` (ADR PR #177 `feature/m9-c-adopt-da15-adr` merge SHA、
+  2026-05-16、DA-15 ADR 起票 + Codex HIGH-1/HIGH-2/MEDIUM 3/LOW 1 反映)
 - next: Phase 1 (Plan A implementation) を `.steering/20260516-m9-c-adopt-
   da15-impl/` で `/start-task` 起票。handoff prompt は
   `.steering/20260516-m9-c-adopt-da15-adr/next-session-prompt-FINAL-impl.md`
