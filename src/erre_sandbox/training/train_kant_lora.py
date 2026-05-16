@@ -1694,11 +1694,22 @@ def _run_trainer_weighted(  # noqa: C901, PLR0915 — HF Trainer setup stays lin
             return_outputs=False,  # noqa: FBT002
             num_items_in_batch=None,  # noqa: ARG002 — required for HF Trainer compat
         ):
+            # Pop ``labels`` before invoking the model so HF CausalLM does NOT
+            # compute its internal cross-entropy loss (which we discard and
+            # then re-compute below). For Qwen3-8B (vocab=151936) the internal
+            # CE path allocates a ``shift_logits`` intermediate (~38 MB per
+            # micro-batch at seq=128 / bf16) — under v2's 16 GB VRAM saturation
+            # that pressure plausibly triggered the allocator slow path
+            # observed at DI-7 (5.35 s/it → 14.23 s/it). Loss semantics are
+            # unchanged: ``compute_weighted_causal_lm_loss`` is the verbatim
+            # Codex HIGH-C implementation and receives identical (logits,
+            # labels, weights) regardless of where ``labels`` lives.
             weights = inputs.pop("sample_weight")
+            labels = inputs.pop("labels")
             outputs = model(**inputs)
             weighted_loss = compute_weighted_causal_lm_loss(
                 outputs.logits,
-                inputs["labels"],
+                labels,
                 weights,
             )
             return (weighted_loss, outputs) if return_outputs else weighted_loss
@@ -1710,6 +1721,15 @@ def _run_trainer_weighted(  # noqa: C901, PLR0915 — HF Trainer setup stays lin
             "eval_strategy": "steps",
             "eval_steps": eval_cadence,
             "per_device_eval_batch_size": 1,  # HIGH-B guard: eval batch=1, loss-only
+            # prediction_loss_only=True explicitly short-circuits any logits
+            # accumulation in ``prediction_step``. HF Trainer's default behaviour
+            # when ``compute_metrics=None`` may already suppress accumulation
+            # internally, so the runtime impact is implementation-dependent and
+            # must be confirmed by short eval benchmark. ``eval_loss`` is still
+            # emitted on ``metrics`` and consumed by both the final
+            # ``trainer.evaluate()`` fallback below and the Plan B
+            # ``EarlyStoppingCallback(metric_for_best_model="eval_loss")``.
+            "prediction_loss_only": True,
         }
     # Plan B (DA-15 Phase 2): hand the trainer the metric machinery
     # EarlyStoppingCallback needs to operate on eval_loss.

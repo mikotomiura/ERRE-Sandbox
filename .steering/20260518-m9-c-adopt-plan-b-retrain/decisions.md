@@ -121,6 +121,81 @@
   - SGLang 0.5.11+ release で Blackwell piecewise CUDA graph が修正された時
   - GPU が交換された時 (Blackwell 以外なら従来 v5 invocation で十分)
 
+## DR-5: WeightedTrainer.compute_loss から ``labels`` を pop し HF 内部 CE 重複計算を停止
+
+- **判断日時**: 2026-05-18
+- **背景**: v2 retrain (DI-7) で step time が初期 5.35 s/it → 定常 ~13–14 s/it
+  に劣化、4000 steps を 8h envelope に収められず 16h19m を要した。
+  `src/erre_sandbox/training/train_kant_lora.py:WeightedTrainer.compute_loss`
+  (L1690–1704) を読むと、`labels` を `inputs` に残したまま `model(**inputs)`
+  を呼んでおり、HF CausalLM が内部で cross-entropy loss を計算する。本実装は
+  続けて `compute_weighted_causal_lm_loss(outputs.logits, inputs["labels"],
+  weights)` で同じ logits/labels に対して weighted CE を再計算しているため、
+  内部 loss は完全に discard されている。
+- **副作用の見積もり**:
+  - Qwen3-8B vocab=151936 で内部 CE が確保する `shift_logits` 中間 tensor は
+    seq=128 / bf16 換算で micro-batch 当たり ~38 MB
+  - grad_accum=8 → train step 当たり ~300 MB / eval 1 pass (503 examples) →
+    ~19 GB に達する余剰 intermediate
+  - DI-7 時点 VRAM 15973/16311 MiB (free 78 MiB) で allocator slow path に
+    落ちた仮説と整合
+- **選択肢**:
+  - A: `inputs.pop("labels")` で labels を取り出してから `model(**inputs)` を
+    呼び、`compute_weighted_causal_lm_loss` には local の `labels` を渡す
+  - B: `model.forward()` を override して内部 CE を抑止
+  - C: `Trainer` の `compute_loss_func` API (Transformers 4.46+) に切替
+- **採用**: A
+- **理由**:
+  1. 3 行 diff、loss 数式・autograd graph・gradient は不変 (`compute_weighted_
+     causal_lm_loss` は Codex HIGH-C verbatim、入力 tensors は同じ)
+  2. HF CausalLM の `forward(..., labels=None)` は `output.loss=None` で返るが
+     `output.logits` は変わらない → `compute_weighted_causal_lm_loss` への
+     入力に副作用なし
+  3. B は GPL-3.0 risk と保守コスト、C は subclass パターン全廃で diff 過大
+- **トレードオフ**:
+  - HF Trainer の `prediction_step` は `compute_loss(model, inputs,
+    return_outputs=True)` を呼ぶため、`return_outputs=True` 経路でも
+    `(weighted_loss, outputs)` を返せる必要があるが、新 compute_loss は
+    引き続き同じ tuple を返すため API contract は不変
+- **影響範囲**:
+  - `_run_trainer_weighted` の `WeightedTrainer` 内 compute_loss のみ
+  - 既存 `tests/test_training/test_weighted_trainer.py` は `compute_weighted_
+    causal_lm_loss` の pure function を直接呼ぶため、本パッチに対する
+    regression を起こさない (45 件 PASS 実測)
+  - DA-14 thresholds / weighting 数式 / DA-15 corpus gate / eval criteria は
+    一切変更しない
+- **未確定**: 実 runtime 改善幅は本セッションで未測定。G-GEAR で
+  `--weighted --max-steps 50 --save-steps 100000 --eval-steps 100000` の
+  前後比較が必要。
+- **見直しタイミング**: Plan B retrain benchmark 後、改善幅が想定下限
+  (数%) を下回り Plan B envelope に収まらない場合、R-3 (NF4+LoRA backward
+  slow path 仮説) の再評価。
+
+## DR-6: TrainingArguments に `prediction_loss_only=True` を明示 (副パッチ)
+
+- **判断日時**: 2026-05-18
+- **背景**: HF Trainer の eval は default `prediction_loss_only=False`。
+  `compute_metrics=None` のときは Trainer 実装によって logits accumulation を
+  内部で抑制している可能性もあるが、明示的に True を立てれば short-circuit
+  経路が確実に取られる。Plan B `EarlyStoppingCallback(metric_for_best_model="eval_loss")` は eval_loss のみを参照するため、副作用なし。
+- **採用**: TrainingArguments の eval_kwargs に `prediction_loss_only=True`
+  を追加 (`per_device_eval_batch_size=1` と同 dict)
+- **理由**:
+  1. DR-5 と独立に効く可能性のある eval-side の小最適化
+  2. 1 行追加、revert コストは最小
+  3. eval_loss は引き続き `metrics["eval_loss"]` で取得可能、`train_metadata.json` への記録経路・EarlyStoppingCallback 経路に副作用なし
+  4. Transformers 4.57.6 (AGENTS.md) で `prediction_loss_only` は安定 API
+- **控えめな見積もり**:
+  - HF Trainer の version / 実装次第で `compute_metrics=None` 時には既に同等
+    動作の可能性もあり、**「必ず eval 30–50% 改善」とは想定しない**
+  - 効果は short eval benchmark (主パッチ単独 vs 主+副パッチ) で確認
+- **トレードオフ**: 将来 compute_metrics (BLEU / perplexity 等) を導入する
+  時には `False` に戻す必要があるが、その時点で revisit。
+- **影響範囲**: TrainingArguments の eval_kwargs dict のみ。final
+  `trainer.evaluate()` は不変、eval_loss 記録の信頼性を優先。
+- **見直しタイミング**: short benchmark で差が見えない場合、別 PR で
+  `prediction_loss_only` 行のみ revert (主パッチは維持)。
+
 ## DR-3: lexical-5gram の短入力 (char_wb 5-gram empty vocab) fallback は identity
 
 - **判断日時**: 2026-05-18

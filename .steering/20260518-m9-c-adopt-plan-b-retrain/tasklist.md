@@ -53,3 +53,15 @@
 - [ ] git commit (lexical-5gram + .steering + 採取 manifest + retrain log)
 - [ ] gh pr create
 - [ ] next-session-prompt (retrain 完了後の verdict 計算用) を起票
+
+## WeightedTrainer 効率化パッチ (Plan B retrain 前の最小最適化、DR-5 / DR-6)
+- [x] `WeightedTrainer.compute_loss` で `labels` を pop してから `model(**inputs)` を呼ぶ (主パッチ DR-5)
+- [x] ruff format + check + mypy clean
+- [x] `pytest tests/test_training/` 全 45 件 PASS (主パッチ後)
+- [x] `TrainingArguments(prediction_loss_only=True)` を eval_kwargs に追加 (副パッチ DR-6)
+- [x] ruff format + check + mypy clean (副パッチ後)
+- [x] `pytest tests/test_training/` 全 45 件 PASS (副パッチ後)
+- [x] sample weight collapse 疑いを blockers.md ブロッカー 2 に記録 (本 PR では未修正)
+- [ ] G-GEAR で `--weighted --max-steps 50 --save-steps 100000 --eval-steps 100000` の前後 benchmark (主パッチのみ vs 主+副) → step/sec, peak_vram, train_loss 推移を比較
+- [ ] benchmark 結果を `.steering/.../bench-pre.log` / `bench-post.log` として保存
+- [ ] benchmark で副パッチが寄与しない場合は副パッチを revert する判断を decisions.md に追記
