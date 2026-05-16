@@ -53,7 +53,11 @@ logger = logging.getLogger(__name__)
 _KANT_SHARD = Path(
     "data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/kant_r8v2_run0_stim.duckdb",
 )
-_CONTROL_SHARD = Path("data/eval/golden/nietzsche_natural_run0.duckdb")
+_CONTROL_SHARD = Path("data/eval/golden/nietzsche_stimulus_run0.duckdb")
+"""Stimulus condition (not natural) so the language distribution overlaps
+with kant_r8v2_run0_stim (de/en/ja). The natural baseline is almost
+exclusively ja, which would collapse the calibration into a language-ID
+detector — exactly the artefact Codex HIGH-2 warns against."""
 _PASS_AUC: float = 0.75
 """DA-15 Plan A eligibility gate threshold (Codex HIGH-2, preregistered)."""
 
@@ -95,10 +99,14 @@ def _load_utterances(shard: Path, persona_id: str) -> list[str]:
 
 
 def _build_corpus(seed: int, n_per_class: int, output: Path) -> dict[str, Any]:
-    """Build the deterministic calibration corpus.
+    """Build the deterministic, language-stratified calibration corpus.
 
-    We over-sample then language-stratify so each class has comparable de/en/ja
-    mass, which makes within-language AUC meaningful even for small slices.
+    We compute the joint language distribution that is achievable from both
+    pools (per-language minimum of the two pool counts) and sample equal
+    counts from kant and control in each language. This guarantees that an
+    encoder cannot game the AUC by detecting language ID — within every
+    language slice, both classes are equally represented, so any AUC > 0.5
+    must come from non-language signal.
     """
     if not _KANT_SHARD.exists():
         msg = f"missing kant shard: {_KANT_SHARD}"
@@ -112,22 +120,70 @@ def _build_corpus(seed: int, n_per_class: int, output: Path) -> dict[str, Any]:
     control_pool = _load_utterances(_CONTROL_SHARD, "nietzsche")
     logger.info("pool sizes: kant=%d control=%d", len(kant_pool), len(control_pool))
 
+    def _bucket(pool: list[str]) -> dict[str, list[str]]:
+        buckets: dict[str, list[str]] = {"de": [], "en": [], "ja": []}
+        for text in pool:
+            buckets[_detect_language(text)].append(text)
+        return buckets
+
+    kant_by_lang = _bucket(kant_pool)
+    control_by_lang = _bucket(control_pool)
+    logger.info(
+        "kant by lang: de=%d en=%d ja=%d",
+        len(kant_by_lang["de"]),
+        len(kant_by_lang["en"]),
+        len(kant_by_lang["ja"]),
+    )
+    logger.info(
+        "control by lang: de=%d en=%d ja=%d",
+        len(control_by_lang["de"]),
+        len(control_by_lang["en"]),
+        len(control_by_lang["ja"]),
+    )
+
+    # Per-language quota = min(pool_kant_lang, pool_control_lang). Sum these
+    # quotas, then scale so the totals reach n_per_class per class. Languages
+    # with min=0 are dropped entirely (within-lang AUC would be undefined).
+    raw_quotas = {
+        lang: min(len(kant_by_lang[lang]), len(control_by_lang[lang]))
+        for lang in ("de", "en", "ja")
+    }
+    eligible = {lang: q for lang, q in raw_quotas.items() if q > 0}
+    if not eligible:
+        msg = "no overlapping language bucket between kant and control pools"
+        raise RuntimeError(msg)
+    total = sum(eligible.values())
+    # Scale quotas so the total matches n_per_class. Round down, then top up
+    # the largest bucket so we hit n_per_class exactly.
+    scaled = {
+        lang: max(1, int(eligible[lang] * n_per_class / total))
+        for lang in eligible
+    }
+    deficit = n_per_class - sum(scaled.values())
+    if deficit != 0:
+        largest = max(scaled, key=lambda lang: eligible[lang])
+        scaled[largest] += deficit
+    # Cap at the raw quota so we never sample more than the smaller pool has.
+    for lang in scaled:
+        scaled[lang] = min(scaled[lang], raw_quotas[lang])
+    logger.info("language quotas per class: %s", scaled)
+
     def _sample(pool: list[str], n: int) -> list[str]:
-        if len(pool) < n:
-            msg = f"pool too small: have {len(pool)}, need {n}"
-            raise ValueError(msg)
         idx = rng.choice(len(pool), size=n, replace=False)
         return [pool[int(i)] for i in idx]
 
-    kant = _sample(kant_pool, n_per_class)
-    control = _sample(control_pool, n_per_class)
+    kant_samples: list[str] = []
+    control_samples: list[str] = []
+    for lang, quota in scaled.items():
+        kant_samples.extend(_sample(kant_by_lang[lang], quota))
+        control_samples.extend(_sample(control_by_lang[lang], quota))
 
     entries: list[dict[str, Any]] = []
-    for text in kant:
+    for text in kant_samples:
         entries.append(
             {"text": text, "label": "kant", "language": _detect_language(text)},
         )
-    for text in control:
+    for text in control_samples:
         entries.append(
             {"text": text, "label": "control", "language": _detect_language(text)},
         )
