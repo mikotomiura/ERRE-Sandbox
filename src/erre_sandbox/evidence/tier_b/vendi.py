@@ -359,6 +359,7 @@ __all__ = [
     "VendiKernel",
     "VendiResult",
     "_load_default_kernel",
+    "_vendi_score_from_kernel",
     "compute_vendi",
     "make_lexical_5gram_kernel",
     "vendi_kernel_sensitivity_panel",

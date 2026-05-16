@@ -1,26 +1,27 @@
 r"""DA-15 Plan A rescore — apples-to-apples Vendi under a swapped encoder.
 
-Reads the v2 LoRA-on and no-LoRA SGLang baseline shards used by DA-14, encodes
-them with the requested HuggingFace model, recomputes Vendi semantic per
-window, and reports Cohen's d (v2 − no-LoRA) along with the Codex HIGH-2
-eligibility-gate variants:
+Reads the v2 LoRA-on and no-LoRA SGLang baseline shards used by DA-14,
+encodes them once with the requested HuggingFace model, then recomputes
+Vendi semantic per window via index-based bootstrap (so embeddings are
+computed only once per condition, not once per bootstrap iteration). Reports
+Cohen's d (v2 − no-LoRA) along with the Codex HIGH-2 eligibility-gate
+variants:
 
 * **standard bootstrap**: resample the 6 natural windows per condition with
   replacement, recompute d each iteration.
 * **language-balanced bootstrap**: for each iteration, build language-pure
-  bootstrap windows of 100 utterances each (de / en), compute d per language,
-  weight equally. Japanese is excluded because Kant generation yields ≪100 ja
-  utterances per condition, which the verdict file calls out as a documented
-  limitation rather than an unreliable estimate.
-* **token-length-balanced bootstrap**: identical mechanism but stratified by
-  the four length quartiles of the merged utterance pool.
+  bootstrap windows of 100 utterances each (de / en), compute Vendi per
+  language, then average d across languages. Japanese is excluded because
+  Kant generation yields ≪100 ja utterances per condition.
+* **token-length-balanced bootstrap**: stratified by the four length
+  quartiles of the merged utterance pool, same mechanism.
 * **within-language d** (d_de, d_en, d_ja): bootstrap d using only the
   utterances of a single language. Slices below the minimum window mass
-  report ``null`` with a documented reason.
+  report ``null``.
 
-DA-14 thresholds are unchanged. The new metric name is
-``vendi_semantic_v2_encoder_swap``; the MPNet DA-14 instrument
-(``vendi_semantic``) is reported alongside as the regression baseline.
+DA-14 thresholds are unchanged. The new metric is
+``vendi_semantic_v2_encoder_swap``; MPNet ``vendi_semantic`` is reported
+alongside as the regression baseline.
 
 Usage::
 
@@ -44,7 +45,7 @@ from typing import Any
 import duckdb
 import numpy as np
 
-from erre_sandbox.evidence.tier_b.vendi import compute_vendi
+from erre_sandbox.evidence.tier_b.vendi import _vendi_score_from_kernel
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,11 @@ _NOLORA_SHARDS = (
 )
 _WINDOW_SIZE: int = 100
 _N_BOOTSTRAP: int = 2000
+_BALANCED_BOOTSTRAP: int = 500
+"""Balanced bootstrap is slower (kernel construction per sample) but still
+fast once embeddings are pre-computed. 500 iterations is enough for a
+stable 95% CI without exhausting RAM on a CPU box."""
+
 _E5_PASSAGE_PREFIX: str = "passage: "
 
 
@@ -81,13 +87,8 @@ def _load_focal_utterances(shard: Path, persona_id: str) -> list[str]:
     return [str(r[0]).strip() for r in rows if r[0]]
 
 
-def _build_encoder_kernel(encoder_name: str) -> Any:
-    """Return a Vendi kernel callable for the requested encoder.
-
-    We cache the SentenceTransformer instance in a closure so all windows of
-    a condition reuse the same loaded model (loading multilingual-e5-large
-    twice doubles the wall time without changing the embeddings).
-    """
+def _encode_pool(encoder_name: str, texts: list[str]) -> np.ndarray:
+    """Encode every utterance once and return unit-norm row embeddings."""
     from sentence_transformers import (  # noqa: PLC0415
         SentenceTransformer,
     )
@@ -95,32 +96,35 @@ def _build_encoder_kernel(encoder_name: str) -> Any:
     logger.info("loading encoder %s", encoder_name)
     model = SentenceTransformer(encoder_name)
     needs_e5_prefix = "e5" in encoder_name.lower()
-
-    def kernel(items):
-        inputs = [(_E5_PASSAGE_PREFIX + t) if needs_e5_prefix else t for t in items]
-        encoded = model.encode(inputs, show_progress_bar=False)
-        arr = np.asarray(encoded, dtype=float)
-        norms = np.linalg.norm(arr, axis=1, keepdims=True)
-        unit = arr / np.where(norms == 0, 1.0, norms)
-        cosine = unit @ unit.T
-        np.fill_diagonal(cosine, 1.0)
-        return cosine
-
-    return kernel
+    inputs = [(_E5_PASSAGE_PREFIX + t) if needs_e5_prefix else t for t in texts]
+    logger.info("encoding %d utterances…", len(inputs))
+    raw = np.asarray(
+        model.encode(inputs, show_progress_bar=False), dtype=float,
+    )
+    norms = np.linalg.norm(raw, axis=1, keepdims=True)
+    return raw / np.where(norms == 0, 1.0, norms)
 
 
-def _window_scores(
-    utterances: list[str],
-    *,
-    kernel,
-    window_size: int,
-) -> list[float]:
-    n_full = len(utterances) // window_size
+def _vendi_from_unit_embeddings(unit: np.ndarray, indices: np.ndarray) -> float:
+    """Pull rows from the pre-normalised embedding matrix and Vendi-score them."""
+    slice_ = unit[indices]
+    cosine = slice_ @ slice_.T
+    np.fill_diagonal(cosine, 1.0)
+    score, _ = _vendi_score_from_kernel(cosine)
+    return float(score)
+
+
+def _natural_window_scores(unit: np.ndarray, utt_per_shard: list[int]) -> list[float]:
+    """Score each shard's contiguous 100-turn windows, preserving order."""
     out: list[float] = []
-    for i in range(n_full):
-        window = utterances[i * window_size : (i + 1) * window_size]
-        result = compute_vendi(window, kernel=kernel, kernel_name="semantic_v2_encoder_swap")
-        out.append(result.score)
+    cursor = 0
+    for n in utt_per_shard:
+        n_full = n // _WINDOW_SIZE
+        for i in range(n_full):
+            start = cursor + i * _WINDOW_SIZE
+            indices = np.arange(start, start + _WINDOW_SIZE)
+            out.append(_vendi_from_unit_embeddings(unit, indices))
+        cursor += n
     return out
 
 
@@ -135,128 +139,100 @@ def _cohens_d(a: list[float], b: list[float]) -> float:
     return (ma - mb) / pooled_sd
 
 
-def _bootstrap_d_ci(
-    a: list[float],
-    b: list[float],
-    *,
-    seed: int,
-    n_resamples: int,
-) -> dict[str, float]:
+def _bootstrap_window_d_ci(
+    a: list[float], b: list[float], *, seed: int, n_resamples: int,
+) -> dict[str, Any]:
     """Window-level bootstrap CI on cohens_d (a − b)."""
     rng = np.random.default_rng(seed)
+    a_arr = np.asarray(a, dtype=float)
+    b_arr = np.asarray(b, dtype=float)
     ds: list[float] = []
     for _ in range(n_resamples):
-        ra = rng.choice(a, size=len(a), replace=True).tolist()
-        rb = rng.choice(b, size=len(b), replace=True).tolist()
+        ra = rng.choice(a_arr, size=len(a_arr), replace=True).tolist()
+        rb = rng.choice(b_arr, size=len(b_arr), replace=True).tolist()
         ds.append(_cohens_d(ra, rb))
-    ds_sorted = sorted(x for x in ds if not math.isnan(x))
-    if not ds_sorted:
+    ds_finite = sorted(x for x in ds if not math.isnan(x))
+    if not ds_finite:
         return {"point": float("nan"), "lo": float("nan"), "hi": float("nan")}
-    n = len(ds_sorted)
-    lo = ds_sorted[int(0.025 * n)]
-    hi = ds_sorted[int(0.975 * n)]
+    n = len(ds_finite)
     return {
         "point": _cohens_d(a, b),
-        "lo": float(lo),
-        "hi": float(hi),
+        "lo": float(ds_finite[int(0.025 * n)]),
+        "hi": float(ds_finite[int(0.975 * n)]),
         "n_resamples": n_resamples,
         "seed": seed,
     }
 
 
-def _stratified_window_d(
+def _stratified_bootstrap_d(
     *,
-    v2_pool: list[str],
-    nolora_pool: list[str],
-    v2_strata: list[str],
-    nolora_strata: list[str],
-    kernel,
+    v2_unit: np.ndarray,
+    nolora_unit: np.ndarray,
+    v2_strata: np.ndarray,
+    nolora_strata: np.ndarray,
+    eligible_strata: list[str],
     window_size: int,
     n_resamples: int,
     seed: int,
-    strata_filter: list[str] | None = None,
 ) -> dict[str, Any] | None:
-    """Stratified bootstrap: each iteration draws a window of ``window_size``
-    utterances per condition, sampling equally from each stratum after
-    filtering. Returns bootstrap CI on cohens_d across iterations.
+    """Index-level stratified bootstrap on the swapped Vendi metric.
 
-    ``strata_filter`` keeps only the named strata; ``None`` keeps all.
+    Each iteration draws ``window_size`` utterance indices per condition,
+    sampling ``window_size // len(eligible)`` per stratum so language ID
+    cannot dominate. Embeddings are pre-computed, so each iteration is just
+    a slice + matmul + eigvalsh — fast enough to do 500 iterations even on
+    CPU.
     """
-    rng = np.random.default_rng(seed)
-
-    strata = sorted(set(v2_strata) | set(nolora_strata))
-    if strata_filter is not None:
-        strata = [s for s in strata if s in strata_filter]
-    if not strata:
+    if not eligible_strata:
         return None
-
-    v2_by: dict[str, list[str]] = {s: [] for s in strata}
-    for text, s in zip(v2_pool, v2_strata, strict=True):
-        if s in v2_by:
-            v2_by[s].append(text)
-    nolora_by: dict[str, list[str]] = {s: [] for s in strata}
-    for text, s in zip(nolora_pool, nolora_strata, strict=True):
-        if s in nolora_by:
-            nolora_by[s].append(text)
-
-    # Ensure every stratum has at least one utterance per condition; drop
-    # strata that don't qualify so we never sample from an empty pool.
-    eligible = [s for s in strata if v2_by[s] and nolora_by[s]]
+    v2_by: dict[str, np.ndarray] = {
+        s: np.where(v2_strata == s)[0] for s in eligible_strata
+    }
+    nolora_by: dict[str, np.ndarray] = {
+        s: np.where(nolora_strata == s)[0] for s in eligible_strata
+    }
+    eligible = [s for s in eligible_strata if v2_by[s].size and nolora_by[s].size]
     if not eligible:
         return None
-    per_stratum_quota = max(1, window_size // len(eligible))
+    per_quota = max(1, window_size // len(eligible))
+    rng = np.random.default_rng(seed)
 
+    v2_scores: list[float] = []
+    nolora_scores: list[float] = []
     diffs: list[float] = []
-    v2_scores_iter: list[float] = []
-    nolora_scores_iter: list[float] = []
     for _ in range(n_resamples):
-        v2_window: list[str] = []
-        nolora_window: list[str] = []
+        v2_idx_list: list[int] = []
+        nolora_idx_list: list[int] = []
         for s in eligible:
-            v2_pool_s = v2_by[s]
-            nolora_pool_s = nolora_by[s]
-            v2_idx = rng.integers(0, len(v2_pool_s), size=per_stratum_quota)
-            nolora_idx = rng.integers(0, len(nolora_pool_s), size=per_stratum_quota)
-            v2_window.extend(v2_pool_s[int(i)] for i in v2_idx)
-            nolora_window.extend(nolora_pool_s[int(i)] for i in nolora_idx)
-
-        # Top up to the requested window size by sampling uniformly across
-        # eligible strata. This handles the case where window_size //
-        # len(eligible) leaves a remainder.
-        while len(v2_window) < window_size:
-            s = eligible[rng.integers(0, len(eligible))]
-            v2_window.append(v2_by[s][int(rng.integers(0, len(v2_by[s])))])
-        while len(nolora_window) < window_size:
-            s = eligible[rng.integers(0, len(eligible))]
-            nolora_window.append(nolora_by[s][int(rng.integers(0, len(nolora_by[s])))])
-        v2_window = v2_window[:window_size]
-        nolora_window = nolora_window[:window_size]
-
-        v2_score = compute_vendi(
-            v2_window, kernel=kernel, kernel_name="semantic_v2_encoder_swap",
-        ).score
-        nolora_score = compute_vendi(
-            nolora_window, kernel=kernel, kernel_name="semantic_v2_encoder_swap",
-        ).score
-        v2_scores_iter.append(v2_score)
-        nolora_scores_iter.append(nolora_score)
+            v2_idx_list.extend(int(i) for i in rng.choice(v2_by[s], size=per_quota, replace=True))
+            nolora_idx_list.extend(int(i) for i in rng.choice(nolora_by[s], size=per_quota, replace=True))
+        # Top-up: fill any remainder from a randomly chosen eligible stratum.
+        while len(v2_idx_list) < window_size:
+            s = eligible[int(rng.integers(0, len(eligible)))]
+            v2_idx_list.append(int(rng.choice(v2_by[s])))
+        while len(nolora_idx_list) < window_size:
+            s = eligible[int(rng.integers(0, len(eligible)))]
+            nolora_idx_list.append(int(rng.choice(nolora_by[s])))
+        v2_idx = np.asarray(v2_idx_list[:window_size], dtype=int)
+        nolora_idx = np.asarray(nolora_idx_list[:window_size], dtype=int)
+        v2_score = _vendi_from_unit_embeddings(v2_unit, v2_idx)
+        nolora_score = _vendi_from_unit_embeddings(nolora_unit, nolora_idx)
+        v2_scores.append(v2_score)
+        nolora_scores.append(nolora_score)
         diffs.append(v2_score - nolora_score)
 
-    point_d = _cohens_d(v2_scores_iter, nolora_scores_iter)
     diffs_sorted = sorted(diffs)
-    lo = diffs_sorted[int(0.025 * len(diffs_sorted))]
-    hi = diffs_sorted[int(0.975 * len(diffs_sorted))]
     return {
         "eligible_strata": eligible,
-        "per_stratum_quota": per_stratum_quota,
+        "per_stratum_quota": per_quota,
         "n_resamples": n_resamples,
         "seed": seed,
-        "v2_mean": float(np.mean(v2_scores_iter)),
-        "nolora_mean": float(np.mean(nolora_scores_iter)),
+        "v2_mean": float(np.mean(v2_scores)),
+        "nolora_mean": float(np.mean(nolora_scores)),
         "diff_point": float(np.mean(diffs)),
-        "diff_lo": float(lo),
-        "diff_hi": float(hi),
-        "cohens_d": float(point_d),
+        "diff_lo": float(diffs_sorted[int(0.025 * len(diffs_sorted))]),
+        "diff_hi": float(diffs_sorted[int(0.975 * len(diffs_sorted))]),
+        "cohens_d": _cohens_d(v2_scores, nolora_scores),
     }
 
 
@@ -285,6 +261,16 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     p.add_argument("--persona", default="kant", choices=("kant",))
     p.add_argument("--window-size", type=int, default=_WINDOW_SIZE)
     p.add_argument("--n-resamples", type=int, default=_N_BOOTSTRAP)
+    p.add_argument(
+        "--balanced-n-resamples",
+        type=int,
+        default=_BALANCED_BOOTSTRAP,
+        help=(
+            "Balanced + within-language bootstrap iteration count. Each"
+            " iteration costs one cosine kernel + eigvalsh per condition; on"
+            " CPU 500 iterations is ~5 minutes per encoder."
+        ),
+    )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument(
@@ -298,119 +284,103 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         force=True,
     )
 
+    # === Load + concatenate per-condition pools ===
     v2_utterances: list[str] = []
-    nolora_utterances: list[str] = []
-    v2_window_runs: list[tuple[str, int]] = []  # (run_id, window_index)
+    v2_utt_per_shard: list[int] = []
     for shard in _V2_SHARDS:
         ut = _load_focal_utterances(shard, args.persona)
         v2_utterances.extend(ut)
-        for i in range(len(ut) // args.window_size):
-            v2_window_runs.append((shard.stem, i))
-    nolora_window_runs: list[tuple[str, int]] = []
+        v2_utt_per_shard.append(len(ut))
+
+    nolora_utterances: list[str] = []
+    nolora_utt_per_shard: list[int] = []
     for shard in _NOLORA_SHARDS:
         ut = _load_focal_utterances(shard, args.persona)
         nolora_utterances.extend(ut)
-        for i in range(len(ut) // args.window_size):
-            nolora_window_runs.append((shard.stem, i))
+        nolora_utt_per_shard.append(len(ut))
 
-    logger.info("v2 utterances=%d nolora utterances=%d", len(v2_utterances), len(nolora_utterances))
-
-    kernel = _build_encoder_kernel(args.encoder)
-
-    # === Standard per-window scoring ===
-    logger.info("scoring natural windows…")
-    v2_window_scores: list[float] = []
-    nolora_window_scores: list[float] = []
-    # Score each shard's windows separately so we don't bleed across shards.
-    cursor = 0
-    for shard in _V2_SHARDS:
-        ut = _load_focal_utterances(shard, args.persona)
-        v2_window_scores.extend(
-            _window_scores(ut, kernel=kernel, window_size=args.window_size),
-        )
-        cursor += len(ut)
-    cursor = 0
-    for shard in _NOLORA_SHARDS:
-        ut = _load_focal_utterances(shard, args.persona)
-        nolora_window_scores.extend(
-            _window_scores(ut, kernel=kernel, window_size=args.window_size),
-        )
-        cursor += len(ut)
     logger.info(
-        "natural windows: v2=%d nolora=%d", len(v2_window_scores), len(nolora_window_scores),
+        "v2 utterances=%d nolora utterances=%d",
+        len(v2_utterances), len(nolora_utterances),
     )
 
-    standard = _bootstrap_d_ci(
+    # === Encode each pool once (the only expensive call) ===
+    v2_unit = _encode_pool(args.encoder, v2_utterances)
+    nolora_unit = _encode_pool(args.encoder, nolora_utterances)
+
+    # === Natural per-window scores ===
+    v2_window_scores = _natural_window_scores(v2_unit, v2_utt_per_shard)
+    nolora_window_scores = _natural_window_scores(nolora_unit, nolora_utt_per_shard)
+    logger.info(
+        "natural windows: v2=%d nolora=%d",
+        len(v2_window_scores), len(nolora_window_scores),
+    )
+
+    standard = _bootstrap_window_d_ci(
         v2_window_scores, nolora_window_scores,
         seed=args.seed, n_resamples=args.n_resamples,
     )
 
-    # === Strata for balanced bootstrap ===
-    v2_langs = [_detect_language(t) for t in v2_utterances]
-    nolora_langs = [_detect_language(t) for t in nolora_utterances]
+    # === Strata ===
+    v2_langs = np.asarray([_detect_language(t) for t in v2_utterances])
+    nolora_langs = np.asarray([_detect_language(t) for t in nolora_utterances])
     merged_lengths = sorted(len(t) for t in v2_utterances + nolora_utterances)
     quartile_cuts = (
         merged_lengths[len(merged_lengths) // 4],
         merged_lengths[len(merged_lengths) // 2],
         merged_lengths[3 * len(merged_lengths) // 4],
     )
-    v2_quartiles = [_length_quartile(len(t), quartile_cuts) for t in v2_utterances]
-    nolora_quartiles = [_length_quartile(len(t), quartile_cuts) for t in nolora_utterances]
+    v2_quartiles = np.asarray(
+        [_length_quartile(len(t), quartile_cuts) for t in v2_utterances],
+    )
+    nolora_quartiles = np.asarray(
+        [_length_quartile(len(t), quartile_cuts) for t in nolora_utterances],
+    )
 
     logger.info("running language-balanced bootstrap…")
-    lang_balanced = _stratified_window_d(
-        v2_pool=v2_utterances,
-        nolora_pool=nolora_utterances,
-        v2_strata=v2_langs,
-        nolora_strata=nolora_langs,
-        kernel=kernel,
+    lang_balanced = _stratified_bootstrap_d(
+        v2_unit=v2_unit, nolora_unit=nolora_unit,
+        v2_strata=v2_langs, nolora_strata=nolora_langs,
+        eligible_strata=["de", "en"],
         window_size=args.window_size,
-        n_resamples=min(args.n_resamples, 200),  # stratified is ~30x slower; cap
-        seed=args.seed,
-        strata_filter=["de", "en"],  # ja excluded — insufficient mass
+        n_resamples=args.balanced_n_resamples, seed=args.seed,
     )
 
     logger.info("running length-balanced bootstrap…")
-    length_balanced = _stratified_window_d(
-        v2_pool=v2_utterances,
-        nolora_pool=nolora_utterances,
-        v2_strata=v2_quartiles,
-        nolora_strata=nolora_quartiles,
-        kernel=kernel,
+    length_balanced = _stratified_bootstrap_d(
+        v2_unit=v2_unit, nolora_unit=nolora_unit,
+        v2_strata=v2_quartiles, nolora_strata=nolora_quartiles,
+        eligible_strata=["q1", "q2", "q3", "q4"],
         window_size=args.window_size,
-        n_resamples=min(args.n_resamples, 200),
-        seed=args.seed,
+        n_resamples=args.balanced_n_resamples, seed=args.seed,
     )
 
-    # === Within-language d (de, en, ja) ===
     logger.info("running within-language d…")
     within_lang: dict[str, Any] = {}
     for lang in ("de", "en", "ja"):
-        v2_lang = [t for t, l in zip(v2_utterances, v2_langs, strict=True) if l == lang]
-        nolora_lang = [t for t, l in zip(nolora_utterances, nolora_langs, strict=True) if l == lang]
-        if len(v2_lang) < args.window_size or len(nolora_lang) < args.window_size:
+        v2_mass = int((v2_langs == lang).sum())
+        nolora_mass = int((nolora_langs == lang).sum())
+        if v2_mass < args.window_size or nolora_mass < args.window_size:
             within_lang[lang] = {
-                "auc": None,
-                "n_v2": len(v2_lang),
-                "n_nolora": len(nolora_lang),
-                "note": "insufficient mass for a single 100-utterance window per condition",
+                "cohens_d": None,
+                "n_v2": v2_mass,
+                "n_nolora": nolora_mass,
+                "note": (
+                    "insufficient mass for a single 100-utterance window per"
+                    " condition; this is the documented limitation for ja"
+                    " (Codex LOW-1 unrelated, but called out in verdict)."
+                ),
             }
             continue
-        # Build random language-pure windows via bootstrap (same scheme as
-        # stratified, but only one stratum).
-        result = _stratified_window_d(
-            v2_pool=v2_lang,
-            nolora_pool=nolora_lang,
-            v2_strata=[lang] * len(v2_lang),
-            nolora_strata=[lang] * len(nolora_lang),
-            kernel=kernel,
+        within_lang[lang] = _stratified_bootstrap_d(
+            v2_unit=v2_unit, nolora_unit=nolora_unit,
+            v2_strata=v2_langs, nolora_strata=nolora_langs,
+            eligible_strata=[lang],
             window_size=args.window_size,
-            n_resamples=min(args.n_resamples, 200),
-            seed=args.seed,
+            n_resamples=args.balanced_n_resamples, seed=args.seed,
         )
-        within_lang[lang] = result
 
-    # === DA-14 threshold check ===
+    # === DA-14 threshold check (unchanged) ===
     pass_point = standard.get("point") is not None and standard["point"] <= -0.5
     pass_ci = standard.get("hi") is not None and standard["hi"] < 0
     balanced_lang_pass = (
@@ -424,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         and length_balanced["diff_hi"] < 0
     )
 
-    # === Runtime environment record (for pre-registration audit) ===
+    # === Runtime environment record (pre-registration audit) ===
     try:
         import sentence_transformers as _st  # noqa: PLC0415
         import transformers as _tf  # noqa: PLC0415
@@ -435,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
             "sentence_transformers": _st.__version__,
             "transformers": _tf.__version__,
         }
-    except Exception as exc:  # noqa: BLE001  # best-effort metadata only
+    except Exception as exc:  # noqa: BLE001
         revision_sha = f"<unavailable: {exc}>"
         library_versions = {}
 
@@ -452,6 +422,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         "metric": "vendi_semantic_v2_encoder_swap",
         "window_size": args.window_size,
         "n_resamples": args.n_resamples,
+        "balanced_n_resamples": args.balanced_n_resamples,
         "seed": args.seed,
         "v2_shards": [s.name for s in _V2_SHARDS],
         "nolora_shards": [s.name for s in _NOLORA_SHARDS],
@@ -477,18 +448,12 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
             "language_balanced_pass": balanced_lang_pass,
             "length_balanced_pass": balanced_length_pass,
         },
-        "preregistration_note": (
-            "DA-15 Plan A rescore. encoder + revision pin + transformer +"
-            " sentence-transformers versions are recorded in"
-            " .steering/20260516-m9-c-adopt-da15-impl/decisions.md D-2."
-            " ja within-language d intentionally omitted: Kant generation"
-            " produces <20 ja utterances per shard, well below the"
-            " 100-utterance Vendi window."
-        ),
     }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8",
+    )
     logger.info(
         "encoder=%s natural cohens_d=%.4f standard_pass=%s output=%s",
         args.encoder,

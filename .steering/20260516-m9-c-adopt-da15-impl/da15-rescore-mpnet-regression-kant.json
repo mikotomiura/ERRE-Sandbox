@@ -1,0 +1,134 @@
+{
+  "encoder": "sentence-transformers/all-mpnet-base-v2",
+  "encoder_revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+  "library_versions": {
+    "sentence_transformers": "3.4.1",
+    "transformers": "4.57.6"
+  },
+  "preregistration_anchor": "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md). Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible.",
+  "persona": "kant",
+  "metric": "vendi_semantic_v2_encoder_swap",
+  "window_size": 100,
+  "n_resamples": 2000,
+  "balanced_n_resamples": 100,
+  "seed": 42,
+  "v2_shards": [
+    "kant_r8v2_run0_stim.duckdb",
+    "kant_r8v2_run1_stim.duckdb"
+  ],
+  "nolora_shards": [
+    "kant_nolora_run0_stim.duckdb",
+    "kant_nolora_run1_stim.duckdb"
+  ],
+  "natural_windows": {
+    "v2_scores": [
+      32.29308113367523,
+      33.21219451371335,
+      33.28913032926151,
+      34.5463592104912,
+      33.57105418003895,
+      32.18533685281382
+    ],
+    "nolora_scores": [
+      32.8551438348886,
+      33.149712415016346,
+      33.35761109500892,
+      33.08793457517454,
+      33.108925662900496,
+      34.30607516622779
+    ],
+    "v2_mean": 33.182859369999,
+    "nolora_mean": 33.31090045820279,
+    "cohens_d": -0.17884690563776426
+  },
+  "standard_bootstrap": {
+    "point": -0.17884690563776426,
+    "lo": -1.5562791776955311,
+    "hi": 1.2289562152435216,
+    "n_resamples": 2000,
+    "seed": 42
+  },
+  "language_balanced_bootstrap": {
+    "eligible_strata": [
+      "de",
+      "en"
+    ],
+    "per_stratum_quota": 50,
+    "n_resamples": 100,
+    "seed": 42,
+    "v2_mean": 27.61155729945283,
+    "nolora_mean": 28.01587879241586,
+    "diff_point": -0.40432149296303693,
+    "diff_lo": -3.932802992048696,
+    "diff_hi": 2.2676652193392037,
+    "cohens_d": -0.33675603974239693
+  },
+  "length_balanced_bootstrap": {
+    "eligible_strata": [
+      "q1",
+      "q2",
+      "q3",
+      "q4"
+    ],
+    "per_stratum_quota": 25,
+    "n_resamples": 100,
+    "seed": 42,
+    "v2_mean": 28.997847732332403,
+    "nolora_mean": 29.819836892688535,
+    "diff_point": -0.821989160356127,
+    "diff_lo": -3.921631801503345,
+    "diff_hi": 2.082446063905344,
+    "cohens_d": -0.7267805633061032
+  },
+  "within_language": {
+    "de": {
+      "eligible_strata": [
+        "de"
+      ],
+      "per_stratum_quota": 100,
+      "n_resamples": 100,
+      "seed": 42,
+      "v2_mean": 17.69897179059497,
+      "nolora_mean": 18.24851643289072,
+      "diff_point": -0.5495446422957488,
+      "diff_lo": -2.5587530847574946,
+      "diff_hi": 1.1587232056450354,
+      "cohens_d": -0.8020724137501338
+    },
+    "en": {
+      "eligible_strata": [
+        "en"
+      ],
+      "per_stratum_quota": 100,
+      "n_resamples": 100,
+      "seed": 42,
+      "v2_mean": 26.231403458356407,
+      "nolora_mean": 26.773292344971747,
+      "diff_point": -0.5418888866153405,
+      "diff_lo": -4.175425927668062,
+      "diff_hi": 2.535814172922173,
+      "cohens_d": -0.4526324418314832
+    },
+    "ja": {
+      "cohens_d": null,
+      "n_v2": 19,
+      "n_nolora": 19,
+      "note": "insufficient mass for a single 100-utterance window per condition; this is the documented limitation for ja (Codex LOW-1 unrelated, but called out in verdict)."
+    }
+  },
+  "length_quartile_cuts": [
+    56,
+    83,
+    106
+  ],
+  "thresholds": {
+    "cohens_d_point_le": -0.5,
+    "diff_ci_upper_lt": 0.0,
+    "note": "DA-14 thresholds, unchanged. Plan A pass requires the gate to clear under both standard and balanced bootstrap."
+  },
+  "verdict_per_axis": {
+    "standard_pass": false,
+    "language_balanced_pass": false,
+    "length_balanced_pass": false
+  }
+}
