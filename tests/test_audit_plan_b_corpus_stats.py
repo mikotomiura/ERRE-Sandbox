@@ -157,9 +157,9 @@ def test_threshold_overrides(audit_module):
     }
     # default thresholds: n_eff 1500 → fail
     assert (
-        audit_module.audit_corpus(
-            audit, weight_audit_path="x.json", merge_sha="sha"
-        )["plan_b_gate"]
+        audit_module.audit_corpus(audit, weight_audit_path="x.json", merge_sha="sha")[
+            "plan_b_gate"
+        ]
         == "fail"
     )
     # relaxed thresholds → pass
