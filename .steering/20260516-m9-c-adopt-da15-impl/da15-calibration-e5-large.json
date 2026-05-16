@@ -1,21 +1,22 @@
 {
   "encoder": "intfloat/multilingual-e5-large",
   "encoder_revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+  "encoder_role": "primary",
   "library_versions": {
     "sentence_transformers": "3.4.1",
     "transformers": "4.57.6"
   },
+  "library_versions_match_d2": true,
   "corpus": "data\\calibration\\kant_heidegger_corpus.json",
   "n_total": 200,
   "n_kant": 100,
   "n_control": 100,
   "language_distribution": {
     "de": 46,
-    "en": 148,
-    "ja": 6
+    "en": 154
   },
   "pass_gate_auc": 0.75,
-  "overall_auc": 0.8865000000000001,
+  "overall_auc": 0.89,
   "within_language_auc": {
     "de": {
       "auc": 0.85,
@@ -23,18 +24,13 @@
       "n_control": 23
     },
     "en": {
-      "auc": 0.8695873015873017,
-      "n_kant": 74,
-      "n_control": 74
-    },
-    "ja": {
-      "auc": null,
-      "n_kant": 3,
-      "n_control": 3,
-      "note": "insufficient class mass for CV"
+      "auc": 0.846111111111111,
+      "n_kant": 77,
+      "n_control": 77
     }
   },
   "within_language_pass": true,
+  "within_language_unscored": [],
   "verdict": "PASS",
   "seed": 42,
   "preregistration_note": "DA-15 Plan A eligibility gate (Codex HIGH-2). encoder passes only if overall AUC ≥ 0.75 AND every within-language AUC slice with sufficient class mass ≥ 0.75. Otherwise the encoder is excluded from the ADOPT primary panel."

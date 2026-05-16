@@ -17,9 +17,9 @@ DA-15 introduces a *versioned amended* Vendi metric `vendi_semantic_v2_encoder_s
 
 | encoder | calibration AUC | natural d | lang-bal d | length-bal d | calibration | natural | lang-bal | length-bal | eligible |
 |---|---|---|---|---|---|---|---|---|---|
-| `BAAI/bge-m3` | 0.9055 | 0.2286 | 0.1456 | -0.2655 | PASS | FAIL | FAIL | FAIL | no |
-| `intfloat/multilingual-e5-large` | 0.8865 | -0.1567 | -0.1754 | -0.4454 | PASS | FAIL | FAIL | FAIL | no |
-| `sentence-transformers/all-mpnet-base-v2` | 0.8960 | -0.1788 | -0.3368 | -0.7268 | PASS | FAIL | FAIL | FAIL | no |
+| `BAAI/bge-m3` | 0.9205 | 0.2286 | 0.1456 | -0.2655 | PASS | FAIL | FAIL | FAIL | no |
+| `intfloat/multilingual-e5-large` | 0.8900 | -0.1567 | -0.1754 | -0.4454 | PASS | FAIL | FAIL | FAIL | no |
+| `sentence-transformers/all-mpnet-base-v2` | 0.8230 | -0.1788 | -0.3246 | -0.5402 | PASS | FAIL | FAIL | FAIL | no |
 
 ## Per-encoder within-language d (encoder eligibility audit)
 
@@ -27,7 +27,7 @@ DA-15 introduces a *versioned amended* Vendi metric `vendi_semantic_v2_encoder_s
 |---|---|---|---|
 | `BAAI/bge-m3` | 0.2454 | -0.2781 | — (insufficient mass) |
 | `intfloat/multilingual-e5-large` | -0.1858 | -0.5763 | — (insufficient mass) |
-| `sentence-transformers/all-mpnet-base-v2` | -0.8021 | -0.4526 | — (insufficient mass) |
+| `sentence-transformers/all-mpnet-base-v2` | -0.7229 | -0.3085 | — (insufficient mass) |
 
 ## kant ADOPT quorum
 
@@ -43,17 +43,15 @@ No candidate encoder cleared both the calibration gate (AUC ≥ 0.75) and the DA
 
 ### What Plan A *did* find (non-gating observation)
 
-The within-language d slices show that **the encoders detect some directional effect** even where the global gate fails:
-
-* MPNet within-de d = **-0.802** (clears the point gate, fails the CI gate)
-* E5-large within-en d = **-0.576** (clears the point gate, fails the CI gate)
-* BGE-M3 within-de / within-en flip sign (+0.245 / -0.278) — the BGE-M3 metric reverses direction overall
-
-This is consistent with the DA-14 measurement-side hypothesis ("the LoRA does shift persona-style in some slices, but the global mixed-language signal is too noisy for the 6-window bootstrap to declare significance"), but it is **non-gating** — Plan A's pre-registered thresholds operate on the global metric, and Plan A was structurally designed to upgrade ADOPT only when the global threshold clears across primary candidate encoders. The within-language observations are recorded for Phase 2 design guidance (Plan B retrain should target per-language diversity, not global diversity).
+The within-language d slices show that **the encoders detect some directional effect** even where the global gate fails. The strongest signals appear in within-language slices, which is consistent with the DA-14 measurement-side hypothesis (the LoRA does shift persona-style in some slices, but the global mixed-language signal is too noisy for the 6-window bootstrap to declare significance). These observations are **non-gating** — Plan A's pre-registered thresholds operate on the global metric, and Plan A was structurally designed to upgrade ADOPT only when the global threshold clears across primary candidate encoders. The within-language observations are recorded for Phase 2 design guidance (Plan B retrain should target per-language diversity, not global diversity).
 
 ### Cross-encoder direction note
 
-MPNet and E5-large agree on the sign of the natural-window d (-0.18 / -0.16); BGE-M3 reverses sign (+0.23). This is the kind of behaviour Codex HIGH-2 anticipated when it required the calibration gate: retrieval-trained encoders are not stylometry validation, and even with a passing calibration AUC the rescore can reflect language/length artefacts. The disagreement strengthens the case that Plan A is structurally too noisy for the kant escalation under the available pilot evidence and that Phase 2 retrain (Plan B) is the appropriate next investment.
+The natural-window d sign disagrees across encoders (MPNet and E5-large agree on a negative sign; BGE-M3 flips positive). This is the kind of behaviour Codex HIGH-2 anticipated when it required the calibration gate: retrieval-trained encoders are not stylometry validation, and even with a passing calibration AUC the rescore can reflect language/length artefacts. The disagreement strengthens the case that Plan A is structurally too noisy for the kant escalation under the available pilot evidence and that Phase 2 retrain (Plan B) is the appropriate next investment.
+
+### Burrows axis (Codex LOW-1, future reference)
+
+**Burrows reduction remains FAIL** (v2 reduction = 0.4284% vs 5% target). Plan A is a measurement-side swap on the Vendi axis and does not improve German function-word stylometry. Had Plan A reached ADOPT via the Vendi + ICC 2-of-3 quorum, this paragraph would have been a *required* named limitation on the ADOPT verdict; it is carried in the REJECT verdict here as advance reference for Phase 2 design.
 
 ## Pre-registration anchor
 

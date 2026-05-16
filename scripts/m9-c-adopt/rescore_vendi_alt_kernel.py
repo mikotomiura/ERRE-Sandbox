@@ -9,12 +9,18 @@ variants:
 
 * **standard bootstrap**: resample the 6 natural windows per condition with
   replacement, recompute d each iteration.
-* **language-balanced bootstrap**: for each iteration, build language-pure
-  bootstrap windows of 100 utterances each (de / en), compute Vendi per
-  language, then average d across languages. Japanese is excluded because
-  Kant generation yields ≪100 ja utterances per condition.
-* **token-length-balanced bootstrap**: stratified by the four length
-  quartiles of the merged utterance pool, same mechanism.
+* **language-quota-balanced bootstrap**: for each iteration, draw a mixed
+  100-utterance window with per-stratum quotas (de / en, ja excluded
+  because Kant generation yields ≪100 ja utterances per condition), then
+  compute one Vendi score over that mixed kernel. Equal de/en quota
+  prevents language ID from dominating the resampled window even though
+  the kernel still includes cross-language cosine pairs. (Codex MEDIUM-2:
+  this is quota-balanced mixed-window bootstrap, not the stricter
+  per-language pure-window method — kept here because the resulting d
+  failed either way for the kant pool.)
+* **token-length-quota-balanced bootstrap**: same quota-balanced mixed-
+  window mechanism, stratified by the four length quartiles of the merged
+  utterance pool.
 * **within-language d** (d_de, d_en, d_ja): bootstrap d using only the
   utterances of a single language. Slices below the minimum window mass
   report ``null``.
@@ -65,6 +71,39 @@ fast once embeddings are pre-computed. 500 iterations is enough for a
 stable 95% CI without exhausting RAM on a CPU box."""
 
 _E5_PASSAGE_PREFIX: str = "passage: "
+_D2_ALLOWLIST_PATH = Path(
+    ".steering/20260516-m9-c-adopt-da15-impl/d2-encoder-allowlist.json",
+)
+
+
+def _load_allowlist() -> dict[str, Any]:
+    """Load the D-2 pre-registration allowlist (Codex HIGH-1 enforcement).
+
+    Calibration and rescore scripts refuse to run on encoders that are not
+    in the allowlist, and they pass the pinned revision SHA to
+    ``SentenceTransformer`` so the run cannot accidentally pick up a
+    different snapshot from the local cache.
+    """
+    if not _D2_ALLOWLIST_PATH.exists():
+        msg = f"D-2 allowlist missing: {_D2_ALLOWLIST_PATH}"
+        raise FileNotFoundError(msg)
+    return json.loads(_D2_ALLOWLIST_PATH.read_text(encoding="utf-8"))
+
+
+def _local_revision_sha(encoder_name: str) -> str | None:
+    """Read the locally-cached HF snapshot SHA. Works offline."""
+    safe = encoder_name.replace("/", "--")
+    base = (
+        Path.home()
+        / ".cache" / "huggingface" / "hub"
+        / f"models--{safe}" / "snapshots"
+    )
+    if not base.exists():
+        return None
+    snapshots = list(base.iterdir())
+    if not snapshots:
+        return None
+    return sorted(snapshots, key=lambda p: p.stat().st_mtime)[-1].name
 
 
 def _detect_language(text: str) -> str:
@@ -87,14 +126,21 @@ def _load_focal_utterances(shard: Path, persona_id: str) -> list[str]:
     return [str(r[0]).strip() for r in rows if r[0]]
 
 
-def _encode_pool(encoder_name: str, texts: list[str]) -> np.ndarray:
-    """Encode every utterance once and return unit-norm row embeddings."""
+def _encode_pool(
+    encoder_name: str, revision: str, texts: list[str],
+) -> np.ndarray:
+    """Encode every utterance once and return unit-norm row embeddings.
+
+    ``revision`` is the pinned HF commit SHA from the D-2 allowlist; it is
+    passed through to ``SentenceTransformer`` so the run is locked to a
+    specific snapshot.
+    """
     from sentence_transformers import (  # noqa: PLC0415
         SentenceTransformer,
     )
 
-    logger.info("loading encoder %s", encoder_name)
-    model = SentenceTransformer(encoder_name)
+    logger.info("loading encoder %s @ revision %s", encoder_name, revision)
+    model = SentenceTransformer(encoder_name, revision=revision)
     needs_e5_prefix = "e5" in encoder_name.lower()
     inputs = [(_E5_PASSAGE_PREFIX + t) if needs_e5_prefix else t for t in texts]
     logger.info("encoding %d utterances…", len(inputs))
@@ -139,26 +185,33 @@ def _cohens_d(a: list[float], b: list[float]) -> float:
     return (ma - mb) / pooled_sd
 
 
-def _bootstrap_window_d_ci(
+def _bootstrap_window_diff_ci(
     a: list[float], b: list[float], *, seed: int, n_resamples: int,
 ) -> dict[str, Any]:
-    """Window-level bootstrap CI on cohens_d (a − b)."""
+    """Window-level bootstrap of the mean difference (a − b).
+
+    Matches the DA-14 instrument exactly (see da14-verdict-v2-kant.json
+    ``diff_v2_minus_nolora`` + ``diff_ci_95``): the CI is on ``mean(ra) -
+    mean(rb)`` across bootstrap resamples, not on a bootstrap distribution
+    of Cohen's d. Cohen's d is reported as a separate point statistic on the
+    observed windows so the DA-14 gate (``cohens_d <= -0.5 AND diff_ci_upper
+    < 0``) can be applied against the original definitions.
+    """
     rng = np.random.default_rng(seed)
     a_arr = np.asarray(a, dtype=float)
     b_arr = np.asarray(b, dtype=float)
-    ds: list[float] = []
+    diffs: list[float] = []
     for _ in range(n_resamples):
-        ra = rng.choice(a_arr, size=len(a_arr), replace=True).tolist()
-        rb = rng.choice(b_arr, size=len(b_arr), replace=True).tolist()
-        ds.append(_cohens_d(ra, rb))
-    ds_finite = sorted(x for x in ds if not math.isnan(x))
-    if not ds_finite:
-        return {"point": float("nan"), "lo": float("nan"), "hi": float("nan")}
-    n = len(ds_finite)
+        ra = rng.choice(a_arr, size=len(a_arr), replace=True)
+        rb = rng.choice(b_arr, size=len(b_arr), replace=True)
+        diffs.append(float(np.mean(ra) - np.mean(rb)))
+    diffs_sorted = sorted(diffs)
+    n = len(diffs_sorted)
     return {
-        "point": _cohens_d(a, b),
-        "lo": float(ds_finite[int(0.025 * n)]),
-        "hi": float(ds_finite[int(0.975 * n)]),
+        "diff_point": float(np.mean(a_arr) - np.mean(b_arr)),
+        "diff_lo": float(diffs_sorted[int(0.025 * n)]),
+        "diff_hi": float(diffs_sorted[int(0.975 * n)]),
+        "cohens_d": _cohens_d(a, b),
         "n_resamples": n_resamples,
         "seed": seed,
     }
@@ -304,9 +357,30 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         len(v2_utterances), len(nolora_utterances),
     )
 
+    # === D-2 allowlist enforcement (Codex HIGH-1) ===
+    allowlist = _load_allowlist()
+    if args.encoder not in allowlist["encoders"]:
+        msg = (
+            f"encoder {args.encoder!r} is not in the D-2 allowlist"
+            f" ({sorted(allowlist['encoders'])}). Add the encoder to"
+            f" {_D2_ALLOWLIST_PATH} with a revision SHA and a role before"
+            " rerunning."
+        )
+        raise SystemExit(msg)
+    pinned = allowlist["encoders"][args.encoder]
+    revision = pinned["revision_sha"]
+    role = pinned["role"]
+    local_sha = _local_revision_sha(args.encoder)
+    if local_sha and local_sha != revision:
+        logger.warning(
+            "local cache snapshot %s differs from pinned %s — passing pinned"
+            " revision to SentenceTransformer to force the right snapshot",
+            local_sha, revision,
+        )
+
     # === Encode each pool once (the only expensive call) ===
-    v2_unit = _encode_pool(args.encoder, v2_utterances)
-    nolora_unit = _encode_pool(args.encoder, nolora_utterances)
+    v2_unit = _encode_pool(args.encoder, revision, v2_utterances)
+    nolora_unit = _encode_pool(args.encoder, revision, nolora_utterances)
 
     # === Natural per-window scores ===
     v2_window_scores = _natural_window_scores(v2_unit, v2_utt_per_shard)
@@ -316,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         len(v2_window_scores), len(nolora_window_scores),
     )
 
-    standard = _bootstrap_window_d_ci(
+    standard = _bootstrap_window_diff_ci(
         v2_window_scores, nolora_window_scores,
         seed=args.seed, n_resamples=args.n_resamples,
     )
@@ -381,8 +455,9 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
         )
 
     # === DA-14 threshold check (unchanged) ===
-    pass_point = standard.get("point") is not None and standard["point"] <= -0.5
-    pass_ci = standard.get("hi") is not None and standard["hi"] < 0
+    # DA-14 gate: cohens_d <= -0.5 AND mean-diff CI upper < 0.
+    pass_point = standard.get("cohens_d") is not None and standard["cohens_d"] <= -0.5
+    pass_ci = standard.get("diff_hi") is not None and standard["diff_hi"] < 0
     balanced_lang_pass = (
         lang_balanced is not None
         and lang_balanced["cohens_d"] <= -0.5
@@ -395,28 +470,34 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     )
 
     # === Runtime environment record (pre-registration audit) ===
-    try:
-        import sentence_transformers as _st  # noqa: PLC0415
-        import transformers as _tf  # noqa: PLC0415
-        from huggingface_hub import HfApi  # noqa: PLC0415
+    # Library versions and the pinned revision come from the D-2 allowlist;
+    # we no longer call HfApi at runtime so the script is offline-safe.
+    import sentence_transformers as _st  # noqa: PLC0415
+    import transformers as _tf  # noqa: PLC0415
 
-        revision_sha = HfApi().repo_info(args.encoder).sha
-        library_versions = {
-            "sentence_transformers": _st.__version__,
-            "transformers": _tf.__version__,
-        }
-    except Exception as exc:  # noqa: BLE001
-        revision_sha = f"<unavailable: {exc}>"
-        library_versions = {}
+    revision_sha = revision
+    library_versions = {
+        "sentence_transformers": _st.__version__,
+        "transformers": _tf.__version__,
+    }
+    expected_lib = allowlist.get("library_versions", {})
+    library_versions_match = all(
+        library_versions.get(k) == v for k, v in expected_lib.items()
+    )
 
     payload: dict[str, Any] = {
         "encoder": args.encoder,
         "encoder_revision_sha": revision_sha,
+        "encoder_role": role,
         "library_versions": library_versions,
+        "library_versions_match_d2": library_versions_match,
         "preregistration_anchor": (
-            "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md)."
-            " Encoder + revision SHA + library versions must match the pinned"
-            " values for the verdict to count as ADOPT-eligible."
+            "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md"
+            " + d2-encoder-allowlist.json). Encoder + revision SHA + library"
+            " versions must match the pinned values for the verdict to count"
+            " as ADOPT-eligible. ``encoder_role`` decides whether this run can"
+            " contribute to the primary ADOPT panel (``primary``) or only"
+            " serves as the DA-14 regression baseline (``regression``)."
         ),
         "persona": args.persona,
         "metric": "vendi_semantic_v2_encoder_swap",

@@ -16,10 +16,12 @@ Corpus (per ``.steering/20260516-m9-c-adopt-da15-impl/decisions.md`` D-1):
   can discriminate Kant-style in the *modelled* outputs we will rescore, so
   the calibration uses the same generator distribution).
 * class ``control`` — 100 utterances sampled from
-  ``data/eval/golden/nietzsche_natural_run0.duckdb`` (Nietzsche natural
-  baseline; D-1 documents this as a license-clean substitute for the
-  Heidegger control the spec example named — both are non-Kant 19c-German
-  philosophers from the same generation pipeline).
+  ``data/eval/golden/nietzsche_stimulus_run0.duckdb`` (Nietzsche stimulus
+  condition — same generation pipeline as the kant pool, and language
+  distribution overlaps with kant_r8v2_run0_stim. The natural baseline is
+  almost exclusively ja, which would collapse the calibration into a
+  language-ID detector. D-1 documents this as a license-clean substitute
+  for the Heidegger control the spec example named).
 
 Output:
 * ``data/calibration/kant_heidegger_corpus.json`` — built once, deterministic
@@ -68,6 +70,17 @@ dominated by tokenizer boilerplate rather than persona-style."""
 _E5_PASSAGE_PREFIX: str = "passage: "
 """Mirrors vendi._E5_PASSAGE_PREFIX so calibration and rescore use identical
 encoder-side handling."""
+
+_D2_ALLOWLIST_PATH = Path(
+    ".steering/20260516-m9-c-adopt-da15-impl/d2-encoder-allowlist.json",
+)
+
+
+def _load_allowlist() -> dict[str, Any]:
+    if not _D2_ALLOWLIST_PATH.exists():
+        msg = f"D-2 allowlist missing: {_D2_ALLOWLIST_PATH}"
+        raise FileNotFoundError(msg)
+    return json.loads(_D2_ALLOWLIST_PATH.read_text(encoding="utf-8"))
 
 
 def _detect_language(text: str) -> str:
@@ -142,26 +155,52 @@ def _build_corpus(seed: int, n_per_class: int, output: Path) -> dict[str, Any]:
     )
 
     # Per-language quota = min(pool_kant_lang, pool_control_lang). Sum these
-    # quotas, then scale so the totals reach n_per_class per class. Languages
-    # with min=0 are dropped entirely (within-lang AUC would be undefined).
+    # quotas, then scale so the totals reach n_per_class per class.
+    # Languages that cannot supply at least 5 per class (the StratifiedKFold
+    # minimum) are dropped entirely so the within-language AUC gate has no
+    # silent ``null`` slices (Codex MEDIUM-1).
     raw_quotas = {
         lang: min(len(kant_by_lang[lang]), len(control_by_lang[lang]))
         for lang in ("de", "en", "ja")
     }
-    eligible = {lang: q for lang, q in raw_quotas.items() if q > 0}
+    _MIN_PER_LANG = 5
+    dropped = {l: q for l, q in raw_quotas.items() if q < _MIN_PER_LANG}
+    eligible = {l: q for l, q in raw_quotas.items() if q >= _MIN_PER_LANG}
+    if dropped:
+        logger.info(
+            "dropped languages (insufficient per-class mass for CV): %s",
+            dropped,
+        )
     if not eligible:
-        msg = "no overlapping language bucket between kant and control pools"
+        msg = "no eligible language bucket with ≥ 5 per class"
         raise RuntimeError(msg)
     total = sum(eligible.values())
-    # Scale quotas so the total matches n_per_class. Round down, then top up
-    # the largest bucket so we hit n_per_class exactly.
+    # Scale quotas so the total matches n_per_class. Round down.
     scaled = {
-        lang: max(1, int(eligible[lang] * n_per_class / total))
-        for lang in eligible
+        lang: int(eligible[lang] * n_per_class / total) for lang in eligible
     }
+    # Drop languages whose scaled quota is below the per-fold minimum so the
+    # downstream within-language AUC gate has no silent ``null`` slices.
+    scaled_dropped = {l: q for l, q in scaled.items() if q < _MIN_PER_LANG}
+    scaled = {l: q for l, q in scaled.items() if q >= _MIN_PER_LANG}
+    if scaled_dropped:
+        logger.info(
+            "dropped languages after scaling (quota < %d): %s",
+            _MIN_PER_LANG, scaled_dropped,
+        )
+        dropped.update(scaled_dropped)
+        # Re-scale remaining languages so we still hit n_per_class.
+        if scaled:
+            new_total = sum(scaled.values())
+            scaled = {
+                lang: int(q * n_per_class / new_total) for lang, q in scaled.items()
+            }
+    if not scaled:
+        msg = "no language has a quota ≥ 5 after scaling"
+        raise RuntimeError(msg)
     deficit = n_per_class - sum(scaled.values())
     if deficit != 0:
-        largest = max(scaled, key=lambda lang: eligible[lang])
+        largest = max(scaled, key=lambda lang: scaled[lang])
         scaled[largest] += deficit
     # Cap at the raw quota so we never sample more than the smaller pool has.
     for lang in scaled:
@@ -189,15 +228,18 @@ def _build_corpus(seed: int, n_per_class: int, output: Path) -> dict[str, Any]:
         )
 
     payload: dict[str, Any] = {
-        "corpus_schema_version": 1,
+        "corpus_schema_version": 2,
+        "dropped_languages": dropped,
         "license_attribution": (
             "kant_r8v2_run0_stim — generated by Qwen3-8B + kant LoRA r8 v2"
             " (Apache-2.0 generation pipeline, repository licence applies)."
-            " nietzsche_natural_run0 — generated by Qwen3-8B + nietzsche"
-            " persona prompt (no LoRA), license-clean Apache-2.0 pipeline."
-            " D-1 substitution: Codex spec named Heidegger as control, repo"
-            " has nietzsche persona instead; both are 19c-German non-Kant"
-            " philosophers from the same generation pipeline."
+            " nietzsche_stimulus_run0 — generated by Qwen3-8B + nietzsche"
+            " persona prompt (no LoRA), license-clean Apache-2.0 pipeline,"
+            " stimulus condition selected so the language distribution"
+            " matches the kant_r8v2 pool. D-1 substitution: Codex spec"
+            " named Heidegger as control, repo has nietzsche persona"
+            " instead; both are 19c-German non-Kant philosophers from the"
+            " same generation pipeline."
         ),
         "seed": seed,
         "n_per_class": n_per_class,
@@ -217,14 +259,19 @@ def _load_corpus(corpus_path: Path) -> dict[str, Any]:
     return json.loads(corpus_path.read_text(encoding="utf-8"))
 
 
-def _encode(encoder_name: str, texts: list[str]) -> np.ndarray:
-    """Load the encoder once, encode the corpus, return ``(N, D)`` floats."""
+def _encode(encoder_name: str, revision: str, texts: list[str]) -> np.ndarray:
+    """Load the encoder once, encode the corpus, return ``(N, D)`` floats.
+
+    ``revision`` is the pinned SHA from the D-2 allowlist; it's passed
+    through to ``SentenceTransformer`` so the calibration is locked to a
+    specific snapshot.
+    """
     from sentence_transformers import (  # noqa: PLC0415  # heavy ML dep behind eval extras
         SentenceTransformer,
     )
 
-    logger.info("loading encoder %s", encoder_name)
-    model = SentenceTransformer(encoder_name)
+    logger.info("loading encoder %s @ revision %s", encoder_name, revision)
+    model = SentenceTransformer(encoder_name, revision=revision)
     needs_e5_prefix = "e5" in encoder_name.lower()
     inputs = [(_E5_PASSAGE_PREFIX + t) if needs_e5_prefix else t for t in texts]
     return np.asarray(
@@ -341,38 +388,63 @@ def main(argv: list[str] | None = None) -> int:
     labels = np.asarray([1 if e["label"] == "kant" else 0 for e in entries], dtype=int)
     languages = [e["language"] for e in entries]
 
-    features = _encode(args.encoder, texts)
+    # === D-2 allowlist enforcement (Codex HIGH-1) ===
+    allowlist = _load_allowlist()
+    if args.encoder not in allowlist["encoders"]:
+        msg = (
+            f"encoder {args.encoder!r} is not in the D-2 allowlist"
+            f" ({sorted(allowlist['encoders'])})."
+        )
+        raise SystemExit(msg)
+    pinned = allowlist["encoders"][args.encoder]
+    revision = pinned["revision_sha"]
+    role = pinned["role"]
+
+    features = _encode(args.encoder, revision, texts)
 
     overall_auc = _auc_via_logreg(features, labels, seed=args.seed)
     per_lang = _within_language_auc(features, labels, languages, seed=args.seed)
 
-    # Pass gate: overall AUC ≥ 0.75 AND every language slice with sufficient
-    # mass also clears 0.75. A within-language failure means the overall
-    # signal is riding language ID rather than persona-style.
-    within_lang_pass = all(
-        v["auc"] is None or v["auc"] >= _PASS_AUC for v in per_lang.values()
+    # Pass gate (Codex HIGH-2 + MEDIUM-1): overall AUC ≥ 0.75 AND every
+    # language slice in the corpus with sufficient mass clears 0.75. Slices
+    # with insufficient mass (< 5 per class) are NOT silently passed —
+    # instead, the gate refuses to certify the encoder as fully cleared and
+    # flags the limitation in the verdict ``within_language_unscored``
+    # field. ja under-mass for the kant corpus is the known case.
+    scored = {l: v for l, v in per_lang.items() if v["auc"] is not None}
+    unscored = {l: v for l, v in per_lang.items() if v["auc"] is None}
+    within_lang_pass = bool(scored) and all(
+        v["auc"] >= _PASS_AUC for v in scored.values()
     )
-    verdict = "PASS" if overall_auc >= _PASS_AUC and within_lang_pass else "FAIL"
+    has_unscored = bool(unscored)
+    verdict = (
+        "PASS"
+        if overall_auc >= _PASS_AUC and within_lang_pass and not has_unscored
+        else "PASS_WITH_LIMITATION"
+        if overall_auc >= _PASS_AUC and within_lang_pass and has_unscored
+        else "FAIL"
+    )
 
     # === Runtime environment record (for pre-registration audit) ===
-    try:
-        import sentence_transformers as _st  # noqa: PLC0415
-        import transformers as _tf  # noqa: PLC0415
-        from huggingface_hub import HfApi  # noqa: PLC0415
+    import sentence_transformers as _st  # noqa: PLC0415
+    import transformers as _tf  # noqa: PLC0415
 
-        revision_sha = HfApi().repo_info(args.encoder).sha
-        library_versions = {
-            "sentence_transformers": _st.__version__,
-            "transformers": _tf.__version__,
-        }
-    except Exception as exc:  # noqa: BLE001
-        revision_sha = f"<unavailable: {exc}>"
-        library_versions = {}
+    revision_sha = revision
+    library_versions = {
+        "sentence_transformers": _st.__version__,
+        "transformers": _tf.__version__,
+    }
+    expected_lib = allowlist.get("library_versions", {})
+    library_versions_match = all(
+        library_versions.get(k) == v for k, v in expected_lib.items()
+    )
 
     payload: dict[str, Any] = {
         "encoder": args.encoder,
         "encoder_revision_sha": revision_sha,
+        "encoder_role": role,
         "library_versions": library_versions,
+        "library_versions_match_d2": library_versions_match,
         "corpus": str(args.corpus),
         "n_total": len(texts),
         "n_kant": int(labels.sum()),
@@ -385,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
         "overall_auc": overall_auc,
         "within_language_auc": per_lang,
         "within_language_pass": within_lang_pass,
+        "within_language_unscored": sorted(unscored.keys()),
         "verdict": verdict,
         "seed": args.seed,
         "preregistration_note": (

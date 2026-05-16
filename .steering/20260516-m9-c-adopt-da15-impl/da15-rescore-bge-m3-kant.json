@@ -1,8 +1,13 @@
 {
   "encoder": "BAAI/bge-m3",
-  "encoder_revision_sha": "<unavailable: Cannot reach https://huggingface.co/api/models/BAAI/bge-m3: offline mode is enabled. To disable it, please unset the `HF_HUB_OFFLINE` environment variable.>",
-  "library_versions": {},
-  "preregistration_anchor": "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md). Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible.",
+  "encoder_revision_sha": "5617a9f61b028005a4858fdac845db406aefb181",
+  "encoder_role": "primary",
+  "library_versions": {
+    "sentence_transformers": "3.4.1",
+    "transformers": "4.57.6"
+  },
+  "library_versions_match_d2": true,
+  "preregistration_anchor": "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md + d2-encoder-allowlist.json). Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible. ``encoder_role`` decides whether this run can contribute to the primary ADOPT panel (``primary``) or only serves as the DA-14 regression baseline (``regression``).",
   "persona": "kant",
   "metric": "vendi_semantic_v2_encoder_swap",
   "window_size": 100,
@@ -39,9 +44,10 @@
     "cohens_d": 0.22859647387268098
   },
   "standard_bootstrap": {
-    "point": 0.22859647387268098,
-    "lo": -0.913818813870478,
-    "hi": 1.767610595298399,
+    "diff_point": 0.08204003612402744,
+    "diff_lo": -0.29693726011406696,
+    "diff_hi": 0.43488753612009035,
+    "cohens_d": 0.22859647387268098,
     "n_resamples": 2000,
     "seed": 42
   },

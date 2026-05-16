@@ -40,6 +40,13 @@ from typing import Any
 
 _VENDI_D_GATE: float = -0.5
 _VENDI_AUC_GATE: float = 0.75
+_D2_ALLOWLIST_PATH = Path(
+    ".steering/20260516-m9-c-adopt-da15-impl/d2-encoder-allowlist.json",
+)
+
+
+def _load_allowlist() -> dict[str, Any]:
+    return json.loads(_D2_ALLOWLIST_PATH.read_text(encoding="utf-8"))
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -47,14 +54,18 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _calibration_pass(calib: dict[str, Any]) -> bool:
-    if calib.get("verdict") != "PASS":
+    """Calibration is considered cleared if the gate verdict is PASS or
+    PASS_WITH_LIMITATION (Codex MEDIUM-1: unscored slices flag a documented
+    limitation but do not silently certify a full pass)."""
+    if calib.get("verdict") not in ("PASS", "PASS_WITH_LIMITATION"):
         return False
     if calib.get("overall_auc", 0) < _VENDI_AUC_GATE:
         return False
-    return all(
-        v.get("auc") is None or v["auc"] >= _VENDI_AUC_GATE
-        for v in calib.get("within_language_auc", {}).values()
-    )
+    scored = [
+        v for v in calib.get("within_language_auc", {}).values()
+        if v.get("auc") is not None
+    ]
+    return all(v["auc"] >= _VENDI_AUC_GATE for v in scored) if scored else False
 
 
 def _bootstrap_clears(payload: dict[str, Any] | None) -> bool:
@@ -68,27 +79,53 @@ def _bootstrap_clears(payload: dict[str, Any] | None) -> bool:
     )
 
 
-def _encoder_eligible(rescore: dict[str, Any], calib: dict[str, Any]) -> dict[str, Any]:
+def _encoder_eligible(
+    rescore: dict[str, Any],
+    calib: dict[str, Any],
+    allowlist: dict[str, Any],
+) -> dict[str, Any]:
     cal_pass = _calibration_pass(calib)
-    natural_d = rescore["natural_windows"]["cohens_d"]
+    natural_d = rescore["standard_bootstrap"].get("cohens_d")
+    # DA-14 gate is on the mean-difference CI (``ci_upper < 0``), not on a
+    # bootstrap distribution of d. Codex HIGH-1 mandates that DA-15 preserve
+    # this distinction.
+    diff_hi = rescore["standard_bootstrap"].get("diff_hi")
     natural_pass = (
         natural_d is not None
         and natural_d <= _VENDI_D_GATE
-        and rescore["standard_bootstrap"].get("hi") is not None
-        and rescore["standard_bootstrap"]["hi"] < 0
+        and diff_hi is not None
+        and diff_hi < 0
     )
+    # D-2 allowlist enforcement (Codex HIGH-1 + HIGH-2): only encoders
+    # marked ``primary`` may contribute to the ADOPT quorum; regression
+    # entries (MPNet) are reported but cannot move the verdict.
+    encoder = rescore["encoder"]
+    d2_entry = allowlist["encoders"].get(encoder, {})
+    role = d2_entry.get("role")
+    pinned_sha = d2_entry.get("revision_sha")
+    revision_match = rescore.get("encoder_revision_sha") == pinned_sha
+    library_match = rescore.get("library_versions_match_d2", False)
     lang_pass = _bootstrap_clears(rescore.get("language_balanced_bootstrap"))
     length_pass = _bootstrap_clears(rescore.get("length_balanced_bootstrap"))
-    overall_eligible = cal_pass and natural_pass and lang_pass and length_pass
+    overall_eligible = (
+        role == "primary"
+        and revision_match
+        and library_match
+        and cal_pass and natural_pass and lang_pass and length_pass
+    )
     return {
         "encoder": rescore["encoder"],
         "encoder_revision_sha": rescore.get("encoder_revision_sha"),
+        "encoder_role_d2": role,
+        "d2_revision_match": revision_match,
+        "d2_library_match": library_match,
         "calibration_pass": cal_pass,
         "calibration_overall_auc": calib.get("overall_auc"),
         "calibration_within_lang_auc": calib.get("within_language_auc"),
         "natural_cohens_d": natural_d,
-        "natural_diff_lo": rescore["standard_bootstrap"].get("lo"),
-        "natural_diff_hi": rescore["standard_bootstrap"].get("hi"),
+        "natural_diff_point": rescore["standard_bootstrap"].get("diff_point"),
+        "natural_diff_lo": rescore["standard_bootstrap"].get("diff_lo"),
+        "natural_diff_hi": rescore["standard_bootstrap"].get("diff_hi"),
         "natural_pass": natural_pass,
         "language_balanced_d": (
             rescore.get("language_balanced_bootstrap", {}).get("cohens_d")
@@ -229,6 +266,55 @@ def _write_markdown(payload: dict[str, Any], output: Path) -> None:
             " targeted hybrid retrain) is the documented next step."
         )
         lines.append("")
+        lines.append("### What Plan A *did* find (non-gating observation)")
+        lines.append("")
+        lines.append(
+            "The within-language d slices show that **the encoders detect"
+            " some directional effect** even where the global gate fails."
+            " The strongest signals appear in within-language slices, which"
+            " is consistent with the DA-14 measurement-side hypothesis"
+            " (the LoRA does shift persona-style in some slices, but the"
+            " global mixed-language signal is too noisy for the 6-window"
+            " bootstrap to declare significance). These observations are"
+            " **non-gating** — Plan A's pre-registered thresholds operate"
+            " on the global metric, and Plan A was structurally designed to"
+            " upgrade ADOPT only when the global threshold clears across"
+            " primary candidate encoders. The within-language observations"
+            " are recorded for Phase 2 design guidance (Plan B retrain"
+            " should target per-language diversity, not global diversity)."
+        )
+        lines.append("")
+        lines.append("### Cross-encoder direction note")
+        lines.append("")
+        lines.append(
+            "The natural-window d sign disagrees across encoders (MPNet and"
+            " E5-large agree on a negative sign; BGE-M3 flips positive)."
+            " This is the kind of behaviour Codex HIGH-2 anticipated when"
+            " it required the calibration gate: retrieval-trained encoders"
+            " are not stylometry validation, and even with a passing"
+            " calibration AUC the rescore can reflect language/length"
+            " artefacts. The disagreement strengthens the case that Plan A"
+            " is structurally too noisy for the kant escalation under the"
+            " available pilot evidence and that Phase 2 retrain (Plan B)"
+            " is the appropriate next investment."
+        )
+        lines.append("")
+        # Burrows named limitation is required by Codex LOW-1 even on a
+        # REJECT outcome, because future readers of this file may assume the
+        # Burrows axis is somehow rescued by Plan A. It is not.
+        lines.append("### Burrows axis (Codex LOW-1, future reference)")
+        lines.append("")
+        lines.append(
+            "**Burrows reduction remains FAIL** (v2 reduction = "
+            f"{da14['burrows_reduction_pct']:.4f}% vs 5% target). Plan A is"
+            " a measurement-side swap on the Vendi axis and does not improve"
+            " German function-word stylometry. Had Plan A reached ADOPT via"
+            " the Vendi + ICC 2-of-3 quorum, this paragraph would have been"
+            " a *required* named limitation on the ADOPT verdict; it is"
+            " carried in the REJECT verdict here as advance reference for"
+            " Phase 2 design."
+        )
+        lines.append("")
     lines.append("## Pre-registration anchor")
     lines.append("")
     lines.append(
@@ -275,7 +361,10 @@ def main(argv: list[str] | None = None) -> int:
         msg = "no encoder appears in both --rescore and --calibration"
         raise RuntimeError(msg)
 
-    per_encoder = [_encoder_eligible(rescores[e], calibrations[e]) for e in common]
+    allowlist = _load_allowlist()
+    per_encoder = [
+        _encoder_eligible(rescores[e], calibrations[e], allowlist) for e in common
+    ]
     eligible = [e for e in per_encoder if e["eligible_for_adopt"]]
     eligible_names = [e["encoder"] for e in eligible]
 

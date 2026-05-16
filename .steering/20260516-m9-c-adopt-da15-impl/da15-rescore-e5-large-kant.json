@@ -1,11 +1,13 @@
 {
   "encoder": "intfloat/multilingual-e5-large",
   "encoder_revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+  "encoder_role": "primary",
   "library_versions": {
     "sentence_transformers": "3.4.1",
     "transformers": "4.57.6"
   },
-  "preregistration_anchor": "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md). Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible.",
+  "library_versions_match_d2": true,
+  "preregistration_anchor": "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md + d2-encoder-allowlist.json). Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible. ``encoder_role`` decides whether this run can contribute to the primary ADOPT panel (``primary``) or only serves as the DA-14 regression baseline (``regression``).",
   "persona": "kant",
   "metric": "vendi_semantic_v2_encoder_swap",
   "window_size": 100,
@@ -42,9 +44,10 @@
     "cohens_d": -0.15669557018669839
   },
   "standard_bootstrap": {
-    "point": -0.15669557018669839,
-    "lo": -1.1362018523154653,
-    "hi": 1.7404220309781135,
+    "diff_point": -0.005914760653521256,
+    "diff_lo": -0.04575768116746559,
+    "diff_hi": 0.031000998044323325,
+    "cohens_d": -0.15669557018669839,
     "n_resamples": 2000,
     "seed": 42
   },

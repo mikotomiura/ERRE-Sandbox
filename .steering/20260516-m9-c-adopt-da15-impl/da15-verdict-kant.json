@@ -25,9 +25,12 @@
   "per_encoder": [
     {
       "encoder": "BAAI/bge-m3",
-      "encoder_revision_sha": "<unavailable: Cannot reach https://huggingface.co/api/models/BAAI/bge-m3: offline mode is enabled. To disable it, please unset the `HF_HUB_OFFLINE` environment variable.>",
+      "encoder_revision_sha": "5617a9f61b028005a4858fdac845db406aefb181",
+      "encoder_role_d2": "primary",
+      "d2_revision_match": true,
+      "d2_library_match": true,
       "calibration_pass": true,
-      "calibration_overall_auc": 0.9055,
+      "calibration_overall_auc": 0.9205,
       "calibration_within_lang_auc": {
         "de": {
           "auc": 0.8400000000000001,
@@ -35,20 +38,15 @@
           "n_control": 23
         },
         "en": {
-          "auc": 0.9480000000000001,
-          "n_kant": 74,
-          "n_control": 74
-        },
-        "ja": {
-          "auc": null,
-          "n_kant": 3,
-          "n_control": 3,
-          "note": "insufficient class mass for CV"
+          "auc": 0.9160555555555556,
+          "n_kant": 77,
+          "n_control": 77
         }
       },
       "natural_cohens_d": 0.22859647387268098,
-      "natural_diff_lo": -0.913818813870478,
-      "natural_diff_hi": 1.767610595298399,
+      "natural_diff_point": 0.08204003612402744,
+      "natural_diff_lo": -0.29693726011406696,
+      "natural_diff_hi": 0.43488753612009035,
       "natural_pass": false,
       "language_balanced_d": 0.14564141728662858,
       "language_balanced_pass": false,
@@ -64,8 +62,11 @@
     {
       "encoder": "intfloat/multilingual-e5-large",
       "encoder_revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+      "encoder_role_d2": "primary",
+      "d2_revision_match": true,
+      "d2_library_match": true,
       "calibration_pass": true,
-      "calibration_overall_auc": 0.8865000000000001,
+      "calibration_overall_auc": 0.89,
       "calibration_within_lang_auc": {
         "de": {
           "auc": 0.85,
@@ -73,20 +74,15 @@
           "n_control": 23
         },
         "en": {
-          "auc": 0.8695873015873017,
-          "n_kant": 74,
-          "n_control": 74
-        },
-        "ja": {
-          "auc": null,
-          "n_kant": 3,
-          "n_control": 3,
-          "note": "insufficient class mass for CV"
+          "auc": 0.846111111111111,
+          "n_kant": 77,
+          "n_control": 77
         }
       },
       "natural_cohens_d": -0.15669557018669839,
-      "natural_diff_lo": -1.1362018523154653,
-      "natural_diff_hi": 1.7404220309781135,
+      "natural_diff_point": -0.005914760653521256,
+      "natural_diff_lo": -0.04575768116746559,
+      "natural_diff_hi": 0.031000998044323325,
       "natural_pass": false,
       "language_balanced_d": -0.17540819048198836,
       "language_balanced_pass": false,
@@ -102,8 +98,11 @@
     {
       "encoder": "sentence-transformers/all-mpnet-base-v2",
       "encoder_revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+      "encoder_role_d2": "regression",
+      "d2_revision_match": true,
+      "d2_library_match": true,
       "calibration_pass": true,
-      "calibration_overall_auc": 0.8960000000000001,
+      "calibration_overall_auc": 0.8230000000000001,
       "calibration_within_lang_auc": {
         "de": {
           "auc": 0.8400000000000001,
@@ -111,28 +110,23 @@
           "n_control": 23
         },
         "en": {
-          "auc": 0.9294603174603175,
-          "n_kant": 74,
-          "n_control": 74
-        },
-        "ja": {
-          "auc": null,
-          "n_kant": 3,
-          "n_control": 3,
-          "note": "insufficient class mass for CV"
+          "auc": 0.8536111111111111,
+          "n_kant": 77,
+          "n_control": 77
         }
       },
       "natural_cohens_d": -0.17884690563776426,
-      "natural_diff_lo": -1.5562791776955311,
-      "natural_diff_hi": 1.2289562152435216,
+      "natural_diff_point": -0.128041088203787,
+      "natural_diff_lo": -0.8762965168680878,
+      "natural_diff_hi": 0.6318451538786292,
       "natural_pass": false,
-      "language_balanced_d": -0.33675603974239693,
+      "language_balanced_d": -0.3245564850534946,
       "language_balanced_pass": false,
-      "length_balanced_d": -0.7267805633061032,
+      "length_balanced_d": -0.5402356936150126,
       "length_balanced_pass": false,
       "within_language_d": {
-        "de": -0.8020724137501338,
-        "en": -0.4526324418314832,
+        "de": -0.7229267635222539,
+        "en": -0.3084787686779573,
         "ja": null
       },
       "eligible_for_adopt": false

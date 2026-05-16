@@ -83,6 +83,62 @@
 - **影響範囲**: rescore script は exploratory encoder を accept しない
   (CLI 引数の choices で primary 3 + lexical-5gram に制限)。
 
+## D-4: Codex independent review HIGH/MEDIUM/LOW の反映
+
+- **判断日時**: 2026-05-16 (Codex review verbatim 受領後、Plan A artifacts
+  再生成)
+- **背景**: Codex independent review (`codex-review.md`、gpt-5.5 xhigh、
+  Verdict = **ADOPT-WITH-CHANGES**) が以下 5 件を指摘:
+  - **HIGH-1**: 標準 bootstrap が `cohens_d` 分布に CI を打っていたが、
+    DA-14 は `mean(v2) - mean(no-LoRA)` に CI を打って `ci_upper < 0` を
+    閾値としている。HIGH-3 (DA-14 thresholds unchanged) 違反。
+  - **HIGH-2**: D-2 pre-registration が記述のみで、コード側で encoder
+    allowlist / revision pin / library version match を強制していない。
+    BGE-M3 artifact の revision SHA が `<unavailable>` だった。
+  - **MEDIUM-1**: ja within-language slice が null AUC で silently
+    "within_language_pass" にカウントされていた。
+  - **MEDIUM-2**: language-balanced bootstrap の docstring (per-language
+    pure window) と実装 (quota-balanced mixed window) が乖離。
+  - **LOW-1**: control corpus の docstring/metadata が
+    `nietzsche_natural_run0` (実際は `nietzsche_stimulus_run0`) のまま。
+
+- **反映**:
+  1. **HIGH-1**: `_bootstrap_window_d_ci` を `_bootstrap_window_diff_ci` に
+     改名し、`diff_point` / `diff_lo` / `diff_hi` (CI on mean diff) と
+     `cohens_d` (observed-window point statistic) を別々に出力。verdict
+     aggregator の gate を `cohens_d <= -0.5 AND diff_hi < 0` に統一。
+     全 rescore artifact を regenerate。
+  2. **HIGH-2**: `.steering/20260516-m9-c-adopt-da15-impl/d2-encoder-
+     allowlist.json` を新規追加。各 encoder に `role` (primary /
+     regression / exploratory) と `revision_sha` を pin。calibration/
+     rescore script は allowlist にない encoder で起動を拒否、
+     `SentenceTransformer(..., revision=...)` で snapshot を強制ロック。
+     verdict aggregator は role=primary 以外を ADOPT 不寄与扱い、
+     revision_match + library_match の boolean を per-encoder に併報告。
+  3. **MEDIUM-1**: 計算前の corpus build 段階で、scaled quota < 5 の言語
+     を drop。corpus_schema_version を 2 に bump、`dropped_languages` field
+     を payload に追加。calibration verdict は `PASS` / `PASS_WITH_LIMITATION`
+     / `FAIL` の 3 値化。
+  4. **MEDIUM-2**: rescore script の docstring を実装に合わせて
+     "language-quota-balanced bootstrap" + "token-length-quota-balanced
+     bootstrap" に改名。stricter per-language pure-window method は
+     Phase 2 design 時の検討事項として decisions.md に記録。
+  5. **LOW-1**: docstring + `license_attribution` を `nietzsche_stimulus_
+     run0` に統一。corpus rebuild により metadata も更新。
+
+- **再生成**: corpus + 3 encoder calibration + 3 encoder rescore + verdict
+  JSON/MD を全て再生成。verdict 結果は同じく **REJECT** (per-encoder の
+  数値は HIGH-1 修正 + ja drop の影響で僅かに変化、quorum 判定は不変)。
+
+- **トレードオフ**:
+  - HIGH-1 修正によって "DA-14 と完全同 statistic" を確保。HIGH-3 violation
+    risk を完全に閉じた。
+  - HIGH-2 allowlist は本 PR scope では D-2 と redundant に見えるが、Phase 2
+    以降の Plan B 起動時に同じ enforcement 機構を再利用可能。
+  - MEDIUM-1 ja drop は corpus 内容を狭めたが、within-language gate の
+    silent-pass を排除。Phase 2 で ja を含めるなら data 採取段階で ja 比率
+    を上げる別 driver が必要 (Plan B-2 設計時の検討事項)。
+
 ## D-α-FAIL: Plan A は kant について REJECT (実測 verdict)
 
 - **判断日時**: 2026-05-16 (rescore + verdict aggregation 後)
