@@ -24,6 +24,15 @@ from erre_sandbox.evidence.tier_b.vendi_lexical_5gram import (
     make_tfidf_5gram_cosine_kernel,
 )
 
+# sklearn (transitive dep of sentence-transformers, explicit in [eval] extras)
+# is required for every test that actually invokes the kernel. Skip the
+# entire module under the CI default profile (no extras installed); the
+# constant + signature + dispatch-error tests are kept inside this gate
+# because their pytest collection imports do not exercise sklearn but
+# splitting them would fragment the file. Production smoke verifies the
+# kernel under `uv sync --extra eval`.
+pytest.importorskip("sklearn")
+
 
 def test_lexical_5gram_kernel_name_constant() -> None:
     """D-2 allowlist identifier must match the JSON pre-registration."""
