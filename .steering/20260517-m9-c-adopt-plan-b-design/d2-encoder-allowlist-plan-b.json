@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "plan": "B",
+  "preregistration_note": "Plan B verdict 用 D-2 allowlist (HIGH-2 enforcement 継承)。Plan A 3 encoder に lexical-5gram を追加し、encoder agreement axis を 4-encoder 上で判定する。MPNet は Plan A での per-encoder within-language d 結果 (d_de=-0.72 最強検出器) を踏まえ primary 復帰、BGE-M3 は Plan A natural d sign flip (+0.23) を踏まえ exploratory 格下げ (報告 obligatory だが ADOPT 寄与不可)。Plan B ADOPT は 3 primary encoder のうち 2 以上で natural d <= -0.5 + CI upper < 0 + lang-balanced d <= -0.5 + length-balanced d <= -0.5 を満たすこと、かつ符号一致 (3 とも negative) を pre-condition とする。lexical-5gram は retrieval-trained でない independent kernel として encoder diversity を確保する。実装 module path は本 PR で pre-register のみ、実装本体は次セッション (retrain prep) で `erre_sandbox.evidence.tier_b.vendi_lexical_5gram` に追加する。",
+  "library_versions": {
+    "sentence_transformers": "3.4.1",
+    "transformers": "4.57.6"
+  },
+  "encoders": {
+    "sentence-transformers/all-mpnet-base-v2": {
+      "role": "primary",
+      "revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+      "plan_a_role": "regression",
+      "promotion_note": "Plan A within-language d 結果 (d_de=-0.72) で per-language signal の最強検出器であることが empirical に確認されたため Plan B では primary に復帰。"
+    },
+    "intfloat/multilingual-e5-large": {
+      "role": "primary",
+      "revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+      "plan_a_role": "primary",
+      "promotion_note": "Plan A の en 軸検出器 (d_en=-0.58)。Plan B でも primary 維持。"
+    },
+    "lexical_5gram": {
+      "role": "primary",
+      "revision_sha": "n/a",
+      "implementation_module": "erre_sandbox.evidence.tier_b.vendi_lexical_5gram",
+      "implementation_status": "pre-registered, not yet implemented; scoped to next-session retrain prep",
+      "kernel_note": "Character 5-gram cosine similarity (Burrows-adjacent shallow stylometry)。retrieval-trained でない independent 軸として encoder diversity を確保。"
+    },
+    "BAAI/bge-m3": {
+      "role": "exploratory",
+      "revision_sha": "5617a9f61b028005a4858fdac845db406aefb181",
+      "plan_a_role": "primary",
+      "exclusion_reason": "Plan A natural d sign flip (+0.23 vs MPNet/E5 negative)。retrieval-trained encoder の disagreement を ADOPT 不寄与化する (BGE-M3 sign flip 教訓の generalisation)。報告は obligatory。"
+    }
+  },
+  "encoder_agreement_axis": {
+    "primary_count_required": 2,
+    "primary_count_total": 3,
+    "direction_requirement": "all_negative_when_passing",
+    "gate_conditions_per_encoder": [
+      "natural_d <= -0.5 AND natural_diff_ci_upper < 0",
+      "lang_balanced_d <= -0.5",
+      "length_balanced_d <= -0.5"
+    ],
+    "rationale": "BGE-M3 sign flip 教訓を generalise。1 encoder が retrieval artefact で flip しても majority direction discipline (3 primary のうち 2 が同方向 + gate clear) で ADOPT 判定が腐らない。"
+  },
+  "burrows_axis_note": "Burrows axis は encoder 非依存なので本 allowlist 対象外。DA-14 threshold (>= 5% point + CI lower > 0) を不変で適用。Plan B は de monolog 集中で Burrows axis 主目標達成を狙う設計。"
+}
