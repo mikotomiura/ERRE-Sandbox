@@ -1,0 +1,13 @@
+{
+  "v2_mean": 114.71002407117312,
+  "v2_stdev": 3.4035332729350425,
+  "no_lora_mean": 112.5179979604629,
+  "no_lora_stdev": 3.431660143908644,
+  "reduction_pct": -1.9481559843256908,
+  "ci_lower": -5.071678780278143,
+  "ci_upper": 1.1403078782223786,
+  "n_windows_v2": 6,
+  "n_windows_nolora": 6,
+  "threshold_pct": 5.0,
+  "note": "reduction% = (no_lora_mean - v2_mean) / no_lora_mean × 100. CI via 2000-iteration window-level bootstrap. DA-14 gate: reduction_pct >= 5 AND ci_lower > 0."
+}

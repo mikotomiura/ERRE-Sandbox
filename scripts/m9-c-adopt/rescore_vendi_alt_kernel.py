@@ -74,9 +74,18 @@ _E5_PASSAGE_PREFIX: str = "passage: "
 _D2_ALLOWLIST_PATH = Path(
     ".steering/20260516-m9-c-adopt-da15-impl/d2-encoder-allowlist.json",
 )
+"""Default D-2 allowlist (Plan A). Plan B verdict passes
+``--allowlist-path .steering/20260517-m9-c-adopt-plan-b-design/
+d2-encoder-allowlist-plan-b.json`` to opt-in to the 4-encoder
+agreement panel."""
+
+_LEXICAL_5GRAM_ENCODER_KEY: str = "lexical_5gram"
+"""Sentinel encoder name for the lexical-5gram (TF-IDF char-5-gram cosine)
+kernel. Matches the D-2 allowlist (Plan B) key and bypasses the
+SentenceTransformer code path."""
 
 
-def _load_allowlist() -> dict[str, Any]:
+def _load_allowlist(path: Path = _D2_ALLOWLIST_PATH) -> dict[str, Any]:
     """Load the D-2 pre-registration allowlist (Codex HIGH-1 enforcement).
 
     Calibration and rescore scripts refuse to run on encoders that are not
@@ -84,19 +93,17 @@ def _load_allowlist() -> dict[str, Any]:
     ``SentenceTransformer`` so the run cannot accidentally pick up a
     different snapshot from the local cache.
     """
-    if not _D2_ALLOWLIST_PATH.exists():
-        msg = f"D-2 allowlist missing: {_D2_ALLOWLIST_PATH}"
+    if not path.exists():
+        msg = f"D-2 allowlist missing: {path}"
         raise FileNotFoundError(msg)
-    return json.loads(_D2_ALLOWLIST_PATH.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _local_revision_sha(encoder_name: str) -> str | None:
     """Read the locally-cached HF snapshot SHA. Works offline."""
     safe = encoder_name.replace("/", "--")
     base = (
-        Path.home()
-        / ".cache" / "huggingface" / "hub"
-        / f"models--{safe}" / "snapshots"
+        Path.home() / ".cache" / "huggingface" / "hub" / f"models--{safe}" / "snapshots"
     )
     if not base.exists():
         return None
@@ -127,7 +134,9 @@ def _load_focal_utterances(shard: Path, persona_id: str) -> list[str]:
 
 
 def _encode_pool(
-    encoder_name: str, revision: str, texts: list[str],
+    encoder_name: str,
+    revision: str,
+    texts: list[str],
 ) -> np.ndarray:
     """Encode every utterance once and return unit-norm row embeddings.
 
@@ -145,10 +154,57 @@ def _encode_pool(
     inputs = [(_E5_PASSAGE_PREFIX + t) if needs_e5_prefix else t for t in texts]
     logger.info("encoding %d utterances…", len(inputs))
     raw = np.asarray(
-        model.encode(inputs, show_progress_bar=False), dtype=float,
+        model.encode(inputs, show_progress_bar=False),
+        dtype=float,
     )
     norms = np.linalg.norm(raw, axis=1, keepdims=True)
     return raw / np.where(norms == 0, 1.0, norms)
+
+
+def _encode_pools_lexical_5gram(
+    v2_texts: list[str],
+    nolora_texts: list[str],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Pool-fit TF-IDF char 5-gram encoding for the Plan B lexical kernel.
+
+    Returns ``(v2_unit, nolora_unit)`` — both unit-l2-normalized so that
+    ``unit @ unit.T`` recovers cosine similarity for the natural / bootstrap
+    window scoring path used by the semantic encoders.
+
+    DE-1 design rationale (see ``.steering/20260516-m9-c-adopt-plan-b-eval-
+    gen/design.md`` §7): fit ``TfidfVectorizer`` once on the merged pool so
+    both conditions share the same IDF basis (apples-to-apples). This
+    deviates from ``vendi_lexical_5gram.make_tfidf_5gram_cosine_kernel``'s
+    per-window fit, but mirrors the semantic pre-compute-once pattern used
+    by ``_encode_pool``: window slices are taken from a single, condition-
+    agnostic embedding space rather than re-fit per resample.
+    """
+    from sklearn.feature_extraction.text import (  # noqa: PLC0415
+        TfidfVectorizer,
+    )
+
+    n_v2 = len(v2_texts)
+    n_nolora = len(nolora_texts)
+    cleaned = [str(t) if str(t).strip() else " " for t in (v2_texts + nolora_texts)]
+    logger.info(
+        "lexical_5gram pool-fit: v2=%d nolora=%d merged=%d",
+        n_v2,
+        n_nolora,
+        len(cleaned),
+    )
+    vectorizer = TfidfVectorizer(
+        analyzer="char_wb",
+        ngram_range=(5, 5),
+        lowercase=True,
+        norm="l2",
+        sublinear_tf=False,
+    )
+    tfidf = vectorizer.fit_transform(cleaned).toarray().astype(float, copy=False)
+    # TfidfVectorizer(norm="l2") already l2-normalises rows, but re-clamp
+    # numerical drift so cosine via raw matmul is exact on the diagonal.
+    norms = np.linalg.norm(tfidf, axis=1, keepdims=True)
+    unit = tfidf / np.where(norms == 0, 1.0, norms)
+    return unit[:n_v2], unit[n_v2:]
 
 
 def _vendi_from_unit_embeddings(unit: np.ndarray, indices: np.ndarray) -> float:
@@ -186,7 +242,11 @@ def _cohens_d(a: list[float], b: list[float]) -> float:
 
 
 def _bootstrap_window_diff_ci(
-    a: list[float], b: list[float], *, seed: int, n_resamples: int,
+    a: list[float],
+    b: list[float],
+    *,
+    seed: int,
+    n_resamples: int,
 ) -> dict[str, Any]:
     """Window-level bootstrap of the mean difference (a − b).
 
@@ -257,8 +317,12 @@ def _stratified_bootstrap_d(
         v2_idx_list: list[int] = []
         nolora_idx_list: list[int] = []
         for s in eligible:
-            v2_idx_list.extend(int(i) for i in rng.choice(v2_by[s], size=per_quota, replace=True))
-            nolora_idx_list.extend(int(i) for i in rng.choice(nolora_by[s], size=per_quota, replace=True))
+            v2_idx_list.extend(
+                int(i) for i in rng.choice(v2_by[s], size=per_quota, replace=True)
+            )
+            nolora_idx_list.extend(
+                int(i) for i in rng.choice(nolora_by[s], size=per_quota, replace=True)
+            )
         # Top-up: fill any remainder from a randomly chosen eligible stratum.
         while len(v2_idx_list) < window_size:
             s = eligible[int(rng.integers(0, len(eligible)))]
@@ -299,16 +363,41 @@ def _length_quartile(length: int, thresholds: tuple[int, int, int]) -> str:
     return "q4"
 
 
-def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
+def _resolve_encoder_default(args: argparse.Namespace) -> None:
+    """Apply post-parse defaulting + kernel_type/encoder cross-validation.
+
+    Split from ``main`` so unit tests can drive the same logic without
+    triggering DuckDB shard loading.
+    """
+    if args.kernel_type == "lexical_5gram":
+        if args.encoder is None:
+            args.encoder = _LEXICAL_5GRAM_ENCODER_KEY
+        elif args.encoder != _LEXICAL_5GRAM_ENCODER_KEY:
+            msg = (
+                f"--encoder must be {_LEXICAL_5GRAM_ENCODER_KEY!r} (or"
+                " omitted) when --kernel-type lexical_5gram; got"
+                f" {args.encoder!r}"
+            )
+            raise SystemExit(msg)
+    elif args.encoder is None:
+        raise SystemExit(
+            "--encoder is required for --kernel-type semantic (Plan A path)",
+        )
+
+
+def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915, C901, PLR0912
     p = argparse.ArgumentParser(prog="m9-c-adopt-da15-rescore")
     p.add_argument(
         "--encoder",
-        required=True,
+        default=None,
         help=(
             "HuggingFace model id. Plan A primary candidates are"
             " 'intfloat/multilingual-e5-large' and 'BAAI/bge-m3'. Pass"
             " 'sentence-transformers/all-mpnet-base-v2' to reproduce the"
             " DA-14 MPNet regression baseline under the same code path."
+            " Required for --kernel-type semantic; defaults to"
+            f" {_LEXICAL_5GRAM_ENCODER_KEY!r} when --kernel-type"
+            " lexical_5gram."
         ),
     )
     p.add_argument("--persona", default="kant", choices=("kant",))
@@ -327,9 +416,56 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument(
-        "--log-level", default="info", choices=("debug", "info", "warning", "error"),
+        "--log-level",
+        default="info",
+        choices=("debug", "info", "warning", "error"),
+    )
+    p.add_argument(
+        "--v2-shards",
+        nargs="+",
+        type=Path,
+        default=list(_V2_SHARDS),
+        help=(
+            "DuckDB shard paths for the LoRA-on (v2 or Plan B) condition."
+            " Defaults to the Plan A v2 baseline (kant_r8v2_run{0,1}); pass"
+            " Plan B kant_r8v3 shards to score the Plan B retrain artifact."
+        ),
+    )
+    p.add_argument(
+        "--nolora-shards",
+        nargs="+",
+        type=Path,
+        default=list(_NOLORA_SHARDS),
+        help=(
+            "DuckDB shard paths for the no-LoRA control condition. Defaults"
+            " to the existing kant_nolora_run{0,1} SGLang baseline; pass the"
+            " Plan B no-LoRA control shards (kant_planb_nolora_run{0,1}) for"
+            " Plan B verdict apples-to-apples."
+        ),
+    )
+    p.add_argument(
+        "--kernel-type",
+        choices=("semantic", "lexical_5gram"),
+        default="semantic",
+        help=(
+            "Vendi kernel family. 'semantic' uses the SentenceTransformer"
+            " path (MPNet / E5 / BGE-M3). 'lexical_5gram' uses the Plan B"
+            " D-2 primary TF-IDF char-5-gram cosine kernel (pool-fit, see"
+            " DE-1 in design.md)."
+        ),
+    )
+    p.add_argument(
+        "--allowlist-path",
+        type=Path,
+        default=_D2_ALLOWLIST_PATH,
+        help=(
+            "Path to the D-2 allowlist JSON. Default is the Plan A allowlist"
+            f" ({_D2_ALLOWLIST_PATH}); pass the Plan B allowlist for the"
+            " 4-encoder agreement panel (encoder_agreement_axis)."
+        ),
     )
     args = p.parse_args(argv)
+    _resolve_encoder_default(args)
 
     logging.basicConfig(
         level=args.log_level.upper(),
@@ -340,59 +476,71 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     # === Load + concatenate per-condition pools ===
     v2_utterances: list[str] = []
     v2_utt_per_shard: list[int] = []
-    for shard in _V2_SHARDS:
+    for shard in args.v2_shards:
         ut = _load_focal_utterances(shard, args.persona)
         v2_utterances.extend(ut)
         v2_utt_per_shard.append(len(ut))
 
     nolora_utterances: list[str] = []
     nolora_utt_per_shard: list[int] = []
-    for shard in _NOLORA_SHARDS:
+    for shard in args.nolora_shards:
         ut = _load_focal_utterances(shard, args.persona)
         nolora_utterances.extend(ut)
         nolora_utt_per_shard.append(len(ut))
 
     logger.info(
         "v2 utterances=%d nolora utterances=%d",
-        len(v2_utterances), len(nolora_utterances),
+        len(v2_utterances),
+        len(nolora_utterances),
     )
 
     # === D-2 allowlist enforcement (Codex HIGH-1) ===
-    allowlist = _load_allowlist()
+    allowlist = _load_allowlist(args.allowlist_path)
     if args.encoder not in allowlist["encoders"]:
         msg = (
             f"encoder {args.encoder!r} is not in the D-2 allowlist"
             f" ({sorted(allowlist['encoders'])}). Add the encoder to"
-            f" {_D2_ALLOWLIST_PATH} with a revision SHA and a role before"
+            f" {args.allowlist_path} with a revision SHA and a role before"
             " rerunning."
         )
         raise SystemExit(msg)
     pinned = allowlist["encoders"][args.encoder]
     revision = pinned["revision_sha"]
     role = pinned["role"]
-    local_sha = _local_revision_sha(args.encoder)
-    if local_sha and local_sha != revision:
-        logger.warning(
-            "local cache snapshot %s differs from pinned %s — passing pinned"
-            " revision to SentenceTransformer to force the right snapshot",
-            local_sha, revision,
-        )
+    if args.kernel_type == "semantic":
+        local_sha = _local_revision_sha(args.encoder)
+        if local_sha and local_sha != revision:
+            logger.warning(
+                "local cache snapshot %s differs from pinned %s — passing pinned"
+                " revision to SentenceTransformer to force the right snapshot",
+                local_sha,
+                revision,
+            )
 
     # === Encode each pool once (the only expensive call) ===
-    v2_unit = _encode_pool(args.encoder, revision, v2_utterances)
-    nolora_unit = _encode_pool(args.encoder, revision, nolora_utterances)
+    if args.kernel_type == "lexical_5gram":
+        v2_unit, nolora_unit = _encode_pools_lexical_5gram(
+            v2_utterances,
+            nolora_utterances,
+        )
+    else:
+        v2_unit = _encode_pool(args.encoder, revision, v2_utterances)
+        nolora_unit = _encode_pool(args.encoder, revision, nolora_utterances)
 
     # === Natural per-window scores ===
     v2_window_scores = _natural_window_scores(v2_unit, v2_utt_per_shard)
     nolora_window_scores = _natural_window_scores(nolora_unit, nolora_utt_per_shard)
     logger.info(
         "natural windows: v2=%d nolora=%d",
-        len(v2_window_scores), len(nolora_window_scores),
+        len(v2_window_scores),
+        len(nolora_window_scores),
     )
 
     standard = _bootstrap_window_diff_ci(
-        v2_window_scores, nolora_window_scores,
-        seed=args.seed, n_resamples=args.n_resamples,
+        v2_window_scores,
+        nolora_window_scores,
+        seed=args.seed,
+        n_resamples=args.n_resamples,
     )
 
     # === Strata ===
@@ -413,20 +561,26 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
 
     logger.info("running language-balanced bootstrap…")
     lang_balanced = _stratified_bootstrap_d(
-        v2_unit=v2_unit, nolora_unit=nolora_unit,
-        v2_strata=v2_langs, nolora_strata=nolora_langs,
+        v2_unit=v2_unit,
+        nolora_unit=nolora_unit,
+        v2_strata=v2_langs,
+        nolora_strata=nolora_langs,
         eligible_strata=["de", "en"],
         window_size=args.window_size,
-        n_resamples=args.balanced_n_resamples, seed=args.seed,
+        n_resamples=args.balanced_n_resamples,
+        seed=args.seed,
     )
 
     logger.info("running length-balanced bootstrap…")
     length_balanced = _stratified_bootstrap_d(
-        v2_unit=v2_unit, nolora_unit=nolora_unit,
-        v2_strata=v2_quartiles, nolora_strata=nolora_quartiles,
+        v2_unit=v2_unit,
+        nolora_unit=nolora_unit,
+        v2_strata=v2_quartiles,
+        nolora_strata=nolora_quartiles,
         eligible_strata=["q1", "q2", "q3", "q4"],
         window_size=args.window_size,
-        n_resamples=args.balanced_n_resamples, seed=args.seed,
+        n_resamples=args.balanced_n_resamples,
+        seed=args.seed,
     )
 
     logger.info("running within-language d…")
@@ -447,11 +601,14 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
             }
             continue
         within_lang[lang] = _stratified_bootstrap_d(
-            v2_unit=v2_unit, nolora_unit=nolora_unit,
-            v2_strata=v2_langs, nolora_strata=nolora_langs,
+            v2_unit=v2_unit,
+            nolora_unit=nolora_unit,
+            v2_strata=v2_langs,
+            nolora_strata=nolora_langs,
             eligible_strata=[lang],
             window_size=args.window_size,
-            n_resamples=args.balanced_n_resamples, seed=args.seed,
+            n_resamples=args.balanced_n_resamples,
+            seed=args.seed,
         )
 
     # === DA-14 threshold check (unchanged) ===
@@ -472,41 +629,58 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     # === Runtime environment record (pre-registration audit) ===
     # Library versions and the pinned revision come from the D-2 allowlist;
     # we no longer call HfApi at runtime so the script is offline-safe.
-    import sentence_transformers as _st  # noqa: PLC0415
     import transformers as _tf  # noqa: PLC0415
 
     revision_sha = revision
-    library_versions = {
-        "sentence_transformers": _st.__version__,
+    library_versions: dict[str, str] = {
         "transformers": _tf.__version__,
     }
+    if args.kernel_type == "semantic":
+        import sentence_transformers as _st  # noqa: PLC0415
+
+        library_versions["sentence_transformers"] = _st.__version__
+    else:
+        import sklearn as _sk  # noqa: PLC0415
+
+        library_versions["sklearn"] = _sk.__version__
     expected_lib = allowlist.get("library_versions", {})
+    # Only enforce overlap (kernel-relevant libs). lexical_5gram skips the
+    # sentence_transformers pin since the kernel is computed via sklearn
+    # TF-IDF; the allowlist does not pin sklearn yet.
+    relevant_keys = set(expected_lib).intersection(library_versions)
     library_versions_match = all(
-        library_versions.get(k) == v for k, v in expected_lib.items()
+        library_versions[k] == expected_lib[k] for k in relevant_keys
     )
+
+    if args.kernel_type == "lexical_5gram":
+        metric_name = "vendi_lexical_5gram"
+    else:
+        metric_name = "vendi_semantic_v2_encoder_swap"
 
     payload: dict[str, Any] = {
         "encoder": args.encoder,
         "encoder_revision_sha": revision_sha,
         "encoder_role": role,
+        "kernel_type": args.kernel_type,
+        "allowlist_path": str(args.allowlist_path),
         "library_versions": library_versions,
         "library_versions_match_d2": library_versions_match,
         "preregistration_anchor": (
-            "DA-15 D-2 (.steering/20260516-m9-c-adopt-da15-impl/decisions.md"
-            " + d2-encoder-allowlist.json). Encoder + revision SHA + library"
-            " versions must match the pinned values for the verdict to count"
-            " as ADOPT-eligible. ``encoder_role`` decides whether this run can"
-            " contribute to the primary ADOPT panel (``primary``) or only"
-            " serves as the DA-14 regression baseline (``regression``)."
+            "DA-15 D-2 / Plan B D-2 allowlist. Encoder + revision SHA +"
+            " library versions must match the pinned values for the verdict"
+            " to count as ADOPT-eligible. ``encoder_role`` decides whether"
+            " this run can contribute to the primary ADOPT panel"
+            " (``primary``) or only serves as a regression baseline"
+            " (``regression``) / exploratory channel (``exploratory``)."
         ),
         "persona": args.persona,
-        "metric": "vendi_semantic_v2_encoder_swap",
+        "metric": metric_name,
         "window_size": args.window_size,
         "n_resamples": args.n_resamples,
         "balanced_n_resamples": args.balanced_n_resamples,
         "seed": args.seed,
-        "v2_shards": [s.name for s in _V2_SHARDS],
-        "nolora_shards": [s.name for s in _NOLORA_SHARDS],
+        "v2_shards": [s.name for s in args.v2_shards],
+        "nolora_shards": [s.name for s in args.nolora_shards],
         "natural_windows": {
             "v2_scores": v2_window_scores,
             "nolora_scores": nolora_window_scores,
@@ -533,7 +707,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8",
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
     )
     logger.info(
         "encoder=%s natural cohens_d=%.4f standard_pass=%s output=%s",

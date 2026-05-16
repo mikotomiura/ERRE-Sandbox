@@ -1,0 +1,15 @@
+{
+  "v2_focal_per_s": 0.819672131147541,
+  "no_lora_focal_per_s": 0.8265027322404372,
+  "throughput_pct_of_baseline": 99.17355371900825,
+  "v2_rates_per_shard": [
+    0.819672131147541,
+    0.819672131147541
+  ],
+  "no_lora_rates_per_shard": [
+    0.8333333333333334,
+    0.819672131147541
+  ],
+  "threshold_pct": 70.0,
+  "note": "throughput_pct_of_baseline = v2 mean rate / no-LoRA mean rate × 100. DA-14 gate: ≥ 70%. Rates pulled from each shard's raw_dialog.metadata['pilot_rate_focal_per_s']."
+}

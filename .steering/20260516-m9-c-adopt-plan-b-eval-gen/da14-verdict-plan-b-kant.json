@@ -1,0 +1,129 @@
+{
+  "persona": "kant",
+  "plan": "B",
+  "verdict": "PHASE_E_A6",
+  "thresholds": {
+    "vendi_d_le": -0.5,
+    "burrows_pct_ge": 5.0,
+    "icc_ge": 0.55,
+    "throughput_pct_ge": 70.0,
+    "note": "DA-14 thresholds unchanged. Plan B applies them under the encoder agreement axis (3-of-4 primary, 2+ required) + kernel-independent Burrows/ICC/throughput."
+  },
+  "per_encoder": [
+    {
+      "encoder": "sentence-transformers/all-mpnet-base-v2",
+      "encoder_revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+      "encoder_role_d2": "primary",
+      "kernel_type": "semantic",
+      "d2_revision_match": true,
+      "d2_library_match": true,
+      "natural_cohens_d": -0.5264004849343598,
+      "natural_diff_hi": 0.5179740570667519,
+      "natural_pass": false,
+      "language_balanced_d": -0.26532670180282614,
+      "language_balanced_pass": false,
+      "length_balanced_d": -0.3964164738424532,
+      "length_balanced_pass": false,
+      "all_three_axes_pass": false,
+      "within_language_d": {
+        "de": -0.37696738138972413,
+        "en": -0.1788346870878692,
+        "ja": null
+      }
+    },
+    {
+      "encoder": "intfloat/multilingual-e5-large",
+      "encoder_revision_sha": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+      "encoder_role_d2": "primary",
+      "kernel_type": "semantic",
+      "d2_revision_match": true,
+      "d2_library_match": true,
+      "natural_cohens_d": 0.47812889123437974,
+      "natural_diff_hi": 0.09363902426551185,
+      "natural_pass": false,
+      "language_balanced_d": 0.5310397813245353,
+      "language_balanced_pass": false,
+      "length_balanced_d": 0.3069407935488557,
+      "length_balanced_pass": false,
+      "all_three_axes_pass": false,
+      "within_language_d": {
+        "de": 0.755936332171652,
+        "en": 0.6746564192834165,
+        "ja": null
+      }
+    },
+    {
+      "encoder": "lexical_5gram",
+      "encoder_revision_sha": "n/a",
+      "encoder_role_d2": "primary",
+      "kernel_type": "lexical_5gram",
+      "d2_revision_match": true,
+      "d2_library_match": true,
+      "natural_cohens_d": 0.1804817101608472,
+      "natural_diff_hi": 3.0389435092949384,
+      "natural_pass": false,
+      "language_balanced_d": 0.31176437689821035,
+      "language_balanced_pass": false,
+      "length_balanced_d": 0.3245984330039873,
+      "length_balanced_pass": false,
+      "all_three_axes_pass": false,
+      "within_language_d": {
+        "de": 0.2323172167666138,
+        "en": 0.41576626646891585,
+        "ja": null
+      }
+    },
+    {
+      "encoder": "BAAI/bge-m3",
+      "encoder_revision_sha": "5617a9f61b028005a4858fdac845db406aefb181",
+      "encoder_role_d2": "exploratory",
+      "kernel_type": "semantic",
+      "d2_revision_match": true,
+      "d2_library_match": true,
+      "natural_cohens_d": 0.3317428988243919,
+      "natural_diff_hi": 0.5585934689306988,
+      "natural_pass": false,
+      "language_balanced_d": 0.22562010862377416,
+      "language_balanced_pass": false,
+      "length_balanced_d": 0.19907770666220162,
+      "length_balanced_pass": false,
+      "all_three_axes_pass": false,
+      "within_language_d": {
+        "de": 0.28594491448337117,
+        "en": 0.32015451139651424,
+        "ja": null
+      }
+    }
+  ],
+  "axes": {
+    "encoder_agreement": {
+      "primary_count_total": 3,
+      "primary_count_passed_all_axes": 0,
+      "primary_count_required": 2,
+      "direction_all_negative": false,
+      "axis_pass": false,
+      "primary_encoders_passing": [],
+      "exploratory_encoders_reported": [
+        "BAAI/bge-m3"
+      ]
+    },
+    "burrows": {
+      "reduction_pct": -1.9481559843256908,
+      "ci_lower": -5.071678780278143,
+      "ci_upper": 1.1403078782223786,
+      "gate_pct": 5.0,
+      "axis_pass": false
+    },
+    "icc": {
+      "icc_point": 0.908256880733948,
+      "gate": 0.55,
+      "axis_pass": true
+    },
+    "throughput": {
+      "throughput_pct_of_baseline": 99.17355371900825,
+      "gate_pct": 70.0,
+      "axis_pass": true
+    }
+  },
+  "preregistration_anchor": ".steering/20260517-m9-c-adopt-plan-b-design/d2-encoder-allowlist-plan-b.json (D-2 Plan B allowlist) + DA-14 thresholds unchanged. Encoder agreement axis from ``encoder_agreement_axis`` block of the allowlist."
+}
