@@ -1088,3 +1088,245 @@ direction)。
 - next: training execution + multi-turn pilot recapture + DA-14 4 軸
   ADOPT/REJECT 判定 (別 overnight session、handoff prompt:
   `.steering/20260514-m9-c-adopt-retrain-v2-impl/next-session-prompt-FINAL-training.md`)
+
+## DA-15 — Retrain v2 REJECT 受け escalation (Plan A → Plan B sequential + Hybrid H-α、Plan C → Phase E migrate、2026-05-16)
+
+DA-14 thresholds で retrain v2 が REJECT (kant primary 1-of-3 PASS、2-of-3
+quorum 未達、`.steering/20260515-m9-c-adopt-retrain-v2-verdict/da14-verdict-
+v2-kant.json`)。方向性は反転 (Vendi prior +1.39 wrong → v2 -0.13 correct)
+だが magnitude 不足 (Vendi d=-0.18 vs target ≤ -0.5、Burrows reduction +0.43%
+vs target ≥ 5%、ICC(A,1)=0.913 PASS、throughput 98.8% PASS)。DA-14 thresholds
+は **post-hoc movement 禁止 (HIGH-3)**、よって本 ADR で 3 escalation plan
+の trade-off を確定する。
+
+- **採用**: **Plan A → Plan B sequential escalation + Hybrid H-α (Plan B driver
+  pre-staging を Plan A 走行中の dead time に isolated branch で並行)、
+  Plan C は本 ADR scope 外、Phase E A-6 へ migrate**
+
+### 採用 spec
+
+#### Plan A: Vendi semantic kernel swap (Phase 1 = 別 implementation PR)
+
+**仮説**: 現行 `sentence-transformers/all-mpnet-base-v2` が persona-style
+shift に over-invariant。multilingual / 哲学 domain encoder で再 score して
+ICC PASS と整合する Vendi shift を発見する。
+
+1. **新 versioned metric `vendi_semantic_v2_encoder_swap`** を起こす
+   (point/CI thresholds は DA-14 と同一: d ≤ -0.5、CI upper < 0)。DA-14 の
+   MPNet `vendi_semantic` は historical record として常に併報告し、
+   "DA-14 fail のまま DA-15 pass" の状態を明示する (Codex HIGH-1 反映)。
+2. **Pre-registration**: encoder name + HF revision SHA + sentence-
+   transformers / transformers version pin + commit SHA を Phase 1 開始時の
+   最初の commit で `.steering/20260516-m9-c-adopt-da15-impl/decisions.md` に
+   固定。rescore 実施前に固定すること。
+3. **Plan A eligibility gate** (Codex HIGH-2 = 両 Claude arm 共通の盲点
+   "retrieval encoders ≠ style discriminators" の対応):
+   - language-balanced bootstrap (de/en/ja 内 independent resampling)
+   - token-length-balanced bootstrap
+   - within-language d 併報告 (d_de, d_en, d_ja)
+   - **Preregistered calibration panel**: Kant Critique 邦訳 + control
+     philosopher (Heidegger 邦訳 + 英訳) で各 100 文を用意、各 candidate
+     encoder が language ID ヒント無しで Kant-style vs control を分離可能
+     かを test。**AUC ≥ 0.75 を pass 基準** (preregistered)。fail encoder
+     は primary gate 除外
+   - balanced condition で d > -0.5 になった encoder は ADOPT 寄与不可
+4. **Apples-to-apples**: v2 と no-LoRA baseline の両方を同 kernel で rescore
+5. **Exploratory encoders** (philosophy-domain BERT 等) は ADOPT primary
+   gate に含めない
+6. **Code change scope**: `src/erre_sandbox/evidence/tier_b/vendi.py:294-322`
+   (`_load_default_kernel` 引数化、~50 LOC) + `scripts/m9-c-adopt/
+   compute_baseline_vendi.py:188` (CLI `--encoder` 引数追加) + 新 script
+   `scripts/m9-c-adopt/rescore_vendi_alt_kernel.py`
+7. **Compute envelope**: code parameterisation ~2-3h + calibration panel
+   実装/run ~1h + rescore (3 encoder × 2 conditions × n=6 windows) ~1-2h
+   = **~5-6h** (G-GEAR or CPU 可)
+8. **採用判定** (Plan A pass = kant ADOPT 候補):
+   - 少なくとも 2 candidate encoder で `vendi_semantic_v2_encoder_swap` d ≤
+     -0.5 + 95% CI upper < 0 + calibration panel AUC ≥ 0.75
+   - balanced bootstrap (language + length) でも条件維持
+   - ICC + throughput 不変 (kernel 独立軸)
+   - → **kant 2-of-3 quorum** (Vendi-swapped + ICC) 充足
+
+#### Plan A pass 時の named limitation (Codex LOW-1 反映)
+
+kant ADOPT verdict 文書に **必須** 記載:
+
+> Burrows reduction remains FAIL (v2: +0.43% vs 5% target、Plan A は
+> measurement-side swap で Burrows axis を改善しない)。German function-
+> word stylometry は本 ADOPT で improved されていない。Plan A ADOPT は
+> DA-15 `vendi_semantic_v2_encoder_swap` + ICC(A,1) の 2-of-3 quorum を
+> 根拠とし、Burrows axis は Phase 2 (Plan B retrain) または reference
+> corpus work で別途追求する open issue。
+
+#### Plan B: Candidate C targeted hybrid (Phase 2 = Plan A 失敗時のみ、別 PR)
+
+**仮説**: ja-dominant corpus の de+en mass 補強で discriminative signal が
+proper magnitude に届く。design-final.md §2.3 Candidate C spec が DA-14 で
+pre-authorise されている fallback path。
+
+**起動条件** (Codex MEDIUM-1 反映): **DA-14 verdict REJECT + Candidate C spec
+pre-authorisation のみ** を rationale とする。DI-5 の de+en mass soft warning
+(0.489 vs target 0.60) は **hard trigger 化しない**、targeted-hybrid の
+shape を guide する役割 (de/en focus + ≥60 token + monolog/long-form filter)。
+
+**Sub-option** (Step 0 feasibility scan 結果より):
+- B-1 (cheap filter): 既存 `dataset.py` の monolog re-cast に
+  `where language=="de"` filter 追加 + DI-3 cap=500 解除。新規 data ゼロ、
+  ~50 LOC。**ただし natural shard 2-turn de pair は ~40-60 examples しか
+  存在せず、250+ target には不足。B-1 単独では不十分**。
+- B-2 (new collector): `scripts/m9-c-adopt/de_focused_monolog_collector.py`
+  を新規、G-GEAR で de-biased prompt を投げて新規 dialog 採取。driver 実装
+  ~1.5h + G-GEAR 採取 ~3h + retrain ~20h + recapture ~1h + consumers
+  ~30min = **~25h**。
+- 採用: **B-2 (single-shot escalation)**。B-1 は cap 解除のみ inline 適用、
+  data 出所は B-2 collector。
+
+**採用判定** (Codex MEDIUM-2 反映): predicted d range (-0.3 to -0.8) は
+**non-gating directional prior**。実 ADOPT 判定は (1) achieved corpus stats
+(post-retrain de+en mass ≥ 0.60) + (2) empirical DA-14 4 軸 rerun verdict で
+行う。
+
+#### Hybrid H-α: Plan B driver pre-staging (Plan A 走行中の dead time 利用)
+
+Plan A 走行中 (~1-2h scoring) の dead time に Plan B driver の skeleton と
+group-aware split 拡張を pre-stage。**Isolation guardrails (Codex MEDIUM-3
+反映、必須)**:
+
+1. **別 branch / worktree** で作業 (`feature/m9-c-adopt-da15-plan-b-prep` or
+   `git worktree`)。Plan A branch には commit しない
+2. Plan A の test suite / lint / CI には含めない
+3. Plan A verdict 書面 (decisions.md / DA-15 report) で reference しない
+4. Plan A pass 時は pre-stage を別 PR で merge せず保留 (将来 Phase E 再利用
+   候補)
+5. Plan A fail 時のみ別 PR (Phase 2 = Plan B) を起票
+
+#### Plan C: Longer training / rank 拡大 (本 ADR scope **外**、Phase E A-6 へ migrate)
+
+- eval_loss step 2000=0.166 → final=0.180 の mild overfit が longer training
+  を contraindicate (Codex MEDIUM-2 反映、Phase E で起票時は dry-run
+  evidence 必須)
+- rank=16 は Phase E A-6 question (DA-12 の rank=8 provisional carry-over
+  decision に従う)
+- DA-15 escalation path に含めない
+
+### Decision matrix (trade-off summary)
+
+| 軸 | Plan A (kernel swap) | Plan B (targeted hybrid) | Plan C (longer/rank16) |
+|---|---|---|---|
+| Wall time | **5-6h** (code + calibration + rescore) | ~25h (driver + 採取 + retrain + recapture) | 20-32h (Phase E A-6 scope) |
+| Sunk cost on fail | calibration panel + code (再利用可) | shards + retrain | retrain only |
+| Reversibility | **very high** | medium | medium-low |
+| Predicted Vendi d (non-gating prior) | -0.3 to -1.2 (要 calibration validation) | -0.3 to -0.8 | -0.1 to -0.8 |
+| Predicted Burrows (non-gating prior) | **no fix** (named limitation) | +1 to +4 pp | -1 to +2 pp |
+| C1-C4 address | M1 measurement (new) | C1, C2, C3, C4 部分 address | none |
+| HIGH-3 risk | medium (calibration panel + named metric で mitigate) | **low** | low |
+| Evidence ground | DA-14 protocol + ICC PASS + calibration gate | DI-5 + DA-14 Candidate C spec | weak (overfit signal contraindicates) |
+
+### Execution gate
+
+- **Plan A → kant ADOPT (skip Plan B)**: Plan A eligibility gate 全 pass +
+  少なくとも 2 candidate encoder で `vendi_semantic_v2_encoder_swap` d ≤ -0.5
+  + CI upper < 0 + balanced bootstrap 維持 → kant 2-of-3 quorum (Vendi-swapped
+  + ICC) で kant ADOPT、Burrows named limitation 記載
+- **Plan A → Plan B (Phase 2 起動)**: 上記 gate 不達 → Phase 2 implementation
+  PR で B-2 driver + retrain
+- **Plan B fail → DA-15 完全 fail**: Phase E A-6 で Plan C (rank=16) を
+  dry-run evidence 付きで再評価 (本 ADR scope 外、新 ADR DA-16 起票候補)
+
+### 根拠
+
+- **DA-14 pre-authorisation**: `da1-thresholds-recalibrated.json:
+  ai_decision_protocol.vendi_fail_but_others_pass = ESCALATE_DA15_vendi_
+  kernel_swap` で Plan A は pre-blessed。ただし DA-14 instrument は
+  MPNet-pinned のため新 versioned metric `vendi_semantic_v2_encoder_swap` で
+  独立評価 (Codex HIGH-1 反映)
+- **ICC PASS + Vendi/Burrows FAIL の組み合わせ**: persona shift は実在する
+  (ICC 検出可) が MPNet では見えていない → measurement-side bottleneck 仮説
+  と整合
+- **Codex independent review** (`.steering/20260516-m9-c-adopt-da15-adr/
+  codex-review.md`、gpt-5.5 xhigh): Verdict ADOPT-WITH-CHANGES、HIGH 2 件
+  / MEDIUM 3 件 / LOW 1 件すべて反映済
+  - **HIGH-2 = cross-arm blind spot**: 両 Claude arm (V1 main + V2 subagent
+    independent) が共通して "multilingual-e5 / bge-m3 は retrieval-trained
+    で style discriminator ではない" 点を見落とし。Codex が calibration
+    panel と balanced bootstrap mandate で救出
+- **/reimagine V2 を Task tool subagent 経由で生成** (`decisions.md` DI-2):
+  同一会話 context 内の自己 discard では V1 anchor leak が起きるため、
+  subagent dispatch で V1 を hide した独立生成を行った。V2 のみが DA-14
+  `vendi_fail_but_others_pass` pre-authorisation と `vendi.py:294` MPNet
+  hardcode を発見
+
+### 棄却
+
+- **Plan A 単独で確定**: 不採用。Plan A fail 時に Plan B を後追いで起票する
+  と handoff delay 増。sequential escalation を ADR で確定する経済性が勝る
+- **Plan B 単独 (Plan A skip)**: 不採用。Plan A の 5-6h 投資で kant ADOPT
+  可能性があるため、~25h Plan B を always run するのは経済不合理
+- **Plan C 単独 (longer/rank=16)**: 不採用。eval_loss overfit signal が
+  longer training を contraindicate、rank=16 は dry-run evidence 無しで
+  +32h 投資する根拠が弱い
+- **DI-5 soft warning を hard fallback trigger に retroactive promote**:
+  不採用 (Codex MEDIUM-1)。preregistration discipline 維持
+- **multilingual-e5 / bge-m3 を calibration なしで primary 採用**: 不採用
+  (Codex HIGH-2)。両 Claude arm 共通の盲点を Codex 救出
+- **`vendi_semantic` の MPNet 値を encoder swap 後の値で上書き**: 不採用
+  (Codex HIGH-1)。新 versioned metric `vendi_semantic_v2_encoder_swap` で
+  併存、DA-14 instrument は historical record として常に併報告
+
+### HIGH-3 self-review (DA-15 起票時の遵守)
+
+- DA-14 numerical thresholds (Vendi d ≤ -0.5、Burrows ≥ 5%、ICC(A,1) ≥ 0.55、
+  throughput ≥ 70%) は **literal 不変**
+- Plan A は新 versioned metric `vendi_semantic_v2_encoder_swap` を起こす
+  ことで DA-14 instrument を保護 (Codex HIGH-1 反映)
+- calibration panel + balanced bootstrap で encoder の persona-style
+  discriminative validity を **rescore 前に** preregistered で gate
+  (Codex HIGH-2 反映)
+- Plan A pass で Burrows axis FAIL のまま kant ADOPT する場合、named
+  limitation を verdict 文書に必須記載 (Codex LOW-1)
+- "post-hoc" / "緩める" / "見直す" を threshold に適用する文言なし
+
+### 影響
+
+- 次 PR (`feature/m9-c-adopt-da15-implementation`、main 派生) で:
+  - `src/erre_sandbox/evidence/tier_b/vendi.py` (encoder 引数化)
+  - `scripts/m9-c-adopt/compute_baseline_vendi.py` (`--encoder` CLI)
+  - `scripts/m9-c-adopt/rescore_vendi_alt_kernel.py` (新規)
+  - `scripts/m9-c-adopt/da15_calibration_panel.py` (新規、Kant vs control
+    AUC test)
+  - `scripts/m9-c-adopt/da1_matrix_multiturn.py` の comparator を no-LoRA
+    SGLang baseline に切替 (DA-14 baseline 不一致の修正、本 PR と同梱推奨)
+  - 新 thresholds file `.steering/20260516-m9-c-adopt-da15-impl/
+    da1-thresholds-da15.json` (DA-14 数値継承 + encoder pre-registration
+    記録)
+- Plan A pass で kant ADOPT 時、nietzsche / rikyu への展開は Phase E A-6 で
+  別途判断 (本 ADR scope 外)
+
+### re-open 条件
+
+- Plan A pass + balanced bootstrap でも維持 → kant ADOPT。re-open しない
+- Plan A fail → Phase 2 (Plan B = B-2 single-shot escalation) を別 PR 起票
+- Plan A + Plan B 両方 fail → Phase E A-6 で Plan C (rank=16) を dry-run
+  evidence 付きで再評価 (新 ADR DA-16 候補)
+- Codex calibration panel で全 encoder が AUC < 0.75 → Plan A 完全 reject、
+  Phase 2 (Plan B) へ直接 fall through (本 ADR sequential gate)
+
+### trace
+
+- 本 ADR 起草 task dir: `.steering/20260516-m9-c-adopt-da15-adr/`
+  - requirement.md / design.md (Plan A 実装 sketch) / decisions.md DI-1 (Step
+    0 feasibility scan) / DI-2 (V1 vs V2 subagent dispatch) / D-1 (採用案)
+    / D-2 (Codex 反映) / tasklist.md / blockers.md (HIGH-3 self-review +
+    教訓)
+  - V1 / V2 / comparison / codex-review-prompt / codex-review draft 群
+- verdict source: `.steering/20260515-m9-c-adopt-retrain-v2-verdict/
+  da14-verdict-v2-kant.json`
+- DA-14 pre-authorisation source: `.steering/20260514-m9-c-adopt-retrain-v2-
+  design/da1-thresholds-recalibrated.json:ai_decision_protocol`
+- Codex review: `.steering/20260516-m9-c-adopt-da15-adr/codex-review.md`
+  (gpt-5.5 xhigh、ADOPT-WITH-CHANGES、HIGH 2 / MEDIUM 3 / LOW 1)
+- HEAD: **TBD** (本 ADR PR merge 後の別 chore PR で DA-15 trace.HEAD を
+  埋め込み、DA-14 convention 踏襲)
+- next: Phase 1 (Plan A implementation) を `.steering/20260516-m9-c-adopt-
+  da15-impl/` で `/start-task` 起票。handoff prompt は
+  `.steering/20260516-m9-c-adopt-da15-adr/next-session-prompt-FINAL-impl.md`
