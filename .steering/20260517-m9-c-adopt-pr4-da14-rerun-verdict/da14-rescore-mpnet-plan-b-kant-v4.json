@@ -1,0 +1,139 @@
+{
+  "encoder": "sentence-transformers/all-mpnet-base-v2",
+  "encoder_revision_sha": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+  "encoder_role": "primary",
+  "kernel_type": "semantic",
+  "allowlist_path": ".steering\\20260517-m9-c-adopt-plan-b-design\\d2-encoder-allowlist-plan-b.json",
+  "library_versions": {
+    "transformers": "4.57.6",
+    "sentence_transformers": "3.4.1"
+  },
+  "library_versions_match_d2": true,
+  "preregistration_anchor": "DA-15 D-2 / Plan B D-2 allowlist. Encoder + revision SHA + library versions must match the pinned values for the verdict to count as ADOPT-eligible. ``encoder_role`` decides whether this run can contribute to the primary ADOPT panel (``primary``) or only serves as a regression baseline (``regression``) / exploratory channel (``exploratory``).",
+  "persona": "kant",
+  "metric": "vendi_semantic_v2_encoder_swap",
+  "window_size": 100,
+  "n_resamples": 2000,
+  "balanced_n_resamples": 500,
+  "seed": 42,
+  "v2_shards": [
+    "kant_r8v4_run0_stim.duckdb",
+    "kant_r8v4_run1_stim.duckdb"
+  ],
+  "nolora_shards": [
+    "kant_planb_nolora_run0_stim.duckdb",
+    "kant_planb_nolora_run1_stim.duckdb"
+  ],
+  "natural_windows": {
+    "v2_scores": [
+      33.546302272440634,
+      33.98154329393485,
+      32.170658532681834,
+      34.167196233827895,
+      33.211149882992366,
+      33.0887684394871
+    ],
+    "nolora_scores": [
+      33.952702172545344,
+      33.222811295560184,
+      33.57312926472362,
+      34.54143293392888,
+      32.964326093578485,
+      33.9362985020116
+    ],
+    "v2_mean": 33.36093644256078,
+    "nolora_mean": 33.698450043724684,
+    "cohens_d": -0.5210707346191238
+  },
+  "standard_bootstrap": {
+    "diff_point": -0.3375136011639057,
+    "diff_lo": -0.9985084343860962,
+    "diff_hi": 0.3334669293826238,
+    "cohens_d": -0.5210707346191238,
+    "n_resamples": 2000,
+    "seed": 42
+  },
+  "language_balanced_bootstrap": {
+    "eligible_strata": [
+      "de",
+      "en"
+    ],
+    "per_stratum_quota": 50,
+    "n_resamples": 500,
+    "seed": 42,
+    "v2_mean": 28.036662658304653,
+    "nolora_mean": 27.721813845118007,
+    "diff_point": 0.31484881318664804,
+    "diff_lo": -3.0851192534486103,
+    "diff_hi": 3.8971213763954857,
+    "cohens_d": 0.25144539267512994
+  },
+  "length_balanced_bootstrap": {
+    "eligible_strata": [
+      "q1",
+      "q2",
+      "q3",
+      "q4"
+    ],
+    "per_stratum_quota": 25,
+    "n_resamples": 500,
+    "seed": 42,
+    "v2_mean": 29.7148434566203,
+    "nolora_mean": 29.824472298876337,
+    "diff_point": -0.10962884225603572,
+    "diff_lo": -3.640973046071256,
+    "diff_hi": 3.6406631473736226,
+    "cohens_d": -0.08401682216481746
+  },
+  "within_language": {
+    "de": {
+      "eligible_strata": [
+        "de"
+      ],
+      "per_stratum_quota": 100,
+      "n_resamples": 500,
+      "seed": 42,
+      "v2_mean": 18.314143632222077,
+      "nolora_mean": 17.48186357017811,
+      "diff_point": 0.8322800620439621,
+      "diff_lo": -0.9566587766330379,
+      "diff_hi": 2.8157500695730633,
+      "cohens_d": 1.1198311680199413
+    },
+    "en": {
+      "eligible_strata": [
+        "en"
+      ],
+      "per_stratum_quota": 100,
+      "n_resamples": 500,
+      "seed": 42,
+      "v2_mean": 26.388280785742253,
+      "nolora_mean": 27.30230630712914,
+      "diff_point": -0.9140255213868865,
+      "diff_lo": -4.67931132889629,
+      "diff_hi": 2.6696153904086586,
+      "cohens_d": -0.676576481415974
+    },
+    "ja": {
+      "cohens_d": null,
+      "n_v2": 21,
+      "n_nolora": 18,
+      "note": "insufficient mass for a single 100-utterance window per condition; this is the documented limitation for ja (Codex LOW-1 unrelated, but called out in verdict)."
+    }
+  },
+  "length_quartile_cuts": [
+    56,
+    83,
+    109
+  ],
+  "thresholds": {
+    "cohens_d_point_le": -0.5,
+    "diff_ci_upper_lt": 0.0,
+    "note": "DA-14 thresholds, unchanged. Plan A pass requires the gate to clear under both standard and balanced bootstrap."
+  },
+  "verdict_per_axis": {
+    "standard_pass": false,
+    "language_balanced_pass": false,
+    "length_balanced_pass": false
+  }
+}
