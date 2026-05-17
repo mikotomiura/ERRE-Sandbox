@@ -1,0 +1,21 @@
+{
+  "achieved": {
+    "de_en_mass": 0.6009766831044775,
+    "de_mass": 0.3854076913440742,
+    "en_mass": 0.21556899176040328,
+    "n_eff": 4358.432891857372,
+    "top_5_pct_weight_share": 0.1248748718242926
+  },
+  "captured_at_utc": "2026-05-17T00:10:18.912831+00:00",
+  "failed_axes": [],
+  "merge_sha": "0a6971b7e598b2eef1c75255d393929e08fba70a",
+  "plan_b_gate": "pass",
+  "schema_version": 1,
+  "thresholds": {
+    "de_en_mass_min": 0.6,
+    "de_mass_min": 0.3,
+    "n_eff_min": 1500.0,
+    "top_5_pct_max": 0.35
+  },
+  "weight_audit_path": "/mnt/c/ERRE-Sand_Box/data/lora/m9-c-adopt-v2/kant_r8_v4/weight-audit.json"
+}
