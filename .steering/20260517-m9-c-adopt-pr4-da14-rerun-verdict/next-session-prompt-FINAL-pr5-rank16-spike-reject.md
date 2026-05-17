@@ -1,6 +1,34 @@
 # Next-session 開始プロンプト — PR-5 rank=16 spike retrain (REJECT 経路、kant_r16_v1)
 
+> ## ⚠️ DEFERRED per DA-17 ADR (2026-05-17)
+>
+> 本 prompt は **保留中** です。DA-17 ADR
+> (`.steering/20260517-m9-c-adopt-da17-german-failure-preflight/decisions.md`
+> DA17-7 final 採用案) で「現 corpus の ja silent sink (38.9% mass) を
+> 解消する前に rank=16 spike すると、capacity scaling が ja を mask
+> したまま誤 ADOPT する risk」が指摘され、**PR-5 scope は β corpus
+> rebalance 単独 (rank=8 維持) に変更**されました。
+>
+> 本 rank=16 prompt は **α 経路** として温存し、以下の条件で再活用
+> されます:
+>
+> - β verdict が REJECT で direction 改善観測 + gate 未達 + capacity
+>   evidence 残存 → **PR-6 = α rank=16 spike を β corpus baseline 上で**
+>   起動 (本 prompt を当該 PR の next-session prompt として再活用)
+> - β verdict が REJECT で direction 悪化 or en 劣化 → γ language-aware
+>   LoRA or δ Plan B retrospective へ shift (本 prompt は archive)
+>
+> 詳細: `.steering/20260517-m9-c-adopt-da17-german-failure-preflight/decisions.md`
+> DA17-7 + `next-session-prompt-FINAL-pr5-corpus-rebalance.md`。
+>
+> 本 prompt 自体は **delete せず** 保持 (forensic 連続性 + α 採用時の
+> 再活用のため)。
+
+---
+
 **用途**: 新セッション最初に貼り付け (下の ``` で囲まれた部分のみ)
+**※本 prompt は DA-17 ADR で DEFERRED、即時実行禁止。上記 DEFERRED
+セクションの条件成立を確認してから再活用すること**
 
 **前提**:
 - PR-4 (`feature/m9-c-adopt-pr4-da14-rerun-verdict`、v4 verdict =
