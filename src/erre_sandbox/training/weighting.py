@@ -403,13 +403,17 @@ def math_ceil_5_pct(n: int) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Weighted causal-LM loss (Codex HIGH-C verbatim — pure function so unit tests
-# can exercise the math without instantiating transformers.Trainer)
+# Weighted causal-LM loss (pure function so unit tests can exercise the math
+# without instantiating transformers.Trainer). The next-token shift logic is
+# Codex HIGH-C verbatim; the batch-level reduce was updated by DA-16 ADR
+# DA16-2 from ``sum/weights.sum()`` to ``.mean()`` so that per-example
+# weights survive the batch=1 + grad_accum gradient path under DI-7's
+# VRAM-saturated Qwen3-8B + NF4 + rank=8 retrain configuration.
 # ---------------------------------------------------------------------------
 
 
 def compute_weighted_causal_lm_loss(logits: Any, labels: Any, weights: Any) -> Any:
-    """Compute per-example weighted causal-LM loss (Codex HIGH-C verbatim).
+    """Compute per-example weighted causal-LM loss (Codex HIGH-C verbatim shift logic).
 
     The function operates on **un-shifted** logits/labels — it performs
     the next-token shift internally so callers can pass raw model outputs.
@@ -421,18 +425,67 @@ def compute_weighted_causal_lm_loss(logits: Any, labels: Any, weights: Any) -> A
     2. Compute token-level cross-entropy with ``reduction="none"`` and
        ``ignore_index=-100``.
     3. Reduce to **per-example mean** over valid (non-``-100``) positions.
-    4. Take the weighted sum across the batch divided by ``weights.sum()``
-       (with a small epsilon clamp so a batch of zero-weight rows does
-       not divide by zero).
+    4. Reduce across the batch as ``(per_example_loss * weights).mean()``
+       (DA-16 ADR DA16-2: ``.mean()`` reduce, replaces the prior
+       ``.sum() / weights.sum()`` form so that weight magnitude is
+       preserved in the gradient under ``per_device_train_batch_size=1``).
+
+    **Semantic note (DA-16 ADR DA16-2, replaces the original Codex HIGH-C
+    ``sum/weights.sum()`` reduce)**:
+
+    Under ``per_device_train_batch_size=1`` (the DI-7 VRAM-saturated
+    Qwen3-8B + NF4 + rank=8 retrain configuration) the prior
+    ``(per_example_loss * weights).sum() / weights.sum()`` form
+    degenerates to ``(l[0] * w[0]) / w[0] = l[0]`` — the weight cancels
+    out of the gradient, and DA-14 ``compute_example_weight`` acts as a
+    no-op in training (retrain blockers.md Blocker 2, kant Plan B v3
+    REJECT root cause hypothesis). The new ``.mean()`` reduce keeps
+    ``loss = l[0] * w[0]`` so the weight is preserved in
+    ``loss.backward()``; under gradient accumulation the HF Trainer then
+    aggregates weight-aware gradients across micro-batches automatically.
+
+    This form **requires that ``weights`` are mean=1 normalised over
+    the training pool**. The training pipeline performs that
+    normalisation explicitly via :func:`normalise_weights_to_mean_one`
+    just before tokenisation (see
+    :func:`erre_sandbox.training.train_kant_lora._run_trainer_weighted`
+    around line 742); :func:`compute_example_weight` itself only
+    *produces* the per-example raw weights — the pool-level mean=1
+    invariant is a contract enforced by the caller, not the function.
+
+    With ``mean(weights) ≈ 1`` **in expectation over shuffled batches**,
+    the new ``(l*w).mean()`` and the prior ``sum(l*w)/sum(w)`` produce
+    similar averaged scales for ``batch_size >= 2`` — but only in
+    expectation. For any given small batch, the new value equals the
+    old value scaled by the **local** ``mean(weights)`` of that batch,
+    which can deviate materially from 1.0 even when the pool mean is
+    exactly 1.0. Concretely, a batch=2 of ``weights=[0.5, 1.5]`` has
+    local mean 1.0 (no scale change), but a batch=2 of
+    ``weights=[0.2, 1.8]`` (local mean 1.0 too) yields a different
+    per-example *gradient* distribution than the prior reducer because
+    weight magnitude survives. Future analysis of train-loss
+    trajectories at ``batch_size >= 2`` must treat this as a reducer
+    artefact rather than misread it as a model/corpus effect. For
+    ``batch_size = 1`` the two reduce forms diverge by design — that
+    divergence is exactly what re-establishes the DA-14 weighting
+    signal in the training gradient.
+
+    The ``torch.clamp(min=1e-8)`` epsilon used in the prior form was a
+    zero-weight-batch defence; with ``.mean()`` the denominator is the
+    tensor element count (always > 0 for batch ≥ 1) so the epsilon is
+    no longer required.
 
     Args:
         logits: ``(batch, seq_len, vocab)`` float tensor from the model.
         labels: ``(batch, seq_len)`` int tensor; ``-100`` marks ignored
             positions (typically padding / non-assistant tokens).
         weights: ``(batch,)`` float tensor of per-example sample weights.
+            Caller is responsible for mean=1 normalisation across the
+            training pool (see :func:`normalise_weights_to_mean_one`).
 
     Returns:
-        A scalar tensor — the weighted-mean loss for the batch.
+        A scalar tensor — the weighted-mean loss for the batch under the
+        DA-16 ADR ``.mean()`` reduce.
 
     Notes:
         ``torch`` and ``torch.nn.functional`` are imported lazily inside
@@ -440,8 +493,7 @@ def compute_weighted_causal_lm_loss(logits: Any, labels: Any, weights: Any) -> A
         installable without the ``[training]`` extras (the gate-only path
         and the pre-training audit must work on the CI default profile).
     """
-    import torch  # noqa: PLC0415  # lazy GPU stack
-    import torch.nn.functional as torch_fn  # noqa: PLC0415
+    import torch.nn.functional as torch_fn  # noqa: PLC0415  # lazy GPU stack
 
     if logits.shape[1] < 2:  # noqa: PLR2004  # 2 = need at least one shift position
         raise ValueError(
@@ -459,7 +511,7 @@ def compute_weighted_causal_lm_loss(logits: Any, labels: Any, weights: Any) -> A
     valid_mask = (labels_shifted != _CE_IGNORE_INDEX).to(token_ce.dtype)
     valid_counts = valid_mask.sum(dim=1).clamp_min(1.0)
     per_example_loss = (token_ce * valid_mask).sum(dim=1) / valid_counts
-    return (per_example_loss * weights).sum() / torch.clamp(weights.sum(), min=1e-8)
+    return (per_example_loss * weights).mean()
 
 
 __all__ = [

@@ -1700,10 +1700,15 @@ def _run_trainer_weighted(  # noqa: C901, PLR0915 — HF Trainer setup stays lin
             # CE path allocates a ``shift_logits`` intermediate (~38 MB per
             # micro-batch at seq=128 / bf16) — under v2's 16 GB VRAM saturation
             # that pressure plausibly triggered the allocator slow path
-            # observed at DI-7 (5.35 s/it → 14.23 s/it). Loss semantics are
-            # unchanged: ``compute_weighted_causal_lm_loss`` is the verbatim
-            # Codex HIGH-C implementation and receives identical (logits,
-            # labels, weights) regardless of where ``labels`` lives.
+            # observed at DI-7 (5.35 s/it → 14.23 s/it). The shift/recompute
+            # contract of ``compute_weighted_causal_lm_loss`` is unchanged
+            # (Codex HIGH-C verbatim) and the function receives identical
+            # (logits, labels, weights) regardless of where ``labels``
+            # lives; only the **batch-level reducer** was updated by DA-16
+            # ADR DA16-2 from ``sum/weights.sum()`` to ``.mean()`` so that
+            # per-example weights survive the batch=1 + grad_accum gradient
+            # path (retrain blockers.md Blocker 2 fix). Call-site API
+            # contract here is unchanged.
             weights = inputs.pop("sample_weight")
             labels = inputs.pop("labels")
             outputs = model(**inputs)
