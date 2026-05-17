@@ -1,0 +1,98 @@
+{
+  "persona": "kant",
+  "focal_target": 300,
+  "shard_count": 2,
+  "all_shards_pass": true,
+  "results": [
+    {
+      "shard": "kant_planb_nolora_run0_stim.duckdb",
+      "all_pass": true,
+      "checks": {
+        "1_alternation": {
+          "pass": true,
+          "violations": [],
+          "distribution": [
+            {
+              "speaker_persona_id": "_stimulus",
+              "turn_index": 1,
+              "count": 234
+            },
+            {
+              "speaker_persona_id": "kant",
+              "turn_index": 0,
+              "count": 270
+            },
+            {
+              "speaker_persona_id": "kant",
+              "turn_index": 2,
+              "count": 30
+            }
+          ]
+        },
+        "2_focal_count": {
+          "pass": true,
+          "focal_count": 300,
+          "target": 300,
+          "tolerance_band": [
+            285,
+            315
+          ]
+        },
+        "3_incomplete_dialog": {
+          "pass": true,
+          "violations": []
+        },
+        "4_focal_only_consumer": {
+          "focal_count": 300,
+          "non_focal_count": 234,
+          "total_count": 534
+        }
+      }
+    },
+    {
+      "shard": "kant_planb_nolora_run1_stim.duckdb",
+      "all_pass": true,
+      "checks": {
+        "1_alternation": {
+          "pass": true,
+          "violations": [],
+          "distribution": [
+            {
+              "speaker_persona_id": "_stimulus",
+              "turn_index": 1,
+              "count": 234
+            },
+            {
+              "speaker_persona_id": "kant",
+              "turn_index": 0,
+              "count": 270
+            },
+            {
+              "speaker_persona_id": "kant",
+              "turn_index": 2,
+              "count": 30
+            }
+          ]
+        },
+        "2_focal_count": {
+          "pass": true,
+          "focal_count": 300,
+          "target": 300,
+          "tolerance_band": [
+            285,
+            315
+          ]
+        },
+        "3_incomplete_dialog": {
+          "pass": true,
+          "violations": []
+        },
+        "4_focal_only_consumer": {
+          "focal_count": 300,
+          "non_focal_count": 234,
+          "total_count": 534
+        }
+      }
+    }
+  ]
+}

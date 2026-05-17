@@ -1,0 +1,82 @@
+
+==[ LoRA-on run0 ]==  2026-05-17T15:04:22+09:00
+2026-05-17 15:04:22,655 [__main__] INFO: adapter kant_r8v4 confirmed loaded on sglang
+2026-05-17 15:04:22,655 [__main__] INFO: pilot start persona=kant tag=r8 run=0 sliced=45 multi-turn-max=6 (focal per stim avg = 1.11)
+2026-05-17 15:05:03,858 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=25/300 rate=0.61 focal/s eta=7.6 min
+2026-05-17 15:05:31,121 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=50/300 rate=0.73 focal/s eta=5.7 min
+2026-05-17 15:06:08,184 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=75/300 rate=0.71 focal/s eta=5.3 min
+2026-05-17 15:06:32,419 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=100/300 rate=0.77 focal/s eta=4.3 min
+2026-05-17 15:07:15,040 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=125/300 rate=0.73 focal/s eta=4.0 min
+2026-05-17 15:07:39,469 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=150/300 rate=0.76 focal/s eta=3.3 min
+2026-05-17 15:08:13,291 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=175/300 rate=0.76 focal/s eta=2.7 min
+2026-05-17 15:08:36,624 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=200/300 rate=0.79 focal/s eta=2.1 min
+2026-05-17 15:09:13,146 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=225/300 rate=0.77 focal/s eta=1.6 min
+2026-05-17 15:09:35,722 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=250/300 rate=0.80 focal/s eta=1.0 min
+2026-05-17 15:10:09,779 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=275/300 rate=0.79 focal/s eta=0.5 min
+2026-05-17 15:10:35,958 [__main__] INFO: checkpoint persona=kant tag=r8 run=0 completed=300/300 rate=0.80 focal/s eta=0.0 min
+2026-05-17 15:10:35,972 [__main__] INFO: pilot done persona=kant tag=r8 run=0 completed=300 elapsed=6.2 min output=data\eval\m9-c-adopt-plan-b-verdict-v4\kant_r8v4_run0_stim.duckdb
+  [PASS] LoRA-on run0  2026-05-17T15:10:36+09:00
+
+==[ LoRA-on run1 ]==  2026-05-17T15:10:36+09:00
+2026-05-17 15:10:36,517 [__main__] INFO: adapter kant_r8v4 confirmed loaded on sglang
+2026-05-17 15:10:36,517 [__main__] INFO: pilot start persona=kant tag=r8 run=1 sliced=45 multi-turn-max=6 (focal per stim avg = 1.11)
+2026-05-17 15:11:13,581 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=25/300 rate=0.67 focal/s eta=6.8 min
+2026-05-17 15:11:39,530 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=50/300 rate=0.79 focal/s eta=5.3 min
+2026-05-17 15:12:15,578 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=75/300 rate=0.76 focal/s eta=5.0 min
+2026-05-17 15:12:38,723 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=100/300 rate=0.82 focal/s eta=4.1 min
+2026-05-17 15:13:14,415 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=125/300 rate=0.79 focal/s eta=3.7 min
+2026-05-17 15:13:37,909 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=150/300 rate=0.83 focal/s eta=3.0 min
+2026-05-17 15:14:12,220 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=175/300 rate=0.81 focal/s eta=2.6 min
+2026-05-17 15:14:36,372 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=200/300 rate=0.83 focal/s eta=2.0 min
+2026-05-17 15:15:11,272 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=225/300 rate=0.82 focal/s eta=1.5 min
+2026-05-17 15:15:34,403 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=250/300 rate=0.84 focal/s eta=1.0 min
+2026-05-17 15:16:07,804 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=275/300 rate=0.83 focal/s eta=0.5 min
+2026-05-17 15:16:31,739 [__main__] INFO: checkpoint persona=kant tag=r8 run=1 completed=300/300 rate=0.84 focal/s eta=0.0 min
+2026-05-17 15:16:31,752 [__main__] INFO: pilot done persona=kant tag=r8 run=1 completed=300 elapsed=5.9 min output=data\eval\m9-c-adopt-plan-b-verdict-v4\kant_r8v4_run1_stim.duckdb
+  [PASS] LoRA-on run1  2026-05-17T15:16:31+09:00
+
+==[ no-LoRA run0 ]==  2026-05-17T15:16:31+09:00
+2026-05-17 15:16:31,993 [__main__] INFO: --no-lora-control mode: routing to base model Qwen/Qwen3-8B
+2026-05-17 15:16:31,994 [__main__] INFO: pilot start persona=kant tag=nolora run=0 sliced=45 multi-turn-max=6 (focal per stim avg = 1.11)
+2026-05-17 15:17:07,996 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=25/300 rate=0.69 focal/s eta=6.6 min
+2026-05-17 15:17:31,708 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=50/300 rate=0.84 focal/s eta=5.0 min
+2026-05-17 15:18:08,067 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=75/300 rate=0.78 focal/s eta=4.8 min
+2026-05-17 15:18:31,025 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=100/300 rate=0.84 focal/s eta=4.0 min
+2026-05-17 15:19:05,086 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=125/300 rate=0.82 focal/s eta=3.6 min
+2026-05-17 15:19:30,579 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=150/300 rate=0.84 focal/s eta=3.0 min
+2026-05-17 15:20:04,986 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=175/300 rate=0.82 focal/s eta=2.5 min
+2026-05-17 15:20:28,718 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=200/300 rate=0.84 focal/s eta=2.0 min
+2026-05-17 15:21:04,194 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=225/300 rate=0.83 focal/s eta=1.5 min
+2026-05-17 15:21:28,770 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=250/300 rate=0.84 focal/s eta=1.0 min
+2026-05-17 15:22:04,943 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=275/300 rate=0.83 focal/s eta=0.5 min
+2026-05-17 15:22:30,830 [__main__] INFO: checkpoint persona=kant tag=nolora run=0 completed=300/300 rate=0.84 focal/s eta=0.0 min
+2026-05-17 15:22:30,843 [__main__] INFO: pilot done persona=kant tag=nolora run=0 completed=300 elapsed=6.0 min output=data\eval\m9-c-adopt-plan-b-verdict-v4\kant_planb_nolora_run0_stim.duckdb
+  [PASS] no-LoRA run0  2026-05-17T15:22:30+09:00
+
+==[ no-LoRA run1 ]==  2026-05-17T15:22:30+09:00
+2026-05-17 15:22:31,076 [__main__] INFO: --no-lora-control mode: routing to base model Qwen/Qwen3-8B
+2026-05-17 15:22:31,076 [__main__] INFO: pilot start persona=kant tag=nolora run=1 sliced=45 multi-turn-max=6 (focal per stim avg = 1.11)
+2026-05-17 15:23:06,230 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=25/300 rate=0.71 focal/s eta=6.4 min
+2026-05-17 15:23:30,361 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=50/300 rate=0.84 focal/s eta=4.9 min
+2026-05-17 15:24:04,364 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=75/300 rate=0.80 focal/s eta=4.7 min
+2026-05-17 15:24:27,936 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=100/300 rate=0.86 focal/s eta=3.9 min
+2026-05-17 15:25:10,552 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=125/300 rate=0.78 focal/s eta=3.7 min
+2026-05-17 15:25:34,228 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=150/300 rate=0.82 focal/s eta=3.1 min
+2026-05-17 15:26:12,055 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=175/300 rate=0.79 focal/s eta=2.6 min
+2026-05-17 15:26:37,137 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=200/300 rate=0.81 focal/s eta=2.1 min
+2026-05-17 15:27:13,576 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=225/300 rate=0.80 focal/s eta=1.6 min
+2026-05-17 15:27:36,894 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=250/300 rate=0.82 focal/s eta=1.0 min
+2026-05-17 15:28:11,812 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=275/300 rate=0.81 focal/s eta=0.5 min
+2026-05-17 15:28:37,178 [__main__] INFO: checkpoint persona=kant tag=nolora run=1 completed=300/300 rate=0.82 focal/s eta=0.0 min
+2026-05-17 15:28:37,190 [__main__] INFO: pilot done persona=kant tag=nolora run=1 completed=300 elapsed=6.1 min output=data\eval\m9-c-adopt-plan-b-verdict-v4\kant_planb_nolora_run1_stim.duckdb
+  [PASS] no-LoRA run1  2026-05-17T15:28:37+09:00
+
+==[ ALL 4 RUNS COMPLETE ]==  2026-05-17T15:28:37+09:00
+Output dir: data/eval/m9-c-adopt-plan-b-verdict-v4
+total 5176
+drwxr-xr-x 1 johnd 197611       0  5月 17 15:28 .
+drwxr-xr-x 1 johnd 197611       0  5月 17 15:01 ..
+-rw-r--r-- 1 johnd 197611 1323008  5月 17 15:22 kant_planb_nolora_run0_stim.duckdb
+-rw-r--r-- 1 johnd 197611 1323008  5月 17 15:28 kant_planb_nolora_run1_stim.duckdb
+-rw-r--r-- 1 johnd 197611 1323008  5月 17 15:10 kant_r8v4_run0_stim.duckdb
+-rw-r--r-- 1 johnd 197611 1323008  5月 17 15:16 kant_r8v4_run1_stim.duckdb
