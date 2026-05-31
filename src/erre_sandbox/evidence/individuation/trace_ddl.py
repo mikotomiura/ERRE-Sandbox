@@ -44,6 +44,13 @@ _INDIVIDUAL_STATE_TRACE_COLUMNS: Final[tuple[tuple[str, str], ...]] = (
     ("coherence_score", "DOUBLE"),
     ("belief_classes_json", "TEXT"),
     ("arc_segment_count", "BIGINT NOT NULL"),
+    # M10-A E2 (DA-S1-2): per-individual SubjectiveWorldModel key set, persisted
+    # as a ``[["axis","key"], ...]`` pair-array JSON (NOT ``"axis:key"`` strings —
+    # WorldModelEntry.key is an arbitrary string that may contain ``:``). NULL
+    # when no SWM was synthesised (honest "not captured"), ``"[]"`` when a SWM was
+    # synthesised but holds no entries. Appended last so the column order of the
+    # M11-C2 prefix is unchanged.
+    ("world_model_keys_json", "TEXT"),
 )
 
 INDIVIDUAL_STATE_TRACE_COLUMN_COUNT: Final[int] = len(_INDIVIDUAL_STATE_TRACE_COLUMNS)
@@ -101,6 +108,7 @@ class IndividualStateTraceRow:
     coherence_score: float | None
     belief_classes_json: str | None
     arc_segment_count: int
+    world_model_keys_json: str | None
 
     def to_row(self) -> tuple[object, ...]:
         """Positional tuple in DDL column order (INSERT bind order)."""
@@ -112,7 +120,31 @@ class IndividualStateTraceRow:
             self.coherence_score,
             self.belief_classes_json,
             self.arc_segment_count,
+            self.world_model_keys_json,
         )
+
+
+def _world_model_keys_json(profile: IndividualProfile) -> str | None:
+    """Serialise the individual's SWM key set as a ``[["axis","key"], ...]`` JSON.
+
+    M10-A E2 (DA-S1-2/DA-S1-5). The key set is taken from the **evidence floor**
+    (``world_model.base_floor`` — belief-records + bonds derived, LLM-uninvolved);
+    by the ``reconcile_world_model`` invariant the modulated view shares the same
+    ``(axis, key)`` set (modulation only nudges values), so for the key-overlap
+    substrate the floor is the honest, deterministic source.
+
+    Returns ``None`` when no SWM was synthesised (``world_model is None`` — a
+    flag-off or pre-synthesis tick: honest "not captured"), distinct from an
+    empty ``"[]"`` (a synthesised SWM holding no entries). Keys are de-duplicated
+    and sorted so a fixed SWM yields a byte-stable payload (recompute-stable).
+    Pair arrays — not ``"axis:key"`` strings — because ``WorldModelEntry.key`` is
+    an arbitrary string that may contain ``:`` (DA-S1-2).
+    """
+    snapshot = profile.world_model
+    if snapshot is None:
+        return None
+    keys = sorted({(entry.axis, entry.key) for entry in snapshot.base_floor.entries})
+    return json.dumps([[axis, key] for axis, key in keys])
 
 
 def build_individual_state_trace_row(
@@ -132,6 +164,8 @@ def build_individual_state_trace_row(
     by the orchestrator's sink closure — ``world`` never knows it (DA-M11C2-4).
     *belief_classes* comes off ``CycleResult`` so ``world`` never imports
     ``memory`` (DA-M11C2-2); ``None`` flag-off, a possibly-empty list flag-on.
+    ``world_model_keys_json`` (M10-A E2) is the SWM key set from the snapshot's
+    evidence floor — see :func:`_world_model_keys_json`.
     """
     dev = profile.development_state
     arc = profile.narrative_arc
@@ -144,6 +178,7 @@ def build_individual_state_trace_row(
         coherence_score=None if arc is None else arc.coherence_score,
         belief_classes_json=belief_classes_json,
         arc_segment_count=0 if arc is None else len(arc.arc_segments),
+        world_model_keys_json=_world_model_keys_json(profile),
     )
 
 

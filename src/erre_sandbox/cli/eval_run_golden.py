@@ -68,7 +68,7 @@ from typing import TYPE_CHECKING, Any, Final, assert_never, cast
 import duckdb
 import yaml
 
-from erre_sandbox.bootstrap import make_agent_id
+from erre_sandbox.bootstrap import _make_relational_sink, make_agent_id
 from erre_sandbox.cognition import CognitionCycle, Reflector
 from erre_sandbox.contracts.eval_paths import METRICS_SCHEMA
 from erre_sandbox.erre import ZONE_TO_DEFAULT_ERRE_MODE, DefaultERREModePolicy
@@ -1296,10 +1296,12 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
 
     ``individual_layer`` is the M11-C2 substrate seam (DA-M11C2-9): ``None``
     (default) leaves the flag-off path byte-identical; an enabled config bootstraps
-    ``metrics.individual_state_trace`` and wires the trace sink into the default
-    WorldRuntime. A real flag-on run (the individual-layer evaluation epoch) stays
-    deferred (M10-A), so this is currently a dormant-but-correct seam exercised by
-    C2's unit tests and, later, C3b.
+    ``metrics.individual_state_trace``, wires the trace sink into the default
+    WorldRuntime, **and** (M10-A E1, DA-S1) chains the belief-promotion relational
+    sink onto the dialog turn sink so the evaluation epoch promotes beliefs — the
+    substrate ``belief_variance`` reads. The flag-off path keeps a single
+    ``duckdb_sink`` turn sink and never bootstraps the trace table, so the DuckDB
+    stays byte-identical (DB byte-invariance is asserted for flag-off only).
     """
     manifest = (
         load_seed_manifest() if seeds_path is None else load_seed_manifest(seeds_path)
@@ -1443,11 +1445,36 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         individual_layer_enabled=individual_layer_on,
     )
 
+    # M10-A E1 (DA-S1, Codex C3/C4b): flag-on **only**, chain the belief-promotion
+    # relational sink after the raw_dialog write so the evaluation epoch actually
+    # promotes beliefs (per-turn affinity delta + maybe_promote_belief upsert) —
+    # the substrate ``belief_variance`` reads via ``list_semantic_beliefs``. A
+    # flag-off run keeps ``turn_sink=duckdb_sink`` alone so the raw_dialog byte
+    # stream is unchanged (affinity dynamics can shift dialog generation, so this
+    # must never run flag-off). Mirrors bootstrap.py ``_chained_turn_sink``;
+    # ``_make_relational_sink`` is reused from the bootstrap composition root
+    # (private import accepted for S1, Codex C4). Belief substrate lands in the
+    # sqlite memory store and is read at the next cognition tick's trace emit, so
+    # the final-tick trace reflects the run's promoted beliefs (C4b ordering).
+    turn_sink: Callable[[DialogTurnMsg], None] = duckdb_sink
+    if individual_layer_on:
+        relational_sink = _make_relational_sink(
+            runtime=runtime,
+            memory=memory,
+            persona_registry=persona_specs,
+        )
+
+        def _chained_turn_sink(turn: DialogTurnMsg) -> None:
+            duckdb_sink(turn)
+            relational_sink(turn)
+
+        turn_sink = _chained_turn_sink
+
     scheduler_rng = random.Random(seed_root)  # noqa: S311 — non-crypto, eval seed
     scheduler = InMemoryDialogScheduler(
         envelope_sink=runtime.inject_envelope,
         rng=scheduler_rng,
-        turn_sink=duckdb_sink,
+        turn_sink=turn_sink,
         golden_baseline_mode=False,
         # P3a-decide gating fix: bypass zone-equality so the 3 personas can
         # sustain dialog after LLM destination_zone scatters them out of

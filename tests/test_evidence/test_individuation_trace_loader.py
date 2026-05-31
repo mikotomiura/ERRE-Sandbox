@@ -21,6 +21,7 @@ from erre_sandbox.evidence.eval_store import bootstrap_schema, connect_analysis_
 from erre_sandbox.evidence.individuation.layer1 import stub_embedding_provider
 from erre_sandbox.evidence.individuation.loader import (
     IndividualStateTraceConflictError,
+    IndividualStateTraceSchemaError,
     load_individual_state_windows,
 )
 from erre_sandbox.evidence.individuation.policy import MetricStatus
@@ -95,6 +96,7 @@ def _insert_trace(
     development_stage: str | None = None,
     coherence_score: float | None = None,
     arc_segment_count: int = 0,
+    world_model_keys_json: str | None = None,
 ) -> None:
     cols = ", ".join(column_names())
     ph = ", ".join("?" for _ in column_names())
@@ -108,6 +110,7 @@ def _insert_trace(
             coherence_score,
             belief_classes_json,
             arc_segment_count,
+            world_model_keys_json,
         ),
     )
 
@@ -244,6 +247,176 @@ def test_load_null_json_is_none(tmp_path: Path) -> None:
     finally:
         view.close()
     assert windows[("run0", "a_kant_001")].belief_classes is None
+    # No SWM column written here either -> world_model_keys is None.
+    assert windows[("run0", "a_kant_001")].world_model_keys is None
+
+
+# --- E2: SWM key set read / backward compat / conflict / shape (DA-S1-2/3) ---
+
+
+def test_load_reads_final_tick_world_model_keys(tmp_path: Path) -> None:
+    """SWM pair-array JSON round-trips to a final-tick (axis,key) tuple set."""
+    db = tmp_path / "swm.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_keys_json='[["env", "agora"]]',
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=1,
+        belief_classes_json='["trust", "wary"]',
+        world_model_keys_json='[["env", "agora"], ["self", "relational_disposition"]]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    win = windows[("run0", "a_rikyu_001")]
+    assert win.final_tick == 1
+    # final-tick SWM key set (parsed pair array)
+    assert win.world_model_keys == (
+        ("env", "agora"),
+        ("self", "relational_disposition"),
+    )
+    # belief read is unaffected by the SWM column being present
+    assert win.belief_classes == ("trust", "wary")
+
+
+def test_load_empty_swm_distinct_from_none(tmp_path: Path) -> None:
+    """'[]' -> empty tuple (synthesised, no entries); NULL -> None (not captured)."""
+    db = tmp_path / "swm_empty.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=0,
+        belief_classes_json="[]",
+        world_model_keys_json="[]",
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_002",
+        tick=0,
+        belief_classes_json=None,
+        world_model_keys_json=None,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    assert windows[("run0", "a_rikyu_001")].world_model_keys == ()
+    assert windows[("run0", "a_rikyu_002")].world_model_keys is None
+
+
+def test_load_pre_e2_table_without_swm_column_reads_none(tmp_path: Path) -> None:
+    """A pre-E2 trace table (no world_model_keys_json column) reads as None (DA-S1-3).
+
+    Builds the legacy 7-column table by hand (the column the loader would
+    otherwise SELECT is absent) so the SELECT must omit it and not raise.
+    """
+    db = tmp_path / "pre_e2.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {METRICS_SCHEMA}")
+    con.execute(
+        f"CREATE TABLE {METRICS_SCHEMA}.{TABLE_NAME} ("  # module constants
+        " run_id TEXT NOT NULL, individual_id TEXT NOT NULL, tick BIGINT NOT NULL,"
+        " development_stage TEXT, coherence_score DOUBLE, belief_classes_json TEXT,"
+        " arc_segment_count BIGINT NOT NULL, CHECK (tick >= 0))"
+    )
+    con.execute(
+        f"INSERT INTO {METRICS_SCHEMA}.{TABLE_NAME}"  # noqa: S608  # module constants
+        " (run_id, individual_id, tick, development_stage, coherence_score,"
+        " belief_classes_json, arc_segment_count)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("run0", "a_rikyu_001", 1, None, None, '["trust", "wary"]', 0),
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    win = windows[("run0", "a_rikyu_001")]
+    # belief still read; SWM absent -> None (no broken SELECT)
+    assert win.belief_classes == ("trust", "wary")
+    assert win.world_model_keys is None
+
+
+def test_load_raises_on_divergent_final_tick_world_model_keys(tmp_path: Path) -> None:
+    """Same final tick, identical belief but divergent SWM keys -> conflict (C5a)."""
+    db = tmp_path / "swm_conflict.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        world_model_keys_json='[["env", "agora"]]',
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        world_model_keys_json='[["env", "study"]]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceConflictError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_malformed_world_model_keys_shape(tmp_path: Path) -> None:
+    """A non pair-array world_model_keys_json fails fast (C5c)."""
+    db = tmp_path / "swm_bad.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_keys_json='["env", "agora"]',  # flat list, not a pair array
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
 
 
 # --- runner: trace -> valid belief_variance w/ trace provenance -------------
@@ -326,3 +499,57 @@ def test_runner_belief_variance_idempotent_recompute(tmp_path: Path) -> None:
     a = _belief_result(db, tmp_path)
     b = _belief_result(db, tmp_path)
     assert a.to_row() == b.to_row()
+
+
+# --- claim-drift guard: SWM persisted but jaccard still UNSUPPORTED (C1/C2) ---
+
+
+def test_world_model_overlap_jaccard_stays_unsupported_with_swm_trace(
+    tmp_path: Path,
+) -> None:
+    """S1 (C) persists SWM but does NOT un-stub the metric (Codex C1).
+
+    Even when ``world_model_keys_json`` is populated in the trace, the runner's
+    ``world_model_overlap_jaccard`` stays ``unsupported`` — the metric un-stub is
+    deferred to S2/E2b behind a separate pre-GPU conformance ADR (reactivate
+    §6.1). This guards against claim drift (SWM substrate present ≠ metric live).
+    """
+    db = tmp_path / "swm_present.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_dialog(con, _dialog_row(1, "a_kant_001", "kant", "the of and study"))
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=1,
+        belief_classes_json='["trust", "wary"]',
+        world_model_keys_json='[["env", "agora"], ["self", "relational_disposition"]]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    ctx = IndividuationContext(
+        personas_dir=tmp_path,
+        provider=stub_embedding_provider(),
+        computed_at=_NOW,
+    )
+    view = connect_analysis_view(db)
+    try:
+        results = compute_individuation(view, run_id="run0", ctx=ctx)
+    finally:
+        view.close()
+    jaccard = [r for r in results if r.metric_name == "world_model_overlap_jaccard"]
+    assert jaccard, "expected a world_model_overlap_jaccard row"
+    assert all(r.status is MetricStatus.UNSUPPORTED for r in jaccard)
+
+
+def test_policy_forbids_valid_world_model_overlap_jaccard() -> None:
+    """Codex C2: the claim boundary keeps SWM Jaccard never-VALID at this stage."""
+    from erre_sandbox.evidence.individuation.policy import METRIC_SPECS
+
+    spec = METRIC_SPECS["world_model_overlap_jaccard"]
+    assert MetricStatus.VALID not in spec.allowed_statuses
+    assert spec.allowed_statuses == frozenset(
+        {MetricStatus.DEGENERATE, MetricStatus.UNSUPPORTED}
+    )

@@ -19,6 +19,9 @@ from erre_sandbox.contracts.cognition_layers import (
     DevelopmentState,
     IndividualProfile,
     NarrativeArc,
+    SubjectiveWorldModel,
+    WorldModelEntry,
+    WorldModelSnapshot,
 )
 from erre_sandbox.contracts.eval_paths import METRICS_SCHEMA
 from erre_sandbox.evidence.eval_store import bootstrap_schema
@@ -77,7 +80,8 @@ def test_conditional_bootstrap_creates_trace_table(tmp_path: Path) -> None:
         con.close()
     assert TABLE_NAME in names
     assert {c[0] for c in cols} == set(column_names())
-    assert len(cols) == INDIVIDUAL_STATE_TRACE_COLUMN_COUNT == 7
+    # M10-A E2 appended world_model_keys_json -> 8 columns.
+    assert len(cols) == INDIVIDUAL_STATE_TRACE_COLUMN_COUNT == 8
 
 
 def test_conditional_bootstrap_idempotent(tmp_path: Path) -> None:
@@ -113,6 +117,7 @@ def test_check_rejects_negative_tick(tmp_path: Path) -> None:
                     coherence_score=None,
                     belief_classes_json=None,
                     arc_segment_count=0,
+                    world_model_keys_json=None,
                 ),
             )
         # tick == 0 is accepted
@@ -126,6 +131,7 @@ def test_check_rejects_negative_tick(tmp_path: Path) -> None:
                 coherence_score=None,
                 belief_classes_json=None,
                 arc_segment_count=0,
+                world_model_keys_json=None,
             ),
         )
     finally:
@@ -145,6 +151,60 @@ def test_build_row_none_safety() -> None:
     assert row.coherence_score is None
     assert row.belief_classes_json is None
     assert row.arc_segment_count == 0  # no arc -> zero observed segments
+    # no SWM snapshot -> NULL (honest "not captured", distinct from "[]")
+    assert row.world_model_keys_json is None
+
+
+def _snapshot(*entries: tuple[str, str]) -> WorldModelSnapshot:
+    """Build a WorldModelSnapshot whose base_floor carries the given (axis,key)s."""
+    floor = SubjectiveWorldModel(
+        entries=[
+            WorldModelEntry(
+                axis=axis,  # type: ignore[arg-type]  # test feeds valid axis literals
+                key=key,
+                value=0.5,
+                confidence=0.5,
+                cited_memory_ids=("m1",),
+                last_updated_tick=1,
+            )
+            for axis, key in entries
+        ]
+    )
+    return WorldModelSnapshot(base_floor=floor, modulated=floor)
+
+
+def test_build_row_world_model_keys_pair_array_sorted() -> None:
+    """SWM keys serialise to a de-duplicated, sorted [["axis","key"], ...] array.
+
+    Insertion order is intentionally not sorted, and a key containing ':' is
+    included to prove the pair-array form is unambiguous (DA-S1-2).
+    """
+    profile = IndividualProfile(
+        individual_id="a_rikyu_001",
+        base_persona_id="rikyu",
+        world_model=_snapshot(
+            ("self", "relational_disposition"),
+            ("env", "agora"),
+            ("env", "chashitsu:inner"),  # ':' in key -> pair array, not "axis:key"
+            ("self", "relational_disposition"),  # duplicate collapses
+        ),
+    )
+    row = build_individual_state_trace_row(profile, ["trust"], run_id="r0", tick=4)
+    assert row.world_model_keys_json == (
+        '[["env", "agora"], ["env", "chashitsu:inner"],'
+        ' ["self", "relational_disposition"]]'
+    )
+
+
+def test_build_row_empty_swm_distinct_from_none() -> None:
+    """A synthesised-but-empty SWM serialises to '[]', not NULL."""
+    profile = IndividualProfile(
+        individual_id="a_rikyu_002",
+        base_persona_id="rikyu",
+        world_model=_snapshot(),
+    )
+    row = build_individual_state_trace_row(profile, None, run_id="r0", tick=2)
+    assert row.world_model_keys_json == "[]"
 
 
 def test_build_row_populated() -> None:
@@ -211,4 +271,5 @@ def test_to_row_lockstep_round_trip(tmp_path: Path) -> None:
         None,
         '["curious"]',
         0,
+        None,  # world_model_keys_json: this profile carries no SWM snapshot
     )

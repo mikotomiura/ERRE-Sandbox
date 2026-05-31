@@ -71,6 +71,7 @@ def test_sink_writes_row_loader_can_read(tmp_path: Path) -> None:
         0.25,
         '["trust", "wary"]',
         0,
+        None,  # world_model_keys_json: _profile() carries no SWM snapshot
     )
     assert state.fatal_error is None
 
