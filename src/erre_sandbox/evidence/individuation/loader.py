@@ -254,9 +254,20 @@ class IndividualStateTraceConflictError(RuntimeError):
 
     The trace DDL does not enforce ``(run_id, individual_id, tick)`` uniqueness.
     One row per tick is the contract; if two rows share the
-    final tick with *different* ``belief_classes_json`` the final-tick belief set
-    (DA-M11C2-8) is ambiguous, so we fail loud rather than pick arbitrarily.
+    final tick with *different* ``belief_classes_json`` **or**
+    ``world_model_keys_json`` the final-tick belief / SWM set (DA-M11C2-8 /
+    M10-A E2 C5a) is ambiguous, so we fail loud rather than pick arbitrarily.
     Byte-identical duplicates collapse silently (idempotent recompute).
+    """
+
+
+class IndividualStateTraceSchemaError(RuntimeError):
+    """Raised when a ``world_model_keys_json`` payload is not a pair array.
+
+    The persistence contract (DA-S1-2) is a ``[["axis","key"], ...]`` JSON array
+    of 2-element string pairs. A payload that is not a list, or that holds an
+    element that is not a 2-string list, is corrupt — we fail fast rather than
+    silently coerce (Codex C5c).
     """
 
 
@@ -276,6 +287,11 @@ class IndividualStateWindow:
     final_tick: int
     source_table: str
     source_filter_hash: str
+    world_model_keys: tuple[tuple[str, str], ...] | None = None
+    """Final-tick SWM ``(axis, key)`` set (M10-A E2). ``None`` when no SWM was
+    captured — the final row's ``world_model_keys_json`` is NULL, **or** the
+    trace table predates E2 and has no ``world_model_keys_json`` column at all
+    (backward compat, DA-S1-3). An empty tuple is a synthesised-but-empty SWM."""
 
 
 def _trace_source_filter_hash(
@@ -306,6 +322,60 @@ def _trace_source_filter_hash(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+_WORLD_MODEL_KEYS_COLUMN: Final[str] = "world_model_keys_json"
+"""Trace column added at M10-A E2; absent in pre-E2 flag-on DuckDB files."""
+
+_WORLD_MODEL_KEY_PAIR_LEN: Final[int] = 2
+
+
+def _trace_has_world_model_column(view: AnalysisView) -> bool:
+    """True when the trace table carries the E2 ``world_model_keys_json`` column.
+
+    A pre-E2 flag-on DuckDB has the M11-C2 trace table but no SWM column, so the
+    SELECT must omit it and the loader returns ``world_model_keys=None`` rather
+    than failing on an unknown identifier (backward compat, DA-S1-3).
+    """
+    present = view.execute(
+        "SELECT 1 FROM information_schema.columns"
+        " WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+        (METRICS_SCHEMA, _INDIVIDUAL_STATE_TRACE_TABLE, _WORLD_MODEL_KEYS_COLUMN),
+    )
+    return bool(present)
+
+
+def _parse_world_model_keys(
+    raw_json: str | None,
+) -> tuple[tuple[str, str], ...] | None:
+    """Parse a ``[["axis","key"], ...]`` payload, fail-fast on a bad shape (C5c).
+
+    ``None`` (NULL column / pre-E2 table) → ``None``. ``"[]"`` → empty tuple
+    (synthesised-but-empty SWM). Any non-list payload, or an element that is not
+    a 2-element list of strings, raises :class:`IndividualStateTraceSchemaError`
+    — the contract is trusted-writer output, so a malformed payload is corruption,
+    not a value to coerce.
+    """
+    if raw_json is None:
+        return None
+    parsed = json.loads(raw_json)
+    if not isinstance(parsed, list):
+        msg = f"world_model_keys_json is not a JSON array: {raw_json!r}"
+        raise IndividualStateTraceSchemaError(msg)
+    pairs: list[tuple[str, str]] = []
+    for item in parsed:
+        if (
+            not isinstance(item, list)
+            or len(item) != _WORLD_MODEL_KEY_PAIR_LEN
+            or not all(isinstance(part, str) for part in item)
+        ):
+            msg = (
+                "world_model_keys_json element is not a 2-string pair:"
+                f" {item!r} (payload {raw_json!r})"
+            )
+            raise IndividualStateTraceSchemaError(msg)
+        pairs.append((item[0], item[1]))
+    return tuple(pairs)
+
+
 def load_individual_state_windows(
     view: AnalysisView,
     *,
@@ -333,8 +403,12 @@ def load_individual_state_windows(
     if not present:
         return {}
 
+    # E2 (DA-S1-3): only SELECT the SWM column when it exists, so a pre-E2 trace
+    # table reads cleanly with world_model_keys -> None.
+    has_swm = _trace_has_world_model_column(view)
+    swm_select = f", {_WORLD_MODEL_KEYS_COLUMN}" if has_swm else ""
     sql = (
-        "SELECT run_id, individual_id, tick, belief_classes_json"  # noqa: S608  # identifiers are module constants
+        f"SELECT run_id, individual_id, tick, belief_classes_json{swm_select}"  # noqa: S608  # identifiers are module constants
         f" FROM {table}"
     )
     params: tuple[object, ...] | None = None
@@ -343,28 +417,35 @@ def load_individual_state_windows(
         params = (run_id,)
     sql += " ORDER BY run_id, individual_id, tick"
 
-    # key -> {tick: set(belief_classes_json)} so a divergent final-tick is caught.
-    grouped: dict[tuple[str, str], dict[int, set[str | None]]] = {}
+    # key -> {tick: list[(belief_json, swm_json)]} so a divergent final-tick is
+    # caught per column (belief OR SWM divergence, C5a).
+    grouped: dict[tuple[str, str], dict[int, list[tuple[str | None, str | None]]]] = {}
     for row in view.execute(sql, params):
         key = (str(row[0]), str(row[1]))
         tick = cast("int", row[2])
-        raw_json = None if row[3] is None else str(row[3])
-        grouped.setdefault(key, {}).setdefault(tick, set()).add(raw_json)
+        belief_json = None if row[3] is None else str(row[3])
+        swm_json = None if (not has_swm or row[4] is None) else str(row[4])
+        grouped.setdefault(key, {}).setdefault(tick, []).append((belief_json, swm_json))
 
     windows: dict[tuple[str, str], IndividualStateWindow] = {}
     for (r_run_id, individual_id), by_tick in grouped.items():
         final_tick = max(by_tick)
-        variants = by_tick[final_tick]
-        if len(variants) > 1:
-            msg = (
-                f"individual {individual_id!r} in run {r_run_id!r} has"
-                f" divergent belief_classes_json at final tick {final_tick}"
-                f" ({sorted(str(v) for v in variants)}); trace rows must be"
-                " unique per tick (M11-C2)"
-            )
-            raise IndividualStateTraceConflictError(msg)
-        raw_json = variants.pop()
-        belief_classes = None if raw_json is None else tuple(json.loads(raw_json))
+        final_rows = by_tick[final_tick]
+        belief_raw = _sole_final_variant(
+            {b for b, _ in final_rows},
+            run_id=r_run_id,
+            individual_id=individual_id,
+            final_tick=final_tick,
+            column="belief_classes_json",
+        )
+        swm_raw = _sole_final_variant(
+            {s for _, s in final_rows},
+            run_id=r_run_id,
+            individual_id=individual_id,
+            final_tick=final_tick,
+            column=_WORLD_MODEL_KEYS_COLUMN,
+        )
+        belief_classes = None if belief_raw is None else tuple(json.loads(belief_raw))
         windows[(r_run_id, individual_id)] = IndividualStateWindow(
             run_id=r_run_id,
             individual_id=individual_id,
@@ -378,12 +459,41 @@ def load_individual_state_windows(
                 final_tick=final_tick,
                 belief_classes=belief_classes,
             ),
+            world_model_keys=_parse_world_model_keys(swm_raw),
         )
     return windows
 
 
+def _sole_final_variant(
+    variants: set[str | None],
+    *,
+    run_id: str,
+    individual_id: str,
+    final_tick: int,
+    column: str,
+) -> str | None:
+    """Return the single final-tick value for *column*, or raise on divergence.
+
+    Byte-identical duplicates collapse (the caller passes a ``set``); two
+    distinct non-collapsing values at the final tick are an ambiguous trace
+    (C5a) → :class:`IndividualStateTraceConflictError`. The belief provenance
+    hash is unchanged by this refactor — it is still derived from the belief
+    payload alone (SWM divergence is a separate, independent check).
+    """
+    if len(variants) > 1:
+        msg = (
+            f"individual {individual_id!r} in run {run_id!r} has divergent"
+            f" {column} at final tick {final_tick}"
+            f" ({sorted(str(v) for v in variants)}); trace rows must be"
+            " unique per tick (M11-C2 / M10-A E2)"
+        )
+        raise IndividualStateTraceConflictError(msg)
+    return next(iter(variants))
+
+
 __all__ = [
     "IndividualStateTraceConflictError",
+    "IndividualStateTraceSchemaError",
     "IndividualStateWindow",
     "IndividualWindow",
     "IndividuationLoaderError",
