@@ -26,8 +26,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final, TypeVar, cast
 
 from erre_sandbox.contracts.eval_paths import (
     METRICS_SCHEMA,
@@ -262,12 +263,17 @@ class IndividualStateTraceConflictError(RuntimeError):
 
 
 class IndividualStateTraceSchemaError(RuntimeError):
-    """Raised when a ``world_model_keys_json`` payload is not a pair array.
+    """Raised when a trace substrate payload is structurally corrupt.
 
-    The persistence contract (DA-S1-2) is a ``[["axis","key"], ...]`` JSON array
-    of 2-element string pairs. A payload that is not a list, or that holds an
-    element that is not a 2-string list, is corrupt — we fail fast rather than
-    silently coerce (Codex C5c).
+    Two families fail fast rather than silently coerce:
+
+    * a ``world_model_keys_json`` payload that is not a ``[["axis","key"], ...]``
+      pair array (DA-S1-2 / Codex C5c), and
+    * a M10-A S2 substrate value that cannot be a real measurement: a non-finite
+      ``coherence_score`` or a negative ``arc_segment_count`` (DA-S2-5 / Codex
+      CX4). ``None`` is *not* corrupt — it is the honest "no substrate" signal the
+      diagnostic metrics degrade to ``unsupported`` on; only a present-but-broken
+      value raises here.
     """
 
 
@@ -292,6 +298,21 @@ class IndividualStateWindow:
     captured — the final row's ``world_model_keys_json`` is NULL, **or** the
     trace table predates E2 and has no ``world_model_keys_json`` column at all
     (backward compat, DA-S1-3). An empty tuple is a synthesised-but-empty SWM."""
+    coherence_score: float | None = None
+    """Final-tick NarrativeArc ``coherence_score`` (M10-A S2 E3); ``None`` when no
+    arc was synthesised. Feeds ``narrative_coherence``."""
+    development_stage: str | None = None
+    """Final-tick DevelopmentState ``stage`` label (M10-A S2 E3); ``None`` when no
+    stage advanced. Feeds ``development_stage_ordinal``."""
+    arc_segment_count: int | None = None
+    """Final-tick NarrativeArc segment count (M10-A S2 E3); part of the narrative
+    provenance payload. ``None`` only in the never-constructed absent-trace case."""
+    narrative_source_filter_hash: str = ""
+    """Per-metric provenance hash for ``narrative_coherence`` — embeds the
+    coherence_score + arc_segment_count, NOT the belief payload (DA-S2-6 / CX3)."""
+    development_source_filter_hash: str = ""
+    """Per-metric provenance hash for ``development_stage_ordinal`` — embeds the
+    development_stage, NOT the belief payload (DA-S2-6 / CX3)."""
 
 
 def _trace_source_filter_hash(
@@ -326,6 +347,109 @@ _WORLD_MODEL_KEYS_COLUMN: Final[str] = "world_model_keys_json"
 """Trace column added at M10-A E2; absent in pre-E2 flag-on DuckDB files."""
 
 _WORLD_MODEL_KEY_PAIR_LEN: Final[int] = 2
+
+# M10-A S2 (E3): per-metric provenance hash schema-version tokens. Distinct from
+# the belief token so the narrative / development recompute provenance never
+# collides with belief_variance's even at the same final tick (DA-S2-6 / CX3).
+_NARRATIVE_LOADER_HASH_SCHEMA_VERSION: Final[str] = "m10a-s2.narrative_loader.1"
+_DEVELOPMENT_LOADER_HASH_SCHEMA_VERSION: Final[str] = "m10a-s2.development_loader.1"
+# Provenance metric-name labels (kept local; the loader stays models/policy-free).
+# Must match the metric names in ``individual_state_metrics`` /
+# ``policy.METRIC_SPECS`` (pinned by test_individuation_trace_loader).
+_NARRATIVE_METRIC_LABEL: Final[str] = "narrative_coherence"
+_DEVELOPMENT_METRIC_LABEL: Final[str] = "development_stage_ordinal"
+
+
+def individual_state_trace_table() -> str:
+    """Canonical qualified trace-table name (``METRICS_SCHEMA.individual_state_trace``).
+
+    Used by the runner to stamp the **trace table** (never ``raw_dialog.dialog``)
+    as the source of the M10-A S2 diagnostic metrics even when the trace is absent
+    — so an unsupported narrative/development row never looks raw_dialog-derived
+    (DA-S2-6 / Codex CX3).
+    """
+    return f"{METRICS_SCHEMA}.{_INDIVIDUAL_STATE_TRACE_TABLE}"
+
+
+def _trace_metric_source_filter_hash(
+    *,
+    schema_version: str,
+    metric_name: str,
+    run_id: str,
+    individual_id: str,
+    source_table: str,
+    final_tick: int | None,
+    fields: dict[str, object],
+) -> str:
+    """Per-metric trace provenance sha256 (DA-S2-6 / Codex CX3).
+
+    Embeds ``metric_name`` + identity + ``source_table`` + ``final_tick``
+    (``None`` = absent trace, distinct from a real tick whose field is NULL) +
+    the metric's own raw substrate ``fields``. ``allow_nan=False`` so a non-finite
+    value can never be hashed and silently dropped later (Codex CX4) — the loader
+    validates finiteness before calling this, so this is defence in depth.
+    """
+    payload = {
+        "schema_version": schema_version,
+        "metric_name": metric_name,
+        "run_id": run_id,
+        "individual_id": individual_id,
+        "source_table": source_table,
+        "final_tick": final_tick,
+        "fields": fields,
+    }
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def build_narrative_source_filter_hash(
+    *,
+    run_id: str,
+    individual_id: str,
+    source_table: str,
+    final_tick: int | None,
+    coherence_score: float | None,
+    arc_segment_count: int | None,
+) -> str:
+    """Provenance hash for ``narrative_coherence`` (coherence + arc-count payload)."""
+    return _trace_metric_source_filter_hash(
+        schema_version=_NARRATIVE_LOADER_HASH_SCHEMA_VERSION,
+        metric_name=_NARRATIVE_METRIC_LABEL,
+        run_id=run_id,
+        individual_id=individual_id,
+        source_table=source_table,
+        final_tick=final_tick,
+        fields={
+            "coherence_score": coherence_score,
+            "arc_segment_count": arc_segment_count,
+        },
+    )
+
+
+def build_development_source_filter_hash(
+    *,
+    run_id: str,
+    individual_id: str,
+    source_table: str,
+    final_tick: int | None,
+    development_stage: str | None,
+) -> str:
+    """Provenance hash for ``development_stage_ordinal`` (stage-label payload)."""
+    return _trace_metric_source_filter_hash(
+        schema_version=_DEVELOPMENT_LOADER_HASH_SCHEMA_VERSION,
+        metric_name=_DEVELOPMENT_METRIC_LABEL,
+        run_id=run_id,
+        individual_id=individual_id,
+        source_table=source_table,
+        final_tick=final_tick,
+        fields={"development_stage": development_stage},
+    )
 
 
 def _trace_has_world_model_column(view: AnalysisView) -> bool:
@@ -404,11 +528,14 @@ def load_individual_state_windows(
         return {}
 
     # E2 (DA-S1-3): only SELECT the SWM column when it exists, so a pre-E2 trace
-    # table reads cleanly with world_model_keys -> None.
+    # table reads cleanly with world_model_keys -> None. The M10-A S2 columns
+    # (development_stage / coherence_score / arc_segment_count) exist from M11-C2,
+    # so they need no backward-compat probe (unlike world_model_keys_json).
     has_swm = _trace_has_world_model_column(view)
     swm_select = f", {_WORLD_MODEL_KEYS_COLUMN}" if has_swm else ""
     sql = (
-        f"SELECT run_id, individual_id, tick, belief_classes_json{swm_select}"  # noqa: S608  # identifiers are module constants
+        "SELECT run_id, individual_id, tick, belief_classes_json,"  # noqa: S608  # identifiers are module constants
+        f" development_stage, coherence_score, arc_segment_count{swm_select}"
         f" FROM {table}"
     )
     params: tuple[object, ...] | None = None
@@ -417,68 +544,164 @@ def load_individual_state_windows(
         params = (run_id,)
     sql += " ORDER BY run_id, individual_id, tick"
 
-    # key -> {tick: list[(belief_json, swm_json)]} so a divergent final-tick is
-    # caught per column (belief OR SWM divergence, C5a).
-    grouped: dict[tuple[str, str], dict[int, list[tuple[str | None, str | None]]]] = {}
+    # key -> {tick: list[_TraceRowValues]} so a divergent final-tick is caught
+    # per column (belief / SWM / dev / coherence / arc divergence, C5a).
+    grouped: dict[tuple[str, str], dict[int, list[_TraceRowValues]]] = {}
     for row in view.execute(sql, params):
         key = (str(row[0]), str(row[1]))
         tick = cast("int", row[2])
-        belief_json = None if row[3] is None else str(row[3])
-        swm_json = None if (not has_swm or row[4] is None) else str(row[4])
-        grouped.setdefault(key, {}).setdefault(tick, []).append((belief_json, swm_json))
+        values = _TraceRowValues(
+            belief_json=None if row[3] is None else str(row[3]),
+            development_stage=None if row[4] is None else str(row[4]),
+            coherence_score=None if row[5] is None else float(cast("float", row[5])),
+            arc_segment_count=cast("int", row[6]),
+            swm_json=None if (not has_swm or row[7] is None) else str(row[7]),
+        )
+        grouped.setdefault(key, {}).setdefault(tick, []).append(values)
 
     windows: dict[tuple[str, str], IndividualStateWindow] = {}
     for (r_run_id, individual_id), by_tick in grouped.items():
         final_tick = max(by_tick)
         final_rows = by_tick[final_tick]
-        belief_raw = _sole_final_variant(
-            {b for b, _ in final_rows},
+        windows[(r_run_id, individual_id)] = _build_state_window(
             run_id=r_run_id,
             individual_id=individual_id,
             final_tick=final_tick,
-            column="belief_classes_json",
-        )
-        swm_raw = _sole_final_variant(
-            {s for _, s in final_rows},
-            run_id=r_run_id,
-            individual_id=individual_id,
-            final_tick=final_tick,
-            column=_WORLD_MODEL_KEYS_COLUMN,
-        )
-        belief_classes = None if belief_raw is None else tuple(json.loads(belief_raw))
-        windows[(r_run_id, individual_id)] = IndividualStateWindow(
-            run_id=r_run_id,
-            individual_id=individual_id,
-            belief_classes=belief_classes,
-            final_tick=final_tick,
+            final_rows=final_rows,
             source_table=table,
-            source_filter_hash=_trace_source_filter_hash(
-                run_id=r_run_id,
-                individual_id=individual_id,
-                source_table=table,
-                final_tick=final_tick,
-                belief_classes=belief_classes,
-            ),
-            world_model_keys=_parse_world_model_keys(swm_raw),
         )
     return windows
 
 
+@dataclass(frozen=True, slots=True)
+class _TraceRowValues:
+    """The substrate columns read from one trace row (loader-internal)."""
+
+    belief_json: str | None
+    development_stage: str | None
+    coherence_score: float | None
+    arc_segment_count: int
+    swm_json: str | None
+
+
+def _build_state_window(
+    *,
+    run_id: str,
+    individual_id: str,
+    final_tick: int,
+    final_rows: list[_TraceRowValues],
+    source_table: str,
+) -> IndividualStateWindow:
+    """Collapse one individual's final-tick rows into a window (conflict-checked).
+
+    Each substrate column is resolved independently with :func:`_sole_final_variant`
+    so a divergent duplicate at the final tick fails loud per column (C5a). The
+    structural corruption checks (non-finite coherence, negative arc count) raise
+    :class:`IndividualStateTraceSchemaError` before any hash is built (Codex CX4).
+    """
+    belief_raw = _sole_final_variant(
+        {r.belief_json for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column="belief_classes_json",
+    )
+    swm_raw = _sole_final_variant(
+        {r.swm_json for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column=_WORLD_MODEL_KEYS_COLUMN,
+    )
+    development_stage = _sole_final_variant(
+        {r.development_stage for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column="development_stage",
+    )
+    coherence_score = _sole_final_variant(
+        {r.coherence_score for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column="coherence_score",
+    )
+    arc_segment_count = _sole_final_variant(
+        {r.arc_segment_count for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column="arc_segment_count",
+    )
+    # Structural corruption (present-but-broken) fails fast before hashing (CX4).
+    if coherence_score is not None and not math.isfinite(coherence_score):
+        msg = (
+            f"individual {individual_id!r} in run {run_id!r}: non-finite"
+            f" coherence_score {coherence_score!r} at final tick {final_tick}"
+        )
+        raise IndividualStateTraceSchemaError(msg)
+    if arc_segment_count < 0:
+        msg = (
+            f"individual {individual_id!r} in run {run_id!r}: negative"
+            f" arc_segment_count {arc_segment_count} at final tick {final_tick}"
+        )
+        raise IndividualStateTraceSchemaError(msg)
+    belief_classes = None if belief_raw is None else tuple(json.loads(belief_raw))
+    return IndividualStateWindow(
+        run_id=run_id,
+        individual_id=individual_id,
+        belief_classes=belief_classes,
+        final_tick=final_tick,
+        source_table=source_table,
+        source_filter_hash=_trace_source_filter_hash(
+            run_id=run_id,
+            individual_id=individual_id,
+            source_table=source_table,
+            final_tick=final_tick,
+            belief_classes=belief_classes,
+        ),
+        world_model_keys=_parse_world_model_keys(swm_raw),
+        coherence_score=coherence_score,
+        development_stage=development_stage,
+        arc_segment_count=arc_segment_count,
+        narrative_source_filter_hash=build_narrative_source_filter_hash(
+            run_id=run_id,
+            individual_id=individual_id,
+            source_table=source_table,
+            final_tick=final_tick,
+            coherence_score=coherence_score,
+            arc_segment_count=arc_segment_count,
+        ),
+        development_source_filter_hash=build_development_source_filter_hash(
+            run_id=run_id,
+            individual_id=individual_id,
+            source_table=source_table,
+            final_tick=final_tick,
+            development_stage=development_stage,
+        ),
+    )
+
+
+_V = TypeVar("_V")
+
+
 def _sole_final_variant(
-    variants: set[str | None],
+    variants: set[_V],
     *,
     run_id: str,
     individual_id: str,
     final_tick: int,
     column: str,
-) -> str | None:
+) -> _V:
     """Return the single final-tick value for *column*, or raise on divergence.
 
     Byte-identical duplicates collapse (the caller passes a ``set``); two
     distinct non-collapsing values at the final tick are an ambiguous trace
-    (C5a) → :class:`IndividualStateTraceConflictError`. The belief provenance
-    hash is unchanged by this refactor — it is still derived from the belief
-    payload alone (SWM divergence is a separate, independent check).
+    (C5a) → :class:`IndividualStateTraceConflictError`. Generic over the column
+    value type (``str | None`` for belief/SWM/stage, ``float | None`` for
+    coherence, ``int`` for arc count); each metric's provenance is derived from
+    its own resolved value, independent of the others.
     """
     if len(variants) > 1:
         msg = (
@@ -498,6 +721,9 @@ __all__ = [
     "IndividualWindow",
     "IndividuationLoaderError",
     "LoadedRun",
+    "build_development_source_filter_hash",
+    "build_narrative_source_filter_hash",
+    "individual_state_trace_table",
     "load_individual_state_windows",
     "load_individual_windows",
 ]

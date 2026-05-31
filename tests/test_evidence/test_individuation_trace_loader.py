@@ -553,3 +553,254 @@ def test_policy_forbids_valid_world_model_overlap_jaccard() -> None:
     assert spec.allowed_statuses == frozenset(
         {MetricStatus.DEGENERATE, MetricStatus.UNSUPPORTED}
     )
+
+
+# --- M10-A S2 (E3): narrative / development substrate read + provenance -------
+
+
+def test_load_reads_final_tick_narrative_development(tmp_path: Path) -> None:
+    """coherence_score / development_stage / arc_segment_count read at final tick."""
+    db = tmp_path / "narr.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        development_stage="S1_seed",
+        coherence_score=0.10,
+        arc_segment_count=1,
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=3,
+        belief_classes_json='["trust", "wary"]',
+        development_stage="S2_exploring",
+        coherence_score=0.55,
+        arc_segment_count=2,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    win = windows[("run0", "a_rikyu_001")]
+    assert win.final_tick == 3
+    assert win.coherence_score == pytest.approx(0.55)
+    assert win.development_stage == "S2_exploring"
+    assert win.arc_segment_count == 2
+
+
+def test_per_metric_provenance_hashes_are_distinct(tmp_path: Path) -> None:
+    """narrative / development hashes differ from each other AND from belief (CX3)."""
+    db = tmp_path / "hash.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_rikyu_001",
+        tick=0,
+        belief_classes_json='["trust", "wary"]',
+        development_stage="S2_exploring",
+        coherence_score=0.55,
+        arc_segment_count=2,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        win = load_individual_state_windows(view, run_id="run0")[
+            ("run0", "a_rikyu_001")
+        ]
+    finally:
+        view.close()
+    hashes = {
+        win.source_filter_hash,  # belief
+        win.narrative_source_filter_hash,
+        win.development_source_filter_hash,
+    }
+    assert len(hashes) == 3  # all three distinct (no belief-hash reuse)
+
+
+def test_load_raises_on_divergent_final_tick_coherence(tmp_path: Path) -> None:
+    """Same final tick, divergent coherence_score -> conflict (C5a extended)."""
+    db = tmp_path / "coh_conflict.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        coherence_score=0.3,
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        coherence_score=0.9,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceConflictError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_non_finite_coherence(tmp_path: Path) -> None:
+    """A non-finite coherence_score is corrupt trace -> fail fast (CX4)."""
+    db = tmp_path / "nan.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        coherence_score=float("nan"),
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_negative_arc_segment_count(tmp_path: Path) -> None:
+    """A negative arc_segment_count is corrupt trace -> fail fast (CX4)."""
+    db = tmp_path / "negarc.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        arc_segment_count=-1,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+# --- M10-A S2 (E3): runner emits diagnostic metrics from the trace ----------
+
+
+def _state_metric(db: Path, tmp_path: Path, name: str) -> Any:
+    ctx = IndividuationContext(
+        personas_dir=tmp_path,
+        provider=stub_embedding_provider(),
+        computed_at=_NOW,
+    )
+    view = connect_analysis_view(db)
+    try:
+        results = compute_individuation(view, run_id="run0", ctx=ctx)
+    finally:
+        view.close()
+    rows = [r for r in results if r.metric_name == name]
+    assert len(rows) == 1
+    return rows[0]
+
+
+def _booted_run_with_state(
+    tmp_path: Path, *, stage: str | None, coherence: float | None
+) -> Path:
+    db = tmp_path / "state.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_dialog(con, _dialog_row(1, "a_kant_001", "kant", "the of and study"))
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=1,
+        belief_classes_json='["trust"]',
+        development_stage=stage,
+        coherence_score=coherence,
+        arc_segment_count=2 if coherence is not None else 0,
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    return db
+
+
+def test_runner_narrative_development_valid_from_trace(tmp_path: Path) -> None:
+    db = _booted_run_with_state(tmp_path, stage="S2_exploring", coherence=0.55)
+    narr = _state_metric(db, tmp_path, "narrative_coherence")
+    dev = _state_metric(db, tmp_path, "development_stage_ordinal")
+    assert narr.status is MetricStatus.VALID
+    assert narr.value == pytest.approx(0.55)
+    assert narr.provenance.source_table.endswith(f".{TABLE_NAME}")
+    assert dev.status is MetricStatus.VALID
+    assert dev.value == pytest.approx(1.0)  # S2_exploring ordinal
+
+
+def test_runner_narrative_development_unsupported_without_trace(tmp_path: Path) -> None:
+    """No trace table -> unsupported, provenance points at the trace table (CX3).
+
+    Crucially NOT raw_dialog.dialog: the diagnostic metrics' substrate is the
+    (absent) trace table, so an unsupported row must not look raw_dialog-derived.
+    """
+    db = tmp_path / "nostate.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    _insert_dialog(con, _dialog_row(1, "a_kant_001", "kant", "the of and study"))
+    con.execute("CHECKPOINT")
+    con.close()
+    narr = _state_metric(db, tmp_path, "narrative_coherence")
+    dev = _state_metric(db, tmp_path, "development_stage_ordinal")
+    assert narr.status is MetricStatus.UNSUPPORTED
+    assert dev.status is MetricStatus.UNSUPPORTED
+    assert narr.provenance.source_table.endswith(f".{TABLE_NAME}")
+    assert narr.provenance.source_table != "raw_dialog.dialog"
+    assert dev.provenance.source_table.endswith(f".{TABLE_NAME}")
+
+
+def test_runner_diagnostic_metrics_not_in_verdict_read_set() -> None:
+    """Claim boundary pin (Codex CX1): the frozen C3b verdict never reads them.
+
+    ``c3b_verdict`` / ``c3b_pipeline`` select metrics by name; the diagnostic
+    names must not collide with the verdict's consumed set (centroid / floor /
+    burrows), so adding them can never move a verdict.
+    """
+    from erre_sandbox.evidence.individuation import c3b_pipeline, c3b_verdict
+
+    verdict_names = {
+        c3b_verdict._CENTROID_METRIC,  # pin test reads the constants
+        c3b_verdict._FLOOR_METRIC,
+        c3b_verdict._BURROWS_METRIC,
+        c3b_pipeline._CENTROID_METRIC,
+        c3b_pipeline._FLOOR_METRIC,
+        c3b_pipeline._BURROWS_METRIC,
+    }
+    assert "narrative_coherence" not in verdict_names
+    assert "development_stage_ordinal" not in verdict_names

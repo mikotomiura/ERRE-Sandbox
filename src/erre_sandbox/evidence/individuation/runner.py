@@ -26,6 +26,10 @@ from pathlib import Path  # noqa: TC003  # runtime use in dataclass field
 from typing import TYPE_CHECKING
 
 from erre_sandbox.evidence.individuation.cite_belief import all_cite_belief_pins
+from erre_sandbox.evidence.individuation.individual_state_metrics import (
+    development_stage_ordinal,
+    narrative_coherence,
+)
 from erre_sandbox.evidence.individuation.layer1 import (
     MetricContext,
     action_adherence_rate,
@@ -41,6 +45,9 @@ from erre_sandbox.evidence.individuation.layer1 import (
 from erre_sandbox.evidence.individuation.loader import (
     IndividualStateWindow,
     IndividualWindow,
+    build_development_source_filter_hash,
+    build_narrative_source_filter_hash,
+    individual_state_trace_table,
     load_individual_state_windows,
     load_individual_windows,
 )
@@ -147,7 +154,13 @@ def _per_individual_metrics(
     # M11-C2: belief_variance reads the final-tick trace snapshot when present,
     # with trace-aware provenance (source_table + hash). Absent
     # trace -> None -> unsupported, with the unchanged raw_dialog provenance.
+    # M10-A S2 (E3): the two diagnostic metrics read the final-tick narrative /
+    # development substrate with their OWN per-metric provenance hash (never the
+    # belief payload, DA-S2-6). Their substrate is the trace table, so even when
+    # the trace is absent they stamp the (absent) trace table — never raw_dialog —
+    # with final_tick=None marking "no trace" (DA-S2-6 / Codex CX3).
     trace = trace_windows.get((win.run_id, win.individual_id))
+    trace_table = individual_state_trace_table()
     if trace is not None:
         belief_ctx = replace(
             mctx,
@@ -157,9 +170,46 @@ def _per_individual_metrics(
         belief_input = (
             list(trace.belief_classes) if trace.belief_classes is not None else None
         )
+        narrative_ctx = replace(
+            mctx,
+            source_table=trace.source_table,
+            source_filter_hash=trace.narrative_source_filter_hash,
+        )
+        development_ctx = replace(
+            mctx,
+            source_table=trace.source_table,
+            source_filter_hash=trace.development_source_filter_hash,
+        )
+        coherence_input = trace.coherence_score
+        stage_input = trace.development_stage
     else:
         belief_ctx = mctx
         belief_input = None
+        narrative_ctx = replace(
+            mctx,
+            source_table=trace_table,
+            source_filter_hash=build_narrative_source_filter_hash(
+                run_id=win.run_id,
+                individual_id=win.individual_id,
+                source_table=trace_table,
+                final_tick=None,
+                coherence_score=None,
+                arc_segment_count=None,
+            ),
+        )
+        development_ctx = replace(
+            mctx,
+            source_table=trace_table,
+            source_filter_hash=build_development_source_filter_hash(
+                run_id=win.run_id,
+                individual_id=win.individual_id,
+                source_table=trace_table,
+                final_tick=None,
+                development_stage=None,
+            ),
+        )
+        coherence_input = None
+        stage_input = None
     language = ctx.language_resolver(win)
     reference = ctx.burrows_reference_provider(win.base_persona_id, language)
     # ja has no built-in whitespace tokeniser. Pre-tokenise it with the shared
@@ -199,6 +249,14 @@ def _per_individual_metrics(
         # M11-C2: final-tick promoted-belief class set (trace) or None (no trace).
         belief_variance(belief_input, ctx=belief_ctx, computed_at=ctx.computed_at),
         intervention_recovery_rate(ctx=mctx, computed_at=ctx.computed_at),
+        # M10-A S2 (E3): NarrativeArc / DevelopmentState diagnostic metrics from
+        # the final-tick trace (None -> unsupported, corrupt value -> fail-fast).
+        narrative_coherence(
+            coherence_input, ctx=narrative_ctx, computed_at=ctx.computed_at
+        ),
+        development_stage_ordinal(
+            stage_input, ctx=development_ctx, computed_at=ctx.computed_at
+        ),
     ]
     results.extend(
         all_cite_belief_pins(
