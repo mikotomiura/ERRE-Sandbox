@@ -128,3 +128,61 @@ def test_layer2_pins_not_recorded_as_excluded_metrics() -> None:
     report = correlate_individuation(_reports_with_layer2(), computed_at=_NOW)
     excluded_names = {e.metric_name for e in report.excluded_metrics}
     assert _LAYER2_NAMES.isdisjoint(excluded_names)
+
+
+# --- M10-A S2 (E3): diagnostic metrics excluded from correlation (DA-S2-4) ---
+
+
+def test_diagnostic_metrics_not_in_candidate_set() -> None:
+    """Codex CX5: narrative / development are valid-capable per_individual but
+    excluded; the M10-0 candidate set is unchanged (pin churn zero)."""
+    from erre_sandbox.evidence.individuation.correlation import _candidate_metrics
+
+    candidates = set(_candidate_metrics())
+    assert "narrative_coherence" not in candidates
+    assert "development_stage_ordinal" not in candidates
+    # the existing M10-0 candidate set still present (unchanged)
+    assert {
+        "burrows_base_retention",
+        "zone_behavior_consistency",
+        "belief_variance",
+    } <= candidates
+
+
+def test_diagnostic_metric_listed_excluded_not_in_matrix() -> None:
+    """A valid diagnostic metric is reported excluded (reason diagnostic_only) and
+    never enters the matrix / a pair (Codex CX5 transparency)."""
+    reports: list[object] = []
+    for i in range(4):
+        run_id = f"run{i}"
+        ind = f"a_{i}"
+        rows: list[MetricResult] = [
+            _valid(
+                "burrows_base_retention",
+                MetricChannel.UTTERANCE,
+                run_id,
+                ind,
+                0.1 + 0.2 * i,
+            ),
+            _valid(
+                "zone_behavior_consistency",
+                MetricChannel.BEHAVIORAL,
+                run_id,
+                ind,
+                0.2 + 0.2 * i,
+            ),
+            _valid(
+                "narrative_coherence",
+                MetricChannel.NARRATIVE,
+                run_id,
+                ind,
+                0.3 + 0.1 * i,
+            ),
+        ]
+        reports.append(build_report(run_id, rows, computed_at=_NOW))
+    report = correlate_individuation(reports, computed_at=_NOW)
+    assert "narrative_coherence" not in report.metrics_in_matrix
+    for pair in report.pairs:
+        assert "narrative_coherence" not in (pair.metric_a, pair.metric_b)
+    excluded = {(e.metric_name, e.reason) for e in report.excluded_metrics}
+    assert ("narrative_coherence", "diagnostic_only") in excluded

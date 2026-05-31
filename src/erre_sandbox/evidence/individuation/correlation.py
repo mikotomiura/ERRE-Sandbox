@@ -153,7 +153,11 @@ def _candidate_metrics() -> tuple[str, ...]:
     """per_individual metric names that can be ``valid`` (derived from METRIC_SPECS).
 
     Recovery and the cite_belief pins are per_individual but never ``valid``, so
-    they fall out naturally — the universe is not hard-coded.
+    they fall out naturally — the universe is not hard-coded. ``diagnostic_only``
+    metrics (M10-A S2 narrative / development) are valid-capable per_individual but
+    are **excluded** here so the descriptive Layer 1 channel-independence claim
+    (canonical §C.9) is not silently widened to the M11 diagnostic layers
+    (DA-S2-4 / Codex CX5); their inclusion is deferred to the S3 conformance ADR.
     """
     return tuple(
         sorted(
@@ -161,7 +165,36 @@ def _candidate_metrics() -> tuple[str, ...]:
             for name, spec in METRIC_SPECS.items()
             if AggregationLevel.PER_INDIVIDUAL in spec.allowed_aggregation_levels
             and MetricStatus.VALID in spec.allowed_statuses
+            and not spec.diagnostic_only
         )
+    )
+
+
+def _diagnostic_only_excluded(
+    reports: Sequence[IndividuationReport],
+) -> tuple[ExcludedMetric, ...]:
+    """``diagnostic_only`` metrics seen ``valid`` per_individual, as excluded rows.
+
+    Codex CX5: a valid diagnostic metric is excluded from the matrix by
+    :func:`_candidate_metrics`, but it must not *silently* vanish — the report
+    lists it with reason ``"diagnostic_only"`` so a reader comparing the
+    individuation table (which has the rows) to the correlation report sees an
+    explicit policy exclusion, not an unexplained absence.
+    """
+    present: set[str] = set()
+    for report in reports:
+        for res in report.results:
+            spec = METRIC_SPECS.get(res.metric_name)
+            if (
+                spec is not None
+                and spec.diagnostic_only
+                and res.status is MetricStatus.VALID
+                and res.aggregation_level is AggregationLevel.PER_INDIVIDUAL
+            ):
+                present.add(res.metric_name)
+    return tuple(
+        ExcludedMetric(metric_name=name, reason="diagnostic_only")
+        for name in sorted(present)
     )
 
 
@@ -373,12 +406,20 @@ def correlate_individuation(
     n_units = len(units)
     matrix = _materialise_matrix(cells, units, candidate_index, len(candidates))
 
-    kept, excluded_sorted = _filter_columns(
+    kept, filtered_excluded = _filter_columns(
         matrix,
         candidates,
         candidate_index,
         min_observations=min_observations,
         wrong_scope=wrong_scope,
+    )
+    # Codex CX5: surface diagnostic_only metrics seen valid as explicit exclusions
+    # (they never enter candidates, so _filter_columns cannot list them).
+    excluded_sorted = tuple(
+        sorted(
+            [*filtered_excluded, *_diagnostic_only_excluded(reports)],
+            key=lambda e: (e.metric_name, e.reason),
+        )
     )
     if len(kept) < _MIN_METRICS_FOR_MATRIX:
         return _insufficient_report(

@@ -58,6 +58,10 @@ class MetricChannel(StrEnum):
     """cite_belief_discipline cited-memory / counterfactual metrics."""
     RECOVERY = "recovery"
     """intervention_recovery_rate."""
+    NARRATIVE = "narrative"
+    """narrative_coherence (NarrativeArc coherence_score) — diagnostic (M10-A S2)."""
+    DEVELOPMENT = "development"
+    """development_stage_ordinal (DevelopmentState stage) — diagnostic (M10-A S2)."""
 
 
 class AggregationLevel(StrEnum):
@@ -113,6 +117,12 @@ class MetricSpec:
     allowed_channels: frozenset[MetricChannel]
     allowed_aggregation_levels: frozenset[AggregationLevel]
     embedding_required: bool
+    diagnostic_only: bool = False
+    """Diagnostic-only metric (M10-A S2): measured + persisted but **never** a
+    verdict or correlation axis. ``True`` excludes the metric from the Layer 1
+    correlation candidate set (``correlation._candidate_metrics``) and marks it as
+    deliberately outside the frozen C3b verdict's read set (centroid / floor /
+    burrows). The default ``False`` preserves every M10-0 spec's behaviour."""
 
 
 # Layer 2 metric names — exported because cite_belief.py and the golden
@@ -198,6 +208,28 @@ METRIC_SPECS: Final[dict[str, MetricSpec]] = {
         frozenset({_C.BELIEF_SUBSTRATE}),
         frozenset({_A.PER_INDIVIDUAL}),
         embedding_required=False,
+    ),
+    # --- Layer 1 diagnostic (M10-A S2): NarrativeArc / DevelopmentState ----
+    # Persisted in metrics.individual_state_trace (M11-C2). Made measurable here
+    # (reactivate ADR §6 E3) but ``diagnostic_only`` — never a verdict/correlation
+    # axis. valid when the substrate is present, unsupported when None (no arc /
+    # no stage advanced / no trace). An out-of-domain value (range / unknown stage)
+    # is corrupt trace and fails fast in the metric, not a degenerate cell.
+    "narrative_coherence": MetricSpec(
+        "narrative_coherence",
+        frozenset({_S.VALID, _S.UNSUPPORTED}),
+        frozenset({_C.NARRATIVE}),
+        frozenset({_A.PER_INDIVIDUAL}),
+        embedding_required=False,
+        diagnostic_only=True,
+    ),
+    "development_stage_ordinal": MetricSpec(
+        "development_stage_ordinal",
+        frozenset({_S.VALID, _S.UNSUPPORTED}),
+        frozenset({_C.DEVELOPMENT}),
+        frozenset({_A.PER_INDIVIDUAL}),
+        embedding_required=False,
+        diagnostic_only=True,
     ),
     # --- Layer 1 function-only / protocol-only: NEVER valid in M10-0 ----
     "world_model_overlap_jaccard": MetricSpec(
