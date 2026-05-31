@@ -1,0 +1,72 @@
+# Biographical source bibliography — Source Navigator MVP (M10-0)
+#
+# Citation metadata ONLY. No raw document body is committed here (and none
+# is committed anywhere in the repo for these keys). This registry exists so
+# that `personas/kant.yaml` cognitive_habit `source` keys (kuehn2001 etc.)
+# can be traced to a real, identifiable citation — NOT to a verifiable
+# in-repo document body.
+#
+# Honesty rules:
+#   - Only fields the maintainer is confident about are recorded.
+#     Uncertain bibliographic minutiae (exact edition, ISBN, chapter) are
+#     OMITTED rather than guessed.
+#   - `metadata_verified: false` on every entry — these are maintainer-entered
+#     and have NOT been auto-verified against an authoritative catalogue.
+#     Confirm against an authoritative source before relying on them.
+#   - `work_pd_by_age` (is the *work* out of copyright by age) is kept
+#     separate from `body_committable` (could we commit a raw body). A work
+#     being PD by age does NOT make a specific edition body committable, so
+#     `body_committable` stays `false` until an exact PD edition + retrieval
+#     URL is confirmed.
+#   - This file NEVER points at `kant_de.txt`; that is the Burrows reference
+#     corpus (Kant's 1784 essay), not a biographical source for these habits.
+#
+# The loader (bibliography.py) requires every entry to carry exactly the keys
+# in BIBLIO_REQUIRED_KEYS; a missing key raises SourceBibliographySchemaError.
+
+schema_version: "0.1.0-m10-0"
+
+entries:
+  - source_key: kuehn2001
+    author: "Manfred Kuehn"
+    title: "Kant: A Biography"
+    year: 2001
+    work_pd_by_age: false
+    pd_basis: "in copyright (published 2001)"
+    body_committable: false
+    body_absent_reason: "in_copyright_license"
+    metadata_verified: false
+    notes: >-
+      Cited by 4 kant cognitive_habits (daily walk, nasal-only breathing,
+      morning writing window, never-travelled->10-miles). Raw body NOT
+      committed: modern in-copyright biography. Cannot substantiate the
+      habit text beyond the citation; confirm citation before relying on it.
+
+  - source_key: heine1834
+    author: "Heinrich Heine"
+    title: "Zur Geschichte der Religion und Philosophie in Deutschland"
+    year: 1834
+    work_pd_by_age: true
+    pd_basis: "author Heine d.1856; work first published 1834 — PD by age"
+    body_committable: false
+    body_absent_reason: "body_not_yet_fetched"
+    metadata_verified: false
+    notes: >-
+      Cited by the 'Koenigsberg townspeople set their clocks by his walk'
+      legend habit. Work is PD by age, but no exact PD edition + retrieval
+      URL has been confirmed, so body_committable stays false and the body
+      is not committed in this MVP.
+
+  - source_key: jachmann1804
+    author: "Reinhold Bernhard Jachmann"
+    title: "Immanuel Kant geschildert in Briefen an einen Freund"
+    year: 1804
+    work_pd_by_age: true
+    pd_basis: "author Jachmann d.1843; work published 1804 — PD by age"
+    body_committable: false
+    body_absent_reason: "body_not_yet_fetched"
+    metadata_verified: false
+    notes: >-
+      Cited by the midday-dinner (4-9 guests) habit. Work is PD by age, but
+      no exact PD edition + retrieval URL has been confirmed, so
+      body_committable stays false and the body is not committed in this MVP.

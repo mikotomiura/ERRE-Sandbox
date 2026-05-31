@@ -1,0 +1,67 @@
+[gd_scene load_steps=6 format=3]
+
+; Slice β (2026-04-24) — Garden zone primitive scaffold. A single stone
+; lantern (cylinder post + flat cap) and a gravel base suggest the roji
+; approach without authoring the full stepping-stone sequence; the stone
+; lantern piece itself doubles as the shared motif with Rikyū's chashitsu
+; approach and placeholder for future roji stepping stones. The
+; Blender-authored .glb eventually replaces this build.
+;
+; Scene root sits at (33.33, 0, 33.33) to match ``ZONE_CENTERS[GARDEN]``
+; (``+WORLD_SIZE_M / 3`` on X and Z). Keep in sync with ``world/zones.py``
+; and ``BoundaryLayer.gd``.
+
+[sub_resource type="PlaneMesh" id="1_garden_ground"]
+size = Vector2(22, 22)
+
+[sub_resource type="StandardMaterial3D" id="2_garden_mat"]
+albedo_color = Color(0.55, 0.60, 0.48, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="3_lantern_post"]
+top_radius = 0.18
+bottom_radius = 0.22
+height = 1.6
+
+[sub_resource type="BoxMesh" id="4_lantern_cap"]
+size = Vector3(0.8, 0.18, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="5_granite"]
+albedo_color = Color(0.48, 0.46, 0.44, 1)
+roughness = 0.88
+
+[sub_resource type="BoxMesh" id="6_stepping_stone"]
+size = Vector3(0.9, 0.12, 0.9)
+
+[node name="Garden" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.33, 0, 33.33)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+mesh = SubResource("1_garden_ground")
+material_override = SubResource("2_garden_mat")
+
+[node name="LanternPost" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("3_lantern_post")
+material_override = SubResource("5_granite")
+
+[node name="LanternCap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+mesh = SubResource("4_lantern_cap")
+material_override = SubResource("5_granite")
+
+[node name="Stone_NW" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.08, -2.0)
+mesh = SubResource("6_stepping_stone")
+material_override = SubResource("5_granite")
+
+[node name="Stone_N" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0.08, -3.4)
+mesh = SubResource("6_stepping_stone")
+material_override = SubResource("5_granite")
+
+[node name="Stone_NE" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.08, -4.3)
+mesh = SubResource("6_stepping_stone")
+material_override = SubResource("5_granite")

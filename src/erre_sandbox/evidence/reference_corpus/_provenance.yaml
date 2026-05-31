@@ -1,0 +1,136 @@
+# Reference corpus provenance — Burrows Delta P1b
+#
+# Every entry below records:
+#   - persona_id: stable identifier (matches personas/*.yaml)
+#   - language: ISO-ish tag (must match BurrowsReference.language)
+#   - source: human-readable corpus origin
+#   - edition: bibliographic edition (e.g. "Akademie-Ausgabe Bd. VIII")
+#   - translator: original-language entries leave this blank
+#   - year: original publication year (translator copyright independent)
+#   - public_domain: true if the *specific edition* is PD-redistributable
+#   - retrieval_url: URL we fetched the verbatim text from
+#   - retrieval_date: ISO-8601 date we fetched it
+#   - corpus_path: relative path under reference_corpus/ to the saved text
+#   - approx_tokens: rough whitespace-token count for de, char count for ja
+#   - corpus_too_small_for_chunk_qc: true if approx_tokens < 10000
+#       (one ≥5K-word chunk pair is the ME-6 stability test minimum;
+#       reopen path documented in blockers.md)
+#
+# ME-6 mandates this metadata; the loader requires every persona/language
+# pair it serves to have a matching entry here, so unrecorded provenance
+# raises ReferenceCorpusMissingError on first use. Any expansion (e.g.
+# adding the Cambridge Edition Kant English translation once licensing
+# is confirmed) lands here as a new entry.
+
+schema_version: "0.1.0-m9eval"
+
+# Toy reference scope (P1b initial commit):
+#   - de: Kant Akademie-Ausgabe excerpt + Nietzsche Project Gutenberg PD edition
+#   - ja: 5 verbatim 利休道歌 (small but verbatim PD)
+#   - en: deferred to a future iteration once Cambridge / Kaufmann
+#         translation licensing is confirmed (blockers.md "Burrows corpus
+#         license — English translations defer")
+#
+# Synthetic 4th persona is computed analytically (background mean) so it
+# has no raw text and no retrieval URL.
+
+entries:
+  - persona_id: kant
+    language: de
+    source: "Wikisource (de.wikisource.org), Kant — Beantwortung der Frage: Was ist Aufklärung?"
+    edition: "Berlinische Monatsschrift Bd. 4 (1784); Akademie-Ausgabe parallel"
+    translator: ""
+    year: 1784
+    public_domain: true
+    retrieval_url: "https://de.wikisource.org/wiki/Beantwortung_der_Frage:_Was_ist_Aufkl%C3%A4rung%3F"
+    retrieval_date: "2026-05-01"
+    corpus_path: "raw/kant_de.txt"
+    approx_tokens: 2656
+    corpus_too_small_for_chunk_qc: true
+    notes: >-
+      Kant 1804 死去 — body text is unambiguous PD. Wikisource markup was
+      stripped (templates, wiki bold, editorial annotations) leaving the
+      essay body from "Aufklärung ist der Ausgang..." through Kant's
+      closing footnote. Below the ≥10K-word threshold for the ME-6
+      chunk-stability test; expansion to the full Akademie-Ausgabe Bd.
+      VIII is deferred to m9-eval-corpus.
+
+  - persona_id: nietzsche
+    language: de
+    source: "Project Gutenberg eBook 7205 — Also sprach Zarathustra (German PD edition)"
+    edition: "PG 7205 (Kröner-tradition PD text, not Colli/Montinari KGW)"
+    translator: ""
+    year: 1883
+    public_domain: true
+    retrieval_url: "https://www.gutenberg.org/cache/epub/7205/pg7205.txt"
+    retrieval_date: "2026-05-01"
+    corpus_path: "raw/nietzsche_de.txt"
+    approx_tokens: 12002
+    corpus_too_small_for_chunk_qc: false
+    notes: >-
+      First ~12K words of the body, starting at Zarathustra's Vorrede §1
+      ("Als Zarathustra dreissig Jahr alt war..."). PG header / footer
+      stripped. Note that the de Gruyter Colli/Montinari KGW edition
+      carries editorial copyright on selection / apparatus; this file
+      uses the older Kröner-tradition PD prose only, per ME-6 license
+      precaution.
+
+  - persona_id: rikyu
+    language: ja
+    source: "Wikipedia (ja.wikipedia.org) — 利休道歌 article verbatim quotations"
+    edition: "Wikipedia 利休道歌 article (5 representative verses, public-domain compilation tradition)"
+    translator: ""
+    year: 1591  # Sen no Rikyū died 1591; the 道歌 tradition is 16th–17th c.
+    public_domain: true
+    retrieval_url: "https://ja.wikipedia.org/wiki/%E5%88%A9%E4%BC%91%E9%81%93%E6%AD%8C"
+    retrieval_date: "2026-05-01"
+    corpus_path: "raw/rikyu_ja.txt"
+    approx_tokens: 134  # character count — Japanese has no whitespace
+    corpus_too_small_for_chunk_qc: true
+    notes: >-
+      Only 5 verbatim 道歌 are available in the Wikipedia article; the
+      ja.wikisource pages for 利休百首 / 南方録 / 徒然草 / 方丈記 are
+      djvu-indexed and do not expose plain text via the raw API. The
+      tradition is attributed to Rikyū but compiled by disciples in the
+      16–17th century — all authors PD by age. This corpus is well
+      below ≥5K-word chunk-stability threshold (ME-6); expansion to a
+      proper Rikyū corpus (Aozora Bunko, Kokubun Taikan OCR, or a
+      ja.wikisource djvu OCR pipeline) is deferred to m9-eval-corpus.
+
+  - persona_id: synthetic_4th
+    language: de
+    source: "Synthetic — DB7 LOW-1 heldout fixture"
+    edition: "Computed analytically (no raw text)"
+    translator: ""
+    year: null
+    public_domain: true
+    retrieval_url: ""
+    retrieval_date: "2026-05-01"
+    corpus_path: ""
+    approx_tokens: null
+    corpus_too_small_for_chunk_qc: true  # nothing to chunk
+    notes: >-
+      DB7 LOW-1 heldout 4th persona used to detect 3-persona memorisation.
+      profile_freq is set to the German background mean so the synthetic
+      4th sits at the centre of the function-word frequency simplex; it
+      is not a stylistic claim, just an orthogonality fixture.
+
+  - persona_id: synthetic_4th
+    language: ja
+    source: "Synthetic — DB7 LOW-1 heldout fixture (Japanese mirror)"
+    edition: "Computed analytically (no raw text)"
+    translator: ""
+    year: null
+    public_domain: true
+    retrieval_url: ""
+    retrieval_date: "2026-05-01"
+    corpus_path: ""
+    approx_tokens: null
+    corpus_too_small_for_chunk_qc: true
+    notes: >-
+      Japanese mirror of the synthetic 4th heldout. profile_freq equals
+      the ja background mean. Note that with only one ja corpus shipped
+      in the toy reference (Rikyū 5 道歌), the ja background is
+      computed from the single-corpus chunk distribution; the synthetic
+      4th sits at that mean and discriminative claims for ja remain
+      qualified by the Rikyū corpus expansion blocker.

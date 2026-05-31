@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Avoid duplicate runs: feature branches go through pull_request only;
+# main gets push runs (post-merge). Concurrency cancels stale in-flight
+# runs of the same ref (PR re-pushes / consecutive main pushes).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ruff (check + format)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: ruff check
+        run: uv run ruff check src tests
+      - name: ruff format --check
+        run: uv run ruff format --check src tests
+
+  typecheck:
+    name: mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: mypy src
+        run: uv run mypy src
+
+  test:
+    name: pytest (non-godot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: pytest -m "not godot and not eval and not spike and not training and not inference"
+        # ``eval``-marked tests need the [eval] extras (heavy ML deps:
+        # sentence-transformers, transformers, empath). The default
+        # CI install (``--all-groups``) only pulls dependency-groups,
+        # so deselect ``eval``-marked tests here; m9-eval-system Tier
+        # A unit tests stay on the default selection because they
+        # inject stub callables and have no real-model imports.
+        #
+        # m9-c-spike adds three more deselect markers (CS-1 / CS-3 / CS-9):
+        #   * ``inference`` — real SGLang server smoke ([inference] extras)
+        #   * ``training``  — Phase K β real Kant training ([training] extras)
+        #   * ``spike``     — Phase J mock-LoRA identity verify ([training] + GPU)
+        # Adapter unit tests (Phase H) and hard-fail gate tests (Phase I /
+        # Phase J refusal-guard) stay on the default selection because they
+        # mock httpx and use synthetic DuckDB fixtures with no GPU imports.
+        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference"
+
+  eval-egress-grep-gate:
+    # m9-eval-system Phase P0b — defence-in-depth (layer 4 of the
+    # 4-layer DuckDB schema-guard contract). The behavioural sentinel
+    # test in tests/test_evidence/test_eval_paths_contract.py is the
+    # primary boundary; this grep is a static back-stop that catches
+    # the obvious ``metrics.`` shape inside the documented training-
+    # egress allow-list (DuckDB single-file + named schema, 4-layer
+    # contract).
+    name: eval egress grep gate (no `metrics.` in training paths)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Forbid `metrics.` in training-egress modules
+        # Allow-list of paths that read raw_dialog for the LoRA
+        # training pipeline. New training egress paths MUST be added
+        # here AND covered by the sentinel CI test.
+        run: |
+          set -euo pipefail
+          paths=(
+            src/erre_sandbox/cli/export_log.py
+            src/erre_sandbox/evidence/eval_store.py
+          )
+          missing=()
+          for p in "${paths[@]}"; do
+            if [ ! -f "$p" ]; then missing+=("$p"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::training-egress allow-list points at missing path(s): ${missing[*]}"
+            exit 1
+          fi
+          # Look for any reference to the metrics schema. The
+          # ``METRICS_SCHEMA`` constant import is permitted (it's how
+          # eval_store guards the boundary), but a literal ``metrics.``
+          # qualifier inside a training-egress module is not.
+          if grep -nE '"metrics\.|'\''metrics\.' "${paths[@]}"; then
+            echo "::error::training-egress module references the metrics schema literally — that is a contract violation (see contracts/eval_paths.py)"
+            exit 1
+          fi
+          # B-1 (m9-individual-layer-schema-add): training-egress
+          # modules must not contain a literal that sets
+          # ``individual_layer_enabled`` truthy. Codex MEDIUM-1: this
+          # grep is a *weak backstop only* — it cannot catch
+          # ``setattr``, ``dict.update``, alias assignment, kwargs
+          # splats, or comprehensions. The behavioural sentinel test
+          # (``tests/test_training/test_train_kant_lora.py::test_assert_phase_beta_ready_blocks_individual_layer_true_via_real_relation``)
+          # plus the construction-time aggregate assert in
+          # ``_DuckDBRawTrainingRelation.__init__`` are the primary
+          # guards. This grep ships as low-cost early warning only.
+          if grep -nE 'individual_layer_enabled[[:space:]]*[:=][[:space:]]*(True\b|"true"|1\b)' "${paths[@]}"; then
+            echo "::error::training-egress module sets individual_layer_enabled truthy — DB11 / B-1 contract violation"
+            exit 1
+          fi
+          echo "[eval-egress-grep-gate] PASS (B-1 individual-layer literal guard included; weak backstop only — primary guard is the behavioural sentinel + construction-time aggregate assert)"
+
+  policy-grep-gate:
+    # SH-1 CI layer: static backstop for the banned-import policy. A local
+    # pre-commit / IDE hook catches shell-bypass writes at edit time; this
+    # job re-runs the same rules on git diff so a PR cannot reach merge
+    # without surfacing a violation. SH-FOLLOWUP-2 adds the T201 backstop
+    # via a ruff re-run (not grep).
+    name: policy grep gate (SH-1 backstop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --frozen --all-groups
+      - name: Banned imports in src/erre_sandbox/ (AST scan, Codex 14th HIGH-2)
+        # Replaces the prior grep-based check which missed ``import
+        # openai, os`` comma forms. The standalone script under
+        # ``scripts/`` is unit-tested in
+        # ``tests/test_codex_hooks/test_banned_imports_ast.py``.
+        run: uv run python scripts/policy_banned_imports.py
+      - name: ruff T201 backstop (SH-FOLLOWUP-2)
+        # Re-run ruff with the print rule explicitly selected so the gate
+        # fires regardless of whether the main lint job's rule-set drifts.
+        # The exemption ``src/erre_sandbox/cli/** = ["T201"]`` in
+        # pyproject.toml is honoured automatically, as are inline
+        # ``# noqa: T201`` directives — preserving the empirical CI-green
+        # baseline (e.g. ``training/train_kant_lora.py:2009``).
+        run: uv run ruff check --select T201 src/erre_sandbox

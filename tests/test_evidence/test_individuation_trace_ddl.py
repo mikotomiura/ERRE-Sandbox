@@ -1,0 +1,214 @@
+"""DDL + row-builder coverage for metrics.individual_state_trace (M11-C2).
+
+Pins the M11-C2 substrate primitives that do not depend on the live cognition
+run: the flag-on conditional DDL (and its absence from ``bootstrap_schema`` =
+flag-off DB schema invariance, DA-M11C2-1), the ``tick >= 0`` CHECK, and the
+None-safe projection of a C1 ``IndividualProfile`` snapshot into a trace row
+(no fabrication; mirrors C1 Option B).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import duckdb
+import pytest
+
+from erre_sandbox.contracts.cognition_layers import (
+    ArcSegment,
+    DevelopmentState,
+    IndividualProfile,
+    NarrativeArc,
+)
+from erre_sandbox.contracts.eval_paths import METRICS_SCHEMA
+from erre_sandbox.evidence.eval_store import bootstrap_schema
+from erre_sandbox.evidence.individuation.trace_ddl import (
+    INDIVIDUAL_STATE_TRACE_COLUMN_COUNT,
+    TABLE_NAME,
+    IndividualStateTraceRow,
+    bootstrap_individual_state_trace_schema,
+    build_individual_state_trace_row,
+    column_names,
+)
+
+
+def _booted(tmp_path: Path) -> duckdb.DuckDBPyConnection:
+    con = duckdb.connect(str(tmp_path / "trace.duckdb"), read_only=False)
+    bootstrap_schema(con)
+    return con
+
+
+def _table_names(con: duckdb.DuckDBPyConnection) -> set[str]:
+    return {
+        row[0]
+        for row in con.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = ?",
+            (METRICS_SCHEMA,),
+        ).fetchall()
+    }
+
+
+# --- flag-off DB schema invariance (DA-M11C2-1 / Codex MEDIUM-6) -------------
+
+
+def test_bootstrap_schema_omits_trace_table(tmp_path: Path) -> None:
+    """bootstrap_schema must NOT create the trace table (flag-off byte invariance)."""
+    con = _booted(tmp_path)
+    try:
+        names = _table_names(con)
+    finally:
+        con.close()
+    assert TABLE_NAME not in names
+    # the existing M10-0 table set is unchanged (no trace leakage)
+    assert names == {"tier_a", "tier_b", "tier_c", "individuation"}
+
+
+def test_conditional_bootstrap_creates_trace_table(tmp_path: Path) -> None:
+    con = _booted(tmp_path)
+    try:
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+        names = _table_names(con)
+        cols = con.execute(
+            "SELECT column_name FROM information_schema.columns"
+            " WHERE table_schema = ? AND table_name = ?",
+            (METRICS_SCHEMA, TABLE_NAME),
+        ).fetchall()
+    finally:
+        con.close()
+    assert TABLE_NAME in names
+    assert {c[0] for c in cols} == set(column_names())
+    assert len(cols) == INDIVIDUAL_STATE_TRACE_COLUMN_COUNT == 7
+
+
+def test_conditional_bootstrap_idempotent(tmp_path: Path) -> None:
+    con = _booted(tmp_path)
+    try:
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)  # must not raise
+    finally:
+        con.close()
+
+
+def _insert(con: duckdb.DuckDBPyConnection, row: IndividualStateTraceRow) -> None:
+    cols = ", ".join(column_names())
+    ph = ", ".join("?" for _ in column_names())
+    con.execute(
+        f"INSERT INTO {METRICS_SCHEMA}.{TABLE_NAME} ({cols}) VALUES ({ph})",  # noqa: S608  # module constants
+        row.to_row(),
+    )
+
+
+def test_check_rejects_negative_tick(tmp_path: Path) -> None:
+    con = _booted(tmp_path)
+    try:
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+        with pytest.raises(duckdb.ConstraintException):
+            _insert(
+                con,
+                IndividualStateTraceRow(
+                    run_id="r0",
+                    individual_id="a_rikyu_001",
+                    tick=-1,
+                    development_stage=None,
+                    coherence_score=None,
+                    belief_classes_json=None,
+                    arc_segment_count=0,
+                ),
+            )
+        # tick == 0 is accepted
+        _insert(
+            con,
+            IndividualStateTraceRow(
+                run_id="r0",
+                individual_id="a_rikyu_001",
+                tick=0,
+                development_stage=None,
+                coherence_score=None,
+                belief_classes_json=None,
+                arc_segment_count=0,
+            ),
+        )
+    finally:
+        con.close()
+
+
+# --- build_individual_state_trace_row None-safety (DA-M11C2-3) ---------------
+
+
+def test_build_row_none_safety() -> None:
+    """A flag-on tick that advanced no stage / synthesised no arc writes NULLs."""
+    profile = IndividualProfile(individual_id="a_rikyu_001", base_persona_id="rikyu")
+    row = build_individual_state_trace_row(profile, None, run_id="r0", tick=3)
+    assert row.individual_id == "a_rikyu_001"
+    assert row.tick == 3
+    assert row.development_stage is None
+    assert row.coherence_score is None
+    assert row.belief_classes_json is None
+    assert row.arc_segment_count == 0  # no arc -> zero observed segments
+
+
+def test_build_row_populated() -> None:
+    profile = IndividualProfile(
+        individual_id="a_rikyu_002",
+        base_persona_id="rikyu",
+        development_state=DevelopmentState(stage="S2_exploring", maturity_score=0.5),
+        narrative_arc=NarrativeArc(
+            synthesized_at_tick=5,
+            arc_segments=[
+                ArcSegment(
+                    segment_label="early study",
+                    start_tick=0,
+                    end_tick=5,
+                    cited_memory_ids=("m1", "m2"),
+                ),
+            ],
+            coherence_score=0.6,
+            last_episodic_pointer="ep-42",
+        ),
+    )
+    row = build_individual_state_trace_row(
+        profile, ["trust", "wary", "trust"], run_id="r1", tick=7
+    )
+    assert row.development_stage == "S2_exploring"
+    assert row.coherence_score == pytest.approx(0.6)
+    assert row.arc_segment_count == 1
+    assert row.belief_classes_json == '["trust", "wary", "trust"]'
+
+
+def test_build_row_empty_belief_classes_distinct_from_none() -> None:
+    """Empty list (flag-on, no promoted beliefs) serialises to '[]', not NULL."""
+    profile = IndividualProfile(individual_id="a_kant_001", base_persona_id="kant")
+    row = build_individual_state_trace_row(profile, [], run_id="r0", tick=1)
+    assert row.belief_classes_json == "[]"
+
+
+def test_to_row_lockstep_round_trip(tmp_path: Path) -> None:
+    """to_row() order matches column_names() so an INSERT round-trips."""
+    con = _booted(tmp_path)
+    try:
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+        profile = IndividualProfile(
+            individual_id="a_rikyu_001",
+            base_persona_id="rikyu",
+            development_state=DevelopmentState(stage="S3_consolidated"),
+        )
+        row = build_individual_state_trace_row(
+            profile, ["curious"], run_id="r9", tick=12
+        )
+        assert len(row.to_row()) == INDIVIDUAL_STATE_TRACE_COLUMN_COUNT
+        _insert(con, row)
+        fetched = con.execute(
+            f"SELECT {', '.join(column_names())}"  # noqa: S608  # module constants
+            f" FROM {METRICS_SCHEMA}.{TABLE_NAME}"
+        ).fetchone()
+    finally:
+        con.close()
+    assert fetched == (
+        "r9",
+        "a_rikyu_001",
+        12,
+        "S3_consolidated",
+        None,
+        '["curious"]',
+        0,
+    )

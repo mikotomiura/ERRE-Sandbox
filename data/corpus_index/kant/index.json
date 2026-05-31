@@ -1,0 +1,109 @@
+{
+  "generated_by": "erre_sandbox.evidence.source_navigator.compiler",
+  "habits_by_source": {
+    "heine1834": [
+      {
+        "description": "Königsberg townspeople are said to have set their clocks by his walk time.",
+        "flag": "legend",
+        "mechanism": "Community-level temporal anchor; ritualised predictability reinforces the agent's own schedule compliance. Flagged as legend by ERRE-Sandbox v0.2 §3.1.",
+        "source_key": "heine1834",
+        "trigger_zone": "peripatos"
+      }
+    ],
+    "jachmann1804": [
+      {
+        "description": "Midday dinner 13:00-16:00 with 4-9 invited guests, topic-driven conversation (\"minimum Graces, maximum Muses\").",
+        "flag": "fact",
+        "mechanism": "Social cognition plus postprandial discourse; the 4-9 cap preserves a small-group discussion regime that sustains deep argumentation.",
+        "source_key": "jachmann1804",
+        "trigger_zone": "agora"
+      }
+    ],
+    "kuehn2001": [
+      {
+        "description": "Daily walk on the Linden-Allee at 15:30 (±5 min) for 60-75 minutes; no conversation on the return leg.",
+        "flag": "fact",
+        "mechanism": "Rhythmic locomotion activates the Default Mode Network; Oppezzo & Schwartz (2014) report a +60% gain on Guilford's Alternate Uses divergent-thinking task (treadmill and outdoor-loop conditions); the outdoor effect size for sustained 60-minute walks is not directly measured in that study.",
+        "source_key": "kuehn2001",
+        "trigger_zone": "peripatos"
+      },
+      {
+        "description": "Nasal-only breathing during walks, deliberately suppressing speech.",
+        "flag": "legend",
+        "mechanism": "Kant advocates nasal breathing in Anthropologie §44 as generally beneficial, but that his personal practice on walks was nasal-only is biographical tradition (Kuehn 2001 ch. 8) rather than a direct self-report. Hypothesised vagal-tone modulation via nasal respiration remains speculative.",
+        "source_key": "kuehn2001",
+        "trigger_zone": "peripatos"
+      },
+      {
+        "description": "Morning writing window 05:00-07:00 devoted to long-form critique drafting.",
+        "flag": "fact",
+        "mechanism": "Chronotype-aligned prefrontal window supports multi-step deductive reasoning; early-morning low-interference improves working memory.",
+        "source_key": "kuehn2001",
+        "trigger_zone": "study"
+      },
+      {
+        "description": "Never travelled more than ~10 miles from Königsberg in his entire life.",
+        "flag": "speculative",
+        "mechanism": "Local embedded spatial memory may scaffold abstract conceptual navigation (grid-code-on-concept hypothesis, Constantinescu et al. 2016). The original study does not address travel range or philosophical productivity; this linkage is our extrapolation. The behavioural fact (never >10 miles) is well-attested; the cognitive consequence is speculative.",
+        "source_key": "kuehn2001",
+        "trigger_zone": null
+      }
+    ]
+  },
+  "persona_id": "kant",
+  "schema_version": "0.1.0-m10-0",
+  "source_digest": "f41c3ec63c19df66b5b87c8d8dd7d1973da386e594490c77892444542cc6da31",
+  "sources": [
+    {
+      "availability": "bibliographic_only",
+      "body": null,
+      "citation": {
+        "author": "Heinrich Heine",
+        "body_absent_reason": "body_not_yet_fetched",
+        "body_committable": false,
+        "metadata_verified": false,
+        "notes": "Cited by the 'Koenigsberg townspeople set their clocks by his walk' legend habit. Work is PD by age, but no exact PD edition + retrieval URL has been confirmed, so body_committable stays false and the body is not committed in this MVP.",
+        "pd_basis": "author Heine d.1856; work first published 1834 — PD by age",
+        "source_key": "heine1834",
+        "title": "Zur Geschichte der Religion und Philosophie in Deutschland",
+        "work_pd_by_age": true,
+        "year": 1834
+      },
+      "source_key": "heine1834"
+    },
+    {
+      "availability": "bibliographic_only",
+      "body": null,
+      "citation": {
+        "author": "Reinhold Bernhard Jachmann",
+        "body_absent_reason": "body_not_yet_fetched",
+        "body_committable": false,
+        "metadata_verified": false,
+        "notes": "Cited by the midday-dinner (4-9 guests) habit. Work is PD by age, but no exact PD edition + retrieval URL has been confirmed, so body_committable stays false and the body is not committed in this MVP.",
+        "pd_basis": "author Jachmann d.1843; work published 1804 — PD by age",
+        "source_key": "jachmann1804",
+        "title": "Immanuel Kant geschildert in Briefen an einen Freund",
+        "work_pd_by_age": true,
+        "year": 1804
+      },
+      "source_key": "jachmann1804"
+    },
+    {
+      "availability": "bibliographic_only",
+      "body": null,
+      "citation": {
+        "author": "Manfred Kuehn",
+        "body_absent_reason": "in_copyright_license",
+        "body_committable": false,
+        "metadata_verified": false,
+        "notes": "Cited by 4 kant cognitive_habits (daily walk, nasal-only breathing, morning writing window, never-travelled->10-miles). Raw body NOT committed: modern in-copyright biography. Cannot substantiate the habit text beyond the citation; confirm citation before relying on it.",
+        "pd_basis": "in copyright (published 2001)",
+        "source_key": "kuehn2001",
+        "title": "Kant: A Biography",
+        "work_pd_by_age": false,
+        "year": 2001
+      },
+      "source_key": "kuehn2001"
+    }
+  ]
+}

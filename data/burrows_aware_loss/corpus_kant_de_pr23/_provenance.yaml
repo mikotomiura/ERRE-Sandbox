@@ -1,0 +1,71 @@
+# PR-23 Phase 1-A kant_de corpus 拡張 provenance.
+# DPN23-0 採用案 = hybrid corpus expansion (案 C → sub-corpus 3 不在で実態は
+# 案 A subset escalate に近い、 sub-corpus 3 は scope drop = blockers.md
+# ブロッカー 1 解消方針 = "Bd. V full corpus で代替吸収")。
+# 5 field (id / title / subtitle / body / source_ref) ではなく、 sub-corpus
+# 単位 entry で URI + SHA-256 + license tag + approx_tokens verbatim 記録。
+# forensic chain integrity 用 = ingest_kant_de_extension.py の
+# --provenance-yaml 経由で output metadata に embed される。
+
+persona_id: kant_pr23_extension
+
+sub_corpus:
+  - id: kant_pr23_subcorpus1
+    title: "Kant's gesammelte Schriften Band V: Kritik der praktischen Vernunft + Kritik der Urtheilskraft"
+    # DPN23-1 #1 sub-corpus 1 = Bd. V Kritik der Urtheilskraft chapter selection
+    # (~30k target) → 実態 = Bd. V full content (~140k tokens) を採用
+    # = DPN23-1 binding revise (案 A full Bd. V escalate route 採用、
+    # 理由: PG-DE Cloudflare で chapter level 個別取得不可 + sub-corpus 3
+    # 不在で escalate 経路でしか envelope を満たせない)
+    section_id: "Bd. V full content (= Kritik der praktischen Vernunft 1788 + Kritik der Urtheilskraft 1790、 PG editor commentary lines 13990-15281 strip 済、 Anmerkungen zur Transkription 含む)"
+    source_uri: "https://www.gutenberg.org/ebooks/55925"
+    source_uri_alternate: "https://www.gutenberg.org/cache/epub/55925/pg55925.txt"
+    source_format: "Project Gutenberg US plain UTF-8 .txt (PG header lines 1-28 + footer lines 15282+ stripped)"
+    retrieval_date: "2026-05-24"
+    license: public_domain
+    license_note: "Kant 1804 死去 = EU GMD § 64 (70 years post mortem auctoris); Project Gutenberg US License compatible with public domain"
+    sha256: "6d27eda343c0e3c20607eb9f32facd9ddd5b3f5c1ac21437eba72437a25e7480"
+    file_path: "data/burrows_aware_loss/corpus_kant_de_pr23/subcorpus1_kritik_bd_v.txt"
+    file_size_bytes: 840382
+    approx_lines: 13960
+    approx_tokens_note: "~140k tokens at Qwen3-8B BPE estimated (= 840382 bytes / ~6.0 bytes-per-token in German Latin script)"
+
+  - id: kant_pr23_subcorpus2
+    title: "Beantwortung der Frage: Was ist Aufklärung? (1784)"
+    section_id: "Aufklärungs-Aufsatz 全文 (= 既存 src/erre_sandbox/evidence/reference_corpus/raw/kant_de.txt 流用、 touched=no)"
+    source_uri: "src/erre_sandbox/evidence/reference_corpus/raw/kant_de.txt"
+    source_uri_alternate: "https://de.wikisource.org/wiki/Beantwortung_der_Frage:_Was_ist_Aufklärung?"
+    source_format: "既存 reference_corpus/raw plain UTF-8 .txt (M9 phase で取得済)"
+    retrieval_date: "PR-15 phase (M9 reference corpus build 時)"
+    license: public_domain
+    license_note: "Kant 1804 死去 = EU GMD § 64; reference_corpus/_provenance.yaml の既存 kant entry と整合"
+    sha256: "6d00eea014c99abb413d5328178a4fb91957ebcd051e3da3143162f0c419e13b"
+    file_path: "src/erre_sandbox/evidence/reference_corpus/raw/kant_de.txt"
+    file_size_bytes: 18397
+    approx_lines: "(既存 entry 参照)"
+    approx_tokens_note: "2656 tokens (DPN23-0 / Phase 0-A audit 実測)"
+
+scope_drop:
+  - id: kant_pr23_subcorpus3_dropped
+    intended_title: "Was heißt: sich im Denken orientiren? (1786) + Über den Gemeinspruch (1793)"
+    intended_target_tokens: "~15k"
+    drop_reason: |
+      DPN23-1 #1 alternate binding = Projekt Gutenberg-DE + Wikisource (Bd. VIII) +
+      Project Gutenberg US の 3 系統で URI verify した結果 「いずれも作品存在せず」
+      (Codex MEDIUM-2 訂正、 当初 "2 系統" 表記を実態 3 系統に整合):
+        (a) www.projekt-gutenberg.org : Cloudflare challenge で API 経由
+            取得不可 (HTML 403 Forbidden + JS challenge、 Phase 1-A
+            envelope 内で迂回困難)
+        (b) de.wikisource.org : opensearch API + Kant index page
+            (/wiki/Immanuel_Kant) どちらも該当 entry 不在 (1786 Orientiren +
+            1793 Gemeinspruch は de.wikisource に未収録、 article ID 0
+            empirical 確認)
+        (c) Project Gutenberg US : Kant ebook search で 「Bd. V のみ」 +
+            「Kritik der reinen Vernunft」 等あり、 「orientiren」
+            「Gemeinspruch」 単独 ebook なし
+      DPN23-1 #1 binding の 「不在なら scope から落とす」 条件発動。
+      sub-corpus 1 = Bd. V full content (~140k tokens) で envelope target
+      (~50k → ~150k overshoot) を吸収 = 案 A full Bd. V escalate route
+      pre-register 済 (DPN23-0 トレードオフ + 残リスク section).
+    blockers_ref: "blockers.md ブロッカー 1 → 本 _provenance.yaml の scope_drop で
+      解消 (= 'Bd. V full content で代替' 経路採用)"

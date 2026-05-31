@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "reflection_event",
+  "event": {
+    "agent_id": "a_kant_001",
+    "tick": 42,
+    "summary_text": "午後の散策で鐘の音に触れ、定言命法を言語化する手がかりを得た。書斎に戻り三批判書の第二章に反映させる。",
+    "src_episodic_ids": [
+      "m_obs_020",
+      "m_obs_021",
+      "m_obs_022"
+    ],
+    "created_at": "2026-04-18T12:00:00Z"
+  }
+}

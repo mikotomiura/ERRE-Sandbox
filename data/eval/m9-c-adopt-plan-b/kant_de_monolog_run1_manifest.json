@@ -1,0 +1,50 @@
+{
+  "acceptance_rate": 0.5827505827505828,
+  "achieved_net": 250,
+  "base_model": "Qwen/Qwen3-8B",
+  "captured_at_utc": "2026-05-16T06:59:40.577516+00:00",
+  "collection_mode": "de_focused_monolog",
+  "elapsed_s": 3028.5939999999828,
+  "filter_thresholds": {
+    "min_marker_density": 1.0,
+    "min_token_count": 60,
+    "trigram_loop_max": 4
+  },
+  "is_dry_run": false,
+  "max_attempts": 800,
+  "merge_sha": "dcb07c9707e356281c6df4815382e78775f32dd0",
+  "persona": "kant",
+  "reject_reasons": {
+    "addressee": 56,
+    "length": 25,
+    "marker": 95,
+    "trigram": 3
+  },
+  "rejected": 179,
+  "run_id": "kant_de_monolog_run1",
+  "sampling_params": {
+    "frequency_penalty": 0.3,
+    "max_tokens": 320,
+    "presence_penalty": 0.3,
+    "temperature": 0.7
+  },
+  "schema_version": 1,
+  "shard": "kant_de_monolog_run1.duckdb",
+  "stimulus_subset_ids": [
+    "wachsmuth_kant_01",
+    "wachsmuth_kant_03",
+    "wachsmuth_kant_06",
+    "wachsmuth_kant_10",
+    "wachsmuth_kant_11",
+    "wachsmuth_kant_15",
+    "wachsmuth_kant_17",
+    "wachsmuth_kant_19",
+    "wachsmuth_kant_21",
+    "wachsmuth_kant_23",
+    "wachsmuth_kant_25",
+    "wachsmuth_kant_27",
+    "wachsmuth_kant_29"
+  ],
+  "target_net": 250,
+  "total_attempts": 429
+}

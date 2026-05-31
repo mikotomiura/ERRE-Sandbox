@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "animation",
+  "agent_id": "a_kant_001",
+  "animation_name": "walk",
+  "loop": true
+}

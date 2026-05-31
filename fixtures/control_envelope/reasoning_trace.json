@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "reasoning_trace",
+  "trace": {
+    "agent_id": "a_kant_001",
+    "tick": 42,
+    "mode": "peripatetic",
+    "salient": "遠くに見える聖堂の鐘が午後の始まりを告げている",
+    "decision": "散策を続けて思考を整理する",
+    "next_intent": "書斎に戻って三批判書の第二章を書き継ぐ",
+    "created_at": "2026-04-18T12:00:00Z"
+  }
+}

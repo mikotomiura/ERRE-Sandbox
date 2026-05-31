@@ -1,0 +1,91 @@
+{
+  "base_model": "Qwen/Qwen3-8B",
+  "batch_size": 1,
+  "db_paths": [
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run0.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run1.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run2.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run3.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run4.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run0.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run1.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run2.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run3.duckdb",
+    "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run4.duckdb"
+  ],
+  "gradient_accumulation_steps": 8,
+  "learning_rate": 0.0002,
+  "lora_rank": 8,
+  "max_seq_length": 2048,
+  "max_steps": 2000,
+  "metadata": {
+    "seed": 42,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj"
+    ]
+  },
+  "min_examples_threshold": 1000,
+  "output_dir": "/root/erre-sandbox/checkpoints/kant_r8_real",
+  "peak_vram_bytes": 10553926656,
+  "persona_id": "kant",
+  "quantization": "nf4",
+  "realised_examples": 5022,
+  "save_steps": 500,
+  "shard_stats": [
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run0.duckdb",
+      "persona_examples": 501,
+      "raw_rows": 1507
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run1.duckdb",
+      "persona_examples": 500,
+      "raw_rows": 1504
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run2.duckdb",
+      "persona_examples": 500,
+      "raw_rows": 1480
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run3.duckdb",
+      "persona_examples": 500,
+      "raw_rows": 1497
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_natural_run4.duckdb",
+      "persona_examples": 501,
+      "raw_rows": 1513
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run0.duckdb",
+      "persona_examples": 504,
+      "raw_rows": 852
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run1.duckdb",
+      "persona_examples": 504,
+      "raw_rows": 852
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run2.duckdb",
+      "persona_examples": 504,
+      "raw_rows": 852
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run3.duckdb",
+      "persona_examples": 504,
+      "raw_rows": 852
+    },
+    {
+      "path": "/mnt/c/ERRE-Sand_Box/data/eval/golden/kant_stimulus_run4.duckdb",
+      "persona_examples": 504,
+      "raw_rows": 852
+    }
+  ],
+  "train_loss": 0.21552486592531203,
+  "training_executed": true
+}

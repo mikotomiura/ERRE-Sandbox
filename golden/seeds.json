@@ -1,0 +1,87 @@
+{
+  "schema_version": "0.1.0-m9eval-p2c",
+  "salt": "m9-eval-v1",
+  "personas": [
+    "kant",
+    "nietzsche",
+    "rikyu"
+  ],
+  "run_count": 5,
+  "seeds": [
+    {
+      "persona_id": "kant",
+      "run_idx": 0,
+      "seed": 9980935715884061059
+    },
+    {
+      "persona_id": "kant",
+      "run_idx": 1,
+      "seed": 124022169161268740
+    },
+    {
+      "persona_id": "kant",
+      "run_idx": 2,
+      "seed": 5546336578425653316
+    },
+    {
+      "persona_id": "kant",
+      "run_idx": 3,
+      "seed": 15847575374635114772
+    },
+    {
+      "persona_id": "kant",
+      "run_idx": 4,
+      "seed": 10107186420243458968
+    },
+    {
+      "persona_id": "nietzsche",
+      "run_idx": 0,
+      "seed": 5800602997245017968
+    },
+    {
+      "persona_id": "nietzsche",
+      "run_idx": 1,
+      "seed": 12741103579771563403
+    },
+    {
+      "persona_id": "nietzsche",
+      "run_idx": 2,
+      "seed": 4456576913993157234
+    },
+    {
+      "persona_id": "nietzsche",
+      "run_idx": 3,
+      "seed": 16011327099918155535
+    },
+    {
+      "persona_id": "nietzsche",
+      "run_idx": 4,
+      "seed": 8170874191694107388
+    },
+    {
+      "persona_id": "rikyu",
+      "run_idx": 0,
+      "seed": 4100237194618256749
+    },
+    {
+      "persona_id": "rikyu",
+      "run_idx": 1,
+      "seed": 13501161220989199671
+    },
+    {
+      "persona_id": "rikyu",
+      "run_idx": 2,
+      "seed": 12275406980623098196
+    },
+    {
+      "persona_id": "rikyu",
+      "run_idx": 3,
+      "seed": 5924791721298034687
+    },
+    {
+      "persona_id": "rikyu",
+      "run_idx": 4,
+      "seed": 8669814733107563091
+    }
+  ]
+}

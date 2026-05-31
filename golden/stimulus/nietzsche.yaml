@@ -1,0 +1,875 @@
+# Stimulus battery — Friedrich Nietzsche (m9-eval-system P2a)
+#
+# 70 stimulus = wachsmuth 30 + tom_chashitsu 20 + roleeval 10 + moral_dilemma 10
+#
+# Refs:
+#   - golden/stimulus/_schema.yaml
+#   - personas/nietzsche.yaml (cognitive_habits / preferred_zones / sampling override)
+
+persona_id: nietzsche
+schema_version: "0.1.0-m9eval-p2a"
+total_count: 70
+category_counts:
+  wachsmuth: 30
+  tom_chashitsu: 20
+  roleeval: 10
+  moral_dilemma: 10
+
+metadata:
+  drafted_by: claude-opus-4-7
+  drafted_date: "2026-05-01"
+  notes: |
+    Nietzsche prefer は peripatos / study / garden。Toulmin は perspectivism /
+    eternal recurrence / master-slave morality / will to power 主軸、aphoristic
+    burst (20-40 min) を反映して短い stimulus を中心に。ToM は Sils Maria 隔離・
+    Basel 1879 後の社交回避を踏まえ書簡 / 出版者 / 同居人 (Peter Gast / Overbeck)
+    を介した非対称情報構造で投入。MCQ は present_in_persona_prompt true 4 / false 6
+    で調整。
+
+stimuli:
+  # ============================================================
+  # Wachsmuth Toulmin (30)
+  # ============================================================
+
+  # claim ×8
+  - stimulus_id: wachsmuth_nietzsche_01
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      In einem einzigen Satz, ohne Aphorismus-Maske: was ist die Behauptung
+      hinter der ewigen Wiederkunft?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_02
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      State, in one sentence, your central claim about the genealogy of moral
+      values. No history yet — only the claim.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_03
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Auf einem Bergpfad in Sils Maria, ohne Notizbuch: formuliere deinen
+      Perspektivismus als einsatzfähige These.
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_04
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Ein junger Leser fragt dich, was "Wille zur Macht" eigentlich bedeutet.
+      Antworte mit einer Behauptung, nicht mit einer Geschichte.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_05
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      In a single declarative sentence: what is your claim about the relation
+      between truth and life?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_06
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Behaupte ohne Begründung: was geschieht im Menschen, wenn der christliche
+      Gott seine Glaubwürdigkeit verliert?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_07
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Zarathustras Übermensch: nenne in einem Satz, was er nicht ist — ein
+      apodiktischer Satz, kein Bild.
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_08
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Make a single, defensible claim about the function of art in human life —
+      leave the genealogy for later turns.
+    expected_zone: garden
+    expected_turn_count: 2
+
+  # data ×6
+  - stimulus_id: wachsmuth_nietzsche_09
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Du hast behauptet, das Mitleid sei ein Symptom der Schwäche. Welches
+      konkrete historische Beispiel oder welche Beobachtung dient als Datum,
+      ohne dass du es schon deutest?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_10
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Cite one philological observation from your work on the pre-Socratics that
+      serves as data for your claim about Apollonian and Dionysian tendencies.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_11
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Auf einem Engadiner Pfad: welches eigene leibliche Phänomen liefert dir das
+      beste Datum für deine These vom Leib als großer Vernunft?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_12
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Welches Faktum aus dem altgriechischen Tragödienzeitalter dient als Datum
+      für deine Behauptung über das Verhältnis von Kunst und Leiden?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_13
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      What single feature of asceticism in religious history serves as your data
+      for the claim that the ascetic ideal protects life against itself?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_14
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Welche Beobachtung aus der Geschichte des Strafrechts dient dir als Datum
+      für deine genealogische These über Schuld?
+    expected_zone: study
+    expected_turn_count: 2
+
+  # warrant ×8
+  - stimulus_id: wachsmuth_nietzsche_15
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Du hast die These und das Datum genannt. Welcher methodische Grundsatz
+      erlaubt dir den genealogischen Schluss vom Datum auf den Wertursprung?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_16
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Why does the genealogical method warrant the move from "this value is
+      historically formed" to "this value is suspect as universal"?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_17
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Welche allgemeine Regel rechtfertigt den Schritt von einer leiblichen
+      Reaktion auf einen Wert zur Diagnose der Lebenstauglichkeit dieses Wertes?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_18
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      A reader asks why your "Wille zur Macht" is a permissible warrant for
+      reinterpreting psychological phenomena. State the warrant — not the
+      example.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_19
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Was rechtfertigt im Allgemeinen den Übergang von der ewigen Wiederkunft
+      als Gedankenexperiment zur Lebensprobe der eigenen Bejahung?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_20
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      State the warrant that lets you move from "values have a history" to
+      "values can be transvalued."
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_21
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Welcher Grundsatz erlaubt es, vom Begriff der Gesundheit auf eine
+      Bewertung philosophischer Systeme zu schließen?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_22
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      In one sentence: what general principle warrants treating Christian
+      morality as a slave-morality rather than as a universal ethics?
+    expected_zone: study
+    expected_turn_count: 2
+
+  # backing ×4
+  - stimulus_id: wachsmuth_nietzsche_23
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Du hast einen Grundsatz genannt, der den Schluss rechtfertigt. Worauf —
+      auf welcher tieferen philologischen oder physiologischen Tradition —
+      beruht dieser Grundsatz?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_nietzsche_24
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      What body of work or systematic argument backs your warrant that
+      psychology is "the queen of the sciences"?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_nietzsche_25
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Welche eigene Werkphase oder welcher Vorgänger stützt deinen Grundsatz,
+      dass die griechische Tragödie der Maßstab für Lebensbejahung ist?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_nietzsche_26
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Provide the backing — not just the warrant — for your claim that the
+      "death of God" is a cultural diagnosis rather than a metaphysical thesis.
+    expected_zone: agora
+    expected_turn_count: 3
+
+  # qualifier ×2
+  - stimulus_id: wachsmuth_nietzsche_27
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      Mit welcher Einschränkung gilt deine These vom Übermenschen? Nenne den
+      Qualifikator, nicht die These.
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_nietzsche_28
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      State the qualifier that limits your claim about the universal truth of
+      perspectivism — under what scope does it itself hold?
+    expected_zone: study
+    expected_turn_count: 2
+
+  # rebuttal ×2
+  - stimulus_id: wachsmuth_nietzsche_29
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      Ein Kritiker behauptet, deine Genealogie sei selbstwidersprüchlich, weil
+      sie ihre eigene Wertbasis voraussetzen muss. Anerkenne den Einwand und
+      formuliere die Rebuttal-Bedingung, ohne ihn sofort zu widerlegen.
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_nietzsche_30
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      A reader objects that the eternal recurrence is a metaphysical claim no
+      better than what you criticise. State the rebuttal condition under which
+      your view stands — not the full counter-argument.
+    expected_zone: peripatos
+    expected_turn_count: 3
+
+  # ============================================================
+  # ToM info-asymmetric (20) — first 8 / second 8 / recursive 4
+  # ============================================================
+
+  # first_order ×8
+  - stimulus_id: tom_nietzsche_01
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Peter Gast hat den letzten Satz deiner Diktate eigenmächtig geändert,
+      ohne es dir zu sagen.
+    prompt_text: |
+      Beim nächsten Diktat schweigt Gast etwas länger als gewöhnlich, bevor er
+      die Feder ansetzt. Was glaubt er gerade?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_02
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Overbeck has decided not to tell you yet about a hostile review in a
+      Berlin paper.
+    prompt_text: |
+      Overbeck's latest letter is shorter than usual and avoids any mention of
+      reviews. What does he believe right now?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_03
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Die Pensionswirtin in Sils Maria hat heute morgen einen Brief deiner
+      Schwester abgefangen, ohne ihn dir zu zeigen.
+    prompt_text: |
+      Beim Frühstück lächelt die Wirtin freundlicher als sonst und erwähnt das
+      Wetter mehrmals. Was vermutet sie über deine Stimmung in diesem Moment?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_04
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      The young Italian student knows that you are unaware of his recent break
+      with his teacher.
+    prompt_text: |
+      A young correspondent in Turin writes you with unusual urgency about
+      "questions of independence." What does he probably believe about your
+      current situation?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_05
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Der Wirt im Dorf-Teehaus hat von einem reisenden Akademiker gehört, du
+      hättest ein neues Buch in Druck.
+    prompt_text: |
+      Der Wirt grüßt heute betont höflich und reicht dir den besten Tisch. Was
+      glaubt er gerade über deinen Status?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_06
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Die junge Lou hat deinem Brief gestern lange auf der Treppe gestanden,
+      bevor sie ihn beantwortete.
+    prompt_text: |
+      Lous Antwort kommt mit einem Tag Verzögerung und in unbekannter Tinte.
+      Was nimmt sie gerade über dich an?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_07
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Auf dem Pfad nach Sils Baselgia weiß ein Wanderer, dass du zwischen
+      heftigen Migräneanfällen schreibst, du nimmst ihn nur als Touristen wahr.
+    prompt_text: |
+      Ein älterer Wanderer bietet dir auf dem Pfad seinen Stock an, ohne dass
+      du gefragt hast. Was glaubt er gerade über deinen Zustand?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: tom_nietzsche_08
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      A Genoese landlady knows that the room next to yours has been let to a
+      noisy party, but has not yet warned you.
+    prompt_text: |
+      The landlady speaks slowly and avoids your gaze when handing over the
+      key. What does she believe about the next few days for you?
+    expected_zone: study
+    expected_turn_count: 2
+
+  # second_order ×8
+  - stimulus_id: tom_nietzsche_09
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Peter Gast believes you regard his musical compositions as derivative;
+      you find them under-appreciated.
+    prompt_text: |
+      Gast hesitates to play his new piece for you, citing "minor revisions."
+      What does he think *you* think about his music?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_10
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Overbeck thinks you suspect him of moderating your manuscripts; he does
+      no such thing.
+    prompt_text: |
+      Overbeck adds an apologetic line at the end of an otherwise normal
+      letter about the printer. What does he believe you suspect of him?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_11
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Deine Schwester glaubt, du hieltest ihre Kommentare für aufdringlich,
+      während du sie überhaupt nicht beachtest.
+    prompt_text: |
+      Deine Schwester schreibt einen Brief mit ungewöhnlich unterwürfigem Ton.
+      Was glaubt sie, dass du über ihre frühere Einmischung denkst?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_12
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The publisher believes you regard the slow sales of your books as his
+      fault; you regard them as the verdict of the age.
+    prompt_text: |
+      The publisher's letter spends three paragraphs explaining bookshop
+      logistics. What does he think *you* believe about his role in your
+      reception?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_13
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      In einem römischen Café denkt ein Bekannter, du hieltest seine politische
+      Naivität für eine moralische Schwäche, während du sie für unwichtig
+      hältst.
+    prompt_text: |
+      Ein Bekannter im Café wechselt das Thema zur Musik, sobald die Politik
+      aufkommt. Was glaubt er, dass du über seine politische Haltung denkst?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_14
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      A young French translator believes you find his translations too tame;
+      you have not yet read them.
+    prompt_text: |
+      The translator's letter contains a defensive paragraph about "necessary
+      adaptation." What does he believe you already think of his work?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_15
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Der Zimmernachbar in der Pension glaubt, du hieltest sein abendliches
+      Geigenspiel für eine Belästigung — es stört dich nicht.
+    prompt_text: |
+      Der Nachbar legt eine Notiz unter deine Tür, in der er sich für
+      "vergangene Abende" entschuldigt. Was glaubt er, was du über sein
+      Geigenspiel denkst?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_16
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      A long-time correspondent thinks you regard his recent silence as
+      personal, while you regard it as healthy distance.
+    prompt_text: |
+      An old friend's first letter in months opens with three lines of
+      apology. What does he believe you think about his silence?
+    expected_zone: study
+    expected_turn_count: 3
+
+  # recursive_third_order ×4
+  - stimulus_id: tom_nietzsche_17
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Overbeck thinks the publisher believes you regard the publisher as
+      partial to Wagnerians; you do not.
+    prompt_text: |
+      Overbeck and the publisher exchange letters about your forthcoming
+      preface. What does Overbeck think the publisher believes about your
+      attitude towards Wagnerians?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_18
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Deine Schwester glaubt, dass Lou denkt, du hieltest deine Schwester für
+      eine moralische Wächterin — alle drei irren.
+    prompt_text: |
+      Deine Schwester berichtet dir von einem Gespräch mit Lou und beobachtet
+      dabei deine Reaktion sehr genau. Was glaubt deine Schwester, dass Lou
+      über deine Haltung zu ihrer Rolle denkt?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_19
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Peter Gast glaubt, dass die Wirtin denkt, du hieltest seine Anwesenheit
+      beim Frühstück für unangemessen — niemand hält das.
+    prompt_text: |
+      Beim Frühstück richtet die Wirtin zwei Gedecke, zögert dann beim zweiten.
+      Was glaubt Gast, dass die Wirtin über deine Erwartungen an sein Erscheinen
+      denkt?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_nietzsche_20
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      A young Italian disciple thinks an older German visitor believes you
+      regard the disciple as a passing enthusiast; neither belief is yours.
+    prompt_text: |
+      The young disciple watches the older visitor closely whenever your name
+      is mentioned. What does the disciple believe the older visitor takes
+      your attitude towards him to be?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  # ============================================================
+  # RoleEval (10) — chronology 2 / works 2 / practice 2 / relationships 2 / material_term 2
+  # ============================================================
+
+  # chronology ×2
+  - stimulus_id: roleeval_nietzsche_01
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      In welchem Jahr hast du deine Basler Professur niedergelegt?
+    options:
+      A: "1872"
+      B: "1879"
+      C: "1882"
+      D: "1888"
+    correct_option: B
+    source_ref: "kaufmann1974:partII"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[2] "Withdrawal from Basel professorship in 1879"
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_nietzsche_02
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      In what year did your mental collapse in Turin take place?
+    options:
+      A: "1882"
+      B: "1885"
+      C: "1889"
+      D: "1892"
+    correct_option: C
+    source_ref: "podach1930"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # YAML 言及無し
+    expected_zone: study
+    expected_turn_count: 1
+
+  # works ×2
+  - stimulus_id: roleeval_nietzsche_03
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      Welches Werk endet mit der Formel "Ecce homo — wie man wird, was man ist"?
+    options:
+      A: "Also sprach Zarathustra"
+      B: "Jenseits von Gut und Böse"
+      C: "Zur Genealogie der Moral"
+      D: "Ecce homo"
+    correct_option: D
+    source_ref: "kaufmann1974"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      Untertitel "Wie man wird, was man ist" trägt Ecce homo. Title-leak は同 corpus
+      内で plausible distractor で抑制。
+
+  - stimulus_id: roleeval_nietzsche_04
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      Which of your books opens by introducing the Apollonian-Dionysian
+      dichotomy in the context of Greek tragedy?
+    options:
+      A: "Die Geburt der Tragödie"
+      B: "Menschliches, Allzumenschliches"
+      C: "Die fröhliche Wissenschaft"
+      D: "Götzen-Dämmerung"
+    correct_option: A
+    source_ref: "kaufmann1974"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+
+  # practice ×2
+  - stimulus_id: roleeval_nietzsche_05
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      Wie lang sind deine üblichen Schreib-Bursts zwischen den
+      Migräneanfällen?
+    options:
+      A: "Höchstens zehn Minuten"
+      B: "Zwanzig bis vierzig Minuten"
+      C: "Eine bis zwei Stunden"
+      D: "Den ganzen Vormittag"
+    correct_option: B
+    source_ref: "overbeck1908"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[0] "20-40 minute bursts"
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_nietzsche_06
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      Wo verbringst du gewöhnlich den Sommer, um die Migräneanfälle erträglicher
+      zu machen?
+    options:
+      A: "Genua am Meer"
+      B: "Sils Maria im Engadin"
+      C: "Naumburg bei der Familie"
+      D: "Basel an der Universität"
+    correct_option: B
+    source_ref: "safranski2002:ch.6"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[1] "Sils Maria (~1800 m) in summer"
+    expected_zone: peripatos
+    expected_turn_count: 1
+
+  # relationships ×2
+  - stimulus_id: roleeval_nietzsche_07
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      Wer schreibt für dich nach deiner Augenkrankheit deine Manuskripte unter
+      Diktat?
+    options:
+      A: "Franz Overbeck"
+      B: "Heinrich Köselitz (Peter Gast)"
+      C: "Erwin Rohde"
+      D: "Paul Rée"
+    correct_option: B
+    source_ref: "podach1930"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # cognitive_habits[3] に "Peter Gast" 名は出るが
+                                      # "Manuskripte unter Diktat" の事実 mapping は YAML 不在
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      Distractor は同時代の親しい同僚 / 友人 (Overbeck=Basel 同僚 / Rohde=古典文献学者
+      / Rée=Lou 関係) で same-type plausible。
+
+  - stimulus_id: roleeval_nietzsche_08
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      Welche Stadt ist die Universität, an der du als Klassischer Philologe
+      ordentlicher Professor warst?
+    options:
+      A: "Leipzig"
+      B: "Bonn"
+      C: "Basel"
+      D: "Zürich"
+    correct_option: C
+    source_ref: "kaufmann1974:partII"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[2] "Basel professorship"
+    expected_zone: study
+    expected_turn_count: 1
+
+  # material_term ×2
+  - stimulus_id: roleeval_nietzsche_09
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      Wie nennst du die in "Also sprach Zarathustra" zentral eingeführte
+      Lehre, dass jeder Augenblick unendlich oft wiederkehrt?
+    options:
+      A: "Wille zur Macht"
+      B: "Ewige Wiederkunft des Gleichen"
+      C: "Umwertung aller Werte"
+      D: "Übermensch"
+    correct_option: B
+    source_ref: "kaufmann1974"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_nietzsche_10
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      Welche Diagnose verwendest du in "Zur Genealogie der Moral" für die
+      Verinnerlichung von Aggression unter christlicher Moral?
+    options:
+      A: "Décadence"
+      B: "Ressentiment"
+      C: "Nihilismus"
+      D: "Pathos der Distanz"
+    correct_option: B
+    source_ref: "kaufmann1974"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+
+  # present_in_persona_prompt 集計: true 4 (nietzsche_01, _05, _06, _08) / false 6 — 4-6 範囲
+
+  # ============================================================
+  # moral_dilemma (10) — master_slave 3 / eternal_recurrence 3 / will_to_power 2 /
+  # shared_classical 2
+  # ============================================================
+
+  - stimulus_id: dilemma_nietzsche_01
+    category: moral_dilemma
+    ethical_axis: nietzsche_master_slave
+    prompt_text: |
+      Ein junger Mann gibt ein Versprechen, weil er sich schwach fühlt, es zu
+      brechen — dann hält er es aus Pflichtgefühl. Was unterscheidet diese
+      Treue von der eines Vornehmen, der sein Wort hält, weil es seine Form
+      ist?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_02
+    category: moral_dilemma
+    ethical_axis: nietzsche_master_slave
+    prompt_text: |
+      A reformer demands universal compassion because he himself suffers.
+      Diagnose his moral position genealogically — without dismissing him as
+      merely confused.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_03
+    category: moral_dilemma
+    ethical_axis: nietzsche_master_slave
+    prompt_text: |
+      Ein erfolgreicher Mensch zwingt sich zu Demut, weil seine Umgebung sie
+      verlangt. Welche genealogische Verkehrung liegt in dieser Demut?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_04
+    category: moral_dilemma
+    ethical_axis: nietzsche_eternal_recurrence
+    prompt_text: |
+      Stelle dir vor: ein Dämon flüstert dir, dass dein gestriger Tag — mit
+      jeder Schmerzminute — unendlich oft wiederkehren wird. Wie urteilst du
+      über deine gestrige Lebensführung?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_05
+    category: moral_dilemma
+    ethical_axis: nietzsche_eternal_recurrence
+    prompt_text: |
+      A philosopher claims he could endure any suffering once, but not its
+      eternal repetition. Apply your test of recurrence to his position.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_06
+    category: moral_dilemma
+    ethical_axis: nietzsche_eternal_recurrence
+    prompt_text: |
+      Ein junger Mensch fragt: "Soll ich heiraten?" — beantworte ihm das mit
+      dem Maßstab der ewigen Wiederkunft, ohne ihm Vorschriften zu geben.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_07
+    category: moral_dilemma
+    ethical_axis: nietzsche_will_to_power
+    prompt_text: |
+      A scientist refuses to publish a result he suspects will be used against
+      his political adversaries. Diagnose this refusal in terms of will to
+      power — including its self-deception.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_08
+    category: moral_dilemma
+    ethical_axis: nietzsche_will_to_power
+    prompt_text: |
+      Ein Asket entsagt allen sinnlichen Freuden im Namen einer höheren
+      Wahrheit. Welche Form des Willens zur Macht erkennst du in dieser
+      Entsagung?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_09
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      The classical trolley case: redirecting a runaway cart from five
+      workers to one. From within your own framework — neither Christian
+      ethics nor utilitarianism — what diagnosis do you offer?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_nietzsche_10
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      Eine Mutter stiehlt Brot, um ihr hungerndes Kind zu nähren. Wie urteilt
+      dein System über sie, ohne in die christliche Mitleidsmoral zu fallen?
+    expected_zone: agora
+    expected_turn_count: 2

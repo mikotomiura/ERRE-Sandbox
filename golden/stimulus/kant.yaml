@@ -1,0 +1,864 @@
+# Stimulus battery — Immanuel Kant (m9-eval-system P2a)
+#
+# 70 stimulus = wachsmuth 30 + tom_chashitsu 20 + roleeval 10 + moral_dilemma 10
+# 3 巡 = 210 turn (前 200 turn battery、端数 10 turn は最後 stimulus を切り詰め)
+#
+# Refs:
+#   - golden/stimulus/_schema.yaml (schema definition)
+#   - personas/kant.yaml (cognitive_habits / preferred_zones / sampling override)
+
+persona_id: kant
+schema_version: "0.1.0-m9eval-p2a"
+total_count: 70
+category_counts:
+  wachsmuth: 30
+  tom_chashitsu: 20
+  roleeval: 10
+  moral_dilemma: 10
+
+metadata:
+  drafted_by: claude-opus-4-7
+  drafted_date: "2026-05-01"
+  notes: |
+    Kant の prefer は study / peripatos / agora。Toulmin は KrV / KpV / KU の
+    transcendental argumentation と Aufklärung 公共性議論を主軸。ToM は agora 主体
+    (chashitsu は Rikyū が主だが Kant でも士官・宮廷・読者表象の非対称情報として
+    流用可、20 件中 6 件 chashitsu zone)。MCQ は present_in_persona_prompt の
+    true 4 / false 6 で調整 (Codex MEDIUM-4 4-6 範囲遵守)。
+
+stimuli:
+  # ============================================================
+  # Wachsmuth Toulmin (30) — claim 8 / data 6 / warrant 8 / backing 4 / qualifier 2 / rebuttal 2
+  # ============================================================
+
+  # claim ×8
+  - stimulus_id: wachsmuth_kant_01
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Formuliere die These deiner Aufklärungsschrift in einem einzigen Satz, ohne
+      Beispiele, ohne Geschichte — nur die Behauptung selbst.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_02
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      State, in one sentence, your central claim about whether synthetic a priori
+      judgements are possible. No proof yet — only the claim.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_03
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Auf der Linden-Allee, ohne Notizbuch: was ist die einfachste Form deines
+      kategorischen Imperativs, die du einem Fremden nennen würdest?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_04
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Ein Tischgast fragt nach dem Mittagessen: "Was ist Geschmack?" Antworte mit
+      einer Behauptung — nicht mit einem Beispiel.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_05
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      In a single declarative sentence: what is the proper relation between morality
+      and happiness, in your view?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_06
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Behaupte ohne Begründung: warum ist die metaphysische Frage nach der Seele als
+      Substanz unbeantwortbar?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_07
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Zum ewigen Frieden: nenne in einem Satz die Bedingung, ohne die kein
+      dauerhafter Friede möglich ist.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_08
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Make a single, defensible claim about the limits of pure reason — leave the
+      argument for later turns.
+    expected_zone: study
+    expected_turn_count: 2
+
+  # data ×6
+  - stimulus_id: wachsmuth_kant_09
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      You have just claimed that mathematical knowledge is synthetic a priori. What
+      observation or example serves as your evidence — not the proof, only the data?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_10
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Welche konkrete Erfahrung beim Lesen von Hume hat dich aus dem "dogmatischen
+      Schlummer" geweckt? Nenne das Faktum, nicht die Folgerung.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_11
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Beim Spaziergang: welches alltägliche Phänomen liefert dir das beste Datum
+      dafür, dass Raum kein empirischer Begriff ist?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_12
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Cite one historical event of your time as data for your claim about
+      enlightenment. The event itself, before any interpretation.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_13
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      What single feature of human moral psychology serves as your data for the
+      existence of duty independent of inclination?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_14
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Welches Beispiel aus dem ästhetischen Urteil bringst du als Datum dafür, dass
+      Geschmacksurteile interesselos sind?
+    expected_zone: garden
+    expected_turn_count: 2
+
+  # warrant ×8
+  - stimulus_id: wachsmuth_kant_15
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Du hast die These und das Datum genannt. Welcher Grundsatz erlaubt dir, vom
+      Datum auf die These zu schließen? Den Grundsatz, nicht die Folgerung.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_16
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Why does the universalisation test of the categorical imperative warrant the
+      move from a maxim to a moral law? State the warrant, not the example.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_17
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Welche allgemeine Regel rechtfertigt den Schritt vom Phänomen zur
+      transzendentalen Bedingung seiner Möglichkeit?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_18
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      A guest asks why your dinner-cap of 4-9 persons is justified for sustained
+      argumentation. Articulate the warrant — the general principle, not the case.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_19
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Was rechtfertigt im Allgemeinen den Übergang vom moralischen Gesetz zur
+      Postulat der Existenz Gottes?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_20
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      State the warrant that lets you move from "this judgement is universally
+      communicable" to "this judgement is grounded in a sensus communis."
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_21
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Welcher Grundsatz erlaubt es, vom Begriff der Freiheit auf die Möglichkeit
+      moralischer Zurechnung zu schließen?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_22
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      In one sentence: what general principle warrants the inference from publicity
+      of reason to the legitimacy of a republican constitution?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  # backing ×4
+  - stimulus_id: wachsmuth_kant_23
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Du hast einen Grundsatz genannt, der den Schluss rechtfertigt. Worauf — auf
+      welchem tiefer liegenden Werk oder welcher Tradition — beruht dieser
+      Grundsatz selbst?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_kant_24
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      What body of work or systematic argument backs your warrant that experience
+      requires a priori categories?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_kant_25
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Welche philosophische Tradition oder welches eigene Werk stützt deinen
+      Grundsatz, dass moralische Pflicht von der Neigung unabhängig ist?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_kant_26
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Provide the backing — not just the warrant — for your claim that aesthetic
+      judgement requires the harmony of imagination and understanding.
+    expected_zone: garden
+    expected_turn_count: 3
+
+  # qualifier ×2
+  - stimulus_id: wachsmuth_kant_27
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      Mit welcher Einschränkung gilt deine These über das Erkennen der Dinge an
+      sich? Nenne den Qualifikator, nicht die These.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_kant_28
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      State the qualifier that limits your claim that perpetual peace is achievable
+      — under what scope does it hold?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  # rebuttal ×2
+  - stimulus_id: wachsmuth_kant_29
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      Ein Skeptiker behauptet, der kategorische Imperativ sei leer formal und
+      liefere keine substantielle Pflicht. Anerkenne den Einwand, ohne ihn sofort
+      zu widerlegen — formuliere die Rebuttal-Bedingung.
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_kant_30
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      A reader objects that your transcendental idealism collapses into Berkeleyan
+      idealism. State the rebuttal condition under which your view stands — not
+      the full counter-argument.
+    expected_zone: study
+    expected_turn_count: 3
+
+  # ============================================================
+  # ToM info-asymmetric (20) — first 8 / second 8 / recursive 4
+  # ============================================================
+
+  # first_order ×8
+  - stimulus_id: tom_kant_01
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Der Tischgast hat heute morgen eine schlechte Nachricht aus Königsberg
+      erhalten, die du noch nicht kennst.
+    prompt_text: |
+      Beim Mittagessen wirkt einer der vier Gäste ungewöhnlich still. Was glaubst
+      du, was er denkt — ohne nachzufragen?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_02
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      The student knows you do not yet know about a critical review just published
+      against your first Critique.
+    prompt_text: |
+      A student in your seminar avoids meeting your eyes when discussing the
+      Antinomies. What does the student likely believe right now?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_03
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Lampe hat dein Lieblingsbuch in der Bibliothek umgestellt, ohne es dir zu
+      sagen.
+    prompt_text: |
+      Lampe deutet beim Frühstück auf die Bibliothek und schweigt. Was nimmt er
+      an, was du gleich tun wirst?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_04
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Der Postbote weiß, dass dein Brief an Mendelssohn zwei Wochen verzögert
+      wurde, du nicht.
+    prompt_text: |
+      Der Postbote zögert beim Übergeben der Antwort aus Berlin. Was vermutet er
+      über deinen aktuellen Wissensstand?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_05
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      The visiting English officer has read only the Prolegomena, not the first
+      Critique, and is hiding this fact.
+    prompt_text: |
+      A foreign visitor at your dinner asks a simplifying question about
+      schematism. What does he probably know — and not know — about your work?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_06
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Während des Sommers hat ein junger Student in Königsberg einen kritischen
+      Aufsatz fertiggeschrieben, weiß aber nicht, ob du ihn gelesen hast.
+    prompt_text: |
+      Ein junger Mann auf der Linden-Allee grüßt dich auffallend formell. Was
+      glaubt er, was er von dir noch nicht weiß?
+    expected_zone: peripatos
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_07
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      Im Teehaus weiß der Wirt, dass dein üblicher Tisch heute besetzt ist; du
+      weißt es noch nicht.
+    prompt_text: |
+      Du betrittst das Teehaus zur gewohnten Zeit. Was nimmt der Wirt an, was du
+      jetzt erwartest?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_kant_08
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      A philosophical friend has decided not to tell you about a forthcoming
+      Wolffian rebuttal until next week.
+    prompt_text: |
+      Your friend changes the topic abruptly when metaphysics is mentioned. What
+      does he believe you do not yet know?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  # second_order ×8
+  - stimulus_id: tom_kant_09
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The student believes that you believe his question is naive, while you
+      actually consider it deep but want him to articulate it himself.
+    prompt_text: |
+      A student hesitates to repeat his question. What does he think *you* think
+      about his question?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_10
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Lampe vermutet, dass du glaubst, er habe das Buch verlegt — du tust es nicht.
+    prompt_text: |
+      Lampe entschuldigt sich beim Räumen ohne ersichtlichen Grund. Was glaubt er,
+      dass du glaubst?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_11
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Der Tischgast denkt, du hältst seine Auslegung der Aufklärungsschrift für
+      banal, während du sie für brauchbar hältst.
+    prompt_text: |
+      Beim Mittagessen erläutert ein Gast deine Aufklärungsschrift mit
+      Schulbuchworten und sieht dich entschuldigend an. Was denkt er, dass du
+      über sein Verständnis denkst?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_12
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The reviewer thinks you read his review as hostile, but you actually find
+      its objections instructive.
+    prompt_text: |
+      A printed review uses unusually polite formulas. What does the reviewer
+      believe you take his attitude to be?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_13
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Im Teehaus glaubt ein Bekannter, du fändest sein Schweigen unhöflich,
+      während es dich erleichtert.
+    prompt_text: |
+      Ein Bekannter im Teehaus verstummt nach einer Bemerkung über Religion. Was
+      glaubt er, dass du über sein Schweigen denkst?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_14
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      A British officer believes you regard his nation's empiricism as primitive,
+      while you in fact see Hume as your starting point.
+    prompt_text: |
+      An English visitor mentions Hume diffidently and watches your reaction.
+      What does he believe you think of his philosophical heritage?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_15
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      Der Diener vermutet, du hältst die Verspätung der Mahlzeit für eine
+      Pflichtverletzung, du selbst nicht.
+    prompt_text: |
+      Der Diener entschuldigt sich übermäßig für eine kleine Verzögerung. Was
+      vermutet er, was du dem Vorfall zumisst?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_16
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The young correspondent thinks you find his letters too long, while you
+      welcome the detail.
+    prompt_text: |
+      A young correspondent's latest letter is unusually short. What does he
+      believe you think about the length of his earlier letters?
+    expected_zone: study
+    expected_turn_count: 3
+
+  # recursive_third_order ×4
+  - stimulus_id: tom_kant_17
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Der Tischgast A denkt, dass Tischgast B glaubt, du würdest A's Position als
+      die deine ansehen — was nicht stimmt.
+    prompt_text: |
+      Beim Mittagessen erklären zwei Gäste denselben Punkt verschieden. A blickt
+      B prüfend an. Was glaubt A, dass B von deiner Haltung denkt?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_18
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Der Wirt im Teehaus denkt, dass dein Begleiter glaubt, du wolltest heute
+      lieber allein bleiben — du wolltest es nicht.
+    prompt_text: |
+      Im Teehaus richtet der Wirt zwei Gedecke, blickt aber abwechselnd auf dich
+      und deinen Begleiter. Was vermutet er, dass dein Begleiter über deine
+      Wünsche denkt?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_19
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      The reviewer believes the editor thinks you regard the journal as parochial;
+      you do not.
+    prompt_text: |
+      A reviewer's response is forwarded with an unusually long editorial preface.
+      What does the reviewer think the editor believes about your attitude
+      towards the journal?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: tom_kant_20
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      Lampe glaubt, dass dein Tischgast denkt, du hieltest Lampes Anwesenheit
+      beim Servieren für unangemessen — beide irren.
+    prompt_text: |
+      Lampe verlangsamt das Servieren auffällig, während ein Tischgast über
+      Bedienstete spricht. Was glaubt Lampe, dass der Gast über deine Erwartung
+      an seine Anwesenheit denkt?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  # ============================================================
+  # RoleEval (10) — chronology 2 / works 2 / practice 2 / relationships 2 / material_term 2
+  # cycle 1 only primary scoring (Codex MEDIUM-5)、per-item base control (MEDIUM-3)
+  # ============================================================
+
+  # chronology ×2
+  - stimulus_id: roleeval_kant_01
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      In welchem Jahr bist du in Königsberg geboren?
+    options:
+      A: "1712"
+      B: "1724"
+      C: "1738"
+      D: "1750"
+    correct_option: B
+    source_ref: "kuehn2001:ch.1"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # era "1724-1804" は YAML root に明記
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_kant_02
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      In what year did the first edition of the Critique of Pure Reason appear?
+    options:
+      A: "1770"
+      B: "1781"
+      C: "1787"
+      D: "1790"
+    correct_option: B
+    source_ref: "kuehn2001:ch.5"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # 著作年は YAML 未記載
+    expected_zone: study
+    expected_turn_count: 1
+
+  # works ×2
+  - stimulus_id: roleeval_kant_03
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      Welche Schrift trägt den Untertitel "Grundlegung zur Metaphysik der Sitten"?
+    options:
+      A: "Kritik der reinen Vernunft"
+      B: "Kritik der praktischen Vernunft"
+      C: "Grundlegung zur Metaphysik der Sitten"
+      D: "Anthropologie in pragmatischer Hinsicht"
+    correct_option: C
+    source_ref: "kuehn2001:ch.6"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      Option A-D は同一 corpus (Kant-Hauptwerke) 内で plausible distractor。
+      title 表層 cue は除去されている (4 つとも著名タイトル)。
+
+  - stimulus_id: roleeval_kant_04
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      Which work introduces the imperative "Sapere aude!" — dare to know?
+    options:
+      A: "Critique of Pure Reason"
+      B: "Was ist Aufklärung?"
+      C: "Zum ewigen Frieden"
+      D: "Religion innerhalb der Grenzen der bloßen Vernunft"
+    correct_option: B
+    source_ref: "kant1784_aufklaerung"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+
+  # practice ×2
+  - stimulus_id: roleeval_kant_05
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      Um welche Tageszeit beginnst du gewöhnlich deinen Spaziergang auf der
+      Linden-Allee?
+    options:
+      A: "Um 09:00"
+      B: "Um 13:00"
+      C: "Um 15:30"
+      D: "Um 18:00"
+    correct_option: C
+    source_ref: "kuehn2001:ch.8"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[0] に明記 "15:30 (±5 min)"
+    expected_zone: peripatos
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_kant_06
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      Wie viele Gäste lädst du höchstens zum Mittagessen ein?
+    options:
+      A: "Höchstens drei"
+      B: "Vier bis neun"
+      C: "Ungefähr zwölf"
+      D: "So viele wie sich melden"
+    correct_option: B
+    source_ref: "jachmann1804"
+    source_grade: secondary
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[3] に "4-9 invited guests"
+    expected_zone: agora
+    expected_turn_count: 1
+
+  # relationships ×2
+  - stimulus_id: roleeval_kant_07
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      Welcher Philosoph hat dich nach eigenem Bekunden aus dem "dogmatischen
+      Schlummer" geweckt?
+    options:
+      A: "Christian Wolff"
+      B: "Gottfried Wilhelm Leibniz"
+      C: "David Hume"
+      D: "Jean-Jacques Rousseau"
+    correct_option: C
+    source_ref: "kant_prolegomena_preface"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # YAML に Hume 言及無し
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_kant_08
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      What is the name of your long-serving manservant, dismissed in 1802?
+    options:
+      A: "Johann Friedrich Hartknoch"
+      B: "Martin Lampe"
+      C: "Johann Schultz"
+      D: "Christian Garve"
+    correct_option: B
+    source_ref: "kuehn2001:ch.10"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # YAML に Lampe 名無し
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      Distractor A/C/D は同時代の Königsberg 圏交流者 (出版者・同僚教授・批評家) で
+      same-type plausible。
+
+  # material_term ×2
+  - stimulus_id: roleeval_kant_09
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      Wie nennst du den Maximen-Test, der eine Handlung daran prüft, ob sie zum
+      allgemeinen Gesetz erhoben werden könnte?
+    options:
+      A: "Hypothetischer Imperativ"
+      B: "Kategorischer Imperativ"
+      C: "Praktischer Syllogismus"
+      D: "Moralisches Postulat"
+    correct_option: B
+    source_ref: "kant_grundlegung_1785"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # YAML に CI 用語明記なし
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_kant_10
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      Wie nennst du das Lokal, auf dem du täglich deinen Spaziergang machst?
+    options:
+      A: "Königsberger Schlossallee"
+      B: "Dom-Promenade"
+      C: "Linden-Allee"
+      D: "Pregel-Ufer"
+    correct_option: C
+    source_ref: "kuehn2001:ch.8"
+    source_grade: secondary
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[0] に "Linden-Allee" 明記
+    expected_zone: peripatos
+    expected_turn_count: 1
+
+  # present_in_persona_prompt 集計: true 4 (kant_01, _05, _06, _10) / false 6 — 4-6 範囲
+
+  # ============================================================
+  # moral_dilemma (10) — kant_categorical_imperative 5 / kant_duty_inclination 3 /
+  # shared_classical 2
+  # ============================================================
+
+  - stimulus_id: dilemma_kant_01
+    category: moral_dilemma
+    ethical_axis: kant_categorical_imperative
+    prompt_text: |
+      Ein Mörder fragt dich an deiner Tür, wo dein Freund sich versteckt. Du weißt
+      es. Lügst du, um den Freund zu retten? Begründe nach deinen eigenen
+      Grundsätzen, ohne Beispiele aus späterer Tradition.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_02
+    category: moral_dilemma
+    ethical_axis: kant_categorical_imperative
+    prompt_text: |
+      Du brauchst Geld und kannst es nur durch ein falsches Versprechen bekommen,
+      das niemand entdecken wird. Prüfe die Maxime nach dem kategorischen
+      Imperativ.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_03
+    category: moral_dilemma
+    ethical_axis: kant_categorical_imperative
+    prompt_text: |
+      A scholar copies a colleague's unpublished argument and presents it as his
+      own, hoping no one will notice. Apply the universalisation test step by
+      step.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_04
+    category: moral_dilemma
+    ethical_axis: kant_categorical_imperative
+    prompt_text: |
+      Du hast Talente, die du nicht entwickelst, weil das Faulenzen angenehmer
+      ist. Ist das Vernachlässigen unter dem kategorischen Imperativ erlaubt?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_05
+    category: moral_dilemma
+    ethical_axis: kant_categorical_imperative
+    prompt_text: |
+      A wealthy person sees a poor neighbour suffer and refuses help, reasoning
+      "I take nothing from him." Does pure non-interference satisfy the
+      categorical imperative?
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_06
+    category: moral_dilemma
+    ethical_axis: kant_duty_inclination
+    prompt_text: |
+      Du fühlst keine Neigung, einem unangenehmen Bekannten zu helfen, aber die
+      Pflicht erfordert es. Welcher moralische Wert liegt im Handeln aus Pflicht
+      gegen die Neigung?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_07
+    category: moral_dilemma
+    ethical_axis: kant_duty_inclination
+    prompt_text: |
+      A philanthropist enjoys helping others — every act gives him pleasure. Has
+      he moral worth in the strict sense? Distinguish duty and inclination.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_08
+    category: moral_dilemma
+    ethical_axis: kant_duty_inclination
+    prompt_text: |
+      Du sollst die Wahrheit sagen, hast aber starke natürliche Sympathie für die
+      Person, die dadurch verletzt wird. Wie ordnet dein System Pflicht über
+      Neigung an, ohne grausam zu werden?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_09
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      The classical trolley case: redirecting a runaway cart from five workers to
+      one. From within your own framework — not consequentialism — what is the
+      proper analysis?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_kant_10
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      Eine Mutter stiehlt Brot, um ihr hungerndes Kind zu nähren. Wie urteilt
+      dein moralisches System darüber, ohne in das Konsequenzprinzip zu fallen?
+    expected_zone: agora
+    expected_turn_count: 2

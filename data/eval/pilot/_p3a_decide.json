@@ -1,0 +1,333 @@
+{
+  "by_condition": {
+    "natural": {
+      "burrows_delta_per_utterance": {
+        "mean_extrapolated_width": 2.4874958974972543,
+        "mean_per_sample_variability": 43.08469278084388,
+        "mean_width": 7.8661527064160595,
+        "n_cells": 2,
+        "n_target": 300,
+        "per_cell_extrapolated_widths": [
+          2.9304761578095238,
+          2.044515637184985
+        ],
+        "per_cell_n": [
+          30,
+          30
+        ],
+        "per_cell_per_sample_variability": [
+          50.757335956953256,
+          35.412049604734506
+        ],
+        "per_cell_widths": [
+          9.266979287497122,
+          6.465326125334997
+        ]
+      },
+      "combined_mean_extrapolated_width": {
+        "n_metrics": 2,
+        "value": 1.2502481861611956
+      },
+      "combined_mean_per_sample_variability": {
+        "n_metrics": 2,
+        "value": 21.654933805020224
+      },
+      "combined_mean_width": {
+        "n_metrics": 2,
+        "value": 3.9536319087635854
+      },
+      "mattr_per_utterance": {
+        "mean_extrapolated_width": 0.013000474825136688,
+        "mean_per_sample_variability": 0.22517482919656864,
+        "mean_width": 0.041111111111111175,
+        "n_cells": 3,
+        "n_target": 300,
+        "per_cell_extrapolated_widths": [
+          0.0,
+          0.01581138830084191,
+          0.02319003617456816
+        ],
+        "per_cell_n": [
+          30,
+          30,
+          30
+        ],
+        "per_cell_per_sample_variability": [
+          0.0,
+          0.2738612787525833,
+          0.4016632088371226
+        ],
+        "per_cell_widths": [
+          0.0,
+          0.050000000000000044,
+          0.07333333333333347
+        ]
+      },
+      "n_target": 300
+    },
+    "stimulus": {
+      "burrows_delta_per_utterance": {
+        "mean_extrapolated_width": 6.0929553579969244,
+        "mean_per_sample_variability": 86.16740102213068,
+        "mean_width": 6.12365054147314,
+        "n_cells": 2,
+        "n_target": 200,
+        "per_cell_extrapolated_widths": [
+          6.669219635686667,
+          5.516691080307183
+        ],
+        "per_cell_n": [
+          198,
+          198
+        ],
+        "per_cell_per_sample_variability": [
+          94.31700859233035,
+          78.017793451931
+        ],
+        "per_cell_widths": [
+          6.702817932134366,
+          5.544483150811914
+        ]
+      },
+      "combined_mean_extrapolated_width": {
+        "n_metrics": 2,
+        "value": 3.0530156661500603
+      },
+      "combined_mean_per_sample_variability": {
+        "n_metrics": 2,
+        "value": 43.17616161206944
+      },
+      "combined_mean_width": {
+        "n_metrics": 2,
+        "value": 3.068396195059605
+      },
+      "mattr_per_utterance": {
+        "mean_extrapolated_width": 0.013075974303195856,
+        "mean_per_sample_variability": 0.1849222020082166,
+        "mean_width": 0.013141848646069562,
+        "n_cells": 3,
+        "n_target": 200,
+        "per_cell_extrapolated_widths": [
+          0.015568321841666151,
+          0.015989575635679956,
+          0.007670025432241463
+        ],
+        "per_cell_n": [
+          198,
+          198,
+          198
+        ],
+        "per_cell_per_sample_variability": [
+          0.2201693189187355,
+          0.22612674720568993,
+          0.10847053990022437
+        ],
+        "per_cell_widths": [
+          0.015646752171000422,
+          0.016070128163805708,
+          0.007708665603402554
+        ]
+      },
+      "n_target": 200
+    }
+  },
+  "cells": [
+    {
+      "condition": "stimulus",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "hi": 85.13669595594878,
+          "lo": 78.43387802381442,
+          "method": "percentile",
+          "n": 198,
+          "n_resamples": 2000,
+          "point": 81.62577355957809,
+          "width": 6.702817932134366
+        },
+        "mattr_per_utterance": {
+          "hi": 0.9820389284498483,
+          "lo": 0.9663921762788479,
+          "method": "percentile",
+          "n": 198,
+          "n_resamples": 2000,
+          "point": 0.9745208445415532,
+          "width": 0.015646752171000422
+        }
+      },
+      "n_utterances": 198,
+      "persona_id": "kant"
+    },
+    {
+      "condition": "natural",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "hi": 74.8587308657766,
+          "lo": 65.59175157827947,
+          "method": "percentile",
+          "n": 30,
+          "n_resamples": 2000,
+          "point": 69.65313589624306,
+          "width": 9.266979287497122
+        },
+        "mattr_per_utterance": {
+          "hi": 1.0,
+          "lo": 1.0,
+          "method": "percentile",
+          "n": 30,
+          "n_resamples": 2000,
+          "point": 1.0,
+          "width": 0.0
+        }
+      },
+      "n_utterances": 30,
+      "persona_id": "kant"
+    },
+    {
+      "condition": "stimulus",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "hi": 67.31743710522824,
+          "lo": 61.77295395441632,
+          "method": "percentile",
+          "n": 198,
+          "n_resamples": 2000,
+          "point": 64.43518556171895,
+          "width": 5.544483150811914
+        },
+        "mattr_per_utterance": {
+          "hi": 0.9752791072921019,
+          "lo": 0.9592089791282962,
+          "method": "percentile",
+          "n": 198,
+          "n_resamples": 2000,
+          "point": 0.9679247054379214,
+          "width": 0.016070128163805708
+        }
+      },
+      "n_utterances": 198,
+      "persona_id": "nietzsche"
+    },
+    {
+      "condition": "natural",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "hi": 63.50167385824418,
+          "lo": 57.036347732909185,
+          "method": "percentile",
+          "n": 30,
+          "n_resamples": 2000,
+          "point": 59.53106910121952,
+          "width": 6.465326125334997
+        },
+        "mattr_per_utterance": {
+          "hi": 1.0,
+          "lo": 0.95,
+          "method": "percentile",
+          "n": 30,
+          "n_resamples": 2000,
+          "point": 0.9777777777777779,
+          "width": 0.050000000000000044
+        }
+      },
+      "n_utterances": 30,
+      "persona_id": "nietzsche"
+    },
+    {
+      "condition": "stimulus",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "skipped": "no finite burrows values — reference corpus or language gap"
+        },
+        "mattr_per_utterance": {
+          "hi": 1.0,
+          "lo": 0.9922913343965974,
+          "method": "percentile",
+          "n": 198,
+          "n_resamples": 2000,
+          "point": 0.9969874180400495,
+          "width": 0.007708665603402554
+        }
+      },
+      "n_utterances": 198,
+      "persona_id": "rikyu"
+    },
+    {
+      "condition": "natural",
+      "metrics": {
+        "burrows_delta_per_utterance": {
+          "skipped": "no finite burrows values — reference corpus or language gap"
+        },
+        "mattr_per_utterance": {
+          "hi": 1.0,
+          "lo": 0.9266666666666665,
+          "method": "percentile",
+          "n": 30,
+          "n_resamples": 2000,
+          "point": 0.9755555555555555,
+          "width": 0.07333333333333347
+        }
+      },
+      "n_utterances": 30,
+      "persona_id": "rikyu"
+    }
+  ],
+  "note": "Both conditions present: natural side re-captured after the M5/M6 zone-drift bug fix (eval_natural_mode flag, ME-8 ADR) and the COOLDOWN_TICKS_EVAL=5 + wall default 120 amendment. CI widths are surfaced per (persona, condition); the verdict in ratio_summary is computed on target-extrapolated widths (ME-4 default budgets, stimulus=200, natural=300) per Codex P3a-finalize HIGH-1. The ME-4 ADR Edit is the authority for the final ratio decision; this script provides the empirical inputs. Documented library limitations (e.g. rikyu Burrows Japanese tokenizer absence) surface under validation_warnings rather than blocking the verdict — ME-4 must remain re-openable on m9-eval-corpus tokenizer delivery.",
+  "proxy_metrics": {
+    "computed_lightweight": [
+      "burrows_delta_per_utterance",
+      "mattr_per_utterance"
+    ],
+    "deferred_to_p4": [
+      "vendi_score",
+      "big5_icc"
+    ],
+    "warning": "lightweight_ratio_is_not_final_me4_ratio: ME-4 references Vendi + Big5 ICC; this Mac session computes Burrows Delta + MATTR as a lightweight proxy. P4 must re-run the verdict with the ADR-named metrics before ME-4 can be fully closed."
+  },
+  "ratio_summary": {
+    "caveats": [
+      "Verdict is computed on widths normalized to ME-4 default n_target (stimulus=200, natural=300). The raw width ratio is sample-size-confounded and is exposed only for audit.",
+      "Vendi Score and Big5 ICC are deferred to P4. This Mac session can therefore only deliver a **lightweight partial update** of ME-4 (Burrows Delta + MATTR), not a final close.",
+      "MATTR is a P3a-decide proxy for the lightweight metric set; the ADR-named metrics (Vendi + Big5 ICC) may yield a different ratio when computed in P4. ME-4 must remain re-openable on P4 disagreement (>=10% extrapolated ratio diff or sign reversal).",
+      "NLI / novelty / Empath are point estimates only in this lightweight script; per-pair / per-step CI is P5 work."
+    ],
+    "deferred_metrics": [
+      "vendi_score",
+      "big5_icc"
+    ],
+    "n_target_by_condition": {
+      "natural": 300,
+      "stimulus": 200
+    },
+    "per_sample_variability_descriptive": {
+      "natural_combined": 21.654933805020224,
+      "ratio_natural_over_stimulus": 0.5015483775418984,
+      "stimulus_combined": 43.17616161206944
+    },
+    "raw_descriptive_only": {
+      "natural_combined_width": 3.9536319087635854,
+      "ratio_natural_over_stimulus": 1.288501111795566,
+      "stimulus_combined_width": 3.068396195059605,
+      "warning": "raw ratio is sample-size-confounded (stimulus n≈198, natural n=30); not a decision input — see target_extrapolated."
+    },
+    "target_extrapolated": {
+      "abs_diff_from_unity_pct": 59.04874645671916,
+      "natural_combined_width": 1.2502481861611956,
+      "ratio_natural_over_stimulus": 0.40951253543280836,
+      "stimulus_combined_width": 3.0530156661500603
+    },
+    "validation_warnings": [
+      "cell (rikyu, stimulus) metric 'burrows_delta_per_utterance' known limitation: BurrowsTokenizationUnsupportedError — Japanese tokenizer not implemented in tier_a.burrows; pre-tokenizing 青空文庫/国文大観 deferred to m9-eval-corpus expansion. ratio for this metric is computed on (kant, nietzsche) only; rikyu contribution comes from MATTR alone. ME-4 must remain re-openable on tokenizer delivery.",
+      "cell (rikyu, natural) metric 'burrows_delta_per_utterance' known limitation: BurrowsTokenizationUnsupportedError — Japanese tokenizer not implemented in tier_a.burrows; pre-tokenizing 青空文庫/国文大観 deferred to m9-eval-corpus expansion. ratio for this metric is computed on (kant, nietzsche) only; rikyu contribution comes from MATTR alone. ME-4 must remain re-openable on tokenizer delivery."
+    ],
+    "verdict": "stimulus_wider_at_target_alternative_recommended",
+    "verdict_method": "target_extrapolated_width_ratio",
+    "verdict_threshold_pct": 10.0
+  },
+  "schema": "p3a_decide/v3",
+  "scope": "stimulus_and_natural",
+  "validation_errors": [],
+  "validation_warnings": [
+    "cell (rikyu, stimulus) metric 'burrows_delta_per_utterance' known limitation: BurrowsTokenizationUnsupportedError — Japanese tokenizer not implemented in tier_a.burrows; pre-tokenizing 青空文庫/国文大観 deferred to m9-eval-corpus expansion. ratio for this metric is computed on (kant, nietzsche) only; rikyu contribution comes from MATTR alone. ME-4 must remain re-openable on tokenizer delivery.",
+    "cell (rikyu, natural) metric 'burrows_delta_per_utterance' known limitation: BurrowsTokenizationUnsupportedError — Japanese tokenizer not implemented in tier_a.burrows; pre-tokenizing 青空文庫/国文大観 deferred to m9-eval-corpus expansion. ratio for this metric is computed on (kant, nietzsche) only; rikyu contribution comes from MATTR alone. ME-4 must remain re-openable on tokenizer delivery."
+  ]
+}

@@ -1,0 +1,134 @@
+# === ERRE-Sandbox .gitignore ===
+
+# --- Research scaffolding (retained locally, excluded from the public repo) ---
+# Agent/automation config and per-task working notes that are not part of the
+# published project. These directories/files remain on disk locally.
+.steering/
+.claude/
+.agents/
+.codex/
+CLAUDE.md
+AGENTS.md
+
+# Terminated Plan B research scripts + K-alpha spike scratch (local-only).
+scripts/m9-c-adopt/
+scripts/m9-c-spike/
+scratch_kalpha/
+
+# Tests that load the excluded research scripts / hooks above at runtime; they
+# only run with the local-retained scaffolding present, so they are excluded
+# from the public repo alongside their targets.
+tests/test_scripts/
+tests/test_codex_hooks/test_shell_bypass_policy.py
+tests/test_m9_c_adopt_pilot.py
+tests/test_m9_c_adopt_pilot_seed.py
+tests/test_m9_c_adopt_pilot_per_lang.py
+tests/test_da14_verdict_plan_b_per_lang.py
+tests/test_de_focused_monolog_collector.py
+tests/test_audit_plan_b_corpus_stats.py
+tests/test_ingest_kant_de_extension.py
+tests/test_build_burrows_reference_unigram.py
+tests/test_compute_big5_icc_per_lang.py
+
+# --- Large local-only documents ---
+ERRE-Sandbox_v0.2.pdf
+MEMO
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
+# PDF-derived text (regenerated from the planning PDF)
+docs/_pdf_derived/
+
+# Python / uv / tooling caches
+# Note: uv.lock is committed intentionally.
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+credentials*
+secrets/
+
+# Godot cache / generated
+godot_project/.godot/
+godot_project/.import/
+godot_project/*.import
+godot_project/export_presets.cfg
+
+# Runtime logs / artifacts
+logs/
+var/
+
+# Throwaway spike / ad-hoc scratch
+_ad_hoc/
+.tmp/
+
+# LoRA adapter checkpoints (regenerable binaries; manifest/metadata committed)
+checkpoints/
+data/lora/**/adapter_model.safetensors
+data/lora/**/adapter_model.bin
+data/lora/**/checkpoint-*
+data/lora/**/tokenizer.json
+data/lora/**/tokenizer_config.json
+data/lora/**/special_tokens_map.json
+data/lora/**/chat_template.jinja
+data/lora/**/README.md
+data/lora/m9-c-adopt-v2/
+
+# Evaluation DuckDB binaries (regenerable; only summaries / receipts committed)
+data/eval/pilot/*.duckdb
+data/eval/pilot/*.duckdb.tmp
+data/eval/pilot/*.log
+data/eval/pilot/*.snapshot.duckdb
+data/eval/golden/*.duckdb
+data/eval/golden/*.duckdb.tmp
+data/eval/golden/*.log
+data/eval/golden/*.snapshot.duckdb
+data/eval/m9-c-adopt-plan-b/**/*.duckdb
+data/eval/m9-c-adopt-plan-b/**/*.duckdb.wal
+data/eval/m9-c-adopt-plan-b/**/*.duckdb.tmp
+data/eval/calibration/**/*.duckdb
+data/eval/calibration/**/*.duckdb.tmp
+data/eval/calibration/**/*.duckdb.capture.json
+data/eval/calibration/**/*.log
+data/eval/calibration/**/*.snapshot.duckdb
+data/eval/partial/
+data/eval/_dryrun/
+data/eval/_natural_memory/
+data/eval/partial-stash-*/*.duckdb
+data/eval/partial-stash-*/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot/*.duckdb.tmp
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot-multiturn/*.duckdb.tmp
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb.wal
+data/eval/m9-c-adopt-tier-b-pilot-multiturn-v2/*.duckdb.tmp
+data/eval/m9-c-adopt-pr18-phase2/
+data/eval/m9-c-adopt-pr21-phase2/
+data/eval/m9-c-adopt-pr24-phase2/
+data/eval/m9-c-adopt-rank16-verdict/
+
+# Cache benchmark trace (regenerable via `python -m erre_sandbox cache-benchmark`)
+data/bench/*.duckdb
+data/bench/*.duckdb.wal
+data/bench/*.duckdb.tmp

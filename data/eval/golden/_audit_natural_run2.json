@@ -1,0 +1,75 @@
+{
+  "audited_at": "2026-05-11T15:44:45Z",
+  "duckdb_glob": "data/eval/golden/*_natural_run2.duckdb",
+  "focal_target": 500,
+  "allow_partial": false,
+  "total": 3,
+  "complete": 3,
+  "partial": 0,
+  "missing_sidecar": 0,
+  "mismatch": 0,
+  "fail": 0,
+  "overall_exit_code": 0,
+  "details": [
+    {
+      "duckdb_path": "data\\eval\\golden\\kant_natural_run2.duckdb",
+      "sidecar_path": "data\\eval\\golden\\kant_natural_run2.duckdb.capture.json",
+      "status": "complete",
+      "stop_reason": "complete",
+      "focal_observed": 500,
+      "focal_target": 500,
+      "sidecar_total_rows": 1480,
+      "persona": "kant",
+      "condition": "natural",
+      "run_idx": 2,
+      "actual_total_rows": 1480,
+      "actual_focal_rows": 500,
+      "actual_run_ids": [
+        "kant_natural_run2"
+      ],
+      "expected_run_id": "kant_natural_run2",
+      "reason": "complete_pass",
+      "exit_code": 0
+    },
+    {
+      "duckdb_path": "data\\eval\\golden\\nietzsche_natural_run2.duckdb",
+      "sidecar_path": "data\\eval\\golden\\nietzsche_natural_run2.duckdb.capture.json",
+      "status": "complete",
+      "stop_reason": "complete",
+      "focal_observed": 500,
+      "focal_target": 500,
+      "sidecar_total_rows": 1499,
+      "persona": "nietzsche",
+      "condition": "natural",
+      "run_idx": 2,
+      "actual_total_rows": 1499,
+      "actual_focal_rows": 500,
+      "actual_run_ids": [
+        "nietzsche_natural_run2"
+      ],
+      "expected_run_id": "nietzsche_natural_run2",
+      "reason": "complete_pass",
+      "exit_code": 0
+    },
+    {
+      "duckdb_path": "data\\eval\\golden\\rikyu_natural_run2.duckdb",
+      "sidecar_path": "data\\eval\\golden\\rikyu_natural_run2.duckdb.capture.json",
+      "status": "complete",
+      "stop_reason": "complete",
+      "focal_observed": 501,
+      "focal_target": 500,
+      "sidecar_total_rows": 1504,
+      "persona": "rikyu",
+      "condition": "natural",
+      "run_idx": 2,
+      "actual_total_rows": 1504,
+      "actual_focal_rows": 501,
+      "actual_run_ids": [
+        "rikyu_natural_run2"
+      ],
+      "expected_run_id": "rikyu_natural_run2",
+      "reason": "complete_pass",
+      "exit_code": 0
+    }
+  ]
+}

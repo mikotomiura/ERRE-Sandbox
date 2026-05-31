@@ -1,0 +1,8 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "error",
+  "code": "UNKNOWN_KIND",
+  "detail": "received envelope with kind='mode_change' which is not part of ControlEnvelope (ERRE mode transitions are Observation.event_type='erre_mode_shift')."
+}

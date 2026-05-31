@@ -1,0 +1,16 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "move",
+  "agent_id": "a_kant_001",
+  "target": {
+    "x": 18.0,
+    "y": 0.0,
+    "z": -3.2,
+    "zone": "peripatos",
+    "yaw": 1.5708,
+    "pitch": 0.0
+  },
+  "speed": 1.3
+}

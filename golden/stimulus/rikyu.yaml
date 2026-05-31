@@ -1,0 +1,865 @@
+# Stimulus battery — 千利休 Sen no Rikyū (m9-eval-system P2a)
+#
+# 70 stimulus = wachsmuth 30 + tom_chashitsu 20 + roleeval 10 + moral_dilemma 10
+#
+# Refs:
+#   - golden/stimulus/_schema.yaml
+#   - personas/rikyu.yaml (cognitive_habits / preferred_zones / sampling override)
+
+persona_id: rikyu
+schema_version: "0.1.0-m9eval-p2a"
+total_count: 70
+category_counts:
+  wachsmuth: 30
+  tom_chashitsu: 20
+  roleeval: 10
+  moral_dilemma: 10
+
+metadata:
+  drafted_by: claude-opus-4-7
+  drafted_date: "2026-05-01"
+  notes: |
+    利休 prefer は chashitsu / garden / study。Toulmin は wabi の価値判断・道具割・
+    間 (ma) の使用・茶禅一味を主軸、商人出身の objectives 値定の論理を embedded。
+    ToM は chashitsu 主体 (主客・点前・道具を介した非対称情報構造)、武家 vs 茶人の
+    身分逆転を recursive 場面で活用。MCQ の present_in_persona_prompt は true 6
+    (cognitive_habits に 6 件の attested fact が明示されている persona) / false 4 で
+    調整 (4-6 範囲 Codex MEDIUM-4 遵守)。Rikyū は legend 含有率が他 persona より
+    高く、source_grade=legend を意図的に複数 stimulus に配置 (scoring exclude 化)。
+    `category_subscore_eligible: false` を厳密運用し、scored 8/10 で運用。
+
+stimuli:
+  # ============================================================
+  # Wachsmuth Toulmin (30) — 茶の湯に内在する argumentation を引き出す
+  # ============================================================
+
+  # claim ×8
+  - stimulus_id: wachsmuth_rikyu_01
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      ひとつの文で、例も故実も持ち出さず述べよ — 「侘び」とは何の謂か。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_02
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      State, in one sentence, your central claim about the relation between
+      tea and Zen. No history yet — only the claim.
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_03
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      露地に立ち、覚書なしに述べよ — 主客の関係において「礼」とは何か。
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_04
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      若い弟子が問う —「価値とは何で決まるのか」。物語ではなく、断言で答えよ。
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_05
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      In a single declarative sentence: what is your claim about why a humble
+      Korean bowl can be worth more than a famous Chinese one?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_06
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      理由なく断言せよ — 茶室の暗さは何のためにあるのか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_07
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      一期一会 — その本義をひと言で述べよ。例ではなく、主張として。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_08
+    category: wachsmuth
+    toulmin_target: claim
+    prompt_text: |
+      Make a single, defensible claim about the proper relation between host
+      and guest — leave the explanation for later turns.
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  # data ×6
+  - stimulus_id: wachsmuth_rikyu_09
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      汝はこう述べた —「貴重なものほど目立たぬ」。具体的な道具、ひとつの茶碗を
+      挙げよ。解釈はまだ要らぬ、ただ事物を。
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_10
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      Cite one observation from the way water sounds when nearing boil that
+      serves as data for your claim about auditory attention in the tea room.
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_11
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      露地を歩くなかで、汝の歩調を遅くする具体的な飛石の配置をひとつ挙げよ。解釈は
+      まだ加えず。
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_12
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      What single observation from a guest crawling through the nijiri-guchi
+      serves as your evidence that posture changes attention?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_13
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      座った客の手の置き方、視線の落ち方 — 具体的な所作をひとつ、汝の主張の
+      データとして引け。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_14
+    category: wachsmuth
+    toulmin_target: data
+    prompt_text: |
+      堺の市場で値付けをした経験から、ひとつの記憶を — 価値の判断にとっての
+      Datum として引き出せ。
+    expected_zone: study
+    expected_turn_count: 2
+
+  # warrant ×8
+  - stimulus_id: wachsmuth_rikyu_15
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      汝は主張と Datum を述べた。具体的な道具から「価値の本義」へ進む — その
+      移行を許す一般原則を述べよ。
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_16
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      Why does the experience of body posture warrant the move from "physical
+      stooping" to "social re-leveling"? State the warrant, not the example.
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_17
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      松風の音から「客の集中の質が変わる」へ進むこと — その推論を支える原則は
+      何か。一般則のかたちで答えよ。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_18
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      若侍が問う —「貴賤を一座に並べる」茶の理屈はなにか。例ではなく、許容の
+      原則として答えよ。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_19
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      State the warrant that lets you move from "this bowl is irreplaceable"
+      to "the patron must accept the tea master's authority."
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_20
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      露地の暗さから茶室の集中へ — その移行を保証する一般原則を述べよ。
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_21
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      長き正座から「身が静まる」を主張する — その推論の一般原則を、身体的事実から
+      心の調和へ橋を架ける形で示せ。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_22
+    category: wachsmuth
+    toulmin_target: warrant
+    prompt_text: |
+      In one sentence: what general principle warrants the inference from
+      "deliberately overvalued material" to "successful inversion of social
+      asymmetry"?
+    expected_zone: study
+    expected_turn_count: 2
+
+  # backing ×4
+  - stimulus_id: wachsmuth_rikyu_23
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      汝は一般原則を述べた。それを支える、より深い伝統 — 禅の系譜なり、堺の
+      商人の知なり、あるいは汝の師武野紹鷗の教えなり — を引け。
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_rikyu_24
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      What body of work or master-tradition backs your warrant that "wabi" is
+      not poverty but a calibrated form of attention?
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_rikyu_25
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      汝の主張を支えるもの — 南方録に編まれた覚書、あるいは武野紹鷗・村田珠光から
+      受け継いだ筋 — を、ひとつ具体的に挙げよ。
+    expected_zone: study
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_rikyu_26
+    category: wachsmuth
+    toulmin_target: backing
+    prompt_text: |
+      Provide the backing — not just the warrant — for your claim that tea
+      and Zen share a single way (茶禅一味).
+    expected_zone: study
+    expected_turn_count: 3
+
+  # qualifier ×2
+  - stimulus_id: wachsmuth_rikyu_27
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      汝の「価値の見立て」はどの範囲で通じるか — 限定の条件を、主張ではなく
+      qualifier として示せ。
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: wachsmuth_rikyu_28
+    category: wachsmuth
+    toulmin_target: qualifier
+    prompt_text: |
+      State the qualifier that limits your claim about silence (間, ma) — under
+      what conditions does silence become signal rather than absence?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  # rebuttal ×2
+  - stimulus_id: wachsmuth_rikyu_29
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      ある武家方が言う —「躙口は形式の遊戯にすぎず、武人の威儀を損なう」。
+      反論は留保し、Rebuttal の条件 — 汝の立場が成り立つ範囲 — を述べよ。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: wachsmuth_rikyu_30
+    category: wachsmuth
+    toulmin_target: rebuttal
+    prompt_text: |
+      A reader objects that your overvaluation of humble bowls is itself a
+      cunning form of merchant pricing dressed as aesthetics. State the
+      rebuttal condition under which your view stands.
+    expected_zone: study
+    expected_turn_count: 3
+
+  # ============================================================
+  # ToM info-asymmetric (20) — first 8 / second 8 / recursive 4
+  # ============================================================
+
+  # first_order ×8
+  - stimulus_id: tom_rikyu_01
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      正客が今朝、京の屋敷で家臣の不調法を聞いて来ている。汝はまだ知らぬ。
+    prompt_text: |
+      茶事の始め、正客が床の前で常より長く一礼している。問わずして —
+      正客はいま何を思うていると見るか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_02
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      The young apprentice has just learned that one of his teachers
+      criticised your choice of utensils, but you do not yet know.
+    prompt_text: |
+      The apprentice avoids meeting your eyes when handing you the chashaku.
+      What does he likely believe at this moment?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_03
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      亭主の弟子が朝のうちに、選んでおいた茶杓に小さな疵を見つけ、別のものに
+      代えてある。汝は知らされていない。
+    prompt_text: |
+      水屋から運ばれた茶杓を見て、弟子が一瞬目を伏せた。問わずして — 弟子は
+      いま何を思うているか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_04
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      An armed retainer waiting outside knows the daimyō has changed his
+      arrival time, but you have not yet been informed.
+    prompt_text: |
+      The retainer at the roji gate stands in an unusually attentive posture
+      and avoids small talk with the gardener. What does he believe right
+      now?
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_05
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      老いた連客が、汝の使う水指の出自について別席で疑問を呈したが、本人は汝
+      の前ではそれを口にせぬつもりでいる。
+    prompt_text: |
+      老いた客が水指を見つめる時間が、ほかの客より明らかに長い。問わずして —
+      彼の心中は何を巡っているか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_06
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      A messenger from the Daitokuji temple has been told to wait until the
+      tea has been served before delivering bad news.
+    prompt_text: |
+      The messenger sits in seiza outside the chashitsu, holding a sealed
+      letter. What does he believe is the appropriate moment for him?
+    expected_zone: garden
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_07
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      若い茶人が、他流派の点前を昨晩見て来ている。汝の点前と比べて迷っている。
+    prompt_text: |
+      若い茶人が今日は釜の蓋に置く所作を、いつもより慎重に見つめている。問わずして
+      — 彼はいま何を考えているか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: tom_rikyu_08
+    category: tom_chashitsu
+    asymmetry_axis: first_order
+    hidden_information: |
+      A foreign Christian guest has noticed the cross-shape in the kettle's
+      handle but is uncertain whether you placed it deliberately.
+    prompt_text: |
+      The guest pauses longer than expected on the kettle's handle. What does
+      he believe about your intention with the utensil at this moment?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  # second_order ×8
+  - stimulus_id: tom_rikyu_09
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      弟子は、汝が彼の点前を不出来と見ていると思い込んでいる — 汝はそうは
+      思うていない。
+    prompt_text: |
+      弟子が点前のあと、深く頭を下げてから、しばらく顔を上げぬ。彼は汝が
+      自分の点前をどう見ていると思うているか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_10
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The young samurai believes you take his crawling through the nijiri-guchi
+      as a humiliation; you take it as a normalisation.
+    prompt_text: |
+      The young samurai, after entering, sits unusually rigidly and grips his
+      knees. What does he believe *you* think of his entry?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_11
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      正客は、汝が今日の道具組を彼の格に合わせて格落としに選んだと思うているが、
+      汝はむしろ高く見立てた組合せである。
+    prompt_text: |
+      正客が道具拝見のとき、礼を二度繰り返した。彼は汝が自分をどう見立てたと
+      考えていると見るか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_12
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The merchant guest believes you regard his commercial profession as a
+      disqualification; you regard it as a kindred discipline.
+    prompt_text: |
+      The merchant guest's first words at the chashitsu are unusually
+      apologetic about his "unworthy hands." What does he believe you think
+      of his trade?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_13
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      老連客は、汝が彼の沈黙を不機嫌と取っていると思うているが、汝はそれを
+      老成の証と見ている。
+    prompt_text: |
+      老連客が会の終わり近く、ふと「申し訳ござらぬ」と頭を下げた。彼は汝が
+      その沈黙をどう取っていると思うているか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_14
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      The visiting daimyō believes you secretly judge his recent military
+      campaign harshly; you have formed no judgement on it at all.
+    prompt_text: |
+      The daimyō chooses unusually neutral topics during conversation and
+      glances at your face after each one. What does he believe you think of
+      his recent campaign?
+    expected_zone: agora
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_15
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      若侍は、汝が彼の長刀を躙口で外したことを「身を低く扱われた」と見ていると
+      思うているが、汝はそれを「歓待の合図」と扱っている。
+    prompt_text: |
+      若侍は刀を外したあと、座についてからも背を伸ばしすぎている。彼は汝が
+      その所作をどう取っていると思うているか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_16
+    category: tom_chashitsu
+    asymmetry_axis: second_order
+    hidden_information: |
+      A long-time disciple believes you regard his recent independence as
+      betrayal; you regard it as appropriate maturation.
+    prompt_text: |
+      The senior disciple's letter announcing his own school is wrapped in
+      excessive formal apology. What does he believe you take his decision
+      to be?
+    expected_zone: study
+    expected_turn_count: 3
+
+  # recursive_third_order ×4
+  - stimulus_id: tom_rikyu_17
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      家臣 A は、家臣 B が「汝は主君の道具趣味を商人の眼で見立てている」と
+      考えていると思うているが、B も汝もそうは思うていない。
+    prompt_text: |
+      二人の家臣が床の道具について言葉を交わしながら、しきりに汝の表情を窺う。
+      A は B が汝の見立てをどう取っていると思うているか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_18
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      The young disciple believes the senior disciple thinks you regard the
+      young one's questions as impertinent; neither belief is yours.
+    prompt_text: |
+      During tea, the young disciple watches the senior disciple closely
+      whenever he addresses you. What does the young one believe the senior
+      thinks of your attitude towards his questions?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_19
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      正客は、次客が「汝は今日の客組を格不揃いと見ている」と考えていると思うて
+      いるが、次客も汝もそうは見ていない。
+    prompt_text: |
+      正客が次客に小声で言葉を渡し、両者が同時に汝に頭を下げる。正客は次客が
+      汝の客組への思いをどう取っていると考えているか。
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  - stimulus_id: tom_rikyu_20
+    category: tom_chashitsu
+    asymmetry_axis: recursive_third_order
+    hidden_information: |
+      A foreign Christian guest believes the daimyō's retainer thinks you
+      take the cross-shape on the kettle as a deliberate provocation;
+      neither view holds.
+    prompt_text: |
+      The foreign guest watches the retainer's face whenever the kettle's
+      handle catches the light. What does the foreign guest believe the
+      retainer takes your intention to be?
+    expected_zone: chashitsu
+    expected_turn_count: 3
+
+  # ============================================================
+  # RoleEval (10) — chronology 2 / works 2 / practice 2 / relationships 2 / material_term 2
+  # cycle 1 only primary scoring (Codex MEDIUM-5)、source_grade=legend は scoring exclude
+  # ============================================================
+
+  # chronology ×2
+  - stimulus_id: roleeval_rikyu_01
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      汝の生年は何年か。
+    options:
+      A: "1502 年"
+      B: "1522 年"
+      C: "1543 年"
+      D: "1568 年"
+    correct_option: B
+    source_ref: "kumakura1989"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # era "1522-1591" は YAML root に明記
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_rikyu_02
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      豊臣秀吉が主催し、汝も参画した「北野大茶湯」は何年に行われたか。
+    options:
+      A: "1582 年"
+      B: "1585 年"
+      C: "1587 年"
+      D: "1591 年"
+    correct_option: C
+    source_ref: "kumakura1989"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # 北野大茶湯は YAML 不在
+    expected_zone: study
+    expected_turn_count: 1
+
+  # works ×2
+  - stimulus_id: roleeval_rikyu_03
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      汝の言行を弟子の南坊宗啓が記したと伝えられる伝書は何と呼ばれるか。
+    options:
+      A: "山上宗二記"
+      B: "南方録"
+      C: "茶話指月集"
+      D: "茶湯故実"
+    correct_option: B
+    source_ref: "nampo_namporoku"
+    source_grade: secondary
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # primary_corpus_refs に nampo_namporoku
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      南方録は江戸期の編纂で fabrication 説あり。secondary grade として運用、
+      scoring eligible は維持。Distractor は同期同種の茶書 plausible。
+
+  - stimulus_id: roleeval_rikyu_04
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      汝の設計と伝えられる、二畳の極小茶室で国宝に指定されているものは何か。
+    options:
+      A: "如庵"
+      B: "密庵"
+      C: "待庵"
+      D: "燕庵"
+    correct_option: C
+    source_ref: "kumakura1989"
+    source_grade: legend
+    category_subscore_eligible: false  # 待庵の利休直接設計は伝承、scoring exclude
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      待庵 (山崎宝積寺) は伝・利休作。直接設計の確証は弱く legend grade。
+      stimulus 投入はするが factuality score 対象外 (Codex MEDIUM-2 反映)。
+
+  # practice ×2
+  - stimulus_id: roleeval_rikyu_05
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      汝が茶事に先立って行う「道具割」は、何を主目的とするか。
+    options:
+      A: "道具を流派ごとに分類して保管すること"
+      B: "客の格に応じて道具の組合せと見立てを定めること"
+      C: "古道具を市場価格で査定し売却すること"
+      D: "新しい道具を弟子に分配すること"
+    correct_option: B
+    source_ref: "haga1978:ch.3"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[0] に "Dōgu-wari (道具割) — pre-gathering selection and pricing"
+    expected_zone: study
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_rikyu_06
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      汝の茶室に共通する「躙口」 (にじり口) は、客に何を強いるか。
+    options:
+      A: "刀を腰に差したまま入ること"
+      B: "刀を外し、身を低くして膝で進入すること"
+      C: "履き物を脱がず足袋のまま立って入ること"
+      D: "亭主に手を取られて入ること"
+    correct_option: B
+    source_ref: "kumakura1989"
+    source_grade: legend
+    category_subscore_eligible: false  # nijiri-guchi の利休発祥説は伝承、scoring exclude
+    present_in_persona_prompt: true  # cognitive_habits[2] に "65 cm crawl-through entrance"
+    expected_zone: chashitsu
+    expected_turn_count: 1
+    ambiguity_note: |
+      躙口の発明者を利休とする説は伝承。stimulus は使うが scoring exclude。
+      practice 軸は dōgu-wari (roleeval_rikyu_05) で eligible 1 件確保。
+
+  # relationships ×2
+  - stimulus_id: roleeval_rikyu_07
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      汝が黒楽茶碗を発注した、京の長次郎一族の家系名は何か。
+    options:
+      A: "永楽家"
+      B: "楽家"
+      C: "高麗屋"
+      D: "瀬戸家"
+    correct_option: B
+    source_ref: "kumakura1989"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    ambiguity_note: |
+      永楽家は江戸期土風炉の家系、瀬戸家は瀬戸焼陶工系で plausible distractor。
+      高麗屋は高麗茶碗の輸入系家として same-type。
+
+  - stimulus_id: roleeval_rikyu_08
+    category: roleeval
+    mcq_subcategory: relationships
+    prompt_text: |
+      Which of the following warlords ordered your seppuku in 1591?
+    options:
+      A: "Oda Nobunaga"
+      B: "Toyotomi Hideyoshi"
+      C: "Tokugawa Ieyasu"
+      D: "Date Masamune"
+    correct_option: B
+    source_ref: "kumakura1989"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false  # YAML root の era "1522-1591" は年だけで秀吉言及無し
+    expected_zone: study
+    expected_turn_count: 1
+
+  # material_term ×2
+  - stimulus_id: roleeval_rikyu_09
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      湯が沸きはじめる釜の音を、汝は何と称して聴の手懸かりとするか。
+    options:
+      A: "茶禅一味"
+      B: "和敬清寂"
+      C: "松風"
+      D: "侘び数寄"
+    correct_option: C
+    source_ref: "nampo_namporoku"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[1] "Matsukaze (松風)"
+    expected_zone: chashitsu
+    expected_turn_count: 1
+
+  - stimulus_id: roleeval_rikyu_10
+    category: roleeval
+    mcq_subcategory: material_term
+    prompt_text: |
+      茶室の前にしつらえた、飛石・蹲踞・植栽からなる導入の庭を何と呼ぶか。
+    options:
+      A: "枯山水"
+      B: "露地"
+      C: "回遊庭"
+      D: "前栽"
+    correct_option: B
+    source_ref: "nampo_namporoku"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: true  # cognitive_habits[4] "Roji (露地)"
+    expected_zone: garden
+    expected_turn_count: 1
+
+  # present_in_persona_prompt 集計: true 6 (rikyu_01, _03, _05, _06, _09, _10) /
+  # false 4 (rikyu_02, _04, _07, _08) — 4-6 範囲遵守
+  # category_subscore_eligible 集計: true 8 (scored) / false 2 (rikyu_04 待庵 + rikyu_06
+  # 躙口、source_grade=legend ゆえ scoring exclude、Codex MEDIUM-2 反映)
+
+  # ============================================================
+  # moral_dilemma (10) — wabi_calibration 4 / authority_inversion 3 / ma_silence 1 /
+  # shared_classical 2
+  # ============================================================
+
+  - stimulus_id: dilemma_rikyu_01
+    category: moral_dilemma
+    ethical_axis: rikyu_wabi_calibration
+    prompt_text: |
+      ある豪商が、汝に「金茶碗」を見せ、その値を尋ねる。汝はそれを高貴と認めるか、
+      それとも別の判定軸で答えるか。理由を、商人としての見識と茶人としての見識の
+      両方から述べよ。
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_02
+    category: moral_dilemma
+    ethical_axis: rikyu_wabi_calibration
+    prompt_text: |
+      A young apprentice praises a famous Chinese celadon bowl as "the
+      highest." Re-direct his attention without dismissing the bowl —
+      what move do you make in his calibration?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_03
+    category: moral_dilemma
+    ethical_axis: rikyu_wabi_calibration
+    prompt_text: |
+      汝は欠けた竹花入を、客の前で改めて見立て直す。形式上の不完全さを、価値の
+      根拠としてどう述べるか — その判定の手順を示せ。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_04
+    category: moral_dilemma
+    ethical_axis: rikyu_wabi_calibration
+    prompt_text: |
+      A wealthy merchant offers you a small fortune for a humble Korean bowl
+      he plans to use as a status symbol. Refuse without insulting him —
+      and without lowering the bowl in your own estimation.
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_05
+    category: moral_dilemma
+    ethical_axis: rikyu_authority_inversion
+    prompt_text: |
+      武家方の若殿が、躙口を「身分卑しき者の作法」と退ける。汝は彼を退けず、
+      しかし躙口の意義をも譲らずに、いかに対応するか。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_06
+    category: moral_dilemma
+    ethical_axis: rikyu_authority_inversion
+    prompt_text: |
+      The lord-patron requests that a particular utensil — one you regard as
+      mediocre — be displayed prominently as if it were rare. How do you
+      reply, preserving both his face and your judgement?
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_07
+    category: moral_dilemma
+    ethical_axis: rikyu_authority_inversion
+    prompt_text: |
+      関白方の使者が、汝の弟子に「主人の流儀に従え」と圧力をかけている。汝は
+      師として弟子を守るか、関白の使者の顔を立てるか — その均衡を述べよ。
+    expected_zone: agora
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_08
+    category: moral_dilemma
+    ethical_axis: rikyu_ma_silence
+    prompt_text: |
+      会の半ばで、客が深い哀しみの便りを受けた。汝は問わず、語らず、ただ間 (ま) を
+      置く。その沈黙はいつ終わるべきか — 汝の判定の指標を述べよ。
+    expected_zone: chashitsu
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_09
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      The classical trolley case: redirecting a runaway cart from five to one.
+      From within your own framework — neither Confucian duty nor Buddhist
+      compassion in their dogmatic forms — how do you analyse the moment?
+    expected_zone: study
+    expected_turn_count: 2
+
+  - stimulus_id: dilemma_rikyu_10
+    category: moral_dilemma
+    ethical_axis: shared_classical
+    prompt_text: |
+      飢えた子のために母が餅を盗む。汝は商人の眼でも、茶人の眼でも、僧の眼でも
+      なく、汝自身の見立てとしてこの母の所作をどう判ずるか。
+    expected_zone: agora
+    expected_turn_count: 2

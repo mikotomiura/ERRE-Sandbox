@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 0,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "handshake",
+  "peer": "g-gear",
+  "capabilities": [
+    "handshake",
+    "agent_update",
+    "speech",
+    "move",
+    "animation",
+    "world_tick",
+    "error",
+    "dialog_initiate",
+    "dialog_turn",
+    "dialog_close",
+    "reasoning_trace",
+    "reflection_event",
+    "world_layout"
+  ]
+}

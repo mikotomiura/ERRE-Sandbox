@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "speech",
+  "agent_id": "a_kant_001",
+  "utterance": "Der bestirnte Himmel über mir und das moralische Gesetz in mir.",
+  "zone": "peripatos",
+  "emotion": "anticipation"
+}

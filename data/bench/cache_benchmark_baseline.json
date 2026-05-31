@@ -1,0 +1,72 @@
+{
+  "cases": [
+    {
+      "case_id": "kant",
+      "kv_hit_proxy": 0.2807017543859649,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 399,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 266
+    },
+    {
+      "case_id": "kant+swm",
+      "kv_hit_proxy": 0.2807017543859649,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 399,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 457
+    },
+    {
+      "case_id": "nietzsche",
+      "kv_hit_proxy": 0.2616822429906542,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 428,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 266
+    },
+    {
+      "case_id": "nietzsche+swm",
+      "kv_hit_proxy": 0.2616822429906542,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 428,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 457
+    },
+    {
+      "case_id": "rikyu",
+      "kv_hit_proxy": 0.25225225225225223,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 444,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 266
+    },
+    {
+      "case_id": "rikyu+swm",
+      "kv_hit_proxy": 0.25225225225225223,
+      "prefix_hash": "5f5596734619be925fdd1d90aa44ae63d83a5d39d762d93ddbd1c719bf155575",
+      "system_token_count": 444,
+      "ttft_p50": 12.0,
+      "ttft_p95": 19.0,
+      "user_token_count": 457
+    }
+  ],
+  "generated_by": "erre_sandbox.cli.cache_benchmark",
+  "kv_hit_proxy_basis": "shared_prefix_tokens/system_prompt_tokens",
+  "live_ttft_verified": false,
+  "run_id": "baseline",
+  "schema_version": "cache-bench-m10-0.1",
+  "synthetic_ttft_samples_ms": [
+    10.0,
+    12.0,
+    15.0,
+    11.0,
+    20.0
+  ],
+  "token_count_source": "proxy_whitespace_re",
+  "ttft_source": "synthetic"
+}

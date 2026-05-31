@@ -1,0 +1,20 @@
+This package is licensed under the GNU General Public License version 3.0
+or (at your option) any later version. See the full text at:
+
+    https://www.gnu.org/licenses/gpl-3.0.txt
+
+Why GPL-3.0 here:
+
+* Blender is licensed under GPL-2+. Any Python script that ``import bpy``
+  becomes a derivative work of Blender and must be distributed under a
+  compatible GPL license. GPL-3.0-or-later is the most current compatible
+  choice.
+* The ``erre-sandbox`` Python library at ../src/erre_sandbox/ is
+  Apache-2.0 OR MIT. It does NOT ``import bpy`` and does NOT depend on
+  anything in this directory at runtime — it only consumes the exported
+  ``.glb`` artefacts, which are data files covered by CC-BY or CC0
+  depending on the authoring source.
+* Keeping this package physically separate is how the project preserves
+  its dual license. See ``README.md`` §"Why a separate package?".
+
+Copyright (c) 2026 mikotomiura (see AUTHORS of the parent repository).

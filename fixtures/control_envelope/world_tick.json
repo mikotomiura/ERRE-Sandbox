@@ -1,0 +1,8 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "world_tick",
+  "wall_clock": "2026-04-18T12:00:00Z",
+  "active_agents": 1
+}

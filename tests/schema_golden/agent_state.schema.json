@@ -1,0 +1,449 @@
+{
+  "$defs": {
+    "Cognitive": {
+      "additionalProperties": false,
+      "description": "Short-timescale mental state (tick-level).",
+      "properties": {
+        "active_goals": {
+          "description": "Free-form short goal strings; promoted to a structured Goal type in M4 (this is a planned breaking change).",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Active Goals",
+          "type": "array"
+        },
+        "arousal": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Arousal",
+          "type": "number"
+        },
+        "curiosity": {
+          "default": 0.5,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Curiosity",
+          "type": "number"
+        },
+        "dialog_turn_budget": {
+          "default": 6,
+          "description": "Remaining dialog turns before the agent auto-closes its current dialog with ``DialogCloseMsg.reason='exhausted'``. Default 6 was validated empirically in the M5 LLM spike. 0 means 'no more turns permitted'.",
+          "minimum": 0,
+          "title": "Dialog Turn Budget",
+          "type": "integer"
+        },
+        "dmn_activation": {
+          "default": 0.3,
+          "description": "Default Mode Network activation proxy.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Dmn Activation",
+          "type": "number"
+        },
+        "dominant_emotion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlutchikDimension"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "motivation": {
+          "default": 0.5,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Motivation",
+          "type": "number"
+        },
+        "shuhari_stage": {
+          "$ref": "#/$defs/ShuhariStage",
+          "default": "shu"
+        },
+        "stress": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Stress",
+          "type": "number"
+        },
+        "valence": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Valence",
+          "type": "number"
+        }
+      },
+      "title": "Cognitive",
+      "type": "object"
+    },
+    "ERREMode": {
+      "additionalProperties": false,
+      "description": "The agent's current ERRE mode with its sampling overrides.",
+      "properties": {
+        "dmn_bias": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Dmn Bias",
+          "type": "number"
+        },
+        "entered_at_tick": {
+          "minimum": 0,
+          "title": "Entered At Tick",
+          "type": "integer"
+        },
+        "name": {
+          "$ref": "#/$defs/ERREModeName"
+        },
+        "sampling_overrides": {
+          "$ref": "#/$defs/SamplingDelta"
+        },
+        "zone_trigger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Zone"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "entered_at_tick"
+      ],
+      "title": "ERREMode",
+      "type": "object"
+    },
+    "ERREModeName": {
+      "description": "Eight ERRE cognitive modes (see ``persona-erre`` skill for semantics).",
+      "enum": [
+        "peripatetic",
+        "chashitsu",
+        "zazen",
+        "shu_kata",
+        "ha_deviate",
+        "ri_create",
+        "deep_work",
+        "shallow"
+      ],
+      "title": "ERREModeName",
+      "type": "string"
+    },
+    "Physical": {
+      "additionalProperties": false,
+      "description": "Long-timescale somatic state (CSDG HumanCondition adopted as skeleton).\n\nAll fields move on a daily / half-life scale. Instantaneous affect lives in\n:class:`Cognitive` (``valence`` / ``arousal``) instead.",
+      "properties": {
+        "breath_rate": {
+          "default": 0.25,
+          "description": "Normalised respiration; varies during walk / zazen.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Breath Rate",
+          "type": "number"
+        },
+        "cognitive_load": {
+          "default": 0.2,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Cognitive Load",
+          "type": "number"
+        },
+        "emotional_conflict": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Emotional Conflict",
+          "type": "number"
+        },
+        "fatigue": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fatigue",
+          "type": "number"
+        },
+        "hunger": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Hunger",
+          "type": "number"
+        },
+        "mood_baseline": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Mood Baseline",
+          "type": "number"
+        },
+        "physical_energy": {
+          "default": 0.7,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Physical Energy",
+          "type": "number"
+        },
+        "sleep_quality": {
+          "default": 0.7,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Sleep Quality",
+          "type": "number"
+        }
+      },
+      "title": "Physical",
+      "type": "object"
+    },
+    "PlutchikDimension": {
+      "description": "Plutchik's eight primary emotions.",
+      "enum": [
+        "joy",
+        "trust",
+        "fear",
+        "surprise",
+        "sadness",
+        "disgust",
+        "anger",
+        "anticipation"
+      ],
+      "title": "PlutchikDimension",
+      "type": "string"
+    },
+    "Position": {
+      "additionalProperties": false,
+      "description": "3D position within the world, annotated with the containing zone.",
+      "properties": {
+        "pitch": {
+          "default": 0.0,
+          "description": "Head tilt in radians (bow, gaze).",
+          "title": "Pitch",
+          "type": "number"
+        },
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        },
+        "yaw": {
+          "default": 0.0,
+          "description": "Facing angle in radians.",
+          "title": "Yaw",
+          "type": "number"
+        },
+        "z": {
+          "title": "Z",
+          "type": "number"
+        },
+        "zone": {
+          "$ref": "#/$defs/Zone"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z",
+        "zone"
+      ],
+      "title": "Position",
+      "type": "object"
+    },
+    "RelationshipBond": {
+      "additionalProperties": false,
+      "description": "Per-other-agent relational state.",
+      "properties": {
+        "affinity": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Affinity",
+          "type": "number"
+        },
+        "familiarity": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Familiarity",
+          "type": "number"
+        },
+        "ichigo_ichie_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Ichigo Ichie Count",
+          "type": "integer"
+        },
+        "last_interaction_tick": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Interaction Tick"
+        },
+        "last_interaction_zone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Zone"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Zone where the most recent dyad interaction occurred. M7δ-added; older bonds (pre-0.7.0-m7d) deserialise as None. Written by ``WorldRuntime.apply_affinity_delta`` and read by Godot's ``ReasoningPanel`` to render ``'last in <zone>'`` next to affinity."
+        },
+        "latest_belief_kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "trust",
+                "clash",
+                "wary",
+                "curious",
+                "ambivalent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Most-recent typed classification promoted from this bond's affinity loop (M7ζ). Same value domain as :attr:`SemanticMemoryRecord.belief_kind` — kept here so the Godot ``ReasoningPanel`` can render an icon prefix (``◯△✕？◇``) next to the bond row without joining to the semantic_memory table at every panel refresh. Written by ``WorldRuntime.apply_belief_promotion`` from the bootstrap relational sink the moment ``cognition.belief.maybe_promote_belief`` graduates the bond past its ``|affinity| × N`` gates. Older bonds (pre-0.9.0-m7z) deserialise as None; once set, the value is overwritten only by a subsequent successful promotion of the same dyad — an affinity drop below threshold does not clear it.",
+          "title": "Latest Belief Kind"
+        },
+        "other_agent_id": {
+          "title": "Other Agent Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "other_agent_id"
+      ],
+      "title": "RelationshipBond",
+      "type": "object"
+    },
+    "SamplingDelta": {
+      "additionalProperties": false,
+      "description": "Additive overrides applied on top of ``SamplingBase`` per ERRE mode.\n\nAll fields default to ``0.0`` meaning \"no override\". The ``persona-erre``\nskill tabulates the canonical deltas per mode. Composition\n(``base + delta``) is the caller's responsibility; T11 / T12 must clamp\nthe result back into ``SamplingBase``'s valid ranges.",
+      "properties": {
+        "repeat_penalty": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Repeat Penalty",
+          "type": "number"
+        },
+        "temperature": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "top_p": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Top P",
+          "type": "number"
+        }
+      },
+      "title": "SamplingDelta",
+      "type": "object"
+    },
+    "ShuhariStage": {
+      "description": "Three stages of skill acquisition in Japanese arts (shu-ha-ri).",
+      "enum": [
+        "shu",
+        "ha",
+        "ri"
+      ],
+      "title": "ShuhariStage",
+      "type": "string"
+    },
+    "Zone": {
+      "description": "Five spatial zones of the world (see ``docs/glossary.md``).",
+      "enum": [
+        "study",
+        "peripatos",
+        "chashitsu",
+        "agora",
+        "garden"
+      ],
+      "title": "Zone",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Snapshot of an agent at a given tick.\n\nStatic persona information (traits, cognitive habits) lives in\n:class:`PersonaSpec` and is joined at read time via ``persona_id``.",
+  "properties": {
+    "agent_id": {
+      "title": "Agent Id",
+      "type": "string"
+    },
+    "cognitive": {
+      "$ref": "#/$defs/Cognitive"
+    },
+    "erre": {
+      "$ref": "#/$defs/ERREMode"
+    },
+    "persona_id": {
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "physical": {
+      "$ref": "#/$defs/Physical"
+    },
+    "position": {
+      "$ref": "#/$defs/Position"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/RelationshipBond"
+      },
+      "title": "Relationships",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "0.10.0-m7h",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tick": {
+      "minimum": 0,
+      "title": "Tick",
+      "type": "integer"
+    },
+    "wall_clock": {
+      "format": "date-time",
+      "title": "Wall Clock",
+      "type": "string"
+    }
+  },
+  "required": [
+    "agent_id",
+    "persona_id",
+    "tick",
+    "position",
+    "erre"
+  ],
+  "title": "AgentState",
+  "type": "object"
+}

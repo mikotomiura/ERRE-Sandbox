@@ -1,0 +1,57 @@
+{
+  "schema_version": "0.10.0-m7h",
+  "tick": 42,
+  "sent_at": "2026-04-18T12:00:00Z",
+  "kind": "agent_update",
+  "agent_state": {
+    "schema_version": "0.2.0-m4",
+    "agent_id": "a_kant_001",
+    "persona_id": "kant",
+    "tick": 42,
+    "wall_clock": "2026-04-18T12:00:00Z",
+    "position": {
+      "x": 12.5,
+      "y": 0.0,
+      "z": -3.2,
+      "zone": "peripatos",
+      "yaw": 1.5708,
+      "pitch": 0.0
+    },
+    "physical": {
+      "sleep_quality": 0.72,
+      "physical_energy": 0.65,
+      "mood_baseline": 0.15,
+      "cognitive_load": 0.35,
+      "emotional_conflict": 0.0,
+      "fatigue": 0.22,
+      "hunger": 0.1,
+      "breath_rate": 0.45
+    },
+    "cognitive": {
+      "valence": 0.3,
+      "arousal": 0.55,
+      "dominant_emotion": "anticipation",
+      "motivation": 0.8,
+      "stress": 0.15,
+      "curiosity": 0.7,
+      "shuhari_stage": "ri",
+      "dmn_activation": 0.82,
+      "active_goals": [
+        "complete section on categorical imperative",
+        "prepare for 13:00 dinner with guests"
+      ]
+    },
+    "erre": {
+      "name": "peripatetic",
+      "dmn_bias": 0.4,
+      "sampling_overrides": {
+        "temperature": 0.3,
+        "top_p": 0.05,
+        "repeat_penalty": -0.1
+      },
+      "entered_at_tick": 40,
+      "zone_trigger": "peripatos"
+    },
+    "relationships": []
+  }
+}

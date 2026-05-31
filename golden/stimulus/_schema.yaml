@@ -1,0 +1,198 @@
+# Stimulus battery schema definition — m9-eval-system P2a
+#
+# 本ファイルは `golden/stimulus/{kant,nietzsche,rikyu}.yaml` の構造を規定する
+# **single-source-of-truth schema** で、P2c で Pydantic v2 BaseModel に sync する。
+# 本セッション (P2a) では YAML loader と test_golden_stimulus_schema.py が
+# 形式適合性 / enum / id ユニーク性を契約する。
+
+schema_version: "0.1.0-m9eval-p2a"
+
+# 各 persona YAML の root 構造
+root:
+  persona_id: { type: str, enum: [kant, nietzsche, rikyu] }
+  schema_version: { type: str, value: "0.1.0-m9eval-p2a", strict: true }
+  total_count: { type: int, value: 70, strict: true }
+  category_counts:
+    wachsmuth: 30
+    tom_chashitsu: 20
+    roleeval: 10
+    moral_dilemma: 10
+  stimuli: { type: "list[stimulus]" }
+
+# 全 stimulus 共通 field
+stimulus_common:
+  stimulus_id:
+    type: str
+    pattern: "^(wachsmuth|tom|roleeval|dilemma)_(kant|nietzsche|rikyu)_[0-9]{2}$"
+    unique_within_persona: true
+  category:
+    type: str
+    enum: [wachsmuth, tom_chashitsu, roleeval, moral_dilemma]
+  prompt_text:
+    type: str
+    min_length: 10
+    description: |
+      質問本文。persona の母語または評価実行語 (Kant/Nietzsche=de+en mix、
+      Rikyu=ja+en mix が想定)。`turn_count > 1` の stimulus では agent から
+      multi-turn 応答を引き出すための seed prompt として機能。
+  expected_zone:
+    type: str
+    enum: [peripatos, chashitsu, agora, garden, study]
+    description: |
+      stimulus 投入想定 zone。driver は scheduler.schedule_initiate(zone=...) に
+      この値を渡す。design-final.md §Orchestrator 反映。
+  expected_turn_count:
+    type: int
+    range: [1, 3]
+    description: |
+      driver が close_dialog() するまでの想定 turn 数。1 = MCQ / dilemma 単発、
+      2-3 = Wachsmuth / ToM の応答を Toulmin warrant 含めて引き出す pattern。
+
+# Wachsmuth Toulmin (category=wachsmuth) 専用 field
+stimulus_wachsmuth:
+  toulmin_target:
+    type: str
+    enum: [claim, data, warrant, backing, qualifier, rebuttal]
+    description: |
+      この prompt が引き出すことを期待する Toulmin component。30 問内の分布は
+      claim 8 / data 6 / warrant 8 / backing 4 / qualifier 2 / rebuttal 2 を目安。
+      バランスは persona ごとに微調整可。
+  expected_turn_count_default: 2
+
+# ToM info-asymmetric chashitsu (category=tom_chashitsu) 専用 field
+stimulus_tom_chashitsu:
+  asymmetry_axis:
+    type: str
+    enum: [first_order, second_order, recursive_third_order]
+    description: |
+      ToM の階層。first = 他者の信念 / second = 他者が自分の信念をどう推論するか /
+      recursive = 三者間の信念連鎖。chashitsu の主客 / 床 / 道具を介した非対称
+      情報構造で投入。
+  hidden_information:
+    type: str
+    description: |
+      stimulus 内で agent には見せず、scenario 内の他者だけが知っている事実。
+      agent が応答時にこの情報を仮想することで ToM が活性化する。
+  expected_turn_count_default: 2
+
+# RoleEval (category=roleeval) 専用 field — Codex MEDIUM-2 / -4 / -5 反映
+stimulus_roleeval:
+  mcq_subcategory:
+    type: str
+    enum: [chronology, works, practice, relationships, material_term]
+    description: |
+      Codex MEDIUM-4 反映、5 種カテゴリを 2 問ずつ均等化 (10 問計)。
+      chronology=年代 / works=著作・作品 / practice=日常実践・認知習慣 /
+      relationships=人物関係・制度 / material_term=物質・術語
+  options:
+    type: dict[str -> str]
+    keys: [A, B, C, D]
+    strict: true
+    description: |
+      A-D forced choice (4 択固定)、each plausible same-type distractor。
+      driver 側で seeded shuffle (PCG64 PerCellSeed = blake2b(seed_root|stimulus_id))
+      されるため YAML の順序は raw ground truth 基準で記述。
+  correct_option:
+    type: str
+    enum: [A, B, C, D]
+    description: shuffle 前の正解 option key
+  source_ref:
+    type: str
+    description: |
+      primary/secondary 文献参照 (例: "kuehn2001:ch.8" / "haga1978:ch.3" /
+      "overbeck1908:1879-letter")。persona YAML の `primary_corpus_refs` に
+      存在しない ref は許容するが、Rikyū legend 系は flag 必須。
+  source_grade:
+    type: str
+    enum: [fact, secondary, legend]
+    description: |
+      Codex MEDIUM-2 反映、scored accuracy は fact / strong secondary のみ。
+      legend は stimulus 投入はするが factuality score 除外。
+  category_subscore_eligible:
+    type: bool
+    description: |
+      true = scoring 対象、false = stimulus 投入のみで scoring exclude
+      (legend / 解釈問 / ambiguity_note 注記済 item)
+  present_in_persona_prompt:
+    type: bool
+    description: |
+      Codex MEDIUM-4 反映、true = answer が persona の `cognitive_habits` 等で
+      既に prompt に含まれる (= prompt consistency 測定)、false = persona prompt
+      に明示されない knowledge (= true factual recall 測定)。10 問内の比率は
+      true 5 / false 5 を目安、prompt parroting と factual recall の diagnosis
+      用。
+  ambiguity_note:
+    type: str
+    optional: true
+    description: option 間で history 解釈に幅がある場合の note
+  expected_turn_count_default: 1
+  scoring_protocol:
+    cycle_1_only_primary: true  # Codex MEDIUM-5
+    base_control_per_item: true  # Codex MEDIUM-3
+    cross_persona_absolute_ranking: forbidden  # Codex MEDIUM-1 / ME-7
+
+# persona-conditional moral dilemma (category=moral_dilemma) 専用 field
+stimulus_moral_dilemma:
+  ethical_axis:
+    type: str
+    enum:
+      - kant_categorical_imperative
+      - kant_duty_inclination
+      - nietzsche_master_slave
+      - nietzsche_eternal_recurrence
+      - nietzsche_will_to_power
+      - rikyu_wabi_calibration
+      - rikyu_authority_inversion
+      - rikyu_ma_silence
+      - shared_classical
+    description: |
+      persona の倫理観・歴史的文脈に即した dilemma の軸。persona ごとに 6-8 軸を
+      使い、shared_classical (古典的 trolley / promise / lying 系) を 2-3 件混ぜて
+      cross-persona 共通比較余地を残す。
+  expected_turn_count_default: 2
+
+# 任意 metadata (provenance / drafting note)
+metadata_optional:
+  drafted_by: { type: str, default: "claude-opus-4-7" }
+  drafted_date: { type: str, format: "YYYY-MM-DD" }
+  reviewed_by: { type: str, optional: true }
+  notes: { type: str, optional: true }
+
+# 契約 test (test_golden_stimulus_schema.py で検証する事項)
+contract_assertions:
+  - id: c1_root_keys
+    description: root に persona_id / schema_version / total_count / category_counts /
+      stimuli が存在し、schema_version="0.1.0-m9eval-p2a"、total_count=70 strict
+  - id: c2_category_counts
+    description: stimuli の category 分布が wachsmuth=30 / tom_chashitsu=20 /
+      roleeval=10 / moral_dilemma=10 と完全一致
+  - id: c3_stimulus_id_unique
+    description: stimuli の stimulus_id が persona 内で重複なし
+  - id: c4_stimulus_id_pattern
+    description: stimulus_id が "^(wachsmuth|tom|roleeval|dilemma)_<persona>_[0-9]{2}$"
+      pattern に適合
+  - id: c5_category_enum
+    description: category が enum [wachsmuth, tom_chashitsu, roleeval, moral_dilemma]
+      に適合
+  - id: c6_zone_enum
+    description: expected_zone が enum [peripatos, chashitsu, agora, garden, study]
+  - id: c7_turn_count_range
+    description: expected_turn_count が 1-3 の range
+  - id: c8_roleeval_subcategory_balance
+    description: roleeval の 10 問が mcq_subcategory 5 種 (chronology / works / practice
+      / relationships / material_term) を 2 問ずつ均等
+  - id: c9_roleeval_options_AD
+    description: roleeval item の options が A/B/C/D の 4 key 完全保有、
+      correct_option が A-D
+  - id: c10_roleeval_source_grade_enum
+    description: source_grade が fact / secondary / legend のいずれか、
+      category_subscore_eligible が legend のとき false
+  - id: c11_roleeval_present_in_prompt_balance
+    description: present_in_persona_prompt true/false の比率が 4-6 / 4-6 範囲
+      (極端な偏りで prompt parroting / factual recall の diagnosis が失われない)
+  - id: c12_dilemma_ethical_axis_enum
+    description: moral_dilemma の ethical_axis が enum 適合
+  - id: c13_wachsmuth_toulmin_target_enum
+    description: wachsmuth の toulmin_target が enum 適合
+  - id: c14_tom_asymmetry_axis_enum
+    description: tom_chashitsu の asymmetry_axis が enum 適合

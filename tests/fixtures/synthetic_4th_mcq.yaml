@@ -1,0 +1,86 @@
+# Synthetic 4th persona MCQ fixture (DB7 LOW-1 / Codex LOW-2 isolation).
+#
+# Loaded only by tests via
+# ``erre_sandbox.evidence.golden_baseline.load_synthetic_fixture`` so that
+# this fictional MCQ set never reaches the production scoring pipeline
+# (``load_stimulus_battery`` rejects ``persona_id`` outside ``DEFAULT_PERSONAS``).
+#
+# Schema is a strict subset of ``golden/stimulus/_schema.yaml`` extended
+# with two ADR ME-7 §4 fields: ``fictional: true`` (positive marker) and
+# ``scored: false`` (negative marker — explicitly excluded from any
+# accuracy aggregation). The production ``golden/stimulus/{kant,
+# nietzsche,rikyu}.yaml`` files do not declare these keys.
+#
+# Refs:
+#   - .steering/20260430-m9-eval-system/decisions.md ME-7 §4
+#     (synthetic 4th persona DB7 LOW-1 / Codex LOW-2 isolation rule)
+#   - golden/stimulus/_schema.yaml (parent schema)
+
+persona_id: synthetic_4th
+schema_version: "0.1.0-m9eval-p2a"
+fictional: true
+scored: false
+total_count: 3
+category_counts:
+  roleeval: 3
+
+stimuli:
+  - stimulus_id: roleeval_synthetic_4th_01
+    category: roleeval
+    mcq_subcategory: chronology
+    prompt_text: |
+      In which fictional century is the synthetic 4th persona conventionally placed?
+    options:
+      A: "21st century BCE"
+      B: "12th century CE"
+      C: "23rd century CE"
+      D: "5th century CE"
+    correct_option: C
+    source_ref: "fixture:synthetic_4th_mcq.yaml#roleeval_synthetic_4th_01"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    fictional: true
+    scored: false
+
+  - stimulus_id: roleeval_synthetic_4th_02
+    category: roleeval
+    mcq_subcategory: works
+    prompt_text: |
+      Which (fictional) treatise is attributed to the synthetic 4th persona?
+    options:
+      A: "Theory of Heliotropic Will"
+      B: "On the Emergence of Equanimity"
+      C: "Twelve Aphorisms on the Garden of Decay"
+      D: "Letters to an Imaginary Disciple"
+    correct_option: A
+    source_ref: "fixture:synthetic_4th_mcq.yaml#roleeval_synthetic_4th_02"
+    source_grade: fact
+    category_subscore_eligible: true
+    present_in_persona_prompt: false
+    expected_zone: study
+    expected_turn_count: 1
+    fictional: true
+    scored: false
+
+  - stimulus_id: roleeval_synthetic_4th_03
+    category: roleeval
+    mcq_subcategory: practice
+    prompt_text: |
+      What daily ritual is the synthetic 4th persona said to practice?
+    options:
+      A: "Pre-dawn arithmetic exercises"
+      B: "Walking three concentric circles before noon"
+      C: "Silent recitation of imagined dialogues at dusk"
+      D: "Cataloguing minerals once per lunar cycle"
+    correct_option: D
+    source_ref: "fixture:synthetic_4th_mcq.yaml#roleeval_synthetic_4th_03"
+    source_grade: legend
+    category_subscore_eligible: false
+    present_in_persona_prompt: false
+    expected_zone: peripatos
+    expected_turn_count: 1
+    fictional: true
+    scored: false
