@@ -47,6 +47,7 @@ from erre_sandbox.evidence.individuation.loader import (
     IndividualWindow,
     build_development_source_filter_hash,
     build_narrative_source_filter_hash,
+    build_world_model_overlap_source_filter_hash,
     individual_state_trace_table,
     load_individual_state_windows,
     load_individual_windows,
@@ -56,6 +57,9 @@ from erre_sandbox.evidence.individuation.policy import (
     RESERVED_POPULATION_ID,
     TICK_AGGREGATE_SENTINEL,
     AggregationLevel,
+)
+from erre_sandbox.evidence.individuation.world_model_metrics import (
+    world_model_overlap_jaccard_active,
 )
 from erre_sandbox.evidence.tier_a.burrows import tokenise_ja
 
@@ -130,7 +134,7 @@ def compute_individuation(
         for win in loaded.windows:
             results.extend(_per_individual_metrics(win, ctx, zone_cache, trace_windows))
         for base, members in loaded.base_groups:
-            results.extend(_per_dyad_metrics(base, members, by_id, ctx))
+            results.extend(_per_dyad_metrics(base, members, by_id, ctx, trace_windows))
             results.append(_population_vendi(base, members, by_id, ctx))
     return results
 
@@ -276,6 +280,7 @@ def _per_dyad_metrics(
     members: tuple[str, ...],
     by_id: dict[str, IndividualWindow],
     ctx: IndividuationContext,
+    trace_windows: dict[tuple[str, str], IndividualStateWindow],
 ) -> list[MetricResult]:
     results: list[MetricResult] = []
     dyad_base = f"{base}{DYAD_SEP}{base}"
@@ -295,6 +300,8 @@ def _per_dyad_metrics(
                 computed_at=ctx.computed_at,
             )
         )
+        # M10-A S3 (E2b): a self-pair (N=1) is never the active VALID=1.0 cell —
+        # it stays the frozen layer1 stub (unsupported), DA-S3-3 / C-2.
         results.append(
             world_model_overlap_jaccard(ctx=dctx, computed_at=ctx.computed_at)
         )
@@ -316,9 +323,64 @@ def _per_dyad_metrics(
             )
         )
         results.append(
-            world_model_overlap_jaccard(ctx=dctx, computed_at=ctx.computed_at)
+            _world_model_overlap_result(
+                win_a, win_b, dctx=dctx, ctx=ctx, trace=trace_windows
+            )
         )
     return results
+
+
+def _world_model_overlap_result(
+    win_a: IndividualWindow,
+    win_b: IndividualWindow,
+    *,
+    dctx: MetricContext,
+    ctx: IndividuationContext,
+    trace: dict[tuple[str, str], IndividualStateWindow],
+) -> MetricResult:
+    """SWM key-Jaccard for a 2-distinct-individual dyad (M10-A S3 E2b, DA-S3-1/3).
+
+    Active when **both** individuals have a present SWM key-set (``world_model_keys``
+    not None) — stamping the trace table + a world-model-specific provenance hash
+    (DA-S3-2 / C-1). Absent SWM on either side routes to the frozen ``layer1`` stub
+    (unsupported), so the never-VALID claim continues to hold when input is absent.
+    """
+    trace_a = trace.get((win_a.run_id, win_a.individual_id))
+    trace_b = trace.get((win_b.run_id, win_b.individual_id))
+    if (
+        trace_a is not None
+        and trace_b is not None
+        and trace_a.world_model_keys is not None
+        and trace_b.world_model_keys is not None
+    ):
+        source_table = individual_state_trace_table()
+        active_ctx = replace(
+            dctx,
+            source_table=source_table,
+            source_filter_hash=build_world_model_overlap_source_filter_hash(
+                run_id=dctx.run_id,
+                source_table=source_table,
+                members=(
+                    (
+                        trace_a.individual_id,
+                        trace_a.final_tick,
+                        trace_a.world_model_keys,
+                    ),
+                    (
+                        trace_b.individual_id,
+                        trace_b.final_tick,
+                        trace_b.world_model_keys,
+                    ),
+                ),
+            ),
+        )
+        return world_model_overlap_jaccard_active(
+            trace_a.world_model_keys,
+            trace_b.world_model_keys,
+            ctx=active_ctx,
+            computed_at=ctx.computed_at,
+        )
+    return world_model_overlap_jaccard(ctx=dctx, computed_at=ctx.computed_at)
 
 
 def _population_vendi(

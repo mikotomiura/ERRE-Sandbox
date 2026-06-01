@@ -231,10 +231,15 @@ METRIC_SPECS: Final[dict[str, MetricSpec]] = {
         embedding_required=False,
         diagnostic_only=True,
     ),
-    # --- Layer 1 function-only / protocol-only: NEVER valid in M10-0 ----
+    # --- Layer 1 SWM Jaccard: activated at M10-A S3 (E2b) ----------------
+    # world_model_overlap_jaccard is the reactivate-ADR §3.A③ path(a) gate metric.
+    # M10-A S1 (E2) persisted the (axis,key) set into individual_state_trace; M10-A
+    # S3 (E2b) turns it into the active metric. The active implementation lives in
+    # ``world_model_metrics.py`` (outside frozen layer1, DA-S3-1); the frozen layer1
+    # stub remains the unsupported fallback for self-pairs / absent SWM.
     "world_model_overlap_jaccard": MetricSpec(
-        "world_model_overlap_jaccard",  # SWM Jaccard, active M10-A
-        frozenset({_S.DEGENERATE, _S.UNSUPPORTED}),  # ⚠ no VALID
+        "world_model_overlap_jaccard",  # SWM Jaccard, active M10-A S3 (E2b)
+        frozenset({_S.VALID, _S.DEGENERATE, _S.UNSUPPORTED}),
         frozenset({_C.WORLD_MODEL}),
         frozenset({_A.PER_DYAD}),
         embedding_required=False,

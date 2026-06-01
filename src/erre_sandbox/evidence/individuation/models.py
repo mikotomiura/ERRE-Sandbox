@@ -6,8 +6,10 @@ violate** (decisions DA-M10I-4 / DA-M10I-9), not merely documented:
 * ``metric_name`` must be in :data:`~.policy.METRIC_SPECS`; the spec then
   constrains ``status`` / ``channel`` / ``aggregation_level`` and whether
   a ``valid`` result must carry an ``embedding_model_id``. This is what
-  rejects ``cite_belief_discipline.* = valid``, ``world_model_overlap_jaccard
-  = valid`` and ``intervention_recovery_rate = valid``.
+  rejects ``cite_belief_discipline.* = valid`` and
+  ``intervention_recovery_rate = valid`` (``world_model_overlap_jaccard``
+  is VALID-capable from M10-A S3 / E2b — its spec was widened to allow
+  ``valid`` and the active implementation lives in ``world_model_metrics``).
 * the value/reason ↔ status coupling, finite ``value``,
   ``tick >= -1``, and the aggregation-key sentinel convention
   (HIGH-1) are all enforced here and, for the generic ones, again by the

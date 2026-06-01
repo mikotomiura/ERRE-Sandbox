@@ -40,7 +40,7 @@ from erre_sandbox.evidence.individuation.trace_ddl import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     from erre_sandbox.evidence.eval_store import AnalysisView
 
@@ -353,11 +353,18 @@ _WORLD_MODEL_KEY_PAIR_LEN: Final[int] = 2
 # collides with belief_variance's even at the same final tick (DA-S2-6 / CX3).
 _NARRATIVE_LOADER_HASH_SCHEMA_VERSION: Final[str] = "m10a-s2.narrative_loader.1"
 _DEVELOPMENT_LOADER_HASH_SCHEMA_VERSION: Final[str] = "m10a-s2.development_loader.1"
+# M10-A S3 (E2b): per-dyad SWM-overlap provenance token. Distinct from the belief /
+# narrative / development tokens so the active world_model_overlap_jaccard recompute
+# provenance never collides with another trace metric's (DA-S3-2 / C-1).
+_WORLD_MODEL_OVERLAP_LOADER_HASH_SCHEMA_VERSION: Final[str] = (
+    "m10a-s3.world_model_overlap_loader.1"
+)
 # Provenance metric-name labels (kept local; the loader stays models/policy-free).
-# Must match the metric names in ``individual_state_metrics`` /
-# ``policy.METRIC_SPECS`` (pinned by test_individuation_trace_loader).
+# Must match the metric names in ``individual_state_metrics`` / ``world_model_metrics``
+# / ``policy.METRIC_SPECS`` (pinned by test_individuation_trace_loader).
 _NARRATIVE_METRIC_LABEL: Final[str] = "narrative_coherence"
 _DEVELOPMENT_METRIC_LABEL: Final[str] = "development_stage_ordinal"
+_WORLD_MODEL_OVERLAP_METRIC_LABEL: Final[str] = "world_model_overlap_jaccard"
 
 
 def individual_state_trace_table() -> str:
@@ -450,6 +457,48 @@ def build_development_source_filter_hash(
         final_tick=final_tick,
         fields={"development_stage": development_stage},
     )
+
+
+def build_world_model_overlap_source_filter_hash(
+    *,
+    run_id: str,
+    source_table: str,
+    members: Sequence[tuple[str, int, tuple[tuple[str, str], ...] | None]],
+) -> str:
+    """Provenance hash for the active ``world_model_overlap_jaccard`` (E2b, C-1).
+
+    A per-dyad metric, so the payload embeds **both** members'
+    ``(individual_id, final_tick, world_model_keys)`` — the exact SWM substrate the
+    Jaccard consumed — sorted by ``individual_id`` for pair symmetry. Uses its own
+    schema-version token so it never collides with the belief / narrative /
+    development trace hashes or the raw_dialog window hash (DA-S3-2). ``allow_nan``
+    is irrelevant (no floats) but kept off for consistency with the other trace
+    hashes.
+    """
+    member_payload: list[dict[str, object]] = sorted(
+        (
+            {
+                "individual_id": individual_id,
+                "final_tick": final_tick,
+                "world_model_keys": (
+                    None if keys is None else [list(pair) for pair in keys]
+                ),
+            }
+            for individual_id, final_tick, keys in members
+        ),
+        key=lambda member: str(member["individual_id"]),
+    )
+    payload = {
+        "schema_version": _WORLD_MODEL_OVERLAP_LOADER_HASH_SCHEMA_VERSION,
+        "metric_name": _WORLD_MODEL_OVERLAP_METRIC_LABEL,
+        "run_id": run_id,
+        "source_table": source_table,
+        "members": member_payload,
+    }
+    canonical = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _trace_has_world_model_column(view: AnalysisView) -> bool:
@@ -723,6 +772,7 @@ __all__ = [
     "LoadedRun",
     "build_development_source_filter_hash",
     "build_narrative_source_filter_hash",
+    "build_world_model_overlap_source_filter_hash",
     "individual_state_trace_table",
     "load_individual_state_windows",
     "load_individual_windows",
