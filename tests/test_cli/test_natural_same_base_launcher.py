@@ -259,7 +259,9 @@ def test_loader_feeds_three_dyads_to_per_dyad(tmp_path: Path) -> None:
     by_id = {w.individual_id: w for w in loaded.windows}
     base, members = loaded.base_groups[0]
 
-    rows = _per_dyad_metrics(base, members, by_id, ctx)
+    # no trace windows here → SWM Jaccard takes the stub fallback; this test only
+    # asserts the centroid dyad rows (M10-A S3 added the trace_windows parameter).
+    rows = _per_dyad_metrics(base, members, by_id, ctx, {})
     centroid_rows = [r for r in rows if r.metric_name == "semantic_centroid_distance"]
     assert len(centroid_rows) == 3  # C(3,2)
     assert all(r.aggregation_level is AggregationLevel.PER_DYAD for r in centroid_rows)

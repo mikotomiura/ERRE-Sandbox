@@ -1,12 +1,12 @@
 """MetricResult validator + to_row coverage (M10-0 individuation PR-1).
 
 The validators encode the claim boundary as code (decisions DA-M10I-4 /
-DA-M10I-9): these negative tests assert that ``cite_belief_discipline.*``,
-``world_model_overlap_jaccard`` and ``intervention_recovery_rate`` can
-never be constructed ``valid``, that the value/reason/status coupling and
-finite-value rules hold, that ``tick >= -1`` and the aggregation-key
-sentinel convention are enforced, and that ``to_row`` matches the DDL
-column order.
+DA-M10I-9): these tests assert that ``cite_belief_discipline.*`` and
+``intervention_recovery_rate`` can never be constructed ``valid`` while
+``world_model_overlap_jaccard`` *can* from M10-A S3 (E2b activated it),
+that the value/reason/status coupling and finite-value rules hold, that
+``tick >= -1`` and the aggregation-key sentinel convention are enforced,
+and that ``to_row`` matches the DDL column order.
 """
 
 from __future__ import annotations
@@ -120,16 +120,23 @@ def test_cite_belief_discipline_cannot_be_valid() -> None:
             )
 
 
-def test_swm_jaccard_cannot_be_valid() -> None:
-    with pytest.raises(ValidationError):
-        _result(
-            metric_name="world_model_overlap_jaccard",
-            channel=MetricChannel.WORLD_MODEL,
-            aggregation_level=AggregationLevel.PER_DYAD,
-            individual_id="A|B",
-            status=MetricStatus.VALID,
-            value=0.5,
-        )
+def test_swm_jaccard_can_be_valid_at_m10a_s3() -> None:
+    """E2b (M10-A S3) activates SWM Jaccard — a VALID per_dyad result now builds.
+
+    Supersedes the M10-0 ``cannot-be-valid`` pin: the reactivate-ADR §3.A③ gate
+    metric is live, so the model accepts a ``valid`` construction (the active impl
+    lives in ``world_model_metrics.py``; frozen layer1 stub stays the fallback).
+    """
+    res = _result(
+        metric_name="world_model_overlap_jaccard",
+        channel=MetricChannel.WORLD_MODEL,
+        aggregation_level=AggregationLevel.PER_DYAD,
+        individual_id="A|B",
+        status=MetricStatus.VALID,
+        value=0.5,
+    )
+    assert res.status is MetricStatus.VALID
+    assert res.value == 0.5
 
 
 def test_recovery_cannot_be_valid() -> None:

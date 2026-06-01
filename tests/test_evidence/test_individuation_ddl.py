@@ -163,7 +163,7 @@ def test_metric_name_namespace_allowlist() -> None:
         "cite_belief_discipline.counterfactual_challenge_rejection_rate",
     }
     assert expected_layer2 <= ALLOWED_METRIC_NAMES
-    # SWM Jaccard / recovery are function/protocol-only but still named here
+    # SWM Jaccard (active M10-A S3) / recovery (M11-C) are named here
     assert "world_model_overlap_jaccard" in ALLOWED_METRIC_NAMES
     assert "intervention_recovery_rate" in ALLOWED_METRIC_NAMES
 

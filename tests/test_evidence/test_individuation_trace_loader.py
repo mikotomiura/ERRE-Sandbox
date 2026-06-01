@@ -22,6 +22,8 @@ from erre_sandbox.evidence.individuation.layer1 import stub_embedding_provider
 from erre_sandbox.evidence.individuation.loader import (
     IndividualStateTraceConflictError,
     IndividualStateTraceSchemaError,
+    build_world_model_overlap_source_filter_hash,
+    individual_state_trace_table,
     load_individual_state_windows,
 )
 from erre_sandbox.evidence.individuation.policy import MetricStatus
@@ -501,18 +503,18 @@ def test_runner_belief_variance_idempotent_recompute(tmp_path: Path) -> None:
     assert a.to_row() == b.to_row()
 
 
-# --- claim-drift guard: SWM persisted but jaccard still UNSUPPORTED (C1/C2) ---
+# --- M10-A S3 (E2b): a self-pair with SWM present stays UNSUPPORTED (C-2) ----
 
 
-def test_world_model_overlap_jaccard_stays_unsupported_with_swm_trace(
+def test_world_model_overlap_jaccard_self_pair_stays_unsupported_with_swm_trace(
     tmp_path: Path,
 ) -> None:
-    """S1 (C) persists SWM but does NOT un-stub the metric (Codex C1).
+    """A single individual (N=1 self-pair) never fabricates the active VALID=1.0.
 
-    Even when ``world_model_keys_json`` is populated in the trace, the runner's
-    ``world_model_overlap_jaccard`` stays ``unsupported`` — the metric un-stub is
-    deferred to S2/E2b behind a separate pre-GPU conformance ADR (reactivate
-    §6.1). This guards against claim drift (SWM substrate present ≠ metric live).
+    Even after E2b activates the metric, an ``A|A`` self-pair routes to the frozen
+    ``layer1`` stub (``unsupported``) — a self-overlap of ``1.0`` is meaningless and
+    must never pollute the §3.A③ gate (DA-S3-3 / C-2). The active VALID path needs
+    **two distinct** individuals with present SWM (exercised by the E2b runner test).
     """
     db = tmp_path / "swm_present.duckdb"
     con = duckdb.connect(str(db), read_only=False)
@@ -544,14 +546,109 @@ def test_world_model_overlap_jaccard_stays_unsupported_with_swm_trace(
     assert all(r.status is MetricStatus.UNSUPPORTED for r in jaccard)
 
 
-def test_policy_forbids_valid_world_model_overlap_jaccard() -> None:
-    """Codex C2: the claim boundary keeps SWM Jaccard never-VALID at this stage."""
+def test_world_model_overlap_jaccard_active_for_two_distinct_individuals(
+    tmp_path: Path,
+) -> None:
+    """E2b active path: two distinct same-base individuals with present SWM → VALID.
+
+    Asserts the Jaccard value (1/3 for the fixtures), the trace-table source, and a
+    world-model-specific provenance hash (DA-S3-2 / C-1) that is NOT the raw_dialog
+    centroid hash for the same dyad.
+    """
+    db = tmp_path / "two_kant.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    for agent in ("a_kant_001", "a_kant_002"):
+        _insert_dialog(con, _dialog_row(1, agent, "kant", "the of and study here"))
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=1,
+        belief_classes_json='["trust", "wary"]',
+        world_model_keys_json='[["env", "agora"], ["self", "relational_disposition"]]',
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_002",
+        tick=1,
+        belief_classes_json='["trust"]',
+        world_model_keys_json='[["env", "agora"], ["env", "study"]]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    ctx = IndividuationContext(
+        personas_dir=tmp_path,
+        provider=stub_embedding_provider(),
+        computed_at=_NOW,
+    )
+    view = connect_analysis_view(db)
+    try:
+        results = compute_individuation(view, run_id="run0", ctx=ctx)
+    finally:
+        view.close()
+    jaccard = [r for r in results if r.metric_name == "world_model_overlap_jaccard"]
+    assert len(jaccard) == 1
+    row = jaccard[0]
+    assert row.status is MetricStatus.VALID
+    # ∩ = {env:agora} = 1 ; ∪ = {env:agora, self:rel, env:study} = 3 → 1/3
+    assert row.value == pytest.approx(1.0 / 3.0)
+    # C-1: provenance is trace-table + world-model-specific hash, never raw_dialog.
+    assert row.provenance.source_table == individual_state_trace_table()
+    expected_hash = build_world_model_overlap_source_filter_hash(
+        run_id="run0",
+        source_table=individual_state_trace_table(),
+        members=(
+            ("a_kant_001", 1, (("env", "agora"), ("self", "relational_disposition"))),
+            ("a_kant_002", 1, (("env", "agora"), ("env", "study"))),
+        ),
+    )
+    assert row.provenance.source_filter_hash == expected_hash
+    # the centroid row for the same dyad keeps the raw_dialog-derived hash.
+    centroid = [r for r in results if r.metric_name == "semantic_centroid_distance"]
+    assert centroid
+    centroid_hash = centroid[0].provenance.source_filter_hash
+    assert centroid_hash != row.provenance.source_filter_hash
+    assert centroid[0].provenance.source_table == "raw_dialog.dialog"
+
+
+def test_world_model_overlap_hash_symmetric_and_distinct_token() -> None:
+    """The dyad SWM hash is member-order symmetric and uses its own schema token."""
+    members_ab = (
+        ("a_kant_001", 1, (("env", "agora"),)),
+        ("a_kant_002", 1, (("env", "study"),)),
+    )
+    members_ba = (members_ab[1], members_ab[0])
+    table = individual_state_trace_table()
+    h_ab = build_world_model_overlap_source_filter_hash(
+        run_id="run0", source_table=table, members=members_ab
+    )
+    h_ba = build_world_model_overlap_source_filter_hash(
+        run_id="run0", source_table=table, members=members_ba
+    )
+    assert h_ab == h_ba  # symmetric: sorted by individual_id
+    # distinct from a single-member projection (token + payload differ)
+    h_one = build_world_model_overlap_source_filter_hash(
+        run_id="run0", source_table=table, members=(members_ab[0],)
+    )
+    assert h_one != h_ab
+
+
+def test_policy_allows_valid_world_model_overlap_jaccard_at_m10a_s3() -> None:
+    """E2b (M10-A S3): the SWM Jaccard claim boundary widens to VALID-capable.
+
+    Supersedes the M10-0 ``never-VALID`` pin — the reactivate-ADR §3.A③ path(a)
+    gate metric is activated here, so the spec must allow ``valid`` (the active
+    implementation lives in ``world_model_metrics.py``, frozen layer1 untouched).
+    """
     from erre_sandbox.evidence.individuation.policy import METRIC_SPECS
 
     spec = METRIC_SPECS["world_model_overlap_jaccard"]
-    assert MetricStatus.VALID not in spec.allowed_statuses
+    assert MetricStatus.VALID in spec.allowed_statuses
     assert spec.allowed_statuses == frozenset(
-        {MetricStatus.DEGENERATE, MetricStatus.UNSUPPORTED}
+        {MetricStatus.VALID, MetricStatus.DEGENERATE, MetricStatus.UNSUPPORTED}
     )
 
 

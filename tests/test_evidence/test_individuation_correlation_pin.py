@@ -1,9 +1,11 @@
 """§C.9 behaviour pin: Layer 1 × Layer 2 cross-correlation is NOT computed at M10-0.
 
-The correlation matrix is Layer 1 × Layer 1 only. The Layer 2 cite_belief
-pins are unsupported, and the function-only metrics (SWM Jaccard, recovery) are
-never valid, so none of them may enter the correlation matrix or its pairs.
-Layer 1 × Layer 2 / Layer 2 × Layer 2 cross-correlation is deferred to M11-C.
+The correlation matrix is Layer 1 (per_individual) × Layer 1 only. The Layer 2
+cite_belief pins are unsupported, ``intervention_recovery_rate`` is never valid,
+and ``world_model_overlap_jaccard`` — VALID-capable from M10-A S3 (E2b) — is a
+per_dyad gate metric, never a per_individual correlation axis (DA-S3-6); so none
+of them may enter the correlation matrix or its pairs. Layer 1 × Layer 2 /
+Layer 2 × Layer 2 cross-correlation is deferred to M11-C.
 """
 
 from __future__ import annotations
@@ -30,7 +32,14 @@ _LAYER2_NAMES = {
     "cite_belief_discipline.cited_memory_id_source_distribution",
     "cite_belief_discipline.counterfactual_challenge_rejection_rate",
 }
-_NEVER_VALID = {"world_model_overlap_jaccard", "intervention_recovery_rate"}
+# Excluded from the correlation matrix: ``intervention_recovery_rate`` is still
+# never-VALID (M11-C), and ``world_model_overlap_jaccard`` — VALID-capable since
+# M10-A S3 (E2b) — is a per_dyad gate metric, never a per_individual correlation
+# axis (DA-S3-6). Both must stay out of the matrix.
+_EXCLUDED_FROM_CORRELATION = {
+    "world_model_overlap_jaccard",
+    "intervention_recovery_rate",
+}
 
 
 def _prov(run_id: str) -> Provenance:
@@ -103,7 +112,7 @@ def test_layer2_pins_never_enter_matrix() -> None:
     report = correlate_individuation(_reports_with_layer2(), computed_at=_NOW)
     assert report.correlation_status is CorrelationStatus.COMPUTED
     # No Layer 2 / never-valid name appears in the matrix or any pair.
-    forbidden = _LAYER2_NAMES | _NEVER_VALID
+    forbidden = _LAYER2_NAMES | _EXCLUDED_FROM_CORRELATION
     assert forbidden.isdisjoint(report.metrics_in_matrix)
     for pair in report.pairs:
         assert pair.metric_a not in forbidden
