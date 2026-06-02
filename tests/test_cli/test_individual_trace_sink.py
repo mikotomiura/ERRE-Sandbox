@@ -55,7 +55,7 @@ def test_sink_writes_row_loader_can_read(tmp_path: Path) -> None:
         state = _SinkState()
         sink = _make_individual_trace_sink(con=con, run_id="run0", state=state)
 
-        sink(_profile(), ["trust", "wary"], 7)
+        sink(_profile(), ["trust", "wary"], None, 7)
 
         row = con.execute(
             f"SELECT {', '.join(column_names())}"  # noqa: S608  # module constants
@@ -72,6 +72,7 @@ def test_sink_writes_row_loader_can_read(tmp_path: Path) -> None:
         '["trust", "wary"]',
         0,
         None,  # world_model_keys_json: _profile() carries no SWM snapshot
+        None,  # world_model_evidence_json: no evidence carried this tick
     )
     assert state.fatal_error is None
 
@@ -85,7 +86,7 @@ def test_sink_raises_capture_fatal_on_duckdb_error(tmp_path: Path) -> None:
         state = _SinkState()
         sink = _make_individual_trace_sink(con=con, run_id="run0", state=state)
         with pytest.raises(CaptureFatalError):
-            sink(_profile(), ["trust"], 1)
+            sink(_profile(), ["trust"], None, 1)
     finally:
         con.close()
     assert state.fatal_error is not None
@@ -102,7 +103,7 @@ def test_sink_skips_when_already_fatal(tmp_path: Path) -> None:
         state = _SinkState()
         state.set_fatal("earlier failure")
         sink = _make_individual_trace_sink(con=con, run_id="run0", state=state)
-        sink(_profile(), ["trust"], 1)  # must not write, must not raise
+        sink(_profile(), ["trust"], None, 1)  # must not write, must not raise
         (n,) = con.execute(
             f"SELECT count(*) FROM {METRICS_SCHEMA}.{TABLE_NAME}"  # noqa: S608  # module constants
         ).fetchone()

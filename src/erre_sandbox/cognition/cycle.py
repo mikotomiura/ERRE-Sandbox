@@ -58,17 +58,19 @@ from erre_sandbox.cognition.state import (
 from erre_sandbox.cognition.world_model import (
     WorldModelRuntimeState,
     apply_world_model_update_hint,
+    collect_promoted_evidence_units,
     reconcile_world_model,
     synthesize_world_model,
 )
 
-# NarrativeArc / DevelopmentState are Pydantic field annotations on
-# ``CycleResult`` below (and ``DevelopmentState`` is also constructed at runtime),
-# so they must be importable at runtime (Pydantic resolves them at model-build
-# time).
+# NarrativeArc / DevelopmentState / PromotedEvidenceUnit are Pydantic field
+# annotations on ``CycleResult`` below (and ``DevelopmentState`` is also
+# constructed at runtime), so they must be importable at runtime (Pydantic
+# resolves them at model-build time).
 from erre_sandbox.contracts.cognition_layers import (
     DevelopmentState,
     NarrativeArc,
+    PromotedEvidenceUnit,
 )
 from erre_sandbox.erre import SAMPLING_DELTA_BY_MODE
 from erre_sandbox.inference import (
@@ -252,6 +254,21 @@ class CycleResult(BaseModel):
     ``AgentRuntime`` and leaves the prior one untouched on ``None`` (carry-forward,
     mirroring ``narrative_arc``). Unlike ``narrative_arc`` this *is* control — but
     it is driven only by LLM-independent observables (DA-M11B-1)."""
+    world_model_evidence: list[PromotedEvidenceUnit] | None = None
+    """Per-dyad raw promoted evidence units this tick (M10-A 段B, flag-on only).
+
+    ``None`` flag-off (the individual layer is inert and beliefs are never read).
+    Flag-on this is the matched ``(record, bond)`` evidence projected by
+    :func:`~erre_sandbox.cognition.world_model.collect_promoted_evidence_units` —
+    the *same* dyads ``synthesize_world_model`` derived this tick's SWM entries
+    from — so it may be an empty list when no dyad is promoted yet. Sourced here in
+    the cycle's async block (the beliefs are already read for the SWM floor) and
+    carried out so the trace sink in ``world`` never imports ``memory`` (DA-M11C2-2
+    / DA-SB-1), mirroring ``belief_classes``. The caller
+    (:meth:`WorldRuntime._consume_result`) writes it to ``individual_state_trace``
+    as ``world_model_evidence_json``; the loader reads it back as the H2
+    value-aware conformance substrate (stage-A ADR §6). Substrate only — it never
+    drives control, and the H2 gate verdict itself is a separate task."""
     belief_classes: list[str] | None = None
     """Promoted-belief class labels this individual holds this tick (M11-C2,
     flag-on only).
@@ -515,10 +532,12 @@ class CognitionCycle:
         # possibly-empty list flag-on ("whole promoted set"). Carried
         # on CycleResult so the trace sink in ``world`` never imports ``memory``.
         # Weighting unit is the belief, not the tick.
-        belief_classes: list[str] | None = (
-            [b.belief_kind for b in beliefs if b.belief_kind is not None]
-            if flag_on
-            else None
+        # M11-C2 + M10-A 段B: flag-on trace substrate (promoted-belief classes +
+        # per-dyad raw evidence units), captured here in the cycle's async context
+        # so the trace sink in ``world`` never imports ``memory`` (DA-M11C2-2 /
+        # DA-SB-1). Both ``None`` flag-off; built from ``beliefs`` already in hand.
+        belief_classes, world_model_evidence = self._capture_trace_substrate(
+            flag_on=flag_on, beliefs=beliefs, agent_state=agent_state
         )
 
         # Step 5-6: build prompts and call the LLM.
@@ -554,6 +573,7 @@ class CognitionCycle:
                 new_physical=new_physical,
                 world_model_runtime=reconciled,
                 belief_classes=belief_classes,
+                world_model_evidence=world_model_evidence,
             )
 
         # Step 7: parse the LLM plan (malformed → same fallback branch).
@@ -571,6 +591,7 @@ class CognitionCycle:
                 new_physical=new_physical,
                 world_model_runtime=reconciled,
                 belief_classes=belief_classes,
+                world_model_evidence=world_model_evidence,
             )
 
         # Step 7.5 (M10-C): apply a verified world-model nudge. The LLM is a
@@ -690,6 +711,7 @@ class CognitionCycle:
             narrative_arc=new_narrative_arc,
             development_state=new_development,
             belief_classes=belief_classes,
+            world_model_evidence=world_model_evidence,
         )
 
     # ------------------------------------------------------------------
@@ -988,6 +1010,39 @@ class CognitionCycle:
             evidence,
         )
 
+    def _capture_trace_substrate(
+        self,
+        *,
+        flag_on: bool,
+        beliefs: list[SemanticMemoryRecord],
+        agent_state: AgentState,
+    ) -> tuple[list[str] | None, list[PromotedEvidenceUnit] | None]:
+        """Project this tick's flag-on individual-state trace substrate (pure).
+
+        Returns ``(belief_classes, world_model_evidence)``, both ``None`` flag-off
+        (the layer is inert, beliefs are never read). Flag-on:
+
+        * ``belief_classes`` — every ``belief_kind`` from the promoted set ("whole
+          promoted set", DA-M11C2-3); possibly empty.
+        * ``world_model_evidence`` — the matched per-dyad ``(record, bond)`` units
+          (M10-A 段B H2 substrate), the *same* dyads ``synthesize_world_model`` used
+          this tick (single matching impl, no algorithm drift — DA-SB-3); possibly
+          empty. Carried on ``CycleResult`` so ``world`` never imports ``memory``.
+
+        Built from *beliefs* already read for the SWM floor, so no extra store I/O.
+        """
+        if not flag_on:
+            return None, None
+        belief_classes: list[str] = [
+            b.belief_kind for b in beliefs if b.belief_kind is not None
+        ]
+        world_model_evidence = collect_promoted_evidence_units(
+            beliefs,
+            agent_state.relationships,
+            agent_id=agent_state.agent_id,
+        )
+        return belief_classes, world_model_evidence
+
     def _fallback(
         self,
         agent_state: AgentState,
@@ -997,6 +1052,7 @@ class CognitionCycle:
         new_physical: Physical,
         world_model_runtime: WorldModelRuntimeState | None = None,
         belief_classes: list[str] | None = None,
+        world_model_evidence: list[PromotedEvidenceUnit] | None = None,
     ) -> CycleResult:
         """Continue-current-action path for recoverable failures.
 
@@ -1009,6 +1065,9 @@ class CognitionCycle:
         ``belief_classes`` likewise carries the flag-on promoted-belief set read
         before the LLM call, so an outage tick still records the agent's held
         beliefs in ``individual_state_trace`` (M11-C2). ``None`` on flag-off.
+        ``world_model_evidence`` carries the flag-on per-dyad raw evidence units
+        captured before the LLM call for the same reason (M10-A 段B); ``None``
+        flag-off.
         """
         new_state = agent_state.model_copy(
             update={
@@ -1027,6 +1086,7 @@ class CognitionCycle:
             llm_fell_back=True,
             world_model_runtime=world_model_runtime,
             belief_classes=belief_classes,
+            world_model_evidence=world_model_evidence,
         )
 
     def _build_envelopes(

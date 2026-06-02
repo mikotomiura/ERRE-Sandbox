@@ -258,6 +258,42 @@ class WorldModelSnapshot(BaseModel):
     modulated: SubjectiveWorldModel
 
 
+class PromotedEvidenceUnit(BaseModel):
+    """One promoted dyad's raw evidence — the H2 conformance substrate (M10-A 段B).
+
+    A serialisable projection of the ``(SemanticMemoryRecord, RelationshipBond)``
+    pair that ``cognition.world_model.synthesize_world_model`` distils per dyad.
+    The synthesised :class:`SubjectiveWorldModel` aggregates dyads away
+    (``_derive_env`` zone-means, ``_derive_self`` dyad-means), so the per-dyad
+    raw value cannot be recovered from the entries; the H2 value-aware
+    conformance gate (stage-A ADR §6) needs the *raw* unit to recompute both the
+    observed ``(axis,key)``-intersection distance and the owner-shuffle null.
+
+    Field names are the **canonical** ``RelationshipBond`` / ``SemanticMemoryRecord``
+    names (no abbreviation) so the persisted JSON stays readable for the future
+    recompute / owner-shuffle-reconstruction invariant (stage-A ADR §6, null-control
+    §4.1): a null re-synthesis re-owners each unit while keeping ``other_agent_id``
+    fixed and rebuilding ``record.id = belief_record_id(new_owner, other_agent_id)``.
+    ``other_agent_id`` is therefore the only identity field the unit must carry
+    (the owner is the trace row's ``individual_id``; ``record.id`` is deterministic).
+
+    All fields mirror their source bounds. ``belief_kind`` / ``last_interaction_zone``
+    / ``last_interaction_tick`` are optional (the bond may have no last zone/tick);
+    a promoted record always carries a non-``None`` ``belief_kind`` but the type
+    stays ``str | None`` to mirror :attr:`SemanticMemoryRecord.belief_kind`.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    other_agent_id: str = Field(min_length=1)
+    belief_kind: str | None = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    affinity: float = Field(ge=-1.0, le=1.0)
+    familiarity: float = Field(ge=0.0, le=1.0)
+    last_interaction_zone: Zone | None = None
+    last_interaction_tick: int | None = Field(default=None, ge=0)
+
+
 class DevelopmentState(BaseModel):
     """Individual lifecycle stage with a hidden continuous maturity score.
 
@@ -423,6 +459,7 @@ __all__ = [
     "NarrativeArc",
     "PersonalityDrift",
     "PhilosopherBase",
+    "PromotedEvidenceUnit",
     "SubjectiveWorldModel",
     "UpdateDirection",
     "WorldModelAxis",

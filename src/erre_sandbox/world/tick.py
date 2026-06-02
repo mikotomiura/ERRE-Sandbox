@@ -77,14 +77,27 @@ if TYPE_CHECKING:
         CycleResult,
         WorldModelRuntimeState,
     )
-    from erre_sandbox.contracts.cognition_layers import DevelopmentState, NarrativeArc
+    from erre_sandbox.contracts.cognition_layers import (
+        DevelopmentState,
+        NarrativeArc,
+        PromotedEvidenceUnit,
+    )
 
-    # M11-C2: flag-on individual-state trace sink. Args are
-    # ``(profile, belief_classes, tick)``; the orchestrator's closure binds
-    # ``run_id`` and builds the trace row, so ``world`` never imports
-    # ``evidence`` and never learns ``run_id`` (DA-M11C2-4). ``belief_classes``
-    # rides in on ``CycleResult`` so ``world`` never imports ``memory`` either.
-    IndividualTraceSink = Callable[[IndividualProfile, "list[str] | None", int], None]
+    # M11-C2 / M10-A 段B: flag-on individual-state trace sink. Args are
+    # ``(profile, belief_classes, world_model_evidence, tick)``; the orchestrator's
+    # closure binds ``run_id`` and builds the trace row, so ``world`` never imports
+    # ``evidence`` and never learns ``run_id`` (DA-M11C2-4). Both ``belief_classes``
+    # and ``world_model_evidence`` ride in on ``CycleResult`` so ``world`` never
+    # imports ``memory`` either (DA-M11C2-2 / DA-SB-1).
+    IndividualTraceSink = Callable[
+        [
+            IndividualProfile,
+            "list[str] | None",
+            "list[PromotedEvidenceUnit] | None",
+            int,
+        ],
+        None,
+    ]
 
 logger = logging.getLogger(__name__)
 
@@ -1583,15 +1596,19 @@ class WorldRuntime:
         flag-off byte-invariant carries C1's snapshot into C2's substrate
         (DA-M11C2-1). Built from the single-source AgentRuntime snapshot *after*
         ``_consume_result``'s write-backs, so development_stage / coherence /
-        arc_segment_count reflect the carried state; ``belief_classes`` rides in
-        on the result so ``world`` never reads ``memory`` (DA-M11C2-2). The
-        orchestrator's sink closure owns the DuckDB-write error semantics
-        (CaptureFatalError), mirroring the dialog-turn DuckDB sink — not swallowed.
+        arc_segment_count reflect the carried state; ``belief_classes`` and
+        ``world_model_evidence`` (M10-A 段B H2 substrate) ride in on the result so
+        ``world`` never reads ``memory`` (DA-M11C2-2 / DA-SB-1). The orchestrator's
+        sink closure owns the DuckDB-write error semantics (CaptureFatalError),
+        mirroring the dialog-turn DuckDB sink — not swallowed.
         """
         if self._individual_trace_sink is None:
             return
         self._individual_trace_sink(
-            rt.snapshot_profile(), res.belief_classes, rt.state.tick
+            rt.snapshot_profile(),
+            res.belief_classes,
+            res.world_model_evidence,
+            rt.state.tick,
         )
 
     # ----- Scheduling helper -----

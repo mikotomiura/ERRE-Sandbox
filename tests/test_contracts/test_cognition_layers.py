@@ -36,6 +36,7 @@ from erre_sandbox.contracts.cognition_layers import (
     NarrativeArc,
     PersonalityDrift,
     PhilosopherBase,
+    PromotedEvidenceUnit,
     SubjectiveWorldModel,
     WorldModelEntry,
     WorldModelSnapshot,
@@ -434,3 +435,76 @@ def test_individual_layer_flag_is_frozen() -> None:
     cfg = IndividualLayerConfig()
     with pytest.raises(ValidationError):
         cfg.enabled = True
+
+
+# ---------------------------------------------------------------------------
+# PromotedEvidenceUnit (M10-A 段B — H2 conformance substrate)
+# ---------------------------------------------------------------------------
+
+
+def test_promoted_evidence_unit_minimal_and_optional_defaults() -> None:
+    unit = PromotedEvidenceUnit(
+        other_agent_id="a_kant_001",
+        confidence=0.8,
+        affinity=-0.4,
+        familiarity=0.5,
+    )
+    assert unit.belief_kind is None
+    assert unit.last_interaction_zone is None
+    assert unit.last_interaction_tick is None
+
+
+def test_promoted_evidence_unit_zone_coerces_from_value() -> None:
+    unit = PromotedEvidenceUnit(
+        other_agent_id="o",
+        confidence=0.5,
+        affinity=0.1,
+        familiarity=0.2,
+        last_interaction_zone="study",  # type: ignore[arg-type]  # coerces to Zone
+        last_interaction_tick=7,
+    )
+    assert unit.last_interaction_zone is Zone.STUDY
+
+
+def test_promoted_evidence_unit_is_frozen() -> None:
+    unit = PromotedEvidenceUnit(
+        other_agent_id="o", confidence=0.5, affinity=0.1, familiarity=0.2
+    )
+    with pytest.raises(ValidationError):
+        unit.affinity = 0.9
+
+
+def test_promoted_evidence_unit_forbids_extra_and_abbreviated_keys() -> None:
+    # the abbreviated key ``other`` (instead of ``other_agent_id``) is rejected
+    # (extra=forbid) — the canonical-name discipline (DA-SB-2) is schema-enforced.
+    with pytest.raises(ValidationError):
+        PromotedEvidenceUnit(
+            other="o",  # type: ignore[call-arg]
+            confidence=0.5,
+            affinity=0.1,
+            familiarity=0.2,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("affinity", 1.5),
+        ("affinity", -1.5),
+        ("confidence", 1.5),
+        ("confidence", -0.1),
+        ("familiarity", 1.5),
+        ("last_interaction_tick", -1),
+        ("other_agent_id", ""),
+    ],
+)
+def test_promoted_evidence_unit_bounds(field: str, value: object) -> None:
+    kwargs: dict[str, object] = {
+        "other_agent_id": "o",
+        "confidence": 0.5,
+        "affinity": 0.1,
+        "familiarity": 0.2,
+    }
+    kwargs[field] = value
+    with pytest.raises(ValidationError):
+        PromotedEvidenceUnit(**kwargs)  # type: ignore[arg-type]

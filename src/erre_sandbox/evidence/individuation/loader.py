@@ -30,6 +30,9 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final, TypeVar, cast
 
+from pydantic import ValidationError
+
+from erre_sandbox.contracts.cognition_layers import PromotedEvidenceUnit
 from erre_sandbox.contracts.eval_paths import (
     METRICS_SCHEMA,
     assert_no_metrics_leak,
@@ -255,25 +258,32 @@ class IndividualStateTraceConflictError(RuntimeError):
 
     The trace DDL does not enforce ``(run_id, individual_id, tick)`` uniqueness.
     One row per tick is the contract; if two rows share the
-    final tick with *different* ``belief_classes_json`` **or**
-    ``world_model_keys_json`` the final-tick belief / SWM set (DA-M11C2-8 /
-    M10-A E2 C5a) is ambiguous, so we fail loud rather than pick arbitrarily.
-    Byte-identical duplicates collapse silently (idempotent recompute).
+    final tick with *different* ``belief_classes_json``, ``world_model_keys_json``
+    **or** ``world_model_evidence_json`` the final-tick belief / SWM / evidence set
+    (DA-M11C2-8 / M10-A E2 C5a / 段B) is ambiguous, so we fail loud rather than pick
+    arbitrarily. Byte-identical duplicates collapse silently (idempotent recompute).
     """
 
 
 class IndividualStateTraceSchemaError(RuntimeError):
     """Raised when a trace substrate payload is structurally corrupt.
 
-    Two families fail fast rather than silently coerce:
+    Three families fail fast rather than silently coerce:
 
     * a ``world_model_keys_json`` payload that is not a ``[["axis","key"], ...]``
-      pair array (DA-S1-2 / Codex C5c), and
+      pair array (DA-S1-2 / Codex C5c);
     * a M10-A S2 substrate value that cannot be a real measurement: a non-finite
       ``coherence_score`` or a negative ``arc_segment_count`` (DA-S2-5 / Codex
-      CX4). ``None`` is *not* corrupt — it is the honest "no substrate" signal the
-      diagnostic metrics degrade to ``unsupported`` on; only a present-but-broken
-      value raises here.
+      CX4); and
+    * a 段B ``world_model_evidence_json`` payload that is not valid JSON, not an
+      array of objects, omits/adds a canonical key, carries a ``None``
+      ``belief_kind`` (a persisted unit is always promoted), or fails the
+      :class:`~erre_sandbox.contracts.cognition_layers.PromotedEvidenceUnit`
+      contract (DA-SB-2 / Codex MEDIUM).
+
+    ``None`` is *not* corrupt — it is the honest "no substrate" signal the
+    diagnostic metrics degrade to ``unsupported`` on; only a present-but-broken
+    value raises here.
     """
 
 
@@ -298,6 +308,14 @@ class IndividualStateWindow:
     captured — the final row's ``world_model_keys_json`` is NULL, **or** the
     trace table predates E2 and has no ``world_model_keys_json`` column at all
     (backward compat, DA-S1-3). An empty tuple is a synthesised-but-empty SWM."""
+    world_model_evidence: tuple[PromotedEvidenceUnit, ...] | None = None
+    """Final-tick per-dyad raw promoted evidence units (M10-A 段B H2 substrate).
+    ``None`` when no SWM was synthesised (final row's ``world_model_evidence_json``
+    is NULL), **or** the trace table predates 段B and has no
+    ``world_model_evidence_json`` column at all (backward compat, DA-SB-2). An empty
+    tuple is a synthesised SWM with no promoted dyad. Feeds the H2 value-aware
+    conformance recompute (observed + owner-shuffle null); the gate verdict itself
+    is a separate task — this is substrate only."""
     coherence_score: float | None = None
     """Final-tick NarrativeArc ``coherence_score`` (M10-A S2 E3); ``None`` when no
     arc was synthesised. Feeds ``narrative_coherence``."""
@@ -347,6 +365,34 @@ _WORLD_MODEL_KEYS_COLUMN: Final[str] = "world_model_keys_json"
 """Trace column added at M10-A E2; absent in pre-E2 flag-on DuckDB files."""
 
 _WORLD_MODEL_KEY_PAIR_LEN: Final[int] = 2
+
+_WORLD_MODEL_EVIDENCE_COLUMN: Final[str] = "world_model_evidence_json"
+"""Trace column added at M10-A 段B; absent in pre-段B flag-on DuckDB files."""
+
+_MANDATORY_TRACE_COL_COUNT: Final[int] = 7
+"""Mandatory trace SELECT columns (run_id, individual_id, tick, belief_classes_json,
+development_stage, coherence_score, arc_segment_count) — the index base from which
+the optional E2 / 段B columns are appended (see ``load_individual_state_windows``)."""
+
+_EVIDENCE_CANONICAL_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "other_agent_id",
+        "belief_kind",
+        "confidence",
+        "affinity",
+        "familiarity",
+        "last_interaction_zone",
+        "last_interaction_tick",
+    }
+)
+"""Exact canonical key set every persisted evidence object must carry (DA-SB-2).
+
+A persisted unit always comes from a *promoted* record so every field — including
+the nullable ``belief_kind`` / ``last_interaction_zone`` / ``last_interaction_tick``
+— is written. The loader requires the exact set so a payload that *omits* a
+nullable key (which the permissive :class:`PromotedEvidenceUnit` default would
+otherwise silently accept) is caught as corruption rather than reconstructed into a
+non-promoted unit (Codex MEDIUM)."""
 
 # M10-A S2 (E3): per-metric provenance hash schema-version tokens. Distinct from
 # the belief token so the narrative / development recompute provenance never
@@ -516,6 +562,80 @@ def _trace_has_world_model_column(view: AnalysisView) -> bool:
     return bool(present)
 
 
+def _trace_has_evidence_column(view: AnalysisView) -> bool:
+    """True when the trace table carries the 段B ``world_model_evidence_json`` column.
+
+    A pre-段B flag-on DuckDB has the M11-C2 / E2 trace table but no evidence column,
+    so the SELECT must omit it and the loader returns ``world_model_evidence=None``
+    rather than failing on an unknown identifier (backward compat, DA-SB-2; mirrors
+    :func:`_trace_has_world_model_column`).
+    """
+    present = view.execute(
+        "SELECT 1 FROM information_schema.columns"
+        " WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+        (METRICS_SCHEMA, _INDIVIDUAL_STATE_TRACE_TABLE, _WORLD_MODEL_EVIDENCE_COLUMN),
+    )
+    return bool(present)
+
+
+def _parse_world_model_evidence(
+    raw_json: str | None,
+) -> tuple[PromotedEvidenceUnit, ...] | None:
+    """Parse the ``[{...}, ...]`` evidence payload, fail-fast on a bad shape (DA-SB-2).
+
+    ``None`` (NULL column / pre-段B table) → ``None``. ``"[]"`` → empty tuple
+    (synthesised-but-no-dyad SWM). The payload must be a JSON array of objects each
+    carrying the **exact** canonical key set (:data:`_EVIDENCE_CANONICAL_KEYS`) and
+    matching :class:`PromotedEvidenceUnit` (``extra=forbid``); invalid JSON, a
+    non-array payload, a non-object element, a missing/extra key, a ``None``
+    ``belief_kind`` (a persisted unit is always promoted), or an out-of-bound value
+    raises :class:`IndividualStateTraceSchemaError` — the contract is trusted-writer
+    output, so a malformed payload is corruption, not a value to coerce. The
+    ``last_interaction_zone`` string coerces back to :class:`~erre_sandbox.schemas.Zone`
+    via the model.
+    """
+    if raw_json is None:
+        return None
+    try:
+        parsed = json.loads(raw_json)
+    except (json.JSONDecodeError, TypeError) as exc:
+        msg = f"world_model_evidence_json is not valid JSON: {raw_json!r}"
+        raise IndividualStateTraceSchemaError(msg) from exc
+    if not isinstance(parsed, list):
+        msg = f"world_model_evidence_json is not a JSON array: {raw_json!r}"
+        raise IndividualStateTraceSchemaError(msg)
+    units: list[PromotedEvidenceUnit] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            msg = (
+                "world_model_evidence_json element is not an object:"
+                f" {item!r} (payload {raw_json!r})"
+            )
+            raise IndividualStateTraceSchemaError(msg)
+        if set(item) != _EVIDENCE_CANONICAL_KEYS:
+            msg = (
+                "world_model_evidence_json element key set is not the canonical 7:"
+                f" {sorted(item)} (payload {raw_json!r})"
+            )
+            raise IndividualStateTraceSchemaError(msg)
+        try:
+            unit = PromotedEvidenceUnit(**item)
+        except ValidationError as exc:
+            msg = (
+                "world_model_evidence_json element fails the PromotedEvidenceUnit"
+                f" contract: {item!r} (payload {raw_json!r})"
+            )
+            raise IndividualStateTraceSchemaError(msg) from exc
+        if unit.belief_kind is None:
+            msg = (
+                "world_model_evidence_json element has a null belief_kind (a"
+                f" persisted unit is always promoted): {item!r} (payload {raw_json!r})"
+            )
+            raise IndividualStateTraceSchemaError(msg)
+        units.append(unit)
+    return tuple(units)
+
+
 def _parse_world_model_keys(
     raw_json: str | None,
 ) -> tuple[tuple[str, str], ...] | None:
@@ -576,15 +696,34 @@ def load_individual_state_windows(
     if not present:
         return {}
 
-    # E2 (DA-S1-3): only SELECT the SWM column when it exists, so a pre-E2 trace
-    # table reads cleanly with world_model_keys -> None. The M10-A S2 columns
-    # (development_stage / coherence_score / arc_segment_count) exist from M11-C2,
-    # so they need no backward-compat probe (unlike world_model_keys_json).
+    # E2 (DA-S1-3) / 段B (DA-SB-2): only SELECT an optional column when it exists,
+    # so a pre-E2 / pre-段B trace table reads cleanly with world_model_keys /
+    # world_model_evidence -> None. Each optional column is probed independently and
+    # appended in a fixed order after the 7 mandatory columns (indices 0..6), then
+    # its row index is computed from that order — robust even if one optional column
+    # is present without the other. The M10-A S2 columns (development_stage /
+    # coherence_score / arc_segment_count) exist from M11-C2 so need no probe.
     has_swm = _trace_has_world_model_column(view)
-    swm_select = f", {_WORLD_MODEL_KEYS_COLUMN}" if has_swm else ""
+    has_evidence = _trace_has_evidence_column(view)
+    optional_cols: list[str] = []
+    if has_swm:
+        optional_cols.append(_WORLD_MODEL_KEYS_COLUMN)
+    if has_evidence:
+        optional_cols.append(_WORLD_MODEL_EVIDENCE_COLUMN)
+    optional_select = "".join(f", {col}" for col in optional_cols)
+    swm_idx = (
+        _MANDATORY_TRACE_COL_COUNT + optional_cols.index(_WORLD_MODEL_KEYS_COLUMN)
+        if has_swm
+        else None
+    )
+    evidence_idx = (
+        _MANDATORY_TRACE_COL_COUNT + optional_cols.index(_WORLD_MODEL_EVIDENCE_COLUMN)
+        if has_evidence
+        else None
+    )
     sql = (
         "SELECT run_id, individual_id, tick, belief_classes_json,"  # noqa: S608  # identifiers are module constants
-        f" development_stage, coherence_score, arc_segment_count{swm_select}"
+        f" development_stage, coherence_score, arc_segment_count{optional_select}"
         f" FROM {table}"
     )
     params: tuple[object, ...] | None = None
@@ -594,7 +733,7 @@ def load_individual_state_windows(
     sql += " ORDER BY run_id, individual_id, tick"
 
     # key -> {tick: list[_TraceRowValues]} so a divergent final-tick is caught
-    # per column (belief / SWM / dev / coherence / arc divergence, C5a).
+    # per column (belief / SWM / evidence / dev / coherence / arc divergence, C5a).
     grouped: dict[tuple[str, str], dict[int, list[_TraceRowValues]]] = {}
     for row in view.execute(sql, params):
         key = (str(row[0]), str(row[1]))
@@ -604,7 +743,14 @@ def load_individual_state_windows(
             development_stage=None if row[4] is None else str(row[4]),
             coherence_score=None if row[5] is None else float(cast("float", row[5])),
             arc_segment_count=cast("int", row[6]),
-            swm_json=None if (not has_swm or row[7] is None) else str(row[7]),
+            swm_json=(
+                None if swm_idx is None or row[swm_idx] is None else str(row[swm_idx])
+            ),
+            evidence_json=(
+                None
+                if evidence_idx is None or row[evidence_idx] is None
+                else str(row[evidence_idx])
+            ),
         )
         grouped.setdefault(key, {}).setdefault(tick, []).append(values)
 
@@ -631,6 +777,7 @@ class _TraceRowValues:
     coherence_score: float | None
     arc_segment_count: int
     swm_json: str | None
+    evidence_json: str | None
 
 
 def _build_state_window(
@@ -661,6 +808,13 @@ def _build_state_window(
         individual_id=individual_id,
         final_tick=final_tick,
         column=_WORLD_MODEL_KEYS_COLUMN,
+    )
+    evidence_raw = _sole_final_variant(
+        {r.evidence_json for r in final_rows},
+        run_id=run_id,
+        individual_id=individual_id,
+        final_tick=final_tick,
+        column=_WORLD_MODEL_EVIDENCE_COLUMN,
     )
     development_stage = _sole_final_variant(
         {r.development_stage for r in final_rows},
@@ -711,6 +865,7 @@ def _build_state_window(
             belief_classes=belief_classes,
         ),
         world_model_keys=_parse_world_model_keys(swm_raw),
+        world_model_evidence=_parse_world_model_evidence(evidence_raw),
         coherence_score=coherence_score,
         development_stage=development_stage,
         arc_segment_count=arc_segment_count,
