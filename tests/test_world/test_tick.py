@@ -817,17 +817,25 @@ class TestEmitIndividualTrace:
         make_agent_state: Any,
         make_persona_spec: Any,
     ) -> None:
-        """flag-on: the sink receives (snapshot, belief_classes, tick)."""
+        """flag-on: the sink receives (snapshot, belief_classes, evidence, tick)."""
         from erre_sandbox.contracts.cognition_layers import (
             DevelopmentState,
             IndividualProfile,
+            PromotedEvidenceUnit,
         )
 
-        captured: list[tuple[IndividualProfile, list[str] | None, int]] = []
+        captured: list[
+            tuple[
+                IndividualProfile,
+                list[str] | None,
+                list[PromotedEvidenceUnit] | None,
+                int,
+            ]
+        ] = []
         runtime = WorldRuntime(
             cycle=mock_cycle,  # type: ignore[arg-type]
             clock=manual_clock,
-            individual_trace_sink=lambda p, bc, t: captured.append((p, bc, t)),
+            individual_trace_sink=lambda p, bc, ev, t: captured.append((p, bc, ev, t)),
         )
         runtime.register_agent(
             make_agent_state(agent_id="a_rikyu_001", persona_id="rikyu"),
@@ -837,13 +845,29 @@ class TestEmitIndividualTrace:
         rt.development_state = DevelopmentState(
             stage="S2_exploring", maturity_score=0.5
         )
-        res = CycleResult(agent_state=rt.state, belief_classes=["trust", "wary"])
+        evidence = [
+            PromotedEvidenceUnit(
+                other_agent_id="a_kant_001",
+                belief_kind="trust",
+                confidence=0.8,
+                affinity=0.6,
+                familiarity=0.5,
+                last_interaction_zone=None,
+                last_interaction_tick=4,
+            )
+        ]
+        res = CycleResult(
+            agent_state=rt.state,
+            belief_classes=["trust", "wary"],
+            world_model_evidence=evidence,
+        )
 
         runtime._emit_individual_trace(rt, res)
 
         assert len(captured) == 1
-        profile, belief_classes, tick = captured[0]
+        profile, belief_classes, captured_evidence, tick = captured[0]
         assert belief_classes == ["trust", "wary"]
+        assert captured_evidence == evidence  # rides off CycleResult (DA-SB-1)
         assert tick == rt.state.tick
         assert profile.individual_id == "a_rikyu_001"
         assert profile.development_state is not None

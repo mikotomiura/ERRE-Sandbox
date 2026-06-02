@@ -9,6 +9,8 @@ recompute.
 
 from __future__ import annotations
 
+import random
+import statistics
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,15 @@ from typing import Any
 import duckdb
 import pytest
 
+from erre_sandbox.cognition.belief_ids import belief_record_id
+from erre_sandbox.cognition.world_model import (
+    collect_promoted_evidence_units,
+    synthesize_world_model,
+)
+from erre_sandbox.contracts.cognition_layers import (
+    IndividualProfile,
+    PromotedEvidenceUnit,
+)
 from erre_sandbox.contracts.eval_paths import METRICS_SCHEMA
 from erre_sandbox.evidence.eval_store import bootstrap_schema, connect_analysis_view
 from erre_sandbox.evidence.individuation.layer1 import stub_embedding_provider
@@ -34,8 +45,10 @@ from erre_sandbox.evidence.individuation.runner import (
 from erre_sandbox.evidence.individuation.trace_ddl import (
     TABLE_NAME,
     bootstrap_individual_state_trace_schema,
+    build_individual_state_trace_row,
     column_names,
 )
+from erre_sandbox.schemas import RelationshipBond, SemanticMemoryRecord, Zone
 
 _NOW = datetime(2026, 5, 27, tzinfo=UTC)
 _DIALOG_COLS = (
@@ -99,6 +112,7 @@ def _insert_trace(
     coherence_score: float | None = None,
     arc_segment_count: int = 0,
     world_model_keys_json: str | None = None,
+    world_model_evidence_json: str | None = None,
 ) -> None:
     cols = ", ".join(column_names())
     ph = ", ".join("?" for _ in column_names())
@@ -113,6 +127,7 @@ def _insert_trace(
             belief_classes_json,
             arc_segment_count,
             world_model_keys_json,
+            world_model_evidence_json,
         ),
     )
 
@@ -419,6 +434,451 @@ def test_load_raises_on_malformed_world_model_keys_shape(tmp_path: Path) -> None
             load_individual_state_windows(view)
     finally:
         view.close()
+
+
+# --- 段B: world_model_evidence read / backward compat / shape / round-trip ---
+
+
+def _insert_built_row(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    individual_id: str,
+    tick: int,
+    units: list[PromotedEvidenceUnit] | None,
+    run_id: str = "run0",
+) -> None:
+    """Persist a trace row through the REAL builder/serialiser (round-trip path)."""
+    profile = IndividualProfile(individual_id=individual_id, base_persona_id="kant")
+    row = build_individual_state_trace_row(
+        profile, None, units, run_id=run_id, tick=tick
+    )
+    cols = ", ".join(column_names())
+    ph = ", ".join("?" for _ in column_names())
+    con.execute(
+        f"INSERT INTO {METRICS_SCHEMA}.{TABLE_NAME} ({cols}) VALUES ({ph})",  # noqa: S608  # module constants
+        row.to_row(),
+    )
+
+
+def _unit(
+    other: str,
+    *,
+    affinity: float,
+    zone: Zone | None,
+    belief_kind: str = "trust",
+) -> PromotedEvidenceUnit:
+    # floats are already <= 6dp so round(6) is a no-op -> the round-trip compares
+    # on the same quantised basis (DA-SB-4), exact == without a tolerance.
+    return PromotedEvidenceUnit(
+        other_agent_id=other,
+        belief_kind=belief_kind,
+        confidence=0.8,
+        affinity=affinity,
+        familiarity=0.5,
+        last_interaction_zone=zone,
+        last_interaction_tick=100,
+    )
+
+
+def _rebuild_inputs(
+    owner: str, units: list[PromotedEvidenceUnit]
+) -> tuple[list[SemanticMemoryRecord], list[RelationshipBond]]:
+    """Rebuild (records, bonds) for *owner* from units — owner-shuffle reconstruction.
+
+    ``record.id = belief_record_id(owner, other)`` / ``record.agent_id = owner`` /
+    ``bond.other_agent_id = other`` so a re-owned unit re-synthesises without orphan
+    drop (stage-A ADR §6 / null-control §4.1). Uses the real ``belief_record_id`` so
+    the matching can never drift from ``synthesize_world_model``.
+    """
+    records: list[SemanticMemoryRecord] = []
+    bonds: list[RelationshipBond] = []
+    for unit in units:
+        records.append(
+            SemanticMemoryRecord(
+                id=belief_record_id(owner, unit.other_agent_id),
+                agent_id=owner,
+                summary=f"belief about {unit.other_agent_id}",
+                belief_kind=unit.belief_kind,  # type: ignore[arg-type]
+                confidence=unit.confidence,
+            )
+        )
+        bonds.append(
+            RelationshipBond(
+                other_agent_id=unit.other_agent_id,
+                affinity=unit.affinity,
+                familiarity=unit.familiarity,
+                last_interaction_tick=unit.last_interaction_tick,
+                last_interaction_zone=unit.last_interaction_zone,
+            )
+        )
+    return records, bonds
+
+
+def _value_map(
+    owner: str, units: list[PromotedEvidenceUnit]
+) -> dict[tuple[str, str], float]:
+    records, bonds = _rebuild_inputs(owner, units)
+    swm = synthesize_world_model(records, bonds, agent_id=owner, current_tick=200)
+    return {(e.axis, e.key): e.value for e in swm.entries}
+
+
+def _pairwise_value_dist(maps: list[dict[tuple[str, str], float]]) -> float:
+    """Median pairwise mean|Δvalue| over the (axis,key) intersection (stage-A §3.1)."""
+    ds: list[float] = []
+    for a in range(len(maps)):
+        for b in range(a + 1, len(maps)):
+            shared = set(maps[a]) & set(maps[b])
+            if shared:
+                ds.append(
+                    sum(abs(maps[a][k] - maps[b][k]) for k in shared) / len(shared)
+                )
+    return statistics.median(ds) if ds else float("nan")
+
+
+# Three owners, each with >=2 distinct others (self emits) and overlapping zones
+# (env intersection non-empty), affinities at <=6dp (quantisation no-op).
+_PER_OWNER: dict[str, list[PromotedEvidenceUnit]] = {
+    "a_kant_001": [
+        _unit("o_a", affinity=0.6, zone=Zone.STUDY),
+        _unit("o_b", affinity=0.5, zone=Zone.AGORA),
+    ],
+    "a_kant_002": [
+        _unit("o_c", affinity=-0.4, zone=Zone.STUDY),
+        _unit("o_d", affinity=-0.3, zone=Zone.AGORA),
+    ],
+    "a_kant_003": [
+        _unit("o_e", affinity=0.1, zone=Zone.STUDY),
+        _unit("o_f", affinity=0.2, zone=Zone.AGORA),
+    ],
+}
+
+
+def test_load_reads_final_tick_world_model_evidence(tmp_path: Path) -> None:
+    """Evidence JSON round-trips to a final-tick PromotedEvidenceUnit tuple."""
+    db = tmp_path / "ev.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    units = _PER_OWNER["a_kant_001"]
+    _insert_built_row(con, individual_id="a_kant_001", tick=0, units=units)
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    win = windows[("run0", "a_kant_001")]
+    # parsed back to units, other_agent_id-sorted, zone coerced back to Zone.
+    assert win.world_model_evidence == tuple(
+        sorted(units, key=lambda u: u.other_agent_id)
+    )
+
+
+def test_load_empty_evidence_distinct_from_none(tmp_path: Path) -> None:
+    """'[]' -> empty tuple (synthesised, no dyad); NULL -> None (not captured)."""
+    db = tmp_path / "ev_empty.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_built_row(con, individual_id="a_kant_001", tick=0, units=[])
+    _insert_built_row(con, individual_id="a_kant_002", tick=0, units=None)
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    assert windows[("run0", "a_kant_001")].world_model_evidence == ()
+    assert windows[("run0", "a_kant_002")].world_model_evidence is None
+
+
+def test_load_pre_stageb_table_without_evidence_column_reads_none(
+    tmp_path: Path,
+) -> None:
+    """A pre-段B trace table (E2 8-col, no evidence column) reads as None (DA-SB-2).
+
+    Builds the legacy table with world_model_keys_json but WITHOUT
+    world_model_evidence_json so the SELECT must omit it and not raise; the SWM
+    keys still read (independent optional-column probes).
+    """
+    db = tmp_path / "pre_b.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    con.execute(f"CREATE SCHEMA IF NOT EXISTS {METRICS_SCHEMA}")
+    con.execute(
+        f"CREATE TABLE {METRICS_SCHEMA}.{TABLE_NAME} ("  # module constants
+        " run_id TEXT NOT NULL, individual_id TEXT NOT NULL, tick BIGINT NOT NULL,"
+        " development_stage TEXT, coherence_score DOUBLE, belief_classes_json TEXT,"
+        " arc_segment_count BIGINT NOT NULL, world_model_keys_json TEXT,"
+        " CHECK (tick >= 0))"
+    )
+    con.execute(
+        f"INSERT INTO {METRICS_SCHEMA}.{TABLE_NAME}"  # noqa: S608  # module constants
+        " (run_id, individual_id, tick, development_stage, coherence_score,"
+        " belief_classes_json, arc_segment_count, world_model_keys_json)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run0", "a_kant_001", 1, None, None, '["trust"]', 0, '[["env", "agora"]]'),
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+    win = windows[("run0", "a_kant_001")]
+    assert win.world_model_keys == (("env", "agora"),)  # E2 column still read
+    assert win.world_model_evidence is None  # absent column -> None (no broken SELECT)
+
+
+def test_load_raises_on_divergent_final_tick_evidence(tmp_path: Path) -> None:
+    """Same final tick, identical belief but divergent evidence -> conflict (C5a)."""
+    db = tmp_path / "ev_conflict.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json='[{"affinity": 0.6, "belief_kind": "trust",'
+        ' "confidence": 0.8, "familiarity": 0.5, "last_interaction_tick": 100,'
+        ' "last_interaction_zone": "study", "other_agent_id": "o_a"}]',
+    )
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=5,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json='[{"affinity": 0.1, "belief_kind": "trust",'
+        ' "confidence": 0.8, "familiarity": 0.5, "last_interaction_tick": 100,'
+        ' "last_interaction_zone": "study", "other_agent_id": "o_a"}]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceConflictError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_malformed_evidence_not_array(tmp_path: Path) -> None:
+    """A non-array evidence payload fails fast (DA-SB-2)."""
+    db = tmp_path / "ev_bad1.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json='{"other_agent_id": "o_a"}',  # object, not array
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_malformed_evidence_bad_unit(tmp_path: Path) -> None:
+    """An element failing the PromotedEvidenceUnit contract fails fast (DA-SB-2)."""
+    db = tmp_path / "ev_bad2.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        # missing required confidence/affinity/familiarity + abbreviated key.
+        world_model_evidence_json='[{"other": "o_a"}]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_invalid_evidence_json(tmp_path: Path) -> None:
+    """Invalid JSON wraps as a schema error, not a raw JSONDecodeError (Codex M)."""
+    db = tmp_path / "ev_badjson.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json="{not json",
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_evidence_missing_canonical_key(tmp_path: Path) -> None:
+    """A unit omitting a nullable canonical key is corruption, not a default (Codex)."""
+    db = tmp_path / "ev_missing.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    # required fields present but ``belief_kind`` key omitted -> not the canonical 7.
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json='[{"other_agent_id": "o_a", "confidence": 0.8,'
+        ' "affinity": 0.6, "familiarity": 0.5, "last_interaction_zone": "study",'
+        ' "last_interaction_tick": 100}]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_load_raises_on_evidence_null_belief_kind(tmp_path: Path) -> None:
+    """A null belief_kind means non-promoted -> corruption (a persisted unit is
+    always promoted; Codex M)."""
+    db = tmp_path / "ev_nullkind.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    _insert_trace(
+        con,
+        run_id="run0",
+        individual_id="a_kant_001",
+        tick=0,
+        belief_classes_json='["trust"]',
+        world_model_evidence_json='[{"other_agent_id": "o_a", "belief_kind": null,'
+        ' "confidence": 0.8, "affinity": 0.6, "familiarity": 0.5,'
+        ' "last_interaction_zone": "study", "last_interaction_tick": 100}]',
+    )
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        with pytest.raises(IndividualStateTraceSchemaError):
+            load_individual_state_windows(view)
+    finally:
+        view.close()
+
+
+def test_round_trip_h2_recompute_matches_in_memory(tmp_path: Path) -> None:
+    """Core drift detector (stage-A ADR §6): persisted substrate recomputes the
+    same observed H2 distance as the in-memory evidence, on the quantised basis.
+
+    Builds 3 owners' raw units, computes the observed (axis,key)-intersection
+    distance in memory, persists via the real builder/loader, rebuilds
+    records+bonds from the read-back units through ``synthesize_world_model``, and
+    asserts the recomputed distance is exactly equal — proving the persisted unit
+    is sufficient to reproduce the synthesis the gate consumes.
+    """
+    owners = list(_PER_OWNER)
+    in_memory = _pairwise_value_dist(
+        [_value_map(owner, _PER_OWNER[owner]) for owner in owners]
+    )
+
+    db = tmp_path / "rt.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    for owner in owners:
+        _insert_built_row(con, individual_id=owner, tick=0, units=_PER_OWNER[owner])
+    con.execute("CHECKPOINT")
+    con.close()
+
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+
+    read_back = {
+        owner: list(windows[("run0", owner)].world_model_evidence or ())
+        for owner in owners
+    }
+    recomputed = _pairwise_value_dist(
+        [_value_map(owner, read_back[owner]) for owner in owners]
+    )
+    # the fixtures are differentiated, so the distance is a real finite positive
+    # value (not a degenerate NaN that would pass == trivially).
+    assert in_memory > 0.0
+    # quantised basis (DA-SB-4): inputs are <=6dp so round(6) is a no-op -> exact.
+    assert recomputed == in_memory
+
+
+def test_round_trip_owner_shuffle_reconstruction_no_orphan(tmp_path: Path) -> None:
+    """Owner-shuffle reconstruction invariant (§6 / null-control §4.1): a re-owned,
+    count-preserving permutation of the pooled units re-synthesises every unit (no
+    orphan drop), using the persisted read-back substrate.
+    """
+    owners = list(_PER_OWNER)
+    db = tmp_path / "shuffle.duckdb"
+    con = duckdb.connect(str(db), read_only=False)
+    bootstrap_schema(con)
+    bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+    for owner in owners:
+        _insert_built_row(con, individual_id=owner, tick=0, units=_PER_OWNER[owner])
+    con.execute("CHECKPOINT")
+    con.close()
+    view = connect_analysis_view(db)
+    try:
+        windows = load_individual_state_windows(view, run_id="run0")
+    finally:
+        view.close()
+
+    read_back = [
+        list(windows[("run0", owner)].world_model_evidence or ()) for owner in owners
+    ]
+    counts = [len(units) for units in read_back]
+    pool = [unit for units in read_back for unit in units]
+    rng = random.Random(20260602)  # fixed seed (deterministic permutation)
+    idx = list(range(len(pool)))
+    rng.shuffle(idx)
+
+    offset = 0
+    for i, count in enumerate(counts):
+        chunk = [pool[idx[offset + j]] for j in range(count)]
+        offset += count
+        owner = owners[i]
+        records, bonds = _rebuild_inputs(owner, chunk)
+        # owner-shuffle reconstruction: every re-owned unit matches its rebuilt
+        # record (record.id = belief_record_id(owner, other)) -> no orphan drop.
+        matched = collect_promoted_evidence_units(records, bonds, agent_id=owner)
+        assert len(matched) == len(chunk)
 
 
 # --- runner: trace -> valid belief_variance w/ trace provenance -------------

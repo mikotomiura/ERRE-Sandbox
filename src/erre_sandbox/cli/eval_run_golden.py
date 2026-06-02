@@ -130,6 +130,7 @@ if TYPE_CHECKING:
     from erre_sandbox.contracts.cognition_layers import (
         IndividualLayerConfig,
         IndividualProfile,
+        PromotedEvidenceUnit,
     )
     from erre_sandbox.evidence.capture_sidecar import CaptureStatus, StopReason
 
@@ -648,16 +649,20 @@ def _make_individual_trace_sink(
     con: duckdb.DuckDBPyConnection,
     run_id: str,
     state: _SinkState,
-) -> Callable[[IndividualProfile, list[str] | None, int], None]:
-    """Construct the flag-on individual-state trace sink (M11-C2, DA-M11C2-9).
+) -> Callable[
+    [IndividualProfile, list[str] | None, list[PromotedEvidenceUnit] | None, int],
+    None,
+]:
+    """Construct the flag-on individual-state trace sink (M11-C2 / M10-A 段B).
 
     Mirrors :func:`_make_duckdb_sink`'s error contract: a DuckDB
     INSERT failure sets ``state.fatal_error`` and raises
     :class:`CaptureFatalError`, so a half-written trace cannot publish through
     the atomic rename. ``run_id`` is bound here so ``WorldRuntime`` never learns
     it (DA-M11C2-4); the row is built from the C1 ``IndividualProfile`` snapshot
-    plus the ``CycleResult`` belief classes, so ``world`` imports neither
-    ``evidence`` nor ``memory`` (DA-M11C2-2). Column order tracks
+    plus the ``CycleResult`` belief classes **and** per-dyad raw evidence units
+    (M10-A 段B H2 substrate), so ``world`` imports neither ``evidence`` nor
+    ``memory`` (DA-M11C2-2 / DA-SB-1). Column order tracks
     ``trace_ddl.column_names()`` in lockstep, and the qualified table name is
     composed from ``METRICS_SCHEMA`` (never a schema-dot literal; CI grep gate).
     """
@@ -670,12 +675,15 @@ def _make_individual_trace_sink(
     )
 
     def sink(
-        profile: IndividualProfile, belief_classes: list[str] | None, tick: int
+        profile: IndividualProfile,
+        belief_classes: list[str] | None,
+        world_model_evidence: list[PromotedEvidenceUnit] | None,
+        tick: int,
     ) -> None:
         if state.fatal_error is not None:
             return
         row = build_individual_state_trace_row(
-            profile, belief_classes, run_id=run_id, tick=tick
+            profile, belief_classes, world_model_evidence, run_id=run_id, tick=tick
         )
         try:
             con.execute(insert_sql, row.to_row())

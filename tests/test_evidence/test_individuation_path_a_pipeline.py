@@ -117,6 +117,7 @@ def _build_db(path: Path, run_id: str) -> None:
                 json.dumps(_BELIEFS[agent]),
                 0,
                 json.dumps(_SWM[agent]),
+                None,  # world_model_evidence_json (M10-A 段B): not exercised here
             ),
         )
     con.execute("CHECKPOINT")

@@ -25,9 +25,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import duckdb
 
-    from erre_sandbox.contracts.cognition_layers import IndividualProfile
+    from erre_sandbox.contracts.cognition_layers import (
+        IndividualProfile,
+        PromotedEvidenceUnit,
+    )
 
 TABLE_NAME: Final[str] = "individual_state_trace"
 """Bare table name inside the metrics schema (never qualified here)."""
@@ -51,6 +56,17 @@ _INDIVIDUAL_STATE_TRACE_COLUMNS: Final[tuple[tuple[str, str], ...]] = (
     # synthesised but holds no entries. Appended last so the column order of the
     # M11-C2 prefix is unchanged.
     ("world_model_keys_json", "TEXT"),
+    # M10-A 段B (DA-SB-2): per-dyad raw promoted evidence units, persisted as a
+    # canonical array-of-objects JSON
+    # ``[{"other_agent_id","belief_kind","confidence","affinity","familiarity",
+    # "last_interaction_zone","last_interaction_tick"}, ...]``. This is the H2
+    # value-aware conformance substrate (stage-A ADR §6): the synthesised SWM keys
+    # (``world_model_keys_json``) aggregate per-dyad values away, so the raw unit is
+    # required to recompute the observed (axis,key)-intersection distance and the
+    # owner-shuffle null. NULL when no SWM was synthesised (honest "not captured");
+    # ``"[]"`` when synthesised with no promoted dyad. Appended last so the prior
+    # column order (M11-C2 prefix + E2 world_model_keys_json) is unchanged.
+    ("world_model_evidence_json", "TEXT"),
 )
 
 INDIVIDUAL_STATE_TRACE_COLUMN_COUNT: Final[int] = len(_INDIVIDUAL_STATE_TRACE_COLUMNS)
@@ -109,6 +125,7 @@ class IndividualStateTraceRow:
     belief_classes_json: str | None
     arc_segment_count: int
     world_model_keys_json: str | None
+    world_model_evidence_json: str | None
 
     def to_row(self) -> tuple[object, ...]:
         """Positional tuple in DDL column order (INSERT bind order)."""
@@ -121,6 +138,7 @@ class IndividualStateTraceRow:
             self.belief_classes_json,
             self.arc_segment_count,
             self.world_model_keys_json,
+            self.world_model_evidence_json,
         )
 
 
@@ -147,9 +165,57 @@ def _world_model_keys_json(profile: IndividualProfile) -> str | None:
     return json.dumps([[axis, key] for axis, key in keys])
 
 
+_EVIDENCE_FLOAT_PRECISION: Final[int] = 6
+"""Decimal places evidence floats round to (M10-A 段B, DA-SB-4).
+
+Mirrors ``cognition.world_model._FLOOR_FINGERPRINT_PRECISION`` (kept as a local
+constant rather than importing across the cognition→evidence layer). Quantises
+``affinity`` / ``familiarity`` / ``confidence`` so a fixed SWM yields a byte-stable
+payload and the persisted substrate recomputes to the same H2 distance as the
+round(6)-quantised in-memory evidence (the round-trip test compares on this same
+quantised basis, not against the raw float)."""
+
+
+def _world_model_evidence_json(
+    units: Sequence[PromotedEvidenceUnit] | None,
+) -> str | None:
+    """Serialise per-dyad raw evidence units as a canonical array-of-objects JSON.
+
+    M10-A 段B (DA-SB-2). ``None`` (flag-off / pre-synthesis tick) → NULL; an empty
+    sequence (a synthesised SWM with no promoted dyad) → ``"[]"`` — the same honest
+    None/empty distinction as :func:`_world_model_keys_json`. Objects use the
+    **canonical** ``RelationshipBond`` / ``SemanticMemoryRecord`` field names (no
+    abbreviation) and are emitted in ``other_agent_id`` order with sorted keys so a
+    fixed input is byte-stable (recompute-stable). Floats round to
+    :data:`_EVIDENCE_FLOAT_PRECISION`; ``last_interaction_zone`` is the
+    ``Zone.value`` string (or ``None``), ``last_interaction_tick`` an int (or
+    ``None``).
+    """
+    if units is None:
+        return None
+    payload = [
+        {
+            "other_agent_id": unit.other_agent_id,
+            "belief_kind": unit.belief_kind,
+            "confidence": round(unit.confidence, _EVIDENCE_FLOAT_PRECISION),
+            "affinity": round(unit.affinity, _EVIDENCE_FLOAT_PRECISION),
+            "familiarity": round(unit.familiarity, _EVIDENCE_FLOAT_PRECISION),
+            "last_interaction_zone": (
+                None
+                if unit.last_interaction_zone is None
+                else unit.last_interaction_zone.value
+            ),
+            "last_interaction_tick": unit.last_interaction_tick,
+        }
+        for unit in sorted(units, key=lambda u: u.other_agent_id)
+    ]
+    return json.dumps(payload, sort_keys=True)
+
+
 def build_individual_state_trace_row(
     profile: IndividualProfile,
     belief_classes: list[str] | None,
+    world_model_evidence: Sequence[PromotedEvidenceUnit] | None,
     *,
     run_id: str,
     tick: int,
@@ -165,7 +231,12 @@ def build_individual_state_trace_row(
     *belief_classes* comes off ``CycleResult`` so ``world`` never imports
     ``memory`` (DA-M11C2-2); ``None`` flag-off, a possibly-empty list flag-on.
     ``world_model_keys_json`` (M10-A E2) is the SWM key set from the snapshot's
-    evidence floor — see :func:`_world_model_keys_json`.
+    evidence floor — see :func:`_world_model_keys_json`. ``world_model_evidence``
+    (M10-A 段B) is the per-dyad raw promoted evidence carried off ``CycleResult``
+    (``None`` flag-off / pre-synthesis) — the H2 conformance substrate, serialised
+    by :func:`_world_model_evidence_json`. It is **not** read off *profile*: like
+    ``belief_classes`` it rides in separately so ``world`` never imports ``memory``
+    (DA-SB-1).
     """
     dev = profile.development_state
     arc = profile.narrative_arc
@@ -179,6 +250,7 @@ def build_individual_state_trace_row(
         belief_classes_json=belief_classes_json,
         arc_segment_count=0 if arc is None else len(arc.arc_segments),
         world_model_keys_json=_world_model_keys_json(profile),
+        world_model_evidence_json=_world_model_evidence_json(world_model_evidence),
     )
 
 

@@ -35,6 +35,7 @@ from pydantic import BaseModel, ConfigDict
 
 from erre_sandbox.cognition.belief_ids import belief_record_id
 from erre_sandbox.contracts.cognition_layers import (
+    PromotedEvidenceUnit,
     SubjectiveWorldModel,
     WorldModelEntry,
     WorldModelSnapshot,
@@ -185,6 +186,70 @@ def _derive_self(
 _DERIVERS: Final = (_derive_env, _derive_self)
 
 
+def collect_promoted_evidence(
+    belief_records: Sequence[SemanticMemoryRecord],
+    bonds: Sequence[RelationshipBond],
+    *,
+    agent_id: str,
+) -> list[_Evidence]:
+    """Match each bond to its promoted belief record (single source of truth).
+
+    The *set* of promoted dyads ``synthesize_world_model`` derives entries from
+    and :func:`collect_promoted_evidence_units` persists are identical because
+    both route through this one helper — so the persisted H2 substrate can never
+    drift from the algorithm that produced the entries (stage-A ADR §6).
+
+    A dyad is evidence iff its bond's ``other_agent_id`` resolves (via the
+    deterministic :func:`belief_record_id`) to a belief-promoted record owned by
+    *agent_id*: foreign-agent records, non-belief records (``belief_kind is None``)
+    and orphan bonds (no matching record) are all rejected. Visited in
+    ``other_agent_id`` order so a fixed input is byte-stable downstream.
+    """
+    valid_by_id: dict[str, SemanticMemoryRecord] = {
+        r.id: r
+        for r in belief_records
+        if r.agent_id == agent_id and r.belief_kind is not None
+    }
+    evidence: list[_Evidence] = []
+    for bond in sorted(bonds, key=lambda b: b.other_agent_id):
+        record = valid_by_id.get(belief_record_id(agent_id, bond.other_agent_id))
+        if record is not None:
+            evidence.append(_Evidence(record=record, bond=bond))
+    return evidence
+
+
+def collect_promoted_evidence_units(
+    belief_records: Sequence[SemanticMemoryRecord],
+    bonds: Sequence[RelationshipBond],
+    *,
+    agent_id: str,
+) -> list[PromotedEvidenceUnit]:
+    """Project the matched promoted evidence into serialisable units (M10-A 段B).
+
+    The H2 conformance substrate carrier: the cognition cycle calls this in its
+    flag-on block and rides the result out on ``CycleResult.world_model_evidence``
+    so the ``world`` layer never imports ``memory`` (mirrors ``belief_classes``,
+    DA-M11C2-2 / DA-SB-1). Units are returned in ``other_agent_id`` order
+    (:func:`collect_promoted_evidence` sorts bonds by it) so a fixed input yields
+    a byte-stable persisted payload.
+
+    Floats are **not** rounded here — the contract type stays exact for any other
+    consumer; the trace serialiser owns the ``round(6)`` quantisation (DA-SB-4).
+    """
+    return [
+        PromotedEvidenceUnit(
+            other_agent_id=e.bond.other_agent_id,
+            belief_kind=e.record.belief_kind,
+            confidence=e.record.confidence,
+            affinity=e.bond.affinity,
+            familiarity=e.bond.familiarity,
+            last_interaction_zone=e.bond.last_interaction_zone,
+            last_interaction_tick=e.bond.last_interaction_tick,
+        )
+        for e in collect_promoted_evidence(belief_records, bonds, agent_id=agent_id)
+    ]
+
+
 def synthesize_world_model(
     belief_records: Sequence[SemanticMemoryRecord],
     bonds: Sequence[RelationshipBond],
@@ -216,17 +281,7 @@ def synthesize_world_model(
         salience (ties broken by ``axis`` then ``key``) and capped at
         *max_entries*.
     """
-    valid_by_id: dict[str, SemanticMemoryRecord] = {
-        r.id: r
-        for r in belief_records
-        if r.agent_id == agent_id and r.belief_kind is not None
-    }
-
-    evidence: list[_Evidence] = []
-    for bond in sorted(bonds, key=lambda b: b.other_agent_id):
-        record = valid_by_id.get(belief_record_id(agent_id, bond.other_agent_id))
-        if record is not None:
-            evidence.append(_Evidence(record=record, bond=bond))
+    evidence = collect_promoted_evidence(belief_records, bonds, agent_id=agent_id)
 
     entries: list[WorldModelEntry] = []
     for deriver in _DERIVERS:
@@ -474,6 +529,7 @@ __all__ = [
     "VALUE_STEP",
     "WorldModelRuntimeState",
     "apply_world_model_update_hint",
+    "collect_promoted_evidence_units",
     "reconcile_world_model",
     "synthesize_world_model",
 ]
