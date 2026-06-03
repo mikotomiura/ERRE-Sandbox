@@ -1,11 +1,19 @@
-"""M10-A S3.5: reactivate-ADR §3.A path(a) gate evaluator (pure scorer).
+"""M10-A S3.5 / PR-S4b: reactivate-ADR §3.A path(a) gate evaluator (pure scorer).
 
 Scores the **analysis layer** (②③④⑤) of the reactivate-ADR §3.A path(a)
 individuation gate into one of five verdicts —
 ``GO`` / ``NO_GO`` / ``REJECT`` / ``INCONCLUSIVE`` / ``INVALID`` — by applying the
 **frozen** decision rule (reactivate ADR §3.A + S3 conformance ADR §3/§4). Every
-threshold (0.60 separation, 0.90 null-control central, K=1000, N=3 seeds) is a
-module-level :data:`Final` so the scorer cannot silently drift from the ADR.
+threshold (0.60 separation, K=1000, N=3 seeds) is a module-level :data:`Final` so the
+scorer cannot silently drift from the ADR.
+
+null-control supersede (PR-S4b): the live ④ is now the **H2 value-aware
+owner-shuffle-resynth** evaluator (:func:`path_a_h2_gate.h2_owner_shuffle_resynth_3way`,
+``NULL_CONTROL_KIND = "h2_owner_shuffle_resynth"`` / ``conformant``). It replaces the
+legacy ④ :func:`swm_key_shuffle_projection_3way` (retained below as BLK-1 executable
+evidence, **no longer wired** into :func:`score_path_a_gate`). The H2 evaluator lives
+in a sibling leaf module that imports nothing from this one, so the scorer depends on
+it one-directionally (no import cycle, PR-S4b plan-review HIGH).
 
 Like :mod:`c3b_verdict`, the scorer is a **pure function over already-loaded
 dataclasses** (per-individual belief / SWM substrate + the ``belief_variance`` /
@@ -21,35 +29,30 @@ The scorer does **not** authorize the GPU smoke (S4) or the real §3.A verdict
 S4 (S3 conformance ADR §6 / C-4). The §3 thresholds are frozen here and must not
 be moved after a real run (PR-21 lesson, continuity-bias guard).
 
-null-control naming (DA-S3.5-1 / user MF-1): the §3.A④ null-control is realised as
-:data:`NULL_CONTROL_KIND` = ``"swm_key_shuffle_projection"`` — a **measured-space
-projection** of the ADR's null hypothesis onto the SWM ``(axis, key)`` substrate
-that metric ③ actually consumes. It is **not** the ADR-literal promoted-belief
-record label-shuffle (the metric trace persists only the *synthesised* SWM key set
-and the belief-class set, never the raw ``SemanticMemoryRecord`` + ``RelationshipBond``
-that ``synthesize_world_model`` would need to re-derive the SWM from shuffled belief
-records). The ``null_control_kind`` is stamped into the sidecar so the claim
-boundary lives on the artifact itself (over-claim guard).
+null-control supersede (PR-S4b / DA-S4B-5): the live ④ null-control is the H2
+value-aware owner-shuffle-resynth (``NULL_CONTROL_KIND = "h2_owner_shuffle_resynth"``,
+``NULL_CONTROL_CONFORMANCE = "conformant"``), stamped into the sidecar so the claim
+boundary lives on the artifact. The stage-A spike proved this null reaches PASS on
+separated substrate, so the gate is no longer structurally GO-incapable.
 
 Decision order, per seed (most-severe wins): INVALID > NO_GO > REJECT >
 INCONCLUSIVE > GO (DA-S3.5-2 / user MF-4). The experiment verdict (⑤) is the
 most-severe across the N=3 seeds (GO only when every seed is GO = seed AND).
 
-.. warning::
+.. note::
 
-   **NON-CONFORMANT null-control (BLK-1, see ``s3.5-null-control-finding-adr.md``).**
-   The pre-GPU CPU spike proved that :func:`swm_key_shuffle_projection_3way` can
-   **never** reach the frozen §3.A④ PASS threshold (``central >= 0.90``) — even an
-   *identical* SWM gives ``central ≈ 0.46–0.67`` (count-preserving relabel of a
-   multiset never homogenises the way the ADR's belief-record-shuffle + re-synthesis
-   null presumed). So the ``④`` PASS region is unreachable and **the gate can never
-   emit GO** under this null. This module is retained as **executable evidence of the
-   structural finding** (user-chosen disposition A), with the unreachability pinned by
-   regression tests. ``④`` does **not** satisfy the §3.A④ semantics; a
-   :data:`NULL_CONTROL_CONFORMANCE` ``= "non_conformant_pending_supersede"`` marker is
-   stamped into the sidecar, and S4 GPU smoke is **blocked** until a superseding ADR
-   redefines the null-control. The ①②③ + matrix/identity/precedence scaffolding is
-   sound and preserved for reuse by that supersede.
+   **Legacy ④ retained as BLK-1 evidence (DA-S4B-5).**
+   :func:`swm_key_shuffle_projection_3way`
+   (count-preserving relabel of the *synthesised* SWM key multiset) provably can
+   **never** reach its PASS threshold (``central >= 0.90`` — an *identical* SWM gives
+   ``central ≈ 0.46–0.67``, because a permutation preserves a multiset's spread and so
+   carries no homogenisation). It is retained below — **no longer called by
+   :func:`score_path_a_gate`** — as executable evidence of the structural finding
+   (``s3.5-null-control-finding-adr.md``), with :data:`_LEGACY_NULL_CONTROL_KIND` /
+   :data:`_LEGACY_NULL_CONTROL_CONFORMANCE` carrying its old marker. The supersede that
+   replaced it is the H2 evaluator (stage-A H2 conformance ADR + S3.5a H1-(a)
+   record-level re-synthesis null), and the ①②③ + matrix/identity/precedence
+   scaffolding is reused unchanged.
 """
 
 from __future__ import annotations
@@ -64,6 +67,13 @@ from typing import TYPE_CHECKING, Final
 import numpy as np
 
 from erre_sandbox.evidence.golden_baseline import derive_seed
+from erre_sandbox.evidence.individuation.path_a_h2_gate import (
+    H2_NULL_CONTROL_CONFORMANCE,
+    H2_NULL_CONTROL_KIND,
+    H2NullControlResult,
+    H2Verdict,
+    h2_owner_shuffle_resynth_3way,
+)
 from erre_sandbox.evidence.individuation.policy import (
     DYAD_SEP,
     AggregationLevel,
@@ -73,6 +83,7 @@ from erre_sandbox.evidence.individuation.policy import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from erre_sandbox.contracts.cognition_layers import PromotedEvidenceUnit
     from erre_sandbox.evidence.individuation.models import MetricResult
 
 # --- frozen ADR constants (one source, reactivate §3.A / S3 ADR §3) ----------
@@ -86,14 +97,19 @@ NULL_SHUFFLE_K: Final[int] = 1000
 """④: number of label-shuffle permutations (reactivate §3.A④, frozen)."""
 NULL_SHUFFLE_SALT: Final[str] = "c3b-reactivate-null-shuffle"
 """④: ``derive_seed`` salt for the shuffle RNG (reactivate §3.A④, frozen)."""
-NULL_CONTROL_KIND: Final[str] = "swm_key_shuffle_projection"
-"""④ null-control kind stamped into the sidecar (MF-1: measured-space projection,
-NOT the ADR-literal promoted-belief record label-shuffle)."""
-NULL_CONTROL_CONFORMANCE: Final[str] = "non_conformant_pending_supersede"
-"""④ conformance marker (BLK-1): the projection cannot reach the frozen §3.A④ PASS
-threshold (``central >= 0.90`` is unreachable, see module warning), so it does NOT
-satisfy the ADR null-control. Stamped into the sidecar so a consumer (S4/S5) sees the
-gate is non-conformant and GPU is blocked until a superseding ADR redefines ④."""
+NULL_CONTROL_KIND: Final[str] = H2_NULL_CONTROL_KIND
+"""④ live null-control kind stamped into the sidecar (PR-S4b): the H2 value-aware
+owner-shuffle-resynth (``"h2_owner_shuffle_resynth"``), superseding the legacy
+``swm_key_shuffle_projection`` (now :data:`_LEGACY_NULL_CONTROL_KIND`)."""
+NULL_CONTROL_CONFORMANCE: Final[str] = H2_NULL_CONTROL_CONFORMANCE
+"""④ conformance marker (PR-S4b): ``"conformant"`` — the stage-A spike proved the H2
+null reaches PASS on separated substrate, so the gate is no longer structurally
+GO-incapable (supersedes ``non_conformant_pending_supersede``)."""
+_LEGACY_NULL_CONTROL_KIND: Final[str] = "swm_key_shuffle_projection"
+"""Legacy ④ kind for the retained BLK-1 evidence function (DA-S4B-5, no longer live)."""
+_LEGACY_NULL_CONTROL_CONFORMANCE: Final[str] = "non_conformant_pending_supersede"
+"""Legacy ④ conformance marker (BLK-1): the measured-space relabel could not reach
+``central >= 0.90``. Retained for the history function's pins only (not stamped)."""
 REQUIRED_SEED_IDS: Final[tuple[int, ...]] = (0, 1, 2)
 """⑤: the only legal seed values (run_idx 0,1,2). path(a) is an N=3 envelope
 distinct from the frozen §9 N=2 (c3b only) — §9 is not rewritten (DA-S3.5-3)."""
@@ -133,6 +149,16 @@ def _most_severe(verdicts: Sequence[PathAVerdict]) -> PathAVerdict:
     return max(verdicts, key=lambda v: _RANK[v])
 
 
+# H2 (④) 3-way → 5-state mapping (PR-S4b decoupling): the H2 leaf returns its own
+# H2Verdict so it never imports PathAVerdict; the scorer maps it into the gate's
+# precedence (PASS→GO / INVALID→INVALID / INCONCLUSIVE→INCONCLUSIVE).
+_H2_TO_PATH_A: Final[dict[H2Verdict, PathAVerdict]] = {
+    H2Verdict.PASS: PathAVerdict.GO,
+    H2Verdict.INVALID: PathAVerdict.INVALID,
+    H2Verdict.INCONCLUSIVE: PathAVerdict.INCONCLUSIVE,
+}
+
+
 # --- inputs (CX-MED-2: explicit per-seed identity contract) ------------------
 
 
@@ -142,12 +168,17 @@ class IndividualSubstrate:
 
     ``belief_classes`` is the promoted-belief class set (``None`` = no substrate),
     ``world_model_keys`` the synthesised SWM ``(axis, key)`` set (``None`` = SWM not
-    captured). These feed ② (belief-class distribution) and ④ (SWM-key shuffle).
+    captured), ``world_model_evidence`` the per-dyad raw promoted units (``None`` = no
+    SWM synthesised / pre-段B trace). ``belief_classes`` feeds ② (belief-class
+    distribution); ``world_model_evidence`` feeds the live H2 ④
+    (owner-shuffle-resynth); ``world_model_keys`` feeds the legacy ④ history function
+    (PR-S4b: no longer the live ④).
     """
 
     individual_id: str
     belief_classes: tuple[str, ...] | None
     world_model_keys: tuple[tuple[str, str], ...] | None
+    world_model_evidence: tuple[PromotedEvidenceUnit, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,7 +251,7 @@ class SeedScore:
     belief_variance: CriterionResult | None = None
     belief_distribution: CriterionResult | None = None
     jaccard_separation: CriterionResult | None = None
-    null_control: NullControlResult | None = None
+    null_control: H2NullControlResult | None = None
     jaccard_median: float | None = None
     jaccard_valid_count: int | None = None
     belief_distribution_summary: tuple[
@@ -312,19 +343,21 @@ def _score_seed(run: PathARunInput) -> SeedScore:
     # override NO_GO and mislabel a substrate-absent seed as a metric artifact.
     if one_passed:
         two = _score_belief_distribution(sorted_inds)
-        four = swm_key_shuffle_projection_3way(
-            sorted_inds, base_persona_id=run.base_persona_id, run_idx=run.run_idx
+        members = [(ind.individual_id, ind.world_model_evidence) for ind in sorted_inds]
+        four = h2_owner_shuffle_resynth_3way(
+            members, base_persona_id=run.base_persona_id, run_idx=run.run_idx
         )
     else:
         skip = "skipped: belief substrate not established (① NO_GO)"
         two = CriterionResult(PathAVerdict.INCONCLUSIVE, skip)
-        four = NullControlResult(PathAVerdict.INCONCLUSIVE, skip)
+        four = H2NullControlResult(H2Verdict.INCONCLUSIVE, skip)
 
-    verdict = _most_severe([one.outcome, two.outcome, three.outcome, four.outcome])
+    four_outcome = _H2_TO_PATH_A[four.outcome]
+    verdict = _most_severe([one.outcome, two.outcome, three.outcome, four_outcome])
     return SeedScore(
         run_idx=run.run_idx,
         verdict=verdict,
-        reason=_seed_reason(verdict, one, two, three, four),
+        reason=_seed_reason(verdict, one, two, three, four_outcome, four.reason),
         belief_variance=one,
         belief_distribution=two,
         jaccard_separation=three,
@@ -487,7 +520,13 @@ def swm_key_shuffle_projection_3way(
     base_persona_id: str,
     run_idx: int,
 ) -> NullControlResult:
-    """④ null-control: SWM ``(axis,key)`` label-shuffle projection (frozen, MF-2).
+    """Legacy ④: SWM ``(axis,key)`` label-shuffle projection (BLK-1 history).
+
+    .. deprecated:: PR-S4b
+       **No longer the live ④** (:func:`score_path_a_gate` calls
+       :func:`path_a_h2_gate.h2_owner_shuffle_resynth_3way`). Retained as executable
+       evidence of the BLK-1 structural finding (this null can never reach
+       ``central >= 0.90``); :data:`_LEGACY_NULL_CONTROL_KIND` carries its old marker.
 
     Procedure (DA-S3.5-5, reproducible):
 
@@ -508,8 +547,10 @@ def swm_key_shuffle_projection_3way(
     INCONCLUSIVE when the SWM substrate is insufficient (a member with no captured
     SWM, or an empty pool) — consistent with ③'s shortfall (DA-S3.5-4).
 
-    This is the **measured-space projection** named by :data:`NULL_CONTROL_KIND`,
-    not the ADR-literal promoted-belief record shuffle (MF-1 / module docstring).
+    This is the **measured-space projection** named by
+    :data:`_LEGACY_NULL_CONTROL_KIND`, not the ADR-literal promoted-belief record
+    shuffle (MF-1 / module docstring); the live record-level re-synthesis null is now
+    :mod:`path_a_h2_gate` (PR-S4b).
     """
     if any(ind.world_model_keys is None for ind in sorted_inds):
         return NullControlResult(
@@ -615,19 +656,24 @@ def _seed_reason(
     one: CriterionResult,
     two: CriterionResult,
     three: CriterionResult,
-    four: NullControlResult,
+    four_outcome: PathAVerdict,
+    four_reason: str,
 ) -> str:
-    """The reason of the criterion that drove the most-severe per-seed verdict."""
+    """The reason of the criterion that drove the most-severe per-seed verdict.
+
+    ④ is the H2 null-control, whose outcome is already mapped to PathAVerdict by the
+    caller (``four_outcome``); ``four_reason`` is the H2 result's reason.
+    """
     if verdict is PathAVerdict.GO:
         return "all criteria (①②③④) pass"
-    for label, result in (
-        ("①belief_variance", one),
-        ("②belief_distribution", two),
-        ("③jaccard", three),
-        ("④null_control", four),
+    for label, outcome, reason in (
+        ("①belief_variance", one.outcome, one.reason),
+        ("②belief_distribution", two.outcome, two.reason),
+        ("③jaccard", three.outcome, three.reason),
+        ("④h2_null_control", four_outcome, four_reason),
     ):
-        if result.outcome is verdict:
-            return f"{label}: {result.reason}"
+        if outcome is verdict:
+            return f"{label}: {reason}"
     return verdict.value
 
 
