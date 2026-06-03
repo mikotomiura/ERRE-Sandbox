@@ -160,6 +160,12 @@ def _build_run_input(
                 if (run_id, r.individual_id) in trace_windows
                 else None
             ),
+            # 段B / PR-S4b: the raw per-dyad promoted units feed the live H2 ④.
+            world_model_evidence=(
+                trace_windows[(run_id, r.individual_id)].world_model_evidence
+                if (run_id, r.individual_id) in trace_windows
+                else None
+            ),
         )
         for r in sorted(belief_variance_rows, key=lambda r: r.individual_id)
     )

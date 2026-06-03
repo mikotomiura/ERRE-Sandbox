@@ -4,9 +4,9 @@ The scorer (:mod:`path_a_gate`) is a pure function over dataclasses; this module
 is its **durable artifact contract**: a frozen Pydantic model that serialises the
 five-state verdict, the per-seed / per-criterion evidence, and — crucially — the
 :data:`~erre_sandbox.evidence.individuation.path_a_gate.NULL_CONTROL_KIND`
-(``"swm_key_shuffle_projection"``) so the over-claim boundary (MF-1: this is the
-measured-space projection of the §3.A④ null-control, **not** the ADR-literal
-promoted-belief record label-shuffle) lives on the artifact itself.
+(``"h2_owner_shuffle_resynth"`` / ``conformant``, PR-S4b) so the claim boundary —
+the live ④ is now the H2 value-aware owner-shuffle-resynth null, superseding the
+legacy ``swm_key_shuffle_projection`` — lives on the artifact itself.
 
 Naming (CX-MED-3): the scorer returns a
 :class:`~erre_sandbox.evidence.individuation.path_a_gate.PathAScoreReport`
@@ -31,10 +31,10 @@ from erre_sandbox.evidence.individuation.policy import INDIVIDUATION_SCHEMA_VERS
 if TYPE_CHECKING:
     from erre_sandbox.evidence.individuation.path_a_gate import (
         CriterionResult,
-        NullControlResult,
         PathAScoreReport,
         SeedScore,
     )
+    from erre_sandbox.evidence.individuation.path_a_h2_gate import H2NullControlResult
 
 PATH_A_VERDICT_SIDECAR_SUFFIX: str = ".path_a_verdict.json"
 """Sidecar suffix appended to the path(a) gate artifact filename."""
@@ -50,17 +50,25 @@ class CriterionReport(BaseModel):
 
 
 class NullControlReport(BaseModel):
-    """④ swm_key_shuffle_projection 3-way evidence for one seed."""
+    """④ H2 owner-shuffle-resynth 3-way evidence for one seed (PR-S4b).
+
+    ``outcome`` is the H2 3-way (``pass`` / ``invalid`` / ``inconclusive``).
+    ``d_obs`` = observed (axis,key)-intersection value distance, ``null_central`` =
+    median finite owner-shuffle null distance, ``p_high`` = one-sided permutation
+    p-value, ``powered`` = same-count synthetic positive control separates (``None``
+    when not decision-relevant), ``n_finite_null`` = finite null count.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     outcome: str
     reason: str
-    central: float | None = None
-    p95: float | None = None
+    d_obs: float | None = None
+    null_central: float | None = None
+    p_high: float | None = None
+    n_finite_null: int | None = None
+    powered: bool | None = None
     k: int
-    swm_raw_key_count: int | None = None
-    swm_unique_key_count: int | None = None
 
 
 class SeedReport(BaseModel):
@@ -108,17 +116,20 @@ def _criterion_report(result: CriterionResult | None) -> CriterionReport | None:
     return CriterionReport(outcome=result.outcome.value, reason=result.reason)
 
 
-def _null_control_report(result: NullControlResult | None) -> NullControlReport | None:
+def _null_control_report(
+    result: H2NullControlResult | None,
+) -> NullControlReport | None:
     if result is None:
         return None
     return NullControlReport(
         outcome=result.outcome.value,
         reason=result.reason,
-        central=result.central,
-        p95=result.p95,
+        d_obs=result.d_obs,
+        null_central=result.null_central,
+        p_high=result.p_high,
+        n_finite_null=result.n_finite_null,
+        powered=result.powered,
         k=result.k,
-        swm_raw_key_count=result.swm_raw_key_count,
-        swm_unique_key_count=result.swm_unique_key_count,
     )
 
 

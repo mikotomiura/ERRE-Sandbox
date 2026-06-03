@@ -17,11 +17,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import numpy as np
 import pytest
 
+from erre_sandbox.contracts.cognition_layers import PromotedEvidenceUnit
 from erre_sandbox.evidence.golden_baseline import derive_seed
 from erre_sandbox.evidence.individuation.models import MetricResult, Provenance
 from erre_sandbox.evidence.individuation.path_a_gate import (
+    _LEGACY_NULL_CONTROL_KIND,
     NULL_CONTROL_CONFORMANCE,
     NULL_CONTROL_KIND,
     NULL_SHUFFLE_SALT,
@@ -33,12 +36,65 @@ from erre_sandbox.evidence.individuation.path_a_gate import (
     score_path_a_gate,
     swm_key_shuffle_projection_3way,
 )
+from erre_sandbox.evidence.individuation.path_a_h2_gate import H2Verdict
 from erre_sandbox.evidence.individuation.policy import (
     DYAD_SEP,
     AggregationLevel,
     MetricChannel,
     MetricStatus,
 )
+from erre_sandbox.schemas import Zone
+
+_ZONES = (Zone.STUDY, Zone.PERIPATOS, Zone.CHASHITSU, Zone.AGORA, Zone.GARDEN)
+_POS_BIAS = (0.6, -0.5, 0.1)
+
+
+def _pos_evidence(
+    owner_idx: int, d: int, seed: int
+) -> tuple[PromotedEvidenceUnit, ...]:
+    """Systematic-divergence evidence for one owner (drives H2 ④ PASS at high D)."""
+    rng = np.random.default_rng(seed)
+    bias = _POS_BIAS[owner_idx]
+    units: list[PromotedEvidenceUnit] = []
+    for j in range(d):
+        zone = _ZONES[int(rng.integers(0, len(_ZONES)))]
+        aff = float(np.clip(bias + rng.normal(0.0, 0.15), -0.95, 0.95))
+        kind = (
+            "trust"
+            if aff >= 0.70
+            else "curious"
+            if aff > 0.0
+            else "clash"
+            if aff <= -0.70
+            else "wary"
+        )
+        units.append(
+            PromotedEvidenceUnit(
+                other_agent_id=f"o_{owner_idx}_{j}",
+                belief_kind=kind,
+                confidence=0.8,
+                affinity=aff,
+                familiarity=0.5,
+                last_interaction_zone=zone,
+                last_interaction_tick=100,
+            )
+        )
+    return tuple(units)
+
+
+def _identical_evidence(d: int, seed: int) -> tuple[PromotedEvidenceUnit, ...]:
+    """One shared evidence set every owner reuses (no separation → H2 ④ INVALID)."""
+    return _pos_evidence(0, d, seed)
+
+
+def _pos_evidence_map(d: int = 20) -> dict[str, tuple[PromotedEvidenceUnit, ...]]:
+    return {_IDS[i]: _pos_evidence(i, d, 1000 + i) for i in range(3)}
+
+
+def _identical_evidence_map(d: int = 12) -> dict[str, tuple[PromotedEvidenceUnit, ...]]:
+    shared = _identical_evidence(d, 7)
+    return dict.fromkeys(_IDS, shared)
+
 
 _NOW = datetime(2026, 6, 1, tzinfo=UTC)
 _IDS = ("a_rikyu_001", "a_rikyu_002", "a_rikyu_003")
@@ -128,6 +184,7 @@ _DIFFERENTIATED_SWM = {
 def _subs(
     swm: dict[str, tuple[tuple[str, str], ...]] | None,
     beliefs: dict[str, tuple[str, ...] | None] | None = None,
+    evidence: dict[str, tuple[PromotedEvidenceUnit, ...]] | None = None,
 ) -> tuple[IndividualSubstrate, ...]:
     default_beliefs = dict.fromkeys(_IDS, ("trust", "wary"))
     beliefs = beliefs or default_beliefs
@@ -136,6 +193,7 @@ def _subs(
             individual_id=i,
             belief_classes=beliefs.get(i),
             world_model_keys=(swm.get(i) if swm is not None else None),
+            world_model_evidence=(evidence.get(i) if evidence is not None else None),
         )
         for i in _IDS
     )
@@ -147,6 +205,7 @@ def _run(
     run_id: str = "run0",
     swm: dict[str, tuple[tuple[str, str], ...]] | None = None,
     beliefs: dict[str, tuple[str, ...] | None] | None = None,
+    evidence: dict[str, tuple[PromotedEvidenceUnit, ...]] | None = None,
     bv_valid: bool = True,
     jaccard: tuple[float | None, float | None, float | None] = (0.2, 0.2, 0.5),
 ) -> PathARunInput:
@@ -154,7 +213,7 @@ def _run(
         run_idx=run_idx,
         run_id=run_id,
         base_persona_id=_BASE,
-        individuals=_subs(swm, beliefs),
+        individuals=_subs(swm, beliefs, evidence),
         belief_variance_rows=_all_bv(run_id=run_id, valid=bv_valid),
         jaccard_rows=_all_jac(jaccard, run_id=run_id),
     )
@@ -187,22 +246,33 @@ def test_null_control_differentiated_is_invalid() -> None:
     assert result.p95 <= 0.60
 
 
-def test_gate_can_never_emit_go() -> None:
-    """BLK-1 headline: the best would-be-GO input (①✓②distinct③sep) is not GO.
+def test_gate_emits_go_on_positive_substrate() -> None:
+    """PR-S4b supersede headline: the gate CAN emit GO (no longer GO-incapable).
 
-    ③ separated + distinct belief distributions + valid belief_variance, with the
-    differentiated SWM that drives ④ → INVALID, so the seed (and experiment) is
-    INVALID, never GO. This pins that the gate cannot authorize individuation.
+    ①✓ valid belief_variance + ② distinct distributions + ③ separated + the H2 ④
+    PASS on systematic-divergence evidence at high density (D=20) → GO across all 3
+    seeds (⑤ seed AND). The sidecar stamps the H2 markers (h2_owner_shuffle_resynth /
+    conformant), superseding the legacy BLK-1 non-conformant projection.
     """
+    distinct = {
+        _IDS[0]: ("trust", "wary"),
+        _IDS[1]: ("trust", "trust", "wary"),
+        _IDS[2]: ("trust", "wary", "wary"),
+    }
+    ev = _pos_evidence_map(d=20)
     exp = _experiment(
-        _run(run_idx=0, swm=_DIFFERENTIATED_SWM, jaccard=(0.2, 0.2, 0.5)),
-        _run(run_idx=1, swm=_DIFFERENTIATED_SWM, jaccard=(0.2, 0.2, 0.5)),
-        _run(run_idx=2, swm=_DIFFERENTIATED_SWM, jaccard=(0.2, 0.2, 0.5)),
+        _run(run_idx=0, beliefs=distinct, evidence=ev, jaccard=(0.2, 0.2, 0.5)),
+        _run(run_idx=1, beliefs=distinct, evidence=ev, jaccard=(0.2, 0.2, 0.5)),
+        _run(run_idx=2, beliefs=distinct, evidence=ev, jaccard=(0.2, 0.2, 0.5)),
     )
     report = score_path_a_gate(exp)
-    assert report.verdict is not PathAVerdict.GO
-    assert report.verdict is PathAVerdict.INVALID
-    assert report.null_control_conformance == NULL_CONTROL_CONFORMANCE
+    assert report.verdict is PathAVerdict.GO
+    assert report.null_control_kind == NULL_CONTROL_KIND == "h2_owner_shuffle_resynth"
+    assert report.null_control_conformance == NULL_CONTROL_CONFORMANCE == "conformant"
+    seed0 = next(s for s in report.seeds if s.run_idx == 0)
+    assert seed0.null_control is not None
+    assert seed0.null_control.outcome is H2Verdict.PASS
+    assert seed0.null_control.powered is True
 
 
 # --- criterion isolation (④ pinned to INCONCLUSIVE via identical SWM) ---------
@@ -220,19 +290,19 @@ def test_belief_variance_no_go() -> None:
 
 
 def test_no_go_not_overridden_by_null_invalid() -> None:
-    """CX-MED-1: ① NO_GO with a differentiated SWM (④ would be INVALID) stays NO_GO.
+    """CX-MED-1: ① NO_GO skips the H2 ④ (INCONCLUSIVE), never escalating above NO_GO.
 
-    ④ is only evaluated after ① passes; on NO_GO it is skipped (INCONCLUSIVE), so a
-    ④ INVALID can never escalate above NO_GO and mislabel a substrate-absent seed.
+    ④ is only evaluated after ① passes; on NO_GO it is skipped (H2 INCONCLUSIVE), so
+    a ④ INVALID can never escalate above NO_GO and mislabel a substrate-absent seed.
     """
-    seed = _run(run_idx=0, swm=_DIFFERENTIATED_SWM, bv_valid=False)
+    seed = _run(run_idx=0, evidence=_identical_evidence_map(), bv_valid=False)
     exp = _experiment(seed, _run(run_idx=1), _run(run_idx=2))
     report = score_path_a_gate(exp)
     assert report.verdict is PathAVerdict.NO_GO
     seed0 = next(s for s in report.seeds if s.run_idx == 0)
     assert seed0.verdict is PathAVerdict.NO_GO
     assert seed0.null_control is not None
-    assert seed0.null_control.outcome is PathAVerdict.INCONCLUSIVE
+    assert seed0.null_control.outcome is H2Verdict.INCONCLUSIVE
 
 
 def test_belief_distribution_reject_when_all_identical() -> None:
@@ -391,15 +461,18 @@ def test_identity_violation_run_id_mismatch() -> None:
 
 
 def test_experiment_invalid_dominates_across_seeds() -> None:
-    """⑤ one INVALID seed (differentiated → ④ INVALID) makes the experiment INVALID."""
+    """⑤ one INVALID seed (identical evidence → H2 ④ INVALID) makes it INVALID."""
     report = score_path_a_gate(
         _experiment(
-            _run(run_idx=0, swm=_IDENTICAL_SWM),  # inconclusive
-            _run(run_idx=1, swm=_IDENTICAL_SWM),
-            _run(run_idx=2, swm=_DIFFERENTIATED_SWM),  # INVALID
+            _run(run_idx=0),  # evidence None → ④ INCONCLUSIVE
+            _run(run_idx=1),
+            _run(run_idx=2, evidence=_identical_evidence_map()),  # ④ INVALID
         )
     )
     assert report.verdict is PathAVerdict.INVALID
+    seed2 = next(s for s in report.seeds if s.run_idx == 2)
+    assert seed2.null_control is not None
+    assert seed2.null_control.outcome is H2Verdict.INVALID
 
 
 def test_null_control_seed_reproducible() -> None:
@@ -436,9 +509,12 @@ def test_null_shuffle_seed_uses_frozen_salt() -> None:
     )
 
 
-def test_null_control_kind_is_projection_marker() -> None:
-    """MF-1: the null-control kind names the measured-space projection."""
-    assert NULL_CONTROL_KIND == "swm_key_shuffle_projection"
+def test_null_control_kind_is_h2_after_supersede() -> None:
+    """PR-S4b: the live null-control kind is the H2 resynth; legacy kept as history."""
+    assert NULL_CONTROL_KIND == "h2_owner_shuffle_resynth"
+    assert NULL_CONTROL_CONFORMANCE == "conformant"
+    # legacy BLK-1 marker retained for the history function (no longer live).
+    assert _LEGACY_NULL_CONTROL_KIND == "swm_key_shuffle_projection"
 
 
 @pytest.mark.parametrize(
