@@ -185,7 +185,77 @@ The same-base launcher registers several individuals of *one* base persona,
 so seats are assigned by roster index rather than persona id; reusing the same
 three non-overlapping coordinates keeps every pair inside the proximity
 threshold. The default (one-per-persona) roster keeps using the persona-keyed
-:data:`_NATURAL_AGORA_POSITIONS`, so that path is byte-identical to before."""
+:data:`_NATURAL_AGORA_POSITIONS`, so that path is byte-identical to before.
+
+**Frozen at three seats** so the legacy :func:`build_natural_roster`
+``same_base_count`` ValueError cap (``len(_NATURAL_AGORA_SEATS)``) stays at 3 —
+the S4 population launcher uses the separate :data:`_NATURAL_POPULATION_SEATS`
+instead (PR-S4a, DA-S4A-3)."""
+
+_POPULATION_N_MAX: Final[int] = 31
+"""Frozen population world-size ceiling (S4 pre-flight ADR §4.1 / stage C N_MAX).
+
+D_max=30 ↔ world ≥ 31 (stage A §5.2). The S4 density-bearing run registers at
+most this many agents (3 measured same-base + up to 28 background). Raising it
+re-opens the frozen stage-C envelope (goalpost move), so it is pinned here and
+asserted against the seat-table length below."""
+
+_MEASURED_INDIVIDUAL_COUNT: Final[int] = 3
+"""Frozen number of measured same-base individuals (⑤ N=3 / stage C, PR-S4a).
+
+Stage C pins D = the promoted distinct-other count of **3** same-base measured
+individuals; the disposition's N=3 binding forbids moving this goalpost. The
+population builder rejects any other count (Codex MEDIUM, DA-S4A-6) so an
+internal caller cannot silently widen / shrink the H2 comparison set."""
+
+
+def _build_population_seats() -> tuple[tuple[float, float, float], ...]:
+    """Build :data:`_NATURAL_POPULATION_SEATS` deterministically (PR-S4a).
+
+    The first three seats are :data:`_NATURAL_AGORA_SEATS` byte-for-byte (so the
+    three measured same-base individuals spawn on the exact C3b coordinates),
+    followed by a deterministic grid of 28 distinct points at ``z >= 1.6`` so
+    none collides with the legacy ``z == 0`` seats. Grid spacing is 1.6 m, above
+    the widest persona ``separation_radius_m`` (1.5 m, Kant), so the M7ζ-3
+    separation nudge does not fire between background seats on the first physics
+    tick. eval_natural_mode bypasses proximity for dialog admission, so seat
+    geometry never affects who can talk to whom — this only keeps spawn tidy.
+    """
+    seats: list[tuple[float, float, float]] = list(_NATURAL_AGORA_SEATS)
+    seats.extend(
+        (col * 1.6, 0.0, row * 1.6)
+        for row in range(1, 5)  # z = 1.6, 3.2, 4.8, 6.4
+        for col in range(-3, 4)  # x = -4.8 .. 4.8 (7 columns) -> 28 points
+    )
+    return tuple(seats)
+
+
+_NATURAL_POPULATION_SEATS: Final[tuple[tuple[float, float, float], ...]] = (
+    _build_population_seats()
+)
+"""Positional seats for the S4 population launcher (3 measured + 28 background).
+
+Indexed by roster position like :data:`_NATURAL_AGORA_SEATS`; the first three
+entries are identical to it. Kept separate from :data:`_NATURAL_AGORA_SEATS` so
+the legacy launcher's ``same_base_count`` cap stays at 3 (byte-identical) — only
+:func:`build_population_roster` scales up to :data:`_POPULATION_N_MAX`."""
+
+# Module-load sentinels (Codex LOW): pin the frozen seat invariants at import so
+# a regression fails immediately, not only under the test suite. Tests also
+# assert all of them.
+assert len(_NATURAL_AGORA_SEATS) == len(DEFAULT_PERSONAS), (
+    "legacy _NATURAL_AGORA_SEATS must stay at the one-per-persona seat count"
+    " (byte-identical same_base_count cap)"
+)
+assert len(_NATURAL_POPULATION_SEATS) == _POPULATION_N_MAX, (
+    "population seat table must hold exactly _POPULATION_N_MAX seats"
+)
+assert _NATURAL_POPULATION_SEATS[:3] == _NATURAL_AGORA_SEATS, (
+    "first 3 population seats must equal the legacy table byte-for-byte"
+)
+assert len(set(_NATURAL_POPULATION_SEATS)) == _POPULATION_N_MAX, (
+    "population seats must all be distinct (distinct agent spawn coordinates)"
+)
 
 _PERSONAS_DIR_DEFAULT: Final[Path] = Path("personas")
 
@@ -869,6 +939,133 @@ def _register_natural_roster(
         )
 
 
+@dataclass(frozen=True, slots=True)
+class NaturalPopulationRoster:
+    """The S4 population roster: 3 measured same-base + (N-3) background (PR-S4a).
+
+    ``measured`` is the same-base individuals of ``focal_persona`` whose
+    individuation H2 statistic the density audit compares
+    (``a_<focal>_001 .. _MMM``). ``background`` is the cross-base, non-focal
+    distinct-other supply that is **not** an H2 comparison subject (disposition
+    §2.4). Keeping the two in separate fields lets PR-S4c aggregate per-owner
+    density over the measured individuals only, and lets the G0-1 smoke gate
+    assert the split offline.
+    """
+
+    focal_persona: str
+    measured: tuple[tuple[str, int], ...]
+    background: tuple[tuple[str, int], ...]
+
+    @property
+    def measured_individual_ids(self) -> tuple[str, ...]:
+        """Resolve the measured roster to concrete ``a_<focal>_NNN`` agent ids."""
+        return tuple(make_agent_id(pid, ordinal) for pid, ordinal in self.measured)
+
+    @property
+    def world_size(self) -> int:
+        """Total registered agents = ``len(measured) + len(background)``."""
+        return len(self.measured) + len(self.background)
+
+    def all_entries(self) -> tuple[tuple[str, int], ...]:
+        """Registration order = measured first, then background (seat order)."""
+        return self.measured + self.background
+
+
+def build_population_roster(
+    focal_persona: str,
+    *,
+    world_size: int,
+    measured_count: int = _MEASURED_INDIVIDUAL_COUNT,
+) -> NaturalPopulationRoster:
+    """Build the S4 population roster (3 measured same-base + background supply).
+
+    ``measured`` is :data:`_MEASURED_INDIVIDUAL_COUNT` (=3, frozen ⑤ N=3)
+    individuals of ``focal_persona`` (``a_<focal>_001 .. _003``); ``background``
+    is ``world_size - measured_count`` cross-base individuals drawn round-robin
+    from the **non-focal** :data:`DEFAULT_PERSONAS`, so the loader's same-base
+    ``base_groups`` isolates the focal trio cleanly for the density audit
+    (PR-S4c). The ``measured_count`` parameter is kept for signature clarity but
+    is pinned to 3 — any other value is rejected (Codex MEDIUM, DA-S4A-6) so an
+    internal caller cannot widen / shrink the H2 comparison set. The legacy
+    one-per-persona / same-base launchers (:func:`build_natural_roster`) are
+    untouched — this is a separate API (DA-S4A-1/3).
+
+    Raises:
+        ValueError: ``focal_persona`` is not a DEFAULT persona; ``measured_count``
+            != :data:`_MEASURED_INDIVIDUAL_COUNT` (frozen 3); ``world_size`` <
+            ``measured_count``; ``world_size`` exceeds :data:`_POPULATION_N_MAX`;
+            or no non-focal persona exists to supply a requested background.
+    """
+    if focal_persona not in DEFAULT_PERSONAS:
+        msg = (
+            f"focal_persona={focal_persona!r} is not part of the natural-condition"
+            f" agent set ({DEFAULT_PERSONAS})"
+        )
+        raise ValueError(msg)
+    if measured_count != _MEASURED_INDIVIDUAL_COUNT:
+        msg = (
+            f"measured_count must equal the frozen _MEASURED_INDIVIDUAL_COUNT"
+            f" ({_MEASURED_INDIVIDUAL_COUNT}, ⑤ N=3 / stage C), got {measured_count};"
+            " the measured same-base set is fixed and may not be re-sized"
+        )
+        raise ValueError(msg)
+    if world_size < measured_count:
+        msg = f"world_size={world_size} must be >= measured_count={measured_count}"
+        raise ValueError(msg)
+    if world_size > _POPULATION_N_MAX:
+        msg = (
+            f"world_size={world_size} exceeds the frozen population ceiling"
+            f" _POPULATION_N_MAX={_POPULATION_N_MAX}; add seats / re-open stage C"
+            " before scaling the world"
+        )
+        raise ValueError(msg)
+
+    measured = tuple(
+        (focal_persona, ordinal) for ordinal in range(1, measured_count + 1)
+    )
+    non_focal = tuple(pid for pid in sorted(DEFAULT_PERSONAS) if pid != focal_persona)
+    background_count = world_size - measured_count
+    background: list[tuple[str, int]] = []
+    if background_count > 0:
+        if not non_focal:
+            msg = (
+                "no non-focal personas available to supply background agents"
+                f" (DEFAULT_PERSONAS={DEFAULT_PERSONAS}, focal={focal_persona!r})"
+            )
+            raise ValueError(msg)
+        for i in range(background_count):
+            pid = non_focal[i % len(non_focal)]
+            ordinal = i // len(non_focal) + 1
+            background.append((pid, ordinal))
+    return NaturalPopulationRoster(
+        focal_persona=focal_persona,
+        measured=measured,
+        background=tuple(background),
+    )
+
+
+def _register_population_roster(
+    runtime: WorldRuntime,
+    roster: NaturalPopulationRoster,
+    persona_specs: Mapping[str, PersonaSpec],
+) -> None:
+    """Register a population roster into *runtime* (S4 launcher seam, PR-S4a).
+
+    Each entry (measured then background, seat order) gets a distinct
+    :data:`_NATURAL_POPULATION_SEATS` seat by index and a distinct ``agent_id``;
+    ``register_agent`` raises on a duplicate id so a launcher bug surfaces at
+    registration. Verifiable offline with a stub runtime — no Ollama / SGLang
+    health check, no real inference (MED-3). The legacy
+    :func:`_register_natural_roster` is untouched.
+    """
+    for index, (base_pid, ordinal) in enumerate(roster.all_entries()):
+        spec = persona_specs[base_pid]
+        seat = _NATURAL_POPULATION_SEATS[index]
+        runtime.register_agent(
+            _initial_state_for_natural(spec, ordinal=ordinal, seat=seat), spec
+        )
+
+
 # ---------------------------------------------------------------------------
 # Output path / overwrite policy
 # ---------------------------------------------------------------------------
@@ -1291,6 +1488,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     overwrite_memory_db: bool = False,
     individual_layer: IndividualLayerConfig | None = None,
     same_base_count: int | None = None,
+    population_world_size: int | None = None,
 ) -> CaptureResult:
     """Capture one natural-condition cell using a headless WorldRuntime stack.
 
@@ -1302,6 +1500,13 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     that many same-base individuals of ``persona`` (``a_<persona>_001 .. _NNN``)
     so the same-base individuation pilot can run; see :func:`build_natural_roster`.
 
+    ``population_world_size`` (M10-A S4, PR-S4a) selects the population roster
+    instead: 3 measured same-base individuals of ``persona`` + ``(N-3)``
+    cross-base background agents (total ``N``); see
+    :func:`build_population_roster`. It is **mutually exclusive** with
+    ``same_base_count`` — passing both raises ``ValueError`` (the guard is here,
+    not only in the CLI, because this is an internal API; DA-S4A-4).
+
     ``individual_layer`` is the M11-C2 substrate seam (DA-M11C2-9): ``None``
     (default) leaves the flag-off path byte-identical; an enabled config bootstraps
     ``metrics.individual_state_trace``, wires the trace sink into the default
@@ -1311,6 +1516,14 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     ``duckdb_sink`` turn sink and never bootstraps the trace table, so the DuckDB
     stays byte-identical (DB byte-invariance is asserted for flag-off only).
     """
+    if same_base_count is not None and population_world_size is not None:
+        msg = (
+            "capture_natural: same_base_count and population_world_size are"
+            " mutually exclusive (legacy/C3b same-base launcher vs S4 population"
+            " launcher); pass at most one"
+        )
+        raise ValueError(msg)
+
     manifest = (
         load_seed_manifest() if seeds_path is None else load_seed_manifest(seeds_path)
     )
@@ -1326,6 +1539,15 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             f"set ({DEFAULT_PERSONAS})"
         )
         raise ValueError(msg)
+
+    # Build (and thereby validate) the population roster *before* any DB / memory
+    # / Ollama setup so an invalid --population-world-size fails fast with the
+    # real input error instead of a downstream resource fatal (Codex LOW).
+    population_roster = (
+        build_population_roster(persona, world_size=population_world_size)
+        if population_world_size is not None
+        else None
+    )
 
     run_id = f"{persona}_natural_run{run_idx}"
     state = _SinkState()
@@ -1499,10 +1721,13 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     # so distinct seats inside AGORA are sufficient. The default roster is the
     # three personas (byte-identical to before); the M11-C3b same-base roster is
     # N individuals of the focal persona (DA-M11C3b-P1-3).
-    roster = build_natural_roster(persona, same_base_count=same_base_count)
-    _register_natural_roster(
-        runtime, roster, persona_specs, same_base=same_base_count is not None
-    )
+    if population_roster is not None:
+        _register_population_roster(runtime, population_roster, persona_specs)
+    else:
+        roster = build_natural_roster(persona, same_base_count=same_base_count)
+        _register_natural_roster(
+            runtime, roster, persona_specs, same_base=same_base_count is not None
+        )
 
     # Warmup — same fail-soft logic as stimulus.
     await _warm_up_ollama(inference, persona_specs[persona])
@@ -1725,7 +1950,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             " byte-for-byte unchanged; default off (no analysis view opened)."
         ),
     )
-    parser.add_argument(
+    # M10-A S4 (DA-S4A-4): the two scaled-roster launchers are mutually
+    # exclusive — argparse rejects passing both, mirroring the function-level
+    # guard in capture_natural (so neither the CLI nor an internal direct call
+    # can request a same-base and a population roster at once).
+    roster_group = parser.add_mutually_exclusive_group()
+    roster_group.add_argument(
         "--same-base-count",
         type=int,
         default=None,
@@ -1733,7 +1963,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "M11-C3b same-base launcher: register this many individuals of"
             " --persona (a_<persona>_001 .. _NNN) into one natural run instead"
             " of the default one-per-persona set. Natural condition only;"
-            " default off (byte-identical legacy roster)."
+            " default off (byte-identical legacy roster). Mutually exclusive"
+            " with --population-world-size."
+        ),
+    )
+    roster_group.add_argument(
+        "--population-world-size",
+        type=int,
+        default=None,
+        help=(
+            "M10-A S4 population launcher: register 3 measured same-base"
+            " individuals of --persona plus (N-3) cross-base background agents"
+            " (total N, max 31) into one natural run. Mutually exclusive with"
+            " --same-base-count. Natural condition only; default off."
         ),
     )
     parser.add_argument(
@@ -1811,6 +2053,7 @@ async def _async_main(args: argparse.Namespace) -> int:
             overwrite_memory_db=args.overwrite_memory_db,
             individual_layer=individual_layer,
             same_base_count=getattr(args, "same_base_count", None),
+            population_world_size=getattr(args, "population_world_size", None),
         )
 
     return _publish_capture(args, result, temp_path, final_path)
