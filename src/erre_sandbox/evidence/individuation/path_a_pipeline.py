@@ -16,6 +16,7 @@ provider) — the scorer logic itself is unit-tested on hand-built dataclasses.
 
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING
 
 from erre_sandbox.evidence.individuation.path_a_gate import (
@@ -24,6 +25,7 @@ from erre_sandbox.evidence.individuation.path_a_gate import (
     PathARunInput,
 )
 from erre_sandbox.evidence.individuation.policy import (
+    DYAD_SEP,
     AggregationLevel,
 )
 from erre_sandbox.evidence.individuation.runner import compute_individuation
@@ -58,8 +60,17 @@ def assemble_path_a_run_from_view(
     run_id: str,
     run_idx: int,
     ctx: IndividuationContext,
+    focal_persona: str | None = None,
 ) -> PathARunInput:
-    """Project one run's individuation rows + trace substrate into a seed input."""
+    """Project one run's individuation rows + trace substrate into a seed input.
+
+    ``focal_persona`` (M10-A S4 GPU smoke wiring, 論点 d) selects the measured trio
+    out of a **population** run whose per-individual ``belief_variance`` rows span
+    more than one ``base_persona_id`` (3 measured same-base + (N-3) cross-base
+    background): the assembly keeps only the focal base's individuals and their
+    dyads. ``None`` (default) is the legacy same-base path — byte-identical, and the
+    multi-base guard still fires on a genuinely ambiguous same-base pilot.
+    """
     results = compute_individuation(view, run_id=run_id, ctx=ctx)
     trace_windows = load_state_windows(view, run_id=run_id)
     return _build_run_input(
@@ -67,6 +78,7 @@ def assemble_path_a_run_from_view(
         run_idx=run_idx,
         results=results,
         trace_windows=trace_windows,
+        focal_persona=focal_persona,
     )
 
 
@@ -76,8 +88,12 @@ def assemble_path_a_run(
     run_id: str,
     run_idx: int,
     ctx: IndividuationContext,
+    focal_persona: str | None = None,
 ) -> PathARunInput:
-    """Open a published ``.duckdb`` and assemble one seed's :class:`PathARunInput`."""
+    """Open a published ``.duckdb`` and assemble one seed's :class:`PathARunInput`.
+
+    ``focal_persona`` is threaded to :func:`assemble_path_a_run_from_view` (论点 d).
+    """
     from erre_sandbox.evidence.eval_store import (  # noqa: PLC0415  # cycle-safe lazy
         connect_analysis_view,
     )
@@ -85,7 +101,7 @@ def assemble_path_a_run(
     view = connect_analysis_view(path)
     try:
         return assemble_path_a_run_from_view(
-            view, run_id=run_id, run_idx=run_idx, ctx=ctx
+            view, run_id=run_id, run_idx=run_idx, ctx=ctx, focal_persona=focal_persona
         )
     finally:
         view.close()
@@ -96,14 +112,20 @@ def assemble_path_a_experiment(
     *,
     experiment_run_id: str,
     ctx: IndividuationContext,
+    focal_persona: str | None = None,
 ) -> PathAExperiment:
     """Assemble the N=3 :class:`PathAExperiment` from ``(path, run_id, run_idx)``.
 
     The scorer (:func:`score_path_a_gate`) validates the seed matrix (exactly
     ``(0, 1, 2)``) and per-seed identity, so this stays a thin projector.
+    ``focal_persona`` (论点 d) is threaded to every seed's assembly so a population
+    capture is projected to its measured trio; ``None`` keeps the legacy same-base
+    behaviour.
     """
     runs = tuple(
-        assemble_path_a_run(path, run_id=run_id, run_idx=run_idx, ctx=ctx)
+        assemble_path_a_run(
+            path, run_id=run_id, run_idx=run_idx, ctx=ctx, focal_persona=focal_persona
+        )
         for path, run_id, run_idx in captures
     )
     return PathAExperiment(run_id=experiment_run_id, runs=runs)
@@ -126,6 +148,7 @@ def _build_run_input(
     run_idx: int,
     results: Sequence[MetricResult],
     trace_windows: dict[tuple[str, str], IndividualStateWindow],
+    focal_persona: str | None = None,
 ) -> PathARunInput:
     belief_variance_rows = tuple(
         r
@@ -139,6 +162,24 @@ def _build_run_input(
         if r.metric_name == _JACCARD_METRIC
         and r.aggregation_level is AggregationLevel.PER_DYAD
     )
+    if focal_persona is not None:
+        # 论点 d (M10-A S4 GPU smoke wiring): a population run's per-individual
+        # belief_variance rows span the measured focal base + the cross-base
+        # background. Isolate the focal base's measured trio + its C(3,2) dyads
+        # *before* the multi-base guard, so the guard only ever fires on a
+        # genuinely ambiguous same-base pilot. ``focal_persona=None`` keeps the
+        # legacy path byte-identical; passing it on a single-base run is a no-op
+        # (every row is already the focal base), so the orchestration may always
+        # pass it. The focal-dyad key mirrors the scorer's identity gate
+        # (``f"{a}{DYAD_SEP}{b}"`` over the sorted focal ids).
+        belief_variance_rows = tuple(
+            r for r in belief_variance_rows if r.base_persona_id == focal_persona
+        )
+        focal_ids = sorted({r.individual_id for r in belief_variance_rows})
+        focal_dyads = {
+            f"{a}{DYAD_SEP}{b}" for a, b in itertools.combinations(focal_ids, 2)
+        }
+        jaccard_rows = tuple(r for r in jaccard_rows if r.individual_id in focal_dyads)
     bases = {r.base_persona_id for r in belief_variance_rows}
     if len(bases) > 1:
         msg = (
