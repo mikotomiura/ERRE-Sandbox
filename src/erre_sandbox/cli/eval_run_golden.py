@@ -313,9 +313,10 @@ class CaptureResult:
         Concrete reason the run terminated; pinned to
         :data:`erre_sandbox.evidence.capture_sidecar.StopReason`.
     ``drain_completed`` / ``runtime_drain_timeout``
-        Whether ``runtime.stop()`` finished within
-        ``_RUNTIME_DRAIN_GRACE_S``; ``True / False`` is the normal pair,
-        ``False / True`` indicates a drain timeout (= fatal).
+        Whether ``runtime.stop()`` finished within the configured runtime
+        drain grace (``capture_natural``'s ``runtime_drain_grace_s``, default
+        ``_RUNTIME_DRAIN_GRACE_S`` = 60 s); ``True / False`` is the normal
+        pair, ``False / True`` indicates a drain timeout (= fatal).
     ``selected_stimulus_ids``
         **Planned** stratified slice ids. Records
         what the run *intended* to consume so a partial run is replay-
@@ -1489,6 +1490,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     individual_layer: IndividualLayerConfig | None = None,
     same_base_count: int | None = None,
     population_world_size: int | None = None,
+    runtime_drain_grace_s: float = _RUNTIME_DRAIN_GRACE_S,
 ) -> CaptureResult:
     """Capture one natural-condition cell using a headless WorldRuntime stack.
 
@@ -1506,6 +1508,14 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     :func:`build_population_roster`. It is **mutually exclusive** with
     ``same_base_count`` — passing both raises ``ValueError`` (the guard is here,
     not only in the CLI, because this is an internal API; DA-S4A-4).
+
+    ``runtime_drain_grace_s`` (M10-A S4 GPU exec) is the wait for the runtime task
+    to drain its final in-flight tick after :meth:`WorldRuntime.stop`; exceeding it
+    is a fatal drain timeout. It defaults to :data:`_RUNTIME_DRAIN_GRACE_S` (60 s,
+    byte-identical for every existing caller / the 3-agent same-base launcher). A
+    population run registers up to N=31 agents whose single cognition tick can take
+    longer than 60 s, so the S4 launcher passes a larger grace; only that caller
+    changes behaviour.
 
     ``individual_layer`` is the M11-C2 substrate seam (DA-M11C2-9): ``None``
     (default) leaves the flag-off path byte-identical; an enabled config bootstraps
@@ -1772,14 +1782,14 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         runtime_phase_end = time.monotonic()
         runtime.stop()
         try:
-            await asyncio.wait_for(runtime_task, timeout=_RUNTIME_DRAIN_GRACE_S)
+            await asyncio.wait_for(runtime_task, timeout=runtime_drain_grace_s)
         except TimeoutError:
             # drain incomplete = fatal regardless of
             # wall budget — checkpoint/close cannot be guaranteed, so silent
             # publish of a torn DuckDB file is unsafe.
             state.drain_completed = False
             state.runtime_drain_timeout = True
-            state.set_fatal(f"runtime drain exceeded {_RUNTIME_DRAIN_GRACE_S}s")
+            state.set_fatal(f"runtime drain exceeded {runtime_drain_grace_s}s")
             runtime_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await runtime_task
@@ -1989,6 +1999,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--runtime-drain-grace-s",
+        type=float,
+        default=_RUNTIME_DRAIN_GRACE_S,
+        help=(
+            "Seconds to wait for the runtime to drain its final in-flight tick"
+            " after stop before declaring a fatal drain timeout (natural"
+            " condition; default %(default).0f). A population run (up to N=31"
+            " agents) needs a larger grace than the 3-agent default because a"
+            " single cognition tick can exceed it."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="info",
         choices=("debug", "info", "warning", "error"),
@@ -2054,6 +2076,9 @@ async def _async_main(args: argparse.Namespace) -> int:
             individual_layer=individual_layer,
             same_base_count=getattr(args, "same_base_count", None),
             population_world_size=getattr(args, "population_world_size", None),
+            runtime_drain_grace_s=getattr(
+                args, "runtime_drain_grace_s", _RUNTIME_DRAIN_GRACE_S
+            ),
         )
 
     return _publish_capture(args, result, temp_path, final_path)
