@@ -102,6 +102,16 @@ from erre_sandbox.evidence.individuation.trace_ddl import (
 from erre_sandbox.evidence.individuation.trace_ddl import (
     column_names as _individual_state_trace_columns,
 )
+from erre_sandbox.evidence.saturation.trace_ddl import (
+    TABLE_NAME as _SATURATION_TRACE_TABLE,
+)
+from erre_sandbox.evidence.saturation.trace_ddl import (
+    bootstrap_saturation_trace_schema,
+    build_saturation_trace_rows,
+)
+from erre_sandbox.evidence.saturation.trace_ddl import (
+    column_names as _saturation_trace_columns,
+)
 from erre_sandbox.inference import (
     ChatMessage,
     OllamaChatClient,
@@ -131,6 +141,7 @@ if TYPE_CHECKING:
         IndividualLayerConfig,
         IndividualProfile,
         PromotedEvidenceUnit,
+        WorldModelSnapshot,
     )
     from erre_sandbox.evidence.capture_sidecar import CaptureStatus, StopReason
 
@@ -760,6 +771,60 @@ def _make_individual_trace_sink(
             con.execute(insert_sql, row.to_row())
         except duckdb.Error as exc:
             state.set_fatal(f"duckdb individual_state_trace insert failed: {exc!r}")
+            raise CaptureFatalError(state.fatal_error) from exc
+
+    return sink
+
+
+def _make_saturation_trace_sink(
+    *,
+    con: duckdb.DuckDBPyConnection,
+    run_id: str,
+    seed: int,
+    individual_layer_enabled: bool,
+    state: _SinkState,
+) -> Callable[[str, WorldModelSnapshot, int], None]:
+    """Construct the flag-on saturation trace sink (saturation ADR section 5).
+
+    Mirrors :func:`_make_individual_trace_sink`'s error contract: a DuckDB INSERT
+    failure sets ``state.fatal_error`` and raises :class:`CaptureFatalError`, so a
+    half-written trace cannot publish through the atomic rename. ``run_id`` /
+    ``seed`` / ``individual_layer_enabled`` are bound here so ``WorldRuntime`` never
+    learns the run identity; the rows are built from the post-reconcile pre-nudge
+    ``WorldModelSnapshot`` carried off ``CycleResult`` (ADR section 2.1), so
+    ``world`` imports neither ``evidence`` nor ``cognition``. ``seed`` is the
+    ``derive_seed`` uint64 (UBIGINT column; DA-IMPL-2), bound explicitly alongside
+    ``individual_layer_enabled`` so the loader can reject a provenance-false seed
+    (avoids the M11-C3b-exec column-omission bug). Column order tracks
+    ``_saturation_trace_columns()`` in lockstep, and the qualified table name is
+    composed from ``METRICS_SCHEMA`` (never a schema-dot literal; CI grep gate).
+    """
+    cols = _saturation_trace_columns()
+    columns_sql = ", ".join(f'"{c}"' for c in cols)
+    placeholders = ", ".join("?" for _ in cols)
+    insert_sql = (
+        f"INSERT INTO {METRICS_SCHEMA}.{_SATURATION_TRACE_TABLE}"  # noqa: S608 — static identifiers only
+        f" ({columns_sql}) VALUES ({placeholders})"
+    )
+
+    def sink(individual_id: str, snapshot: WorldModelSnapshot, tick: int) -> None:
+        if state.fatal_error is not None:
+            return
+        rows = build_saturation_trace_rows(
+            snapshot,
+            run_id=run_id,
+            seed=seed,
+            individual_id=individual_id,
+            tick=tick,
+            individual_layer_enabled=individual_layer_enabled,
+        )
+        try:
+            for row in rows:
+                con.execute(insert_sql, row.to_row())
+        except duckdb.Error as exc:
+            state.set_fatal(
+                f"duckdb swm_modulation_saturation_trace insert failed: {exc!r}"
+            )
             raise CaptureFatalError(state.fatal_error) from exc
 
     return sink
@@ -1572,6 +1637,11 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
     individual_layer_on = individual_layer is not None and individual_layer.enabled
     if individual_layer_on:
         bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
+        # Saturation probe (ADR section 5): flag-on conditional trace table, created
+        # in the same individual-layer-enabled branch so a flag-off run never issues
+        # this DDL and the DuckDB stays byte-identical (new-module shadow; the frozen
+        # individual_state_trace path above is untouched).
+        bootstrap_saturation_trace_schema(con, METRICS_SCHEMA)
 
     # SH-4: validate (symlink/prefix/overwrite) for explicit paths, fall back to
     # ME-2 default ``/tmp/p3a_natural_<persona>_run<idx>.sqlite`` when None.
@@ -1618,6 +1688,21 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         if individual_layer_on
         else None
     )
+    # Saturation probe (ADR section 5): flag-on per-channel sink. ``seed`` is the
+    # ``derive_seed`` uint64 already computed for this run (UBIGINT column;
+    # DA-IMPL-2) so the N=3 paired seeds partition cleanly in the loader.
+    # ``individual_layer_enabled`` is bound true here (the only path that writes it).
+    saturation_trace_sink = (
+        _make_saturation_trace_sink(
+            con=con,
+            run_id=run_id,
+            seed=seed_root,
+            individual_layer_enabled=individual_layer_on,
+            state=state,
+        )
+        if individual_layer_on
+        else None
+    )
 
     # Build the WorldRuntime + cognition stack.  ``runtime_factory`` is the
     # injection seam used by the unit test to swap in a ManualClock-driven
@@ -1648,7 +1733,11 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             reflector=reflector,
             individual_layer=individual_layer,
         )
-        runtime = WorldRuntime(cycle=cycle, individual_trace_sink=trace_sink)
+        runtime = WorldRuntime(
+            cycle=cycle,
+            individual_trace_sink=trace_sink,
+            saturation_trace_sink=saturation_trace_sink,
+        )
     else:
         runtime = runtime_factory(
             memory=memory,
@@ -1658,6 +1747,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             persona_specs=persona_specs,
             individual_layer=individual_layer,
             individual_trace_sink=trace_sink,
+            saturation_trace_sink=saturation_trace_sink,
         )
 
     def _persona_resolver(agent_id: str) -> str | None:

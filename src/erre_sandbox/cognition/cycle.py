@@ -59,18 +59,20 @@ from erre_sandbox.cognition.world_model import (
     WorldModelRuntimeState,
     apply_world_model_update_hint,
     collect_promoted_evidence_units,
+    project_world_model_snapshot,
     reconcile_world_model,
     synthesize_world_model,
 )
 
-# NarrativeArc / DevelopmentState / PromotedEvidenceUnit are Pydantic field
-# annotations on ``CycleResult`` below (and ``DevelopmentState`` is also
-# constructed at runtime), so they must be importable at runtime (Pydantic
+# NarrativeArc / DevelopmentState / PromotedEvidenceUnit / WorldModelSnapshot are
+# Pydantic field annotations on ``CycleResult`` below (and ``DevelopmentState`` is
+# also constructed at runtime), so they must be importable at runtime (Pydantic
 # resolves them at model-build time).
 from erre_sandbox.contracts.cognition_layers import (
     DevelopmentState,
     NarrativeArc,
     PromotedEvidenceUnit,
+    WorldModelSnapshot,
 )
 from erre_sandbox.erre import SAMPLING_DELTA_BY_MODE
 from erre_sandbox.inference import (
@@ -284,6 +286,20 @@ class CycleResult(BaseModel):
     as ``belief_classes_json``; the loader expands it for ``belief_variance``.
     Class-wise, not dyadic; the weighting unit is the belief, not the tick.
     Diagnostic substrate — it never drives control."""
+    world_model_saturation: WorldModelSnapshot | None = None
+    """Post-reconcile, **pre-nudge** SWM snapshot for the saturation probe
+    (saturation ADR section 2.1 / 5, flag-on only).
+
+    ``None`` flag-off. Flag-on this is ``project_world_model_snapshot(reconciled)``
+    captured **immediately after** :func:`reconcile_world_model` and **before** any
+    adopted :class:`WorldModelUpdateHint` nudge — so the modulated values it carries
+    are cap-re-clamped (``floor +/- MAX_TOTAL_MODULATION``), unlike the post-hint
+    carry-out on ``world_model_runtime`` which can transiently sit one step past the
+    cap. The saturation trace must observe this pre-nudge view or it would
+    over-estimate cap occupancy (DA-IMPL-1 / saturation ADR section 2.1). Deep-copied
+    by ``project_world_model_snapshot`` so it never aliases the reconcile state.
+    The caller (:meth:`WorldRuntime._emit_saturation_trace`) explodes it into
+    ``swm_modulation_saturation_trace`` rows. Substrate only — never drives control."""
 
 
 class CognitionError(RuntimeError):
@@ -399,7 +415,7 @@ class CognitionCycle:
         # the same optional-collaborator idiom as ``erre_policy`` / ``reflector``.
         self._individual_layer = individual_layer
 
-    async def step(
+    async def step(  # noqa: PLR0915 — central cognition orchestrator; +1 stmt for the saturation snapshot capture (ADR section 2.1)
         self,
         agent_state: AgentState,
         persona: PersonaSpec,
@@ -527,6 +543,17 @@ class CognitionCycle:
             reconciled = reconcile_world_model(world_model_runtime, floor)
             world_model_entries = reconciled.modulated.entries
             exposed_citations = visible_entry_citations(world_model_entries)
+        # Saturation probe (ADR section 2.1 / 5): snapshot the reconciled SWM
+        # **here**, immediately after reconcile and before any adopted hint nudge,
+        # so the modulated values are cap-re-clamped. Capturing later (off
+        # ``result_runtime`` / the post-hint carry-out) would read values that can
+        # transiently sit one step past the cap and over-estimate saturation. The
+        # snapshot deep-copies, so a downstream nudge to ``reconciled`` cannot
+        # mutate it. ``None`` flag-off, mirroring ``belief_classes`` — it rides out
+        # on ``CycleResult`` so the trace sink in ``world`` never imports cognition.
+        world_model_saturation = (
+            project_world_model_snapshot(reconciled) if reconciled is not None else None
+        )
         # M11-C2: full promoted-belief class set for this tick's
         # individual_state_trace row. ``None`` flag-off (beliefs never read); a
         # possibly-empty list flag-on ("whole promoted set"). Carried
@@ -574,6 +601,7 @@ class CognitionCycle:
                 world_model_runtime=reconciled,
                 belief_classes=belief_classes,
                 world_model_evidence=world_model_evidence,
+                world_model_saturation=world_model_saturation,
             )
 
         # Step 7: parse the LLM plan (malformed → same fallback branch).
@@ -592,6 +620,7 @@ class CognitionCycle:
                 world_model_runtime=reconciled,
                 belief_classes=belief_classes,
                 world_model_evidence=world_model_evidence,
+                world_model_saturation=world_model_saturation,
             )
 
         # Step 7.5 (M10-C): apply a verified world-model nudge. The LLM is a
@@ -712,6 +741,7 @@ class CognitionCycle:
             development_state=new_development,
             belief_classes=belief_classes,
             world_model_evidence=world_model_evidence,
+            world_model_saturation=world_model_saturation,
         )
 
     # ------------------------------------------------------------------
@@ -1053,6 +1083,7 @@ class CognitionCycle:
         world_model_runtime: WorldModelRuntimeState | None = None,
         belief_classes: list[str] | None = None,
         world_model_evidence: list[PromotedEvidenceUnit] | None = None,
+        world_model_saturation: WorldModelSnapshot | None = None,
     ) -> CycleResult:
         """Continue-current-action path for recoverable failures.
 
@@ -1067,6 +1098,9 @@ class CognitionCycle:
         beliefs in ``individual_state_trace`` (M11-C2). ``None`` on flag-off.
         ``world_model_evidence`` carries the flag-on per-dyad raw evidence units
         captured before the LLM call for the same reason (M10-A 段B); ``None``
+        flag-off. ``world_model_saturation`` carries the post-reconcile pre-nudge
+        SWM snapshot captured before the LLM call so an outage tick still records
+        this tick's cap occupancy in the saturation trace (ADR section 2.1); ``None``
         flag-off.
         """
         new_state = agent_state.model_copy(
@@ -1087,6 +1121,7 @@ class CognitionCycle:
             world_model_runtime=world_model_runtime,
             belief_classes=belief_classes,
             world_model_evidence=world_model_evidence,
+            world_model_saturation=world_model_saturation,
         )
 
     def _build_envelopes(
