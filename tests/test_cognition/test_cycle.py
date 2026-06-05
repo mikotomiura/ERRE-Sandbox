@@ -629,6 +629,53 @@ async def test_flag_on_valid_hint_nudges_and_writes_back(
     assert _env_agora(result).value == pytest.approx(-0.75)
 
 
+async def test_flag_on_saturation_snapshot_is_pre_nudge(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """world_model_saturation captures the reconciled SWM BEFORE the hint nudge.
+
+    Saturation ADR section 2.1 (Codex LOW-2): the probe must observe the
+    post-reconcile, **pre-nudge** value, never the post-hint carry-out (which can
+    sit one step past the cap). On the first tick ``reconcile(None, floor) == floor``
+    so env/agora reads the floor -0.70 in the snapshot, while the adopted hint nudges
+    the carried-out runtime to -0.75 — the two must differ.
+    """
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    embedding = make_embedding_client()
+    llm = make_chat_client(content=json.dumps(_HINT_PLAN))
+    try:
+        cycle = CognitionCycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            rng=Random(0),
+            individual_layer=IndividualLayerConfig(enabled=True),
+        )
+        result = await cycle.step(agent, make_persona_spec(), [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+
+    # Post-hint carry-out is nudged to -0.75 (sibling test verifies this path).
+    assert _env_agora(result).value == pytest.approx(-0.75)
+    saturation = result.world_model_saturation
+    assert saturation is not None
+    sat_entry = next(
+        e for e in saturation.modulated.entries if (e.axis, e.key) == ("env", "agora")
+    )
+    # The snapshot is the pre-nudge reconciled value (== floor on tick 1), NOT -0.75.
+    assert sat_entry.value == pytest.approx(-0.70)
+    assert sat_entry.value != pytest.approx(_env_agora(result).value)
+
+
 async def test_flag_on_modulation_persists_across_ticks(
     make_agent_state,
     make_persona_spec,

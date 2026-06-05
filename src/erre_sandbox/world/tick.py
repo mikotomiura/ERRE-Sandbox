@@ -81,6 +81,7 @@ if TYPE_CHECKING:
         DevelopmentState,
         NarrativeArc,
         PromotedEvidenceUnit,
+        WorldModelSnapshot,
     )
 
     # M11-C2 / M10-A 段B: flag-on individual-state trace sink. Args are
@@ -94,6 +95,21 @@ if TYPE_CHECKING:
             IndividualProfile,
             "list[str] | None",
             "list[PromotedEvidenceUnit] | None",
+            int,
+        ],
+        None,
+    ]
+
+    # Saturation probe (ADR section 5): flag-on per-channel trace sink. Args are
+    # ``(individual_id, world_model_saturation, tick)``; the orchestrator's closure
+    # binds ``run_id`` / ``seed`` / ``individual_layer_enabled`` and explodes the
+    # snapshot into rows, so ``world`` never imports ``evidence`` and never learns
+    # the run identity. The post-reconcile pre-nudge ``WorldModelSnapshot`` rides in
+    # on ``CycleResult.world_model_saturation`` so ``world`` never imports cognition.
+    SaturationTraceSink = Callable[
+        [
+            str,
+            "WorldModelSnapshot",
             int,
         ],
         None,
@@ -441,6 +457,7 @@ class WorldRuntime:
         heartbeat_period_s: float | None = None,
         day_duration_s: float | None = None,
         individual_trace_sink: IndividualTraceSink | None = None,
+        saturation_trace_sink: SaturationTraceSink | None = None,
     ) -> None:
         self._cycle = cycle
         # M11-C2: flag-on individual-state trace sink. ``None`` (flag-off / live
@@ -449,6 +466,11 @@ class WorldRuntime:
         # snapshot into C2's substrate (DA-M11C2-1/5). Wired only by the eval
         # orchestrator's individual-layer-enabled branch (DA-M11C2-7).
         self._individual_trace_sink: IndividualTraceSink | None = individual_trace_sink
+        # Saturation probe (ADR section 5): flag-on per-channel trace sink, wired
+        # only by the eval orchestrator's individual-layer-enabled branch. ``None``
+        # (flag-off / live flow) makes ``_emit_saturation_trace`` a no-op so the
+        # flag-off DuckDB stays byte-identical (the new table is never bootstrapped).
+        self._saturation_trace_sink: SaturationTraceSink | None = saturation_trace_sink
         self._clock: Clock = clock if clock is not None else RealClock()
         self._physics_dt = 1.0 / (physics_hz or self.DEFAULT_PHYSICS_HZ)
         self._cognition_period = (
@@ -1555,6 +1577,10 @@ class WorldRuntime:
         # to keep _consume_result's branch count bounded (C901); the helper no-ops
         # when the sink is unset (flag-off / live runs).
         self._emit_individual_trace(rt, res)
+        # Saturation probe (ADR section 5): emit this tick's per-channel saturation
+        # trace (flag-on only). Same no-op-when-unset contract as the individual
+        # trace; uses the post-reconcile pre-nudge snapshot carried on the result.
+        self._emit_saturation_trace(rt, res)
         # M6-A-2b: observations detected post-LLM (stress crossings) are
         # surfaced one tick late — append them to ``pending`` so the next
         # cognition tick sees the signal. Empty for agents whose stress
@@ -1610,6 +1636,27 @@ class WorldRuntime:
             res.world_model_evidence,
             rt.state.tick,
         )
+
+    def _emit_saturation_trace(self, rt: AgentRuntime, res: CycleResult) -> None:
+        """Emit this tick's saturation trace via the flag-on sink (ADR section 5).
+
+        No-op when ``_saturation_trace_sink`` is ``None`` (flag-off / live runs), so
+        the new trace table is never written and the flag-off DuckDB stays
+        byte-identical. ``res.world_model_saturation`` is the post-reconcile
+        pre-nudge ``WorldModelSnapshot`` (ADR section 2.1) carried off the result so
+        ``world`` never imports cognition; ``None`` on a flag-off tick (defensive —
+        the sink is already ``None`` there) so this no-ops then too. ``rt.state.tick``
+        is the same post-step tick label the individual trace records, keeping the
+        two traces joinable (DA-IMPL-4). The orchestrator's sink closure owns the
+        DuckDB-write error semantics (CaptureFatalError), mirroring the dialog-turn
+        sink — not swallowed.
+        """
+        if self._saturation_trace_sink is None:
+            return
+        snapshot = res.world_model_saturation
+        if snapshot is None:
+            return
+        self._saturation_trace_sink(rt.agent_id, snapshot, rt.state.tick)
 
     # ----- Scheduling helper -----
 
