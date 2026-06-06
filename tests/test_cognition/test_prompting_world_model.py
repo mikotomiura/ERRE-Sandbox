@@ -96,7 +96,7 @@ def test_section_inserted_after_memories_before_decision() -> None:
 def test_section_renders_axis_key_value_conf() -> None:
     entries = [_entry("env", "peripatos", 0.30, 0.65)]
     prompt = build_user_prompt([], [], world_model_entries=entries)
-    assert "- [env/peripatos] value=+0.30 conf=0.65" in prompt
+    assert "- axis=env key=peripatos value=+0.30 conf=0.65" in prompt
 
 
 # ---------- top-K + token budget -------------------------------------------
@@ -140,7 +140,11 @@ def test_empty_entries_render_empty_string() -> None:
 
 
 def test_update_disabled_uses_base_schema_and_no_citations() -> None:
-    """world_model_update_enabled=False (default) is byte-identical to M10-B."""
+    """Implicit update-off == explicit update-off (same render + base schema, no
+    citations). NOTE: this asserts the two off-configs agree, **not** historical
+    M10-B byte-identity — a Held-entry-present prompt changed with the ``axis= key=``
+    render contract fix (``20260607-hint-render-contract-alignment``); byte-identity
+    to the prior contract holds only for the empty (base-path) prompt."""
     entries = [_entry("env", "agora", 0.40, 0.60)]
     legacy = build_user_prompt([], [], world_model_entries=entries)
     explicit_off = build_user_prompt(
@@ -180,7 +184,10 @@ def test_update_enabled_renders_citations_and_extended_schema() -> None:
         world_model_entries=entries,
         world_model_update_enabled=True,
     )
-    assert "- [env/agora] value=+0.40 conf=0.60 cite=belief_kant__nietzsche" in prompt
+    assert (
+        "- axis=env key=agora value=+0.40 conf=0.60 cite=belief_kant__nietzsche"
+        in prompt
+    )
     assert "world_model_update_hint" in prompt
     assert RESPONSE_SCHEMA_HINT_WITH_UPDATE in prompt
 
@@ -251,3 +258,44 @@ def test_update_enabled_section_within_citation_budget() -> None:
     ]
     rendered = format_world_model_entries(entries, include_citations=True)
     assert count_proxy_tokens(rendered) <= 120
+
+
+# ---------- 案 A: render/contract alignment (STATE_B not_displayed fix) -------
+
+
+def test_render_and_schema_align_with_bare_key_contract() -> None:
+    """案 A contract pin: the prompt shows axis/key as separate verbatim-copyable
+    fields and the schema tells the LLM to copy them exactly (no prefix / combine),
+    so a hint mirroring the shown ``key=`` field hits the bare ``(axis, key)`` the
+    authority (:func:`visible_entry_citations`) exposes — instead of the old joined
+    ``[env/study]`` label the LLM mirrored as ``key="env/study"`` (the gate-1
+    not_displayed structural mismatch identified in
+    ``.steering/20260606-hint-stateB-notdisplayed-adr/``).
+
+    This pins the **contract** on CPU. The GPU LLM-behaviour change (does the
+    aligned prompt actually lift adoption?) is Gate 1 of the re-measurement —
+    a separate task (ADR §6) — and is **not** asserted here.
+    """
+    entries = [_entry("env", "study", 0.30, 0.65, cited=("belief_kant__n",))]
+    prompt = build_user_prompt(
+        [],
+        [],
+        world_model_entries=entries,
+        world_model_update_enabled=True,
+    )
+    # render: axis and key are separate, verbatim-copyable fields — not joined.
+    assert "- axis=env key=study value=+0.30 conf=0.65 cite=belief_kant__n" in prompt
+    assert "env/study" not in prompt
+    assert "[env/study]" not in prompt
+    # schema: the LLM is told to copy the shown axis=/key= exactly, no prefix/combine.
+    assert "exact shown axis= value" in prompt
+    assert "exact shown key= value" in prompt
+    assert "never prefix or combine" in prompt
+    # the old ambiguous instruction is gone (it invited the axis-prefixed key).
+    assert "axis+key MUST name a shown entry" not in prompt
+    assert "key of a Held entry above" not in prompt
+    # the authority exposes the bare (axis, key); copying the shown fields matches
+    # it. Exact-map assert (not just membership) so a future prefixed-alias key
+    # added to the exposed set would fail here too (Codex LOW-1).
+    exposed = visible_entry_citations(entries)
+    assert exposed == {("env", "study"): frozenset({"belief_kant__n"})}

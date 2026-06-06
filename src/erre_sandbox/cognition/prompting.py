@@ -78,15 +78,15 @@ RESPONSE_SCHEMA_HINT_WITH_UPDATE: Final[str] = (
     '  "decision": "the one-sentence reason for your action or null",\n'
     '  "next_intent": "what you plan to do next or null",\n'
     '  "world_model_update_hint": {\n'
-    '    "axis": "env|concept|self|norm|temporal",\n'
-    '    "key": "key of a Held entry above",\n'
+    '    "axis": "exact shown axis= value",\n'
+    '    "key": "exact shown key= value",\n'
     '    "direction": "strengthen|weaken|no_change",\n'
     '    "cited_memory_ids": ["ids from that entry\'s cite="]\n'
     "  }\n"
     "}\n"
     "world_model_update_hint: null unless a Held entry above no longer fits; if "
-    "set, axis+key MUST name a shown entry and each cited_memory_id MUST come "
-    "from that entry's cite= list (else ignored).\n"
+    "set, copy one shown entry axis= and key= exactly; never prefix or combine; "
+    "each cited_memory_id MUST come from that entry's cite= list (else ignored).\n"
     "Return ONLY the JSON object. No prose outside the braces."
 )
 
@@ -223,12 +223,17 @@ def format_world_model_entries(
     *entries* are expected **pre-sorted by salience** (the synthesis in
     :func:`erre_sandbox.cognition.world_model.synthesize_world_model` does
     this), so the top ``max_items`` are simply the head of the list. The line
-    format mirrors :func:`format_memories` and pins two-decimal fixed-point so
-    the rendered text is byte-stable for the cache benchmark (DA-M10B-8).
+    renders ``axis`` and ``key`` as **separate verbatim-copyable fields**
+    (``- axis=<axis> key=<key> ...``) rather than a joined ``[axis/key]`` label,
+    so a hint copying the shown ``key=`` field hits the bare ``(axis, key)`` the
+    authority exposes (:func:`visible_entry_citations`) — the gate-1 not_displayed
+    contract fix from ``.steering/20260606-hint-stateB-notdisplayed-adr/``. Values
+    pin two-decimal fixed-point so the rendered text is byte-stable for the cache
+    benchmark (DA-M10B-8).
 
-    ``max_items`` defaults to 4 because each rendered line is ~17 proxy tokens,
-    so 4 lines (~68) stay under the <= 80-token section budget (design-final
-    §1.3) while 5 (~85) would overflow it. The bound is verified by
+    ``max_items`` defaults to 4 because each rendered line is ~18 proxy tokens,
+    so 4 lines (~72) stay under the <= 80-token section budget (design-final
+    §1.3) while 5 would overflow it. The bound is verified by
     ``tests/test_cognition/test_prompting_world_model.py`` (DA-M10B-11).
 
     ``include_citations`` (M10-C, default off so M10-B byte stability is
@@ -238,7 +243,9 @@ def format_world_model_entries(
     """
     lines: list[str] = []
     for e in list(entries)[:max_items]:
-        line = f"- [{e.axis}/{e.key}] value={e.value:+.2f} conf={e.confidence:.2f}"
+        line = (
+            f"- axis={e.axis} key={e.key} value={e.value:+.2f} conf={e.confidence:.2f}"
+        )
         if include_citations:
             line += f" cite={','.join(_displayed_citations(e, max_citations))}"
         lines.append(line)
@@ -345,13 +352,17 @@ def build_user_prompt(
     empty (the flag-off default and every pre-M10-B caller) the section is
     omitted entirely, so the output is **byte-identical** to the prior
     contract — pinned by ``test_prompting_world_model.py`` and the
-    cache-benchmark ``--check`` gate (DA-M10B-9).
+    cache-benchmark ``--check`` gate (DA-M10B-9). **Note**: byte-identity holds
+    for this *empty* (base-path) case only; a Held-entry-present prompt changed
+    intentionally with the ``axis= key=`` render contract fix
+    (``20260607-hint-render-contract-alignment``), even at
+    ``world_model_update_enabled=False``.
 
     ``world_model_update_enabled`` (M10-C, keyword-only, default off) opens the
     write-back channel: Held entries gain a ``cite=`` belief-id list and the
     response schema gains a ``world_model_update_hint`` field. It is **only**
-    set on the individual-layer-enabled path, so the flag-off contract (and
-    every existing M10-B caller, which omits it) is byte-identical — the off
+    set on the individual-layer-enabled path, so the flag-off **base path**
+    (empty entries; and ``RESPONSE_SCHEMA_HINT``) stays byte-identical — the off
     branch below is the literal pre-M10-C output (DA-M10C-3).
     """
     recent = _clamp_proximity(list(observations)[-recent_limit:])
