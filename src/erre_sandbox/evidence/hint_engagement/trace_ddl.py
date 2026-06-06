@@ -3,9 +3,10 @@
 A per-``(agent, tick)`` trace of the world-model update hint's disposition: one row
 records whether a hint was emitted this tick, how the authority disposed of it
 (adopted / one of four reject reasons / not emitted), the measured signed nudge step,
-and the LLM status (so a fallback tick is not silently dropped from the emission-rate
-denominator, Codex HIGH-1). The loader recomputes emission / adoption / per-gate /
-direction-consistency rates from these raw rows (trace stores raw, loader recomputes).
+and the LLM status (so a fallback tick is recorded as provenance rather than left as a
+silent gap, Codex HIGH-1; the loader then excludes non-``ok`` ticks from the eligible
+population). The loader recomputes emission / adoption / per-gate / direction rates
+from these rows (trace stores raw, loader recomputes).
 
 Placement mirrors ``evidence.saturation.trace_ddl`` — a **new-module shadow**: it
 shares no column order, no measure, and no schema with the frozen
@@ -81,8 +82,10 @@ def hint_engagement_trace_ddl_sql(schema: str, table: str = TABLE_NAME) -> str:
     repeatedly. The CHECKs pin the disposition/column invariants (補強 §5):
 
     * ``tick >= 0``;
-    * ``not_emitted`` iff all three target columns are NULL (and, contrapositively,
-      every other disposition has a non-NULL axis/key/direction);
+    * ``not_emitted`` iff **all three** target columns are NULL **and** any other
+      disposition has **all three** non-NULL — the two-sided invariant pins the
+      emitted side too, so a partial-NULL emitted target triple is rejected
+      (Codex MEDIUM, not just ``not_emitted <=> all NULL``);
     * ``emitted`` iff the disposition is not ``not_emitted``;
     * a non-zero ``adopted_signed_step`` implies ``disposition='adopted'``.
     """
@@ -92,11 +95,18 @@ def hint_engagement_trace_ddl_sql(schema: str, table: str = TABLE_NAME) -> str:
     targets_all_null = (
         "target_axis IS NULL AND target_key IS NULL AND direction IS NULL"
     )
+    targets_all_set = (
+        "target_axis IS NOT NULL AND target_key IS NOT NULL AND direction IS NOT NULL"
+    )
+    targets_check = (
+        f"(disposition = '{NOT_EMITTED}' AND {targets_all_null})"
+        f" OR (disposition <> '{NOT_EMITTED}' AND {targets_all_set})"
+    )
     return (
         f"CREATE TABLE IF NOT EXISTS {schema}.{table} (\n"
         f"  {cols},\n"
         f"  CHECK (tick >= 0),\n"
-        f"  CHECK ((disposition = '{NOT_EMITTED}') = ({targets_all_null})),\n"
+        f"  CHECK ({targets_check}),\n"
         f"  CHECK (emitted = (disposition <> '{NOT_EMITTED}')),\n"
         f"  CHECK (adopted_signed_step = 0.0 OR disposition = '{ADOPTED}')\n"
         f")"

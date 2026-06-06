@@ -121,7 +121,8 @@ if TYPE_CHECKING:
     # orchestrator's closure binds ``run_id`` / ``seed`` / ``individual_layer_enabled``
     # and builds the trace row, so ``world`` never imports ``evidence`` / learns the run
     # identity. The carrier rides in on ``CycleResult.world_model_hint_engagement`` (a
-    # ``contracts`` read-model) so ``world`` never imports ``cognition`` either.
+    # ``contracts`` read-model), so the sink adds no ``cognition`` dependency beyond the
+    # ``CycleResult`` ``world`` already consumes — it never touches the classifier.
     HintEngagementTraceSink = Callable[
         [
             str,
@@ -1693,9 +1694,10 @@ class WorldRuntime:
         so the new trace table is never written and the flag-off DuckDB stays
         byte-identical. ``res.world_model_hint_engagement`` is the
         :class:`WorldModelHintDisposition` carried off the result (a ``contracts``
-        read-model) so ``world`` imports neither ``cognition`` nor ``evidence``;
-        ``None`` on a flag-off tick (defensive — the sink is already ``None`` there) so
-        this no-ops then too. ``rt.state.tick`` is the same
+        read-model), so the sink adds no ``evidence`` import and no ``cognition``
+        dependency beyond the ``CycleResult`` ``world`` already consumes (it never
+        touches the classifier); ``None`` on a flag-off tick (defensive — the sink is
+        already ``None`` there) so this no-ops then too. ``rt.state.tick`` is the same
         post-step tick label the saturation / individual traces record, keeping them
         joinable. The orchestrator's sink closure owns the DuckDB-write error semantics
         (CaptureFatalError), mirroring the saturation sink — not swallowed.

@@ -270,6 +270,24 @@ def test_check_accepts_valid_dispositions() -> None:
             ),
             id="non-zero step with a non-adopted disposition",
         ),
+        pytest.param(
+            (
+                "r",
+                1,
+                "kant",
+                12,
+                "ok",
+                3,
+                True,
+                "adopted",
+                "self",
+                None,  # exactly one target column NULL on an emitted row
+                "weaken",
+                -0.03,
+                True,
+            ),
+            id="emitted/adopted with a partial-NULL target triple (Codex MEDIUM)",
+        ),
     ],
 )
 def test_check_rejects_invariant_violations(row: tuple[object, ...]) -> None:

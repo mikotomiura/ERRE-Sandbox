@@ -313,7 +313,9 @@ class CycleResult(BaseModel):
 
     ``None`` flag-off. Flag-on this is the :class:`WorldModelHintDisposition` built in
     step 7.5 (or on a fallback tick, as ``not_emitted`` with a non-``ok``
-    ``llm_status`` — Codex HIGH-1, so the emission-rate denominator is not thinned). The
+    ``llm_status`` — Codex HIGH-1, recorded as provenance so an outage is a known tick,
+    not a silent gap; the loader excludes non-``ok`` ticks from the eligible
+    population). The
     ``adopted`` headline reads the authority's real ``apply_world_model_update_hint``
     return; only the reject reason is the shadow classifier's. The caller
     (:meth:`WorldRuntime._emit_hint_engagement_trace`) writes it to
@@ -622,8 +624,10 @@ class CognitionCycle:
                 world_model_saturation=world_model_saturation,
                 # Engagement instrument (Codex HIGH-1): this fallback returns before
                 # step 7.5, so record a ``not_emitted`` disposition with a non-``ok``
-                # ``llm_status`` — else the eligible tick is lost and emission_rate is
-                # over-estimated. ``None`` flag-off (補強 §4).
+                # ``llm_status`` to keep the per-(agent, tick) census complete. The
+                # loader excludes non-``ok`` ticks from the eligible population, so the
+                # fallback is provenance only — out of the emission-rate denominator,
+                # never an unrecorded gap. ``None`` flag-off (補強 §4).
                 world_model_hint_engagement=(
                     build_not_emitted_disposition(
                         llm_status=LLM_STATUS_UNAVAILABLE,
@@ -653,7 +657,8 @@ class CognitionCycle:
                 world_model_saturation=world_model_saturation,
                 # Engagement instrument (Codex HIGH-1): unparseable plan also returns
                 # before step 7.5 — record ``not_emitted`` with an ``unparseable``
-                # status so the eligible tick is not dropped. ``None`` flag-off.
+                # status to keep the census complete (provenance only; excluded from
+                # the eligible population, as for unavailable). ``None`` flag-off.
                 world_model_hint_engagement=(
                     build_not_emitted_disposition(
                         llm_status=LLM_STATUS_UNPARSEABLE,
@@ -1163,9 +1168,11 @@ class CognitionCycle:
         SWM snapshot captured before the LLM call so an outage tick still records
         this tick's cap occupancy in the saturation trace (ADR section 2.1); ``None``
         flag-off. ``world_model_hint_engagement`` carries the flag-on ``not_emitted``
-        disposition (with ``llm_status`` = ``unavailable`` / ``unparseable``) so the
-        eligible tick is not dropped from the emission-rate denominator (engagement
-        instrument ADR §3 / Codex HIGH-1); ``None`` flag-off.
+        disposition (with ``llm_status`` = ``unavailable`` / ``unparseable``) so an
+        outage tick is recorded as provenance rather than left as a silent gap; the
+        loader excludes non-``ok`` ticks from the eligible population, so it never
+        enters the emission-rate denominator (engagement instrument ADR §3 / Codex
+        HIGH-1); ``None`` flag-off.
         """
         new_state = agent_state.model_copy(
             update={
