@@ -287,3 +287,51 @@ def test_cli_rejects_non_identifier(tmp_path: Path, bad_arg: list[str]) -> None:
     cap = _write_capture(tmp_path / "run0.duckdb", _saturated_seed(1))
     with pytest.raises(SystemExit):
         main(["--capture", str(cap), "--run-id", "x", *bad_arg])
+
+
+# ---------------------------------------------------------------------------
+# --out / --capture collision guard (DA-HEV-1)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_rejects_out_over_capture(tmp_path: Path) -> None:
+    """--out aliasing an input capture must be refused (never overwrite the trace)."""
+    cap = _write_capture(tmp_path / "run0.duckdb", _saturated_seed(1))
+    with pytest.raises(SystemExit):
+        main(["--capture", str(cap), "--run-id", "x", "--out", str(cap)])
+    # The capture is still a readable DuckDB (not clobbered by the verdict JSON).
+    con = duckdb.connect(str(cap), read_only=True)
+    try:
+        n = con.execute(
+            f"SELECT count(*) FROM {METRICS_SCHEMA}.{TABLE_NAME}"  # noqa: S608 — static, test
+        ).fetchone()
+        assert n is not None
+        assert n[0] == 6 * len(_FULL_TICKS)
+    finally:
+        con.close()
+
+
+def test_cli_rejects_out_over_capture_relative(tmp_path: Path) -> None:
+    """A relative --out that resolves to a capture is caught too (resolve-based)."""
+    cap = _write_capture(tmp_path / "run0.duckdb", _saturated_seed(1))
+    nested = tmp_path / "sub" / ".." / "run0.duckdb"
+    with pytest.raises(SystemExit):
+        main(["--capture", str(cap), "--run-id", "x", "--out", str(nested)])
+
+
+def test_cli_rejects_out_tmp_over_capture(tmp_path: Path) -> None:
+    """--out whose ``.tmp`` sibling aliases a capture is refused (Codex HIGH-1)."""
+    cap = _write_capture(tmp_path / "v.json.tmp", _saturated_seed(1))
+    with pytest.raises(SystemExit):
+        main(
+            ["--capture", str(cap), "--run-id", "x", "--out", str(tmp_path / "v.json")]
+        )
+    con = duckdb.connect(str(cap), read_only=True)
+    try:
+        n = con.execute(
+            f"SELECT count(*) FROM {METRICS_SCHEMA}.{TABLE_NAME}"  # noqa: S608 — static, test
+        ).fetchone()
+        assert n is not None
+        assert n[0] == 6 * len(_FULL_TICKS)
+    finally:
+        con.close()
