@@ -787,3 +787,154 @@ async def test_flag_off_leaves_world_model_runtime_none(
         await embedding.close()
         await llm.close()
     assert result.world_model_runtime is None
+
+
+# ---------------------------------------------------------------------------
+# Engagement instrument carrier (engagement instrument ADR §3)
+# ---------------------------------------------------------------------------
+
+
+async def test_flag_on_hint_engagement_carrier_adopted(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """An adopted hint rides out as a carrier whose step is the measured -0.05 delta."""
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    embedding = make_embedding_client()
+    llm = make_chat_client(content=json.dumps(_HINT_PLAN))
+    try:
+        cycle = CognitionCycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            rng=Random(0),
+            individual_layer=IndividualLayerConfig(enabled=True),
+        )
+        result = await cycle.step(agent, make_persona_spec(), [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+
+    carrier = result.world_model_hint_engagement
+    assert carrier is not None
+    assert carrier.llm_status == "ok"
+    assert carrier.emitted is True
+    assert carrier.disposition == "adopted"
+    assert carrier.target_axis == "env"
+    assert carrier.target_key == "agora"
+    assert carrier.direction == "strengthen"
+    # floor -0.70 -> -0.75 carry-out, so the measured signed step is -0.05.
+    assert carrier.adopted_signed_step == pytest.approx(-0.05)
+    assert carrier.exposed_entry_count >= 1
+
+
+async def test_flag_off_hint_engagement_carrier_is_none(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """Flag off: the engagement carrier is None (the layer is inert)."""
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    embedding = make_embedding_client()
+    llm = make_chat_client(content=json.dumps(_HINT_PLAN))
+    try:
+        cycle = _build_cycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+        )
+        result = await cycle.step(agent, make_persona_spec(), [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+    assert result.world_model_hint_engagement is None
+
+
+async def test_flag_on_fallback_unavailable_carrier_records_status(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """An LLM outage records a not_emitted carrier marked unavailable (HIGH-1)."""
+    import httpx
+
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    embedding = make_embedding_client()
+    llm = make_chat_client(raise_exc=httpx.ConnectError("llm down"))
+    try:
+        cycle = CognitionCycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            rng=Random(0),
+            individual_layer=IndividualLayerConfig(enabled=True),
+        )
+        result = await cycle.step(agent, make_persona_spec(), [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+
+    assert result.llm_fell_back is True
+    carrier = result.world_model_hint_engagement
+    assert carrier is not None
+    assert carrier.llm_status == "unavailable"
+    assert carrier.emitted is False
+    assert carrier.disposition == "not_emitted"
+    assert carrier.target_axis is None
+    assert carrier.adopted_signed_step == 0.0
+    assert carrier.exposed_entry_count >= 1
+
+
+async def test_flag_on_fallback_unparseable_carrier_records_status(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """An unparseable plan records a not_emitted carrier with unparseable status."""
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    embedding = make_embedding_client()
+    llm = make_chat_client(content="I cannot produce JSON right now.")
+    try:
+        cycle = CognitionCycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            rng=Random(0),
+            individual_layer=IndividualLayerConfig(enabled=True),
+        )
+        result = await cycle.step(agent, make_persona_spec(), [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+
+    assert result.llm_fell_back is True
+    carrier = result.world_model_hint_engagement
+    assert carrier is not None
+    assert carrier.llm_status == "unparseable"
+    assert carrier.emitted is False
+    assert carrier.disposition == "not_emitted"

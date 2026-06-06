@@ -429,6 +429,71 @@ class WorldModelUpdateHint(BaseModel):
     cited_memory_ids: tuple[str, ...] = Field(min_length=1, max_length=16)
 
 
+HintDisposition: TypeAlias = Literal[
+    "not_emitted",
+    "adopted",
+    "rejected_not_displayed",
+    "rejected_citation",
+    "rejected_no_change",
+    "rejected_no_effect",
+]
+"""Per-tick disposition of a world-model update hint (engagement instrument ADR §2).
+
+A closed vocabulary that mirrors the authority function's reachable outcomes:
+``not_emitted`` (the LLM produced no hint this tick, layer-1 state (a)),
+``adopted`` (``apply_world_model_update_hint`` returned a nudged SWM), and the four
+mutually-exclusive ``rejected_*`` reasons that subdivide a ``None`` return (the
+authority's four reject predicates, in order; layer-2 state (b)). The shadow
+classifier in ``cognition.hint_engagement`` assigns the reason; the loader never
+re-runs it — it aggregates the stored label (faithfulness fixed at cycle time)."""
+
+
+class WorldModelHintDisposition(BaseModel):
+    """Observed disposition of this tick's world-model update hint (instrument ADR §3).
+
+    A pure read-model carried out on :class:`~erre_sandbox.cognition.cycle.CycleResult`
+    so the ``world`` trace sink can persist it without importing ``cognition`` or
+    ``evidence``. It records *what happened* to the hint — never drives control. The
+    ``adopted`` headline mirrors the authority function's real return
+    (``apply_world_model_update_hint is not None``); the ``rejected_*`` subdivision is
+    the shadow classifier's, pinned to the authority by a conformance property test.
+
+    ``frozen`` + ``extra='forbid'``: an instrument carrier is immutable substrate.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    llm_status: Literal["ok", "unavailable", "unparseable"]
+    """Whether the LLM produced a parseable plan this tick (Codex HIGH-1).
+
+    ``ok`` on the normal path; ``unavailable`` / ``unparseable`` on the two fallback
+    ticks that return before step 7.5. The loader counts emission only over
+    ``llm_status='ok'`` eligible ticks so a transient outage cannot inflate the
+    emission-rate denominator."""
+    emitted: bool
+    """Layer-1: the LLM emitted a hint this tick (``plan.world_model_update_hint is
+    not None``). Always ``False`` when ``disposition='not_emitted'``."""
+    disposition: HintDisposition
+    """Layer-2 outcome — the closed disposition vocabulary."""
+    target_axis: WorldModelAxis | None
+    """The hinted entry's axis, or ``None`` iff ``disposition='not_emitted'``."""
+    target_key: str | None
+    """The hinted entry's key, or ``None`` iff ``disposition='not_emitted'``."""
+    direction: UpdateDirection | None
+    """The hint's requested direction, or ``None`` iff ``disposition='not_emitted'``."""
+    adopted_signed_step: float
+    """Measured ``new_value - old_value`` of the nudged entry (instrument ADR §4 /
+    補強 §1).
+
+    The real delta the authority applied — **not** a hardcoded ``+/-VALUE_STEP``:
+    ``_nudge_value``'s ``weaken`` clamps at 0, so a near-zero entry (e.g. ``0.03 ->
+    0.0``) adopts with a sub-``VALUE_STEP`` step. ``0.0`` on every non-adopted tick."""
+    exposed_entry_count: int
+    """How many SWM entries were displayed this tick — eligibility / stratification,
+    **not** a denominator (Codex LOW-3). Taken from the flag-on ``exposed_citations``
+    size, available on both the normal and fallback paths."""
+
+
 # ---------------------------------------------------------------------------
 # Feature flag (declaration only at M10-A — not wired into runtime)
 # ---------------------------------------------------------------------------
@@ -454,6 +519,7 @@ __all__ = [
     "DevelopmentState",
     "FrozenCognitiveHabit",
     "FrozenSamplingParam",
+    "HintDisposition",
     "IndividualLayerConfig",
     "IndividualProfile",
     "NarrativeArc",
@@ -464,6 +530,7 @@ __all__ = [
     "UpdateDirection",
     "WorldModelAxis",
     "WorldModelEntry",
+    "WorldModelHintDisposition",
     "WorldModelSnapshot",
     "WorldModelUpdateHint",
 ]
