@@ -36,6 +36,12 @@ from erre_sandbox.cognition.development import (
     belief_signature,
     maybe_advance_development,
 )
+from erre_sandbox.cognition.hint_engagement import (
+    LLM_STATUS_UNAVAILABLE,
+    LLM_STATUS_UNPARSEABLE,
+    build_emitted_disposition,
+    build_not_emitted_disposition,
+)
 from erre_sandbox.cognition.importance import estimate_importance
 from erre_sandbox.cognition.narrative import (
     compute_coherence,
@@ -72,6 +78,7 @@ from erre_sandbox.contracts.cognition_layers import (
     DevelopmentState,
     NarrativeArc,
     PromotedEvidenceUnit,
+    WorldModelHintDisposition,
     WorldModelSnapshot,
 )
 from erre_sandbox.erre import SAMPLING_DELTA_BY_MODE
@@ -300,6 +307,19 @@ class CycleResult(BaseModel):
     by ``project_world_model_snapshot`` so it never aliases the reconcile state.
     The caller (:meth:`WorldRuntime._emit_saturation_trace`) explodes it into
     ``swm_modulation_saturation_trace`` rows. Substrate only — never drives control."""
+    world_model_hint_engagement: WorldModelHintDisposition | None = None
+    """This tick's world-model update-hint disposition (engagement instrument ADR §3,
+    flag-on only).
+
+    ``None`` flag-off. Flag-on this is the :class:`WorldModelHintDisposition` built in
+    step 7.5 (or on a fallback tick, as ``not_emitted`` with a non-``ok``
+    ``llm_status`` — Codex HIGH-1, recorded as provenance so an outage is a known tick,
+    not a silent gap; the loader excludes non-``ok`` ticks from the eligible
+    population). The
+    ``adopted`` headline reads the authority's real ``apply_world_model_update_hint``
+    return; only the reject reason is the shadow classifier's. The caller
+    (:meth:`WorldRuntime._emit_hint_engagement_trace`) writes it to
+    ``swm_hint_engagement_trace``. Substrate only — never drives control."""
 
 
 class CognitionError(RuntimeError):
@@ -602,6 +622,20 @@ class CognitionCycle:
                 belief_classes=belief_classes,
                 world_model_evidence=world_model_evidence,
                 world_model_saturation=world_model_saturation,
+                # Engagement instrument (Codex HIGH-1): this fallback returns before
+                # step 7.5, so record a ``not_emitted`` disposition with a non-``ok``
+                # ``llm_status`` to keep the per-(agent, tick) census complete. The
+                # loader excludes non-``ok`` ticks from the eligible population, so the
+                # fallback is provenance only — out of the emission-rate denominator,
+                # never an unrecorded gap. ``None`` flag-off (補強 §4).
+                world_model_hint_engagement=(
+                    build_not_emitted_disposition(
+                        llm_status=LLM_STATUS_UNAVAILABLE,
+                        exposed_entry_count=len(exposed_citations),
+                    )
+                    if flag_on
+                    else None
+                ),
             )
 
         # Step 7: parse the LLM plan (malformed → same fallback branch).
@@ -621,6 +655,18 @@ class CognitionCycle:
                 belief_classes=belief_classes,
                 world_model_evidence=world_model_evidence,
                 world_model_saturation=world_model_saturation,
+                # Engagement instrument (Codex HIGH-1): unparseable plan also returns
+                # before step 7.5 — record ``not_emitted`` with an ``unparseable``
+                # status to keep the census complete (provenance only; excluded from
+                # the eligible population, as for unavailable). ``None`` flag-off.
+                world_model_hint_engagement=(
+                    build_not_emitted_disposition(
+                        llm_status=LLM_STATUS_UNPARSEABLE,
+                        exposed_entry_count=len(exposed_citations),
+                    )
+                    if flag_on
+                    else None
+                ),
             )
 
         # Step 7.5 (M10-C): apply a verified world-model nudge. The LLM is a
@@ -632,18 +678,36 @@ class CognitionCycle:
         # ``result_runtime`` defaults to the pre-LLM reconciled state, so an
         # un-adopted or absent hint still carries the reconciled SWM forward.
         result_runtime = reconciled
-        if (
-            flag_on
-            and reconciled is not None
-            and plan.world_model_update_hint is not None
-        ):
-            nudged = apply_world_model_update_hint(
-                reconciled.modulated,
-                plan.world_model_update_hint,
-                exposed_citations,
-            )
-            if nudged is not None:
-                result_runtime = reconciled.model_copy(update={"modulated": nudged})
+        # Engagement instrument (ADR §3): observe the hint's disposition without
+        # changing the frozen authority call. ``None`` flag-off.
+        world_model_hint_engagement: WorldModelHintDisposition | None = None
+        if flag_on and reconciled is not None:
+            hint = plan.world_model_update_hint
+            if hint is not None:
+                nudged = apply_world_model_update_hint(
+                    reconciled.modulated,
+                    hint,
+                    exposed_citations,
+                )
+                if nudged is not None:
+                    result_runtime = reconciled.model_copy(update={"modulated": nudged})
+                # The adopted/rejected headline reads the authority's real return
+                # (``nudged``); only the reject reason is the shadow classifier's, and
+                # ``adopted_signed_step`` is the measured new-old delta (補強 §1). This
+                # is a pure read of ``reconciled.modulated`` / ``nudged`` — the frozen
+                # call above (args / order / return) is unchanged.
+                world_model_hint_engagement = build_emitted_disposition(
+                    hint=hint,
+                    exposed_citations=exposed_citations,
+                    swm=reconciled.modulated,
+                    nudged=nudged,
+                    exposed_entry_count=len(exposed_citations),
+                )
+            else:
+                world_model_hint_engagement = build_not_emitted_disposition(
+                    llm_status="ok",
+                    exposed_entry_count=len(exposed_citations),
+                )
 
         # Slice β: nudge the LLM's destination toward persona preferred_zones
         # so three agents with different preferred lists produce three
@@ -742,6 +806,7 @@ class CognitionCycle:
             belief_classes=belief_classes,
             world_model_evidence=world_model_evidence,
             world_model_saturation=world_model_saturation,
+            world_model_hint_engagement=world_model_hint_engagement,
         )
 
     # ------------------------------------------------------------------
@@ -1084,6 +1149,7 @@ class CognitionCycle:
         belief_classes: list[str] | None = None,
         world_model_evidence: list[PromotedEvidenceUnit] | None = None,
         world_model_saturation: WorldModelSnapshot | None = None,
+        world_model_hint_engagement: WorldModelHintDisposition | None = None,
     ) -> CycleResult:
         """Continue-current-action path for recoverable failures.
 
@@ -1101,7 +1167,12 @@ class CognitionCycle:
         flag-off. ``world_model_saturation`` carries the post-reconcile pre-nudge
         SWM snapshot captured before the LLM call so an outage tick still records
         this tick's cap occupancy in the saturation trace (ADR section 2.1); ``None``
-        flag-off.
+        flag-off. ``world_model_hint_engagement`` carries the flag-on ``not_emitted``
+        disposition (with ``llm_status`` = ``unavailable`` / ``unparseable``) so an
+        outage tick is recorded as provenance rather than left as a silent gap; the
+        loader excludes non-``ok`` ticks from the eligible population, so it never
+        enters the emission-rate denominator (engagement instrument ADR §3 / Codex
+        HIGH-1); ``None`` flag-off.
         """
         new_state = agent_state.model_copy(
             update={
@@ -1122,6 +1193,7 @@ class CognitionCycle:
             belief_classes=belief_classes,
             world_model_evidence=world_model_evidence,
             world_model_saturation=world_model_saturation,
+            world_model_hint_engagement=world_model_hint_engagement,
         )
 
     def _build_envelopes(

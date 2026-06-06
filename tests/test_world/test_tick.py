@@ -979,6 +979,93 @@ class TestEmitSaturationTrace:
         assert captured == []
 
 
+class TestEmitHintEngagementTrace:
+    """``_emit_hint_engagement_trace`` forwards the carrier or no-ops (ADR §5)."""
+
+    @staticmethod
+    def _carrier() -> Any:
+        from erre_sandbox.contracts.cognition_layers import WorldModelHintDisposition
+
+        return WorldModelHintDisposition(
+            llm_status="ok",
+            emitted=True,
+            disposition="adopted",
+            target_axis="self",
+            target_key="k",
+            direction="weaken",
+            adopted_signed_step=-0.03,
+            exposed_entry_count=4,
+        )
+
+    def test_emit_forwards_agent_id_carrier_and_tick(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """flag-on: the sink receives (agent_id, disposition, tick)."""
+        captured: list[tuple[str, Any, int]] = []
+        runtime = WorldRuntime(
+            cycle=mock_cycle,  # type: ignore[arg-type]
+            clock=manual_clock,
+            hint_engagement_trace_sink=lambda aid, d, t: captured.append((aid, d, t)),
+        )
+        runtime.register_agent(
+            make_agent_state(agent_id="a_rikyu_001", persona_id="rikyu"),
+            make_persona_spec(persona_id="rikyu"),
+        )
+        rt = runtime._agents["a_rikyu_001"]
+        res = CycleResult(
+            agent_state=rt.state, world_model_hint_engagement=self._carrier()
+        )
+
+        runtime._emit_hint_engagement_trace(rt, res)
+
+        assert len(captured) == 1
+        agent_id, disposition, tick = captured[0]
+        assert agent_id == "a_rikyu_001"
+        assert tick == rt.state.tick
+        assert disposition.disposition == "adopted"
+        assert disposition.adopted_signed_step == -0.03
+
+    def test_emit_noops_without_sink(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """flag-off (sink None): no error — the byte-invariant path."""
+        runtime = WorldRuntime(cycle=mock_cycle, clock=manual_clock)  # type: ignore[arg-type]
+        runtime.register_agent(make_agent_state(), make_persona_spec())
+        rt = runtime._agents[runtime.agent_ids[0]]
+        res = CycleResult(
+            agent_state=rt.state, world_model_hint_engagement=self._carrier()
+        )
+        runtime._emit_hint_engagement_trace(rt, res)
+
+    def test_emit_noops_when_carrier_absent(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """Sink set but carrier None (flag-off result): no call."""
+        captured: list[tuple[str, Any, int]] = []
+        runtime = WorldRuntime(
+            cycle=mock_cycle,  # type: ignore[arg-type]
+            clock=manual_clock,
+            hint_engagement_trace_sink=lambda aid, d, t: captured.append((aid, d, t)),
+        )
+        runtime.register_agent(make_agent_state(), make_persona_spec())
+        rt = runtime._agents[runtime.agent_ids[0]]
+        res = CycleResult(agent_state=rt.state, world_model_hint_engagement=None)
+        runtime._emit_hint_engagement_trace(rt, res)
+        assert captured == []
+
+
 class TestDrainOrdering:
     async def test_drain_is_fifo(
         self,

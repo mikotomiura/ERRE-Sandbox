@@ -81,6 +81,7 @@ if TYPE_CHECKING:
         DevelopmentState,
         NarrativeArc,
         PromotedEvidenceUnit,
+        WorldModelHintDisposition,
         WorldModelSnapshot,
     )
 
@@ -110,6 +111,22 @@ if TYPE_CHECKING:
         [
             str,
             "WorldModelSnapshot",
+            int,
+        ],
+        None,
+    ]
+
+    # Engagement instrument (ADR §5): flag-on per-(agent, tick) hint-disposition sink.
+    # Args are ``(individual_id, world_model_hint_engagement, tick)``; the
+    # orchestrator's closure binds ``run_id`` / ``seed`` / ``individual_layer_enabled``
+    # and builds the trace row, so ``world`` never imports ``evidence`` / learns the run
+    # identity. The carrier rides in on ``CycleResult.world_model_hint_engagement`` (a
+    # ``contracts`` read-model), so the sink adds no ``cognition`` dependency beyond the
+    # ``CycleResult`` ``world`` already consumes — it never touches the classifier.
+    HintEngagementTraceSink = Callable[
+        [
+            str,
+            "WorldModelHintDisposition",
             int,
         ],
         None,
@@ -458,6 +475,7 @@ class WorldRuntime:
         day_duration_s: float | None = None,
         individual_trace_sink: IndividualTraceSink | None = None,
         saturation_trace_sink: SaturationTraceSink | None = None,
+        hint_engagement_trace_sink: HintEngagementTraceSink | None = None,
     ) -> None:
         self._cycle = cycle
         # M11-C2: flag-on individual-state trace sink. ``None`` (flag-off / live
@@ -471,6 +489,13 @@ class WorldRuntime:
         # (flag-off / live flow) makes ``_emit_saturation_trace`` a no-op so the
         # flag-off DuckDB stays byte-identical (the new table is never bootstrapped).
         self._saturation_trace_sink: SaturationTraceSink | None = saturation_trace_sink
+        # Engagement instrument (ADR §5): flag-on hint-disposition trace sink, wired
+        # only by the eval orchestrator's individual-layer-enabled branch. ``None``
+        # (flag-off / live flow) makes ``_emit_hint_engagement_trace`` a no-op so the
+        # flag-off DuckDB stays byte-identical (the new table is never bootstrapped).
+        self._hint_engagement_trace_sink: HintEngagementTraceSink | None = (
+            hint_engagement_trace_sink
+        )
         self._clock: Clock = clock if clock is not None else RealClock()
         self._physics_dt = 1.0 / (physics_hz or self.DEFAULT_PHYSICS_HZ)
         self._cognition_period = (
@@ -1581,6 +1606,10 @@ class WorldRuntime:
         # trace (flag-on only). Same no-op-when-unset contract as the individual
         # trace; uses the post-reconcile pre-nudge snapshot carried on the result.
         self._emit_saturation_trace(rt, res)
+        # Engagement instrument (ADR §5): emit this tick's hint-disposition trace
+        # (flag-on only). Same no-op-when-unset contract; uses the disposition carrier
+        # carried on the result (contracts read-model, no cognition/evidence import).
+        self._emit_hint_engagement_trace(rt, res)
         # M6-A-2b: observations detected post-LLM (stress crossings) are
         # surfaced one tick late — append them to ``pending`` so the next
         # cognition tick sees the signal. Empty for agents whose stress
@@ -1657,6 +1686,28 @@ class WorldRuntime:
         if snapshot is None:
             return
         self._saturation_trace_sink(rt.agent_id, snapshot, rt.state.tick)
+
+    def _emit_hint_engagement_trace(self, rt: AgentRuntime, res: CycleResult) -> None:
+        """Emit this tick's hint-engagement trace via the flag-on sink (ADR §5).
+
+        No-op when ``_hint_engagement_trace_sink`` is ``None`` (flag-off / live runs),
+        so the new trace table is never written and the flag-off DuckDB stays
+        byte-identical. ``res.world_model_hint_engagement`` is the
+        :class:`WorldModelHintDisposition` carried off the result (a ``contracts``
+        read-model), so the sink adds no ``evidence`` import and no ``cognition``
+        dependency beyond the ``CycleResult`` ``world`` already consumes (it never
+        touches the classifier); ``None`` on a flag-off tick (defensive — the sink is
+        already ``None`` there) so this no-ops then too. ``rt.state.tick`` is the same
+        post-step tick label the saturation / individual traces record, keeping them
+        joinable. The orchestrator's sink closure owns the DuckDB-write error semantics
+        (CaptureFatalError), mirroring the saturation sink — not swallowed.
+        """
+        if self._hint_engagement_trace_sink is None:
+            return
+        disposition = res.world_model_hint_engagement
+        if disposition is None:
+            return
+        self._hint_engagement_trace_sink(rt.agent_id, disposition, rt.state.tick)
 
     # ----- Scheduling helper -----
 
