@@ -33,7 +33,7 @@ KV hit proxy + TTFT p50/p95）が計測する**対象の規約**である。
 |---|---|---|
 | 1 | `Recent observations:` + observation lines | tick ごと変動 |
 | 2 | `Relevant memories:` + memory bullet list（strength 降順） | tick ごと変動 |
-| 3 | `Held world-model entries:` + bounded top-K（M10-B、individual layer **on のみ**、salience 降順）。**M10-C**: update channel on の時 各 entry 末尾に `cite=<belief id,...>`（per-entry 上限 2、`visible_entry_citations` と同一の表示集合） | tick / 個体ごと変動。flag off では **section ごと不在** |
+| 3 | `Held world-model entries:` + bounded top-K（M10-B、individual layer **on のみ**、salience 降順）。各行は `axis` と `key` を**別フィールド**で提示（`- axis=<axis> key=<key> value=±x.xx conf=x.xx`）し、結合 `[axis/key]` label は使わない（提示を権威 `visible_entry_citations` の bare (axis,key) contract と整合させ、hint の axis-prefix mismatch の**構造的誘因を除去**する＝STATE_B not_displayed 契約 fix、`20260606-hint-stateB-notdisplayed-adr`。LLM 実挙動の改善は GPU Gate 1 で別途検証）。**M10-C**: update channel on の時 各 entry 末尾に `cite=<belief id,...>`（per-entry 上限 2、`visible_entry_citations` と同一の表示集合） | tick / 個体ごと変動。flag off では **section ごと不在** |
 | 4 | `RESPONSE_SCHEMA_HINT`（off）/ `RESPONSE_SCHEMA_HINT_WITH_UPDATE`（**M10-C** update channel on、`world_model_update_hint` フィールド追加） | 末尾固定。flag に応じ 2 値 |
 
 ⚠ M10-B（`feature/m10-b-swm-synthesis-prompt-injection`）で順位 3 を追加。individual layer が
@@ -70,9 +70,14 @@ USER 側のみ）。
    `cache-benchmark` の `<persona>+swm` flag-on case が「SYSTEM byte 一致 + USER token 増分 ≤ 200」を回帰計測する。
 7. **（M10-C）write-back channel も USER prompt 側のみ**。`world_model_update_enabled` on で
    (i) Held entries に belief `cite=`（per-entry ≤ 2）、(ii) 末尾を `RESPONSE_SCHEMA_HINT_WITH_UPDATE`
-   に差し替える。両者とも SYSTEM prompt を 1 byte も変えない（cache prefix 保護）。**off は byte 一致**
-   （案 A、DA-M10C-3）。`<persona>+swm` case は M10-C で update channel on を表現し、現状 USER token 増分
-   **= +191（≤ 200）**、SYSTEM byte / prefix_hash は base case と一致（`--check` 回帰）。LLM の hint は
+   に差し替える。両者とも SYSTEM prompt を 1 byte も変えない（cache prefix 保護）。**off（Held entry
+   不在の base path）は byte 一致**（案 A、DA-M10C-3）。`<persona>+swm` case は M10-C で update channel
+   on を表現し、現状 USER token 増分 **= +197（≤ 200）**、SYSTEM byte / prefix_hash は base case と一致
+   （`--check` 回帰）。⚠ STATE_B not_displayed 契約 fix（`20260606-hint-stateB-notdisplayed-adr` /
+   `20260607-hint-render-contract-alignment`）で Held entry render を `[axis/key]` 連結から
+   `axis= key=` 別フィールドへ変更し、schema 指示を「shown entry の axis=/key= を完全一致コピー
+   （prefix・combine 禁止）」へ明確化。これに伴い USER 増分が +191 → +197 に変化（ME-9 authority・
+   `visible_entry_citations` の bare keying・cited⊆displayed は不変、提示のみ契約整合）。LLM の hint は
    candidate にすぎず、Python（`apply_world_model_update_hint`）が cited ⊆ 表示 belief id を検証してからのみ
    value を bounded nudge する（authority）。
 

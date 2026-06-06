@@ -16,7 +16,7 @@
       "system_token_count": 399,
       "ttft_p50": 12.0,
       "ttft_p95": 19.0,
-      "user_token_count": 457
+      "user_token_count": 463
     },
     {
       "case_id": "nietzsche",
@@ -34,7 +34,7 @@
       "system_token_count": 428,
       "ttft_p50": 12.0,
       "ttft_p95": 19.0,
-      "user_token_count": 457
+      "user_token_count": 463
     },
     {
       "case_id": "rikyu",
@@ -52,7 +52,7 @@
       "system_token_count": 444,
       "ttft_p50": 12.0,
       "ttft_p95": 19.0,
-      "user_token_count": 457
+      "user_token_count": 463
     }
   ],
   "generated_by": "erre_sandbox.cli.cache_benchmark",

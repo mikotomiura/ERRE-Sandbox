@@ -515,7 +515,7 @@ async def test_individual_layer_on_injects_world_model_section(
     user = _user_message(captured)
     assert "Held world-model entries:" in user
     # At least one env entry from the promoted dyads' zones is present.
-    assert "[env/agora]" in user or "[env/chashitsu]" in user
+    assert "axis=env key=agora" in user or "axis=env key=chashitsu" in user
 
 
 # ---------- M10-C: hint apply + write-back through the cycle ----------------
@@ -622,7 +622,7 @@ async def test_flag_on_valid_hint_nudges_and_writes_back(
 
     # The prompt actually exposed the entry + its belief citation + update schema.
     user = _user_message(captured)
-    assert "[env/agora]" in user
+    assert "axis=env key=agora" in user
     assert "cite=belief_a_kant_001__nietzsche" in user
     assert "world_model_update_hint" in user
     # floor value is -0.70; strengthen nudges magnitude by VALUE_STEP (0.05).
