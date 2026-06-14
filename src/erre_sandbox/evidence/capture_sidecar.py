@@ -87,6 +87,26 @@ class SidecarV1(BaseModel):
     / 60)``; ``None`` for the stimulus condition or a pre-runtime fatal. Optional
     (``extra="allow"``) so older sidecars validate unchanged."""
 
+    stm_carry_arm: Literal["on", "off"] | None = None
+    """Fork III-a paired-arm tag (U4): the ``--stm-carry-arm`` value of an
+    arm-bearing capture (natural + ``--individual-layer on``); ``None`` for any
+    capture that does not carry the arm (stimulus, flag-off natural). The
+    versioned-verdict manifest builder reads this to fail-fast cross-check the
+    operator-declared arm against the run that actually produced the file."""
+
+    seed: int | None = None
+    """The ``uint64`` ``seed_root`` (``derive_seed(persona, run_idx, salt)``)
+    actually used by this run. Recorded so the manifest builder can pair ON/OFF
+    on the *actual* seed rather than assuming ``run_idx`` parity implies seed
+    parity — the seed depends on the seed-manifest ``salt``, so two runs at the
+    same ``run_idx`` under different salts differ. ``None`` for sidecars written
+    before U4. Optional (``extra="allow"``)."""
+
+    seed_salt: str | None = None
+    """The seed-manifest ``salt`` that produced :attr:`seed` (its identity). Lets
+    a reader confirm two captures share the same seed lineage. ``None`` for
+    pre-U4 sidecars. Optional (``extra="allow"``)."""
+
 
 def sidecar_path_for(duckdb_path: Path | str) -> Path:
     """Return the conventional sidecar path for *duckdb_path*."""
