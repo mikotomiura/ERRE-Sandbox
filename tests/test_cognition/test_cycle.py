@@ -725,6 +725,117 @@ async def test_flag_on_modulation_persists_across_ticks(
     assert _env_agora(second).value == pytest.approx(-0.75)
 
 
+async def _capture_reconcile_kwargs(
+    monkeypatch,
+    cycle_kwargs,
+    make_agent_state,
+    make_persona_spec,
+    cognition_store,
+    cognition_retriever,
+    embedding,
+    llm,
+    perception_event,
+) -> dict[str, Any]:
+    """Run one flag-on step, spying on the reconcile call's keyword arguments."""
+    import erre_sandbox.cognition.cycle as cycle_mod
+
+    real = cycle_mod.reconcile_world_model
+    captured: dict[str, Any] = {}
+
+    def _spy(state, new_floor, **kwargs):
+        captured.update(kwargs)
+        return real(state, new_floor, **kwargs)
+
+    monkeypatch.setattr(cycle_mod, "reconcile_world_model", _spy)
+    await _seed_two_dyads(cognition_store)
+    agent = _agent_two_bonds(make_agent_state)
+    cycle = CognitionCycle(
+        retriever=cognition_retriever,
+        store=cognition_store,
+        embedding=embedding,
+        llm=llm,
+        rng=Random(0),
+        **cycle_kwargs,
+    )
+    await cycle.step(agent, make_persona_spec(), [perception_event])
+    captured["_agent_tick"] = agent.tick
+    return captured
+
+
+async def test_flag_on_stm_carry_enabled_wires_through_to_reconcile(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+    monkeypatch,
+) -> None:
+    """``stm_carry_enabled=True`` reaches ``reconcile_world_model`` with the tick.
+
+    Cycle-level wiring check for the III-a arm (MED-3).
+
+    The eval CLI only ever builds ``IndividualLayerConfig(enabled=True)``, so the ON
+    arm is unreachable from the CLI; direct config injection is the only path that
+    exercises the arm, and this is its cycle-level wiring check.
+    """
+    embedding = make_embedding_client()
+    llm = make_chat_client()
+    try:
+        captured = await _capture_reconcile_kwargs(
+            monkeypatch,
+            {
+                "individual_layer": IndividualLayerConfig(
+                    enabled=True, stm_carry_enabled=True
+                )
+            },
+            make_agent_state,
+            make_persona_spec,
+            cognition_store,
+            cognition_retriever,
+            embedding,
+            llm,
+            perception_event,
+        )
+    finally:
+        await embedding.close()
+        await llm.close()
+    assert captured["stm_carry"] is True
+    assert captured["current_tick"] == captured["_agent_tick"]
+
+
+async def test_flag_on_stm_carry_defaults_off_in_reconcile(
+    make_agent_state,
+    make_persona_spec,
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+    monkeypatch,
+) -> None:
+    """An ``enabled=True`` run with the sub-knob unset takes the frozen OFF arm."""
+    embedding = make_embedding_client()
+    llm = make_chat_client()
+    try:
+        captured = await _capture_reconcile_kwargs(
+            monkeypatch,
+            {"individual_layer": IndividualLayerConfig(enabled=True)},
+            make_agent_state,
+            make_persona_spec,
+            cognition_store,
+            cognition_retriever,
+            embedding,
+            llm,
+            perception_event,
+        )
+    finally:
+        await embedding.close()
+        await llm.close()
+    assert captured["stm_carry"] is False
+
+
 async def test_flag_on_fallback_preserves_world_model(
     make_agent_state,
     make_persona_spec,

@@ -322,6 +322,40 @@ prompt ever shows a value past the cap.
 """
 
 
+STM_HORIZON: Final[int] = 16
+"""III-a STM carry horizon in ticks (fork III-a LTM/STM layer).
+
+When :func:`reconcile_world_model` runs in its ``stm_carry=True`` arm it carries a
+bounded LLM *offset* across a **floor-fingerprint change** (a ``T-fp`` cross-fp
+transition: evidence churned but the floor sign is unchanged), instead of dropping
+it as the frozen arm does. The carry is a **short-term** memory: it expires this
+many ticks past the first cross-fp carry of a carrying run, after which the entry
+re-grounds to its evidence floor.
+
+Frozen against the versioned-measurement ADR's external TTL ceiling
+``H_safety = 20`` (``evidence.saturation.versioned_constants.H_SAFETY``): the STM
+horizon **must be <= H_safety** so the intervention cannot self-conform to the
+measurement (ADR §3.0', Codex HIGH-3). 16 leaves a 4-tick margin below the V2
+guard's ``episode_end - t0 > 20`` FAIL boundary. cognition does **not** import the
+evidence layer (architecture dependency direction); the ``STM_HORIZON <= H_SAFETY``
+relation is asserted in the test layer, which may import both.
+"""
+
+
+def _sign(x: float) -> int:
+    """Three-valued sign (+1 / -1 / 0), matching the versioned scorer's ``_sign``.
+
+    Used to detect a ``T-flip`` (floor sign reversal) on a cross-fp transition so
+    the STM carry drops rather than letting a stale offset survive a belief that
+    flipped direction (versioned ADR §4 V4).
+    """
+    if x > 0.0:
+        return 1
+    if x < 0.0:
+        return -1
+    return 0
+
+
 _FLOOR_FINGERPRINT_PRECISION: Final[int] = 6
 """Decimal places the floor fingerprint rounds value/confidence to.
 
@@ -452,6 +486,18 @@ class WorldModelRuntimeState(BaseModel):
 
     base_floor: SubjectiveWorldModel
     modulated: SubjectiveWorldModel
+    carried_since: tuple[tuple[tuple[str, str], int], ...] = ()
+    """III-a STM age clock: ``(((axis, key), first_cross_fp_carry_tick), ...)``.
+
+    Empty ``()`` on the frozen arm and on M10-C (no III-a carry) — so the
+    ``base_floor`` / ``modulated`` projections the prompt, trace and snapshot read
+    stay byte-identical to the pre-III-a behaviour (Codex MED-1: the guarantee is
+    scoped to those projections, not the whole-state ``model_dump``). Populated only
+    by the ``stm_carry=True`` arm of :func:`reconcile_world_model`, which writes it
+    key-unique and in deterministic (sorted) order. This is a **conservative safety
+    clock** that starts no later than the versioned scorer's retention ``t0`` — it
+    does not claim to reconstruct the scorer's exact episode boundary (Codex
+    HIGH-2)."""
 
 
 def project_world_model_snapshot(
@@ -475,25 +521,51 @@ def project_world_model_snapshot(
 def reconcile_world_model(
     state: WorldModelRuntimeState | None,
     new_floor: SubjectiveWorldModel,
+    *,
+    current_tick: int | None = None,
+    stm_carry: bool = False,
 ) -> WorldModelRuntimeState:
     """Carry bounded LLM value-modulations forward onto a fresh evidence floor.
 
-    Pure and deterministic. For each entry of *new_floor* (already salience-sorted
-    by :func:`synthesize_world_model`):
+    Pure and deterministic. On the first tick (``state is None``) the modulated view
+    equals the floor.
 
-    * if the previous floor had a fingerprint-identical entry for the same
-      ``(axis, key)``, the evidence is unchanged, so the prior modulated value is
-      carried — clamped to ``floor +/- MAX_TOTAL_MODULATION`` and to ``[-1, 1]``;
-    * otherwise (evidence moved, or the entry is new) the modulation is dropped and
-      the floor value stands.
+    Two arms (the arm gate, versioned ADR §5.1):
 
-    The floor's salience order is preserved (the LLM nudges *values*, never the
-    ranking). On the first tick (``state is None``) the modulated view equals the
-    floor.
+    * ``stm_carry=False`` (default, **frozen arm**): a modulation is carried only
+      while the floor entry it was based on is *fingerprint-identical*; any evidence
+      change (or a new entry) drops it. ``current_tick`` is ignored. Every existing
+      caller takes this path, so its ``base_floor`` / ``modulated`` projections are
+      byte-identical to the pre-III-a behaviour.
+    * ``stm_carry=True`` (**III-a STM arm**): in addition to the fingerprint-identical
+      carry, a bounded LLM *offset* survives a floor-fingerprint change as long as
+      the floor sign is unchanged (a ``T-fp`` cross-fp transition) and the carry is
+      within :data:`STM_HORIZON` ticks of its first cross-fp carry; a floor sign
+      reversal (``T-flip``), a new entry, or expiry drops it (see
+      :func:`_reconcile_stm_carry`). Requires ``current_tick``.
+
+    The floor's salience order is preserved in both arms (the LLM nudges *values*,
+    never the ranking).
     """
     if state is None:
         return WorldModelRuntimeState(base_floor=new_floor, modulated=new_floor)
+    if not stm_carry:
+        return _reconcile_frozen(state, new_floor)
+    if current_tick is None:
+        raise ValueError("current_tick is required when stm_carry is True")
+    return _reconcile_stm_carry(state, new_floor, current_tick=current_tick)
 
+
+def _reconcile_frozen(
+    state: WorldModelRuntimeState,
+    new_floor: SubjectiveWorldModel,
+) -> WorldModelRuntimeState:
+    """Frozen reconcile arm — carry only across a fingerprint-identical floor.
+
+    The pre-III-a body, unchanged, so ``stm_carry=False`` stays byte-identical in
+    its ``base_floor`` / ``modulated`` projections (the existing reconcile tests are
+    the mechanical proof).
+    """
     prev_by_key = {(e.axis, e.key): e for e in state.base_floor.entries}
     mod_by_key = {(e.axis, e.key): e for e in state.modulated.entries}
 
@@ -524,8 +596,105 @@ def reconcile_world_model(
     )
 
 
+def _stm_carry_entry(
+    prev: WorldModelEntry | None,
+    mod: WorldModelEntry | None,
+    e_new: WorldModelEntry,
+    since: int | None,
+    *,
+    current_tick: int,
+) -> tuple[WorldModelEntry, int | None]:
+    """Resolve one entry's III-a STM carry: ``(reconciled_entry, carried_since)``.
+
+    ``carried_since`` is ``None`` whenever the modulation drops (the clock clears).
+    Decision order:
+
+    * new entry / vanished modulation / zero offset -> floor stands (no synthesis from
+      nothing, Codex HIGH-1);
+    * cross-fp ``T-flip`` (floor sign reversed) -> drop (versioned V4);
+    * STM expiry (``current_tick - carried_since > STM_HORIZON``) -> drop (the bounded
+      conservative safety clock, Codex HIGH-2/3);
+    * else carry the **offset** ``delta`` onto the fresh floor, clamped to the cap and
+      unit range (a floor move keeps the offset sign — HIGH-1).
+    """
+    if prev is None or mod is None:
+        return e_new, None  # new entry / vanished modulation -> drop
+    delta = mod.value - prev.value
+    if delta == 0.0:
+        return e_new, None  # no modulation -> floor stands
+
+    fp_changed = _floor_fingerprint(prev) != _floor_fingerprint(e_new)
+    if fp_changed and _sign(prev.value) != _sign(e_new.value):
+        return e_new, None  # T-flip -> drop (versioned V4)
+
+    if fp_changed and since is None:
+        since = current_tick  # first cross-fp carry of this carrying run
+    if since is not None:
+        if current_tick < since:
+            raise ValueError(
+                f"current_tick {current_tick} precedes carried_since {since}: "
+                "STM clock cannot run backward"
+            )
+        if current_tick - since > STM_HORIZON:
+            return e_new, None  # STM expiry -> drop
+
+    lo = max(-1.0, e_new.value - MAX_TOTAL_MODULATION)
+    hi = min(1.0, e_new.value + MAX_TOTAL_MODULATION)
+    capped = _clamp(e_new.value + delta, lo, hi)
+    if capped == e_new.value:
+        return e_new, None  # offset clamped to zero -> re-ground
+    return e_new.model_copy(update={"value": capped}), since
+
+
+def _reconcile_stm_carry(
+    state: WorldModelRuntimeState,
+    new_floor: SubjectiveWorldModel,
+    *,
+    current_tick: int,
+) -> WorldModelRuntimeState:
+    """III-a STM reconcile arm — carry a bounded *offset* across a ``T-fp`` change.
+
+    In addition to the frozen fingerprint-identical carry, a bounded LLM offset
+    survives a floor-fingerprint change while the floor sign is unchanged (a ``T-fp``
+    cross-fp transition) and the carry is within :data:`STM_HORIZON` ticks of its first
+    cross-fp carry. The per-entry decision (offset carry / T-flip drop / STM expiry) is
+    in :func:`_stm_carry_entry`; this driver only walks the floor entries and threads
+    the per-key ``carried_since`` clock.
+
+    The clock starts no later than the versioned scorer's retention ``t0`` (the scorer
+    episode is a subset of the carrying run), so ``episode_end - t0 <= STM_HORIZON``,
+    which is ``< H_safety`` — the carry structurally cannot trip the V2 staleness guard
+    (Codex HIGH-2). ``STM_HORIZON`` is the module constant (no per-call override).
+    """
+    prev_by_key = {(e.axis, e.key): e for e in state.base_floor.entries}
+    mod_by_key = {(e.axis, e.key): e for e in state.modulated.entries}
+    since_by_key: dict[tuple[str, str], int] = dict(state.carried_since)
+
+    reconciled: list[WorldModelEntry] = []
+    next_since: dict[tuple[str, str], int] = {}
+    for e_new in new_floor.entries:
+        key = (e_new.axis, e_new.key)
+        entry, since = _stm_carry_entry(
+            prev_by_key.get(key),
+            mod_by_key.get(key),
+            e_new,
+            since_by_key.get(key),
+            current_tick=current_tick,
+        )
+        reconciled.append(entry)
+        if since is not None:
+            next_since[key] = since
+
+    return WorldModelRuntimeState(
+        base_floor=new_floor,
+        modulated=SubjectiveWorldModel(entries=reconciled),
+        carried_since=tuple(sorted(next_since.items())),
+    )
+
+
 __all__ = [
     "MAX_TOTAL_MODULATION",
+    "STM_HORIZON",
     "VALUE_STEP",
     "WorldModelRuntimeState",
     "apply_world_model_update_hint",
