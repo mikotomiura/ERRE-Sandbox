@@ -512,6 +512,16 @@ class IndividualLayerConfig(BaseModel):
 
     enabled: bool = False
 
+    stm_carry_enabled: bool = False
+    """Fork III-a STM arm gate: carry a bounded LLM offset across a floor-fingerprint
+    change for a bounded horizon (``reconcile_world_model(stm_carry=...)``).
+
+    A sub-knob of :attr:`enabled` — only meaningful when the individual layer is on
+    (the reconcile step runs only in the flag-on block). ``default off`` so an
+    ``enabled=True`` run with this unset keeps the frozen drop-on-churn behaviour
+    (the OFF arm / control). The eval CLI does not yet surface this flag (it is set
+    by direct config injection for the arm contrast); CLI wiring is a later task."""
+
 
 __all__ = [
     "ArcSegment",

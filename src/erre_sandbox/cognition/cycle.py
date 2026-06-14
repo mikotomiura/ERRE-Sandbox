@@ -560,7 +560,15 @@ class CognitionCycle:
                 agent_id=agent_state.agent_id,
                 current_tick=agent_state.tick,
             )
-            reconciled = reconcile_world_model(world_model_runtime, floor)
+            reconciled = reconcile_world_model(
+                world_model_runtime,
+                floor,
+                current_tick=agent_state.tick,
+                stm_carry=(
+                    self._individual_layer is not None
+                    and self._individual_layer.stm_carry_enabled
+                ),
+            )
             world_model_entries = reconciled.modulated.entries
             exposed_citations = visible_entry_citations(world_model_entries)
         # Saturation probe (ADR section 2.1 / 5): snapshot the reconciled SWM
