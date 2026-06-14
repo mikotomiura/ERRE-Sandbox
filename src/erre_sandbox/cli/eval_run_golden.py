@@ -366,6 +366,16 @@ class CaptureResult:
     ``wall_timeout_min`` soft cap. ``None`` for the stimulus condition / a
     fatal that returns before the runtime phase starts."""
 
+    seed: int | None = None
+    """The ``uint64`` ``seed_root`` this run used (U4 provenance). Surfaced so
+    ``_publish_capture`` can persist the *actual* seed into the sidecar — the
+    versioned-verdict manifest builder pairs ON/OFF on the actual seed, which
+    depends on the seed-manifest ``salt`` and so is not implied by ``run_idx``
+    alone."""
+
+    seed_salt: str | None = None
+    """The seed-manifest ``salt`` that produced :attr:`seed` (its identity)."""
+
 
 @dataclass
 class _SinkState:
@@ -1592,6 +1602,8 @@ async def capture_stimulus(  # noqa: C901, PLR0915 — composition glue mirrors 
         drain_completed=True,  # stimulus has no async runtime drain
         runtime_drain_timeout=False,
         selected_stimulus_ids=selected_ids,
+        seed=seed_root,
+        seed_salt=str(manifest["salt"]),
     )
 
 
@@ -1741,6 +1753,8 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             stop_reason="fatal_ollama",
             drain_completed=state.drain_completed,
             runtime_drain_timeout=state.runtime_drain_timeout,
+            seed=seed_root,
+            seed_salt=str(manifest["salt"]),
         )
 
     retriever = Retriever(memory, embedding)
@@ -1993,6 +2007,8 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         drain_completed=state.drain_completed,
         runtime_drain_timeout=state.runtime_drain_timeout,
         elapsed_seconds=runtime_phase_end - runtime_phase_start,
+        seed=seed_root,
+        seed_salt=str(manifest["salt"]),
     )
 
 
@@ -2172,6 +2188,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--stm-carry-arm",
+        choices=("on", "off"),
+        default="off",
+        help=(
+            "Fork III-a STM carry arm for the natural run. ON carries a bounded"
+            " LLM offset across a floor-fingerprint change for a bounded horizon"
+            " (reconcile_world_model(stm_carry=...)); OFF is the frozen"
+            " drop-on-churn control. ON REQUIRES --individual-layer on and the"
+            " natural condition (a contradictory combination fails fast). Natural"
+            " condition only; default off (byte-invariant)."
+        ),
+    )
+    parser.add_argument(
         "--runtime-drain-grace-s",
         type=float,
         default=_RUNTIME_DRAIN_GRACE_S,
@@ -2233,7 +2262,15 @@ async def _async_main(args: argparse.Namespace) -> int:
                 IndividualLayerConfig as _IndividualLayerConfig,
             )
 
-            individual_layer = _IndividualLayerConfig(enabled=True)
+            # Fork III-a STM carry arm: ON gates reconcile_world_model(stm_carry=...)
+            # only when the individual layer is live. main()._validate_stm_carry_arm
+            # already rejected --stm-carry-arm on without --individual-layer on, so a
+            # True here always has its substrate. Default off keeps the legacy
+            # frozen drop-on-churn behaviour (byte-invariant).
+            individual_layer = _IndividualLayerConfig(
+                enabled=True,
+                stm_carry_enabled=(getattr(args, "stm_carry_arm", "off") == "on"),
+            )
         result = await capture_natural(
             persona=args.persona,
             run_idx=args.run_idx,
@@ -2289,6 +2326,21 @@ def _publish_capture(
         run_idx=int(args.run_idx),
         duckdb_path=str(final_path),
         elapsed_seconds=result.elapsed_seconds,
+        # U4 fork III-a paired-arm provenance: record the arm only for an
+        # arm-bearing capture (natural + --individual-layer on); the seed/salt
+        # are recorded for every capture so the manifest builder can pair ON/OFF
+        # on the actual seed (which depends on the seed-manifest salt, not on
+        # run_idx alone).
+        stm_carry_arm=(
+            cast("Literal['on', 'off']", args.stm_carry_arm)
+            if (
+                args.condition == "natural"
+                and getattr(args, "individual_layer", "off") == "on"
+            )
+            else None
+        ),
+        seed=result.seed,
+        seed_salt=result.seed_salt,
     )
     write_sidecar_atomic(sidecar_path, payload)
 
@@ -2459,10 +2511,37 @@ def _git_sha_short() -> str:
     return out.stdout.strip() or "unknown"
 
 
+def _validate_stm_carry_arm(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Fail-fast: ``--stm-carry-arm on`` requires natural + ``--individual-layer on``.
+
+    The STM carry arm only has a substrate when the individual layer is live
+    (it gates ``reconcile_world_model(stm_carry=...)`` via
+    ``IndividualLayerConfig.stm_carry_enabled``), and the stimulus condition has
+    no individual-layer semantic. A contradictory combination is rejected with
+    ``parser.error`` (argparse exit code 2) before any capture begins, so an
+    operator never produces a capture whose arm tag the runtime silently ignored.
+    """
+    if args.stm_carry_arm == "on":
+        if args.condition != "natural":
+            parser.error(
+                "--stm-carry-arm on requires --condition natural (the stimulus"
+                " condition has no individual-layer / STM-carry semantic)"
+            )
+        if args.individual_layer != "on":
+            parser.error(
+                "--stm-carry-arm on requires --individual-layer on (the STM carry"
+                " arm gates reconcile_world_model via the individual layer; ON"
+                " without the layer would be silently dropped)"
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Console entry — used by both the live CLI and the smoke tests."""
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
+    _validate_stm_carry_arm(parser, args)
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
