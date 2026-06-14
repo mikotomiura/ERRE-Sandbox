@@ -242,9 +242,28 @@ def test_tick_reversal_fails_fast() -> None:
         reconcile_world_model(state, _swm(_entry(0.40)), current_tick=5, stm_carry=True)
 
 
+def test_negative_current_tick_fails_fast() -> None:
+    """A negative tick is a corrupt clock source -> fail fast (security MED-1)."""
+    with pytest.raises(ValueError, match="non-negative"):
+        reconcile_world_model(
+            _state(0.40, 0.50), _swm(_entry(0.42)), current_tick=-1, stm_carry=True
+        )
+
+
 def test_horizon_is_not_a_public_parameter() -> None:
     """There is no per-call ``stm_horizon`` override that could exceed H_safety."""
     import inspect
 
     params = inspect.signature(reconcile_world_model).parameters
     assert "stm_horizon" not in params
+
+
+def test_carried_since_round_trips_through_model_validate() -> None:
+    """The nested-tuple clock survives a Pydantic dump/validate round-trip."""
+    out = reconcile_world_model(
+        _state(0.40, 0.50), _swm(_entry(0.42)), current_tick=5, stm_carry=True
+    )
+    assert out.carried_since == ((("env", "agora"), 5),)
+    restored = WorldModelRuntimeState.model_validate(out.model_dump())
+    assert restored.carried_since == out.carried_since
+    assert restored == out

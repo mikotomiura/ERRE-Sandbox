@@ -29,7 +29,7 @@ Design constraints:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TypeAlias
 
 from pydantic import BaseModel, ConfigDict
 
@@ -471,6 +471,15 @@ def apply_world_model_update_hint(
     return SubjectiveWorldModel(entries=new_entries)
 
 
+CarriedSinceClock: TypeAlias = tuple[tuple[tuple[str, str], int], ...]
+"""III-a STM age clock: ``(((axis, key), first_cross_fp_carry_tick), ...)``.
+
+Key-unique and sorted by :func:`_reconcile_stm_carry` so a fixed input is
+byte-stable; an immutable tuple (not a dict) so the frozen
+:class:`WorldModelRuntimeState` stays hashable-safe and cannot be mutated in place.
+"""
+
+
 class WorldModelRuntimeState(BaseModel):
     """Per-agent runtime state separating the evidence floor from LLM modulation.
 
@@ -486,8 +495,8 @@ class WorldModelRuntimeState(BaseModel):
 
     base_floor: SubjectiveWorldModel
     modulated: SubjectiveWorldModel
-    carried_since: tuple[tuple[tuple[str, str], int], ...] = ()
-    """III-a STM age clock: ``(((axis, key), first_cross_fp_carry_tick), ...)``.
+    carried_since: CarriedSinceClock = ()
+    """III-a STM age clock (see :data:`CarriedSinceClock`).
 
     Empty ``()`` on the frozen arm and on M10-C (no III-a carry) — so the
     ``base_floor`` / ``modulated`` projections the prompt, trace and snapshot read
@@ -622,7 +631,13 @@ def _stm_carry_entry(
     delta = mod.value - prev.value
     if delta == 0.0:
         return e_new, None  # no modulation -> floor stands
+    # An exact ``== 0.0`` is intentional: a genuine offset is a multiple of
+    # VALUE_STEP (0.05), far above float noise, and the final ``capped == e_new.value``
+    # guard below re-grounds any sub-ULP residue anyway.
 
+    # T-flip is only checked under ``fp_changed`` because ``_floor_fingerprint``
+    # includes the (rounded) floor value, so a value sign-flip always changes the
+    # fingerprint — a fp-stable sign reversal cannot occur while that holds.
     fp_changed = _floor_fingerprint(prev) != _floor_fingerprint(e_new)
     if fp_changed and _sign(prev.value) != _sign(e_new.value):
         return e_new, None  # T-flip -> drop (versioned V4)
@@ -666,6 +681,8 @@ def _reconcile_stm_carry(
     which is ``< H_safety`` — the carry structurally cannot trip the V2 staleness guard
     (Codex HIGH-2). ``STM_HORIZON`` is the module constant (no per-call override).
     """
+    if current_tick < 0:
+        raise ValueError(f"current_tick must be non-negative, got {current_tick}")
     prev_by_key = {(e.axis, e.key): e for e in state.base_floor.entries}
     mod_by_key = {(e.axis, e.key): e for e in state.modulated.entries}
     since_by_key: dict[tuple[str, str], int] = dict(state.carried_since)
