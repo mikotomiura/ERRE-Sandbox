@@ -132,6 +132,23 @@ if TYPE_CHECKING:
         None,
     ]
 
+    # U5 replay infra: flag-on per-(agent, tick) reconcile-input floor sink. Args are
+    # ``(individual_id, world_model_saturation, tick)`` — the **same** carrier the
+    # saturation sink reads; the orchestrator's closure binds ``run_id`` / ``seed`` /
+    # ``individual_layer_enabled`` and serialises ``snapshot.base_floor`` (the full
+    # reconcile-input floor) into a row, so ``world`` never imports ``evidence`` and
+    # never learns the run identity. Persisting the full floor (the saturation trace
+    # is lossy) is what lets a deterministic replay re-feed it into the unchanged
+    # ``reconcile_world_model`` kernel (U5 design DA-U5-1).
+    FloorInputTraceSink = Callable[
+        [
+            str,
+            "WorldModelSnapshot",
+            int,
+        ],
+        None,
+    ]
+
 logger = logging.getLogger(__name__)
 
 
@@ -476,6 +493,7 @@ class WorldRuntime:
         individual_trace_sink: IndividualTraceSink | None = None,
         saturation_trace_sink: SaturationTraceSink | None = None,
         hint_engagement_trace_sink: HintEngagementTraceSink | None = None,
+        floor_input_trace_sink: FloorInputTraceSink | None = None,
     ) -> None:
         self._cycle = cycle
         # M11-C2: flag-on individual-state trace sink. ``None`` (flag-off / live
@@ -495,6 +513,13 @@ class WorldRuntime:
         # flag-off DuckDB stays byte-identical (the new table is never bootstrapped).
         self._hint_engagement_trace_sink: HintEngagementTraceSink | None = (
             hint_engagement_trace_sink
+        )
+        # U5 replay infra: flag-on reconcile-input floor trace sink, wired only by the
+        # eval orchestrator's individual-layer-enabled branch. ``None`` (flag-off / live
+        # flow) makes ``_emit_floor_input_trace`` a no-op so the flag-off DuckDB stays
+        # byte-identical (the new table is never bootstrapped).
+        self._floor_input_trace_sink: FloorInputTraceSink | None = (
+            floor_input_trace_sink
         )
         self._clock: Clock = clock if clock is not None else RealClock()
         self._physics_dt = 1.0 / (physics_hz or self.DEFAULT_PHYSICS_HZ)
@@ -1610,6 +1635,11 @@ class WorldRuntime:
         # (flag-on only). Same no-op-when-unset contract; uses the disposition carrier
         # carried on the result (contracts read-model, no cognition/evidence import).
         self._emit_hint_engagement_trace(rt, res)
+        # U5 replay infra: emit this tick's reconcile-input floor trace (flag-on only).
+        # Same no-op-when-unset contract; uses the **same** post-reconcile pre-nudge
+        # snapshot as the saturation trace, but persists the full ``base_floor`` so a
+        # deterministic replay can re-feed it into the unchanged reconcile kernel.
+        self._emit_floor_input_trace(rt, res)
         # M6-A-2b: observations detected post-LLM (stress crossings) are
         # surfaced one tick late — append them to ``pending`` so the next
         # cognition tick sees the signal. Empty for agents whose stress
@@ -1708,6 +1738,29 @@ class WorldRuntime:
         if disposition is None:
             return
         self._hint_engagement_trace_sink(rt.agent_id, disposition, rt.state.tick)
+
+    def _emit_floor_input_trace(self, rt: AgentRuntime, res: CycleResult) -> None:
+        """Emit this tick's reconcile-input floor trace via the flag-on sink (U5).
+
+        No-op when ``_floor_input_trace_sink`` is ``None`` (flag-off / live runs), so
+        the new trace table is never written and the flag-off DuckDB stays
+        byte-identical.
+        Reads the **same** ``res.world_model_saturation`` carrier the saturation sink
+        uses (the post-reconcile pre-nudge ``WorldModelSnapshot``), so ``world`` imports
+        neither ``evidence`` nor ``cognition``; the orchestrator's closure persists the
+        full ``snapshot.base_floor`` (the lossy saturation trace cannot drive a faithful
+        replay). ``None`` on a flag-off tick (defensive — the sink is already ``None``
+        there) so this no-ops then too. ``rt.state.tick`` is the same post-step tick
+        label the saturation / hint / individual traces record, keeping them joinable.
+        The orchestrator's sink closure owns the DuckDB-write error semantics
+        (CaptureFatalError), mirroring the saturation sink — not swallowed.
+        """
+        if self._floor_input_trace_sink is None:
+            return
+        snapshot = res.world_model_saturation
+        if snapshot is None:
+            return
+        self._floor_input_trace_sink(rt.agent_id, snapshot, rt.state.tick)
 
     # ----- Scheduling helper -----
 

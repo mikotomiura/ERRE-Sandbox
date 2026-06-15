@@ -1066,6 +1066,100 @@ class TestEmitHintEngagementTrace:
         assert captured == []
 
 
+class TestEmitFloorInputTrace:
+    """U5 replay infra: the flag-on floor-input sink hook in _consume_result.
+
+    Mirrors ``TestEmitSaturationTrace`` — the floor sink reads the **same**
+    ``world_model_saturation`` carrier but the orchestrator persists ``base_floor``.
+    """
+
+    @staticmethod
+    def _snapshot() -> Any:
+        from erre_sandbox.contracts.cognition_layers import (
+            SubjectiveWorldModel,
+            WorldModelEntry,
+            WorldModelSnapshot,
+        )
+
+        floor = WorldModelEntry(
+            axis="self",
+            key="k",
+            value=0.5,
+            confidence=0.8,
+            cited_memory_ids=("m1",),
+            last_updated_tick=2,
+        )
+        modulated = floor.model_copy(update={"value": 0.64})
+        return WorldModelSnapshot(
+            base_floor=SubjectiveWorldModel(entries=[floor]),
+            modulated=SubjectiveWorldModel(entries=[modulated]),
+        )
+
+    def test_emit_forwards_agent_id_snapshot_and_tick(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """flag-on: the sink receives (agent_id, snapshot, tick)."""
+        captured: list[tuple[str, Any, int]] = []
+        runtime = WorldRuntime(
+            cycle=mock_cycle,  # type: ignore[arg-type]
+            clock=manual_clock,
+            floor_input_trace_sink=lambda aid, snap, t: captured.append((aid, snap, t)),
+        )
+        runtime.register_agent(
+            make_agent_state(agent_id="a_rikyu_001", persona_id="rikyu"),
+            make_persona_spec(persona_id="rikyu"),
+        )
+        rt = runtime._agents["a_rikyu_001"]
+        res = CycleResult(agent_state=rt.state, world_model_saturation=self._snapshot())
+
+        runtime._emit_floor_input_trace(rt, res)
+
+        assert len(captured) == 1
+        agent_id, snapshot, tick = captured[0]
+        assert agent_id == "a_rikyu_001"
+        assert tick == rt.state.tick
+        # The floor sink reads ``base_floor`` (the reconcile input), not modulated.
+        assert snapshot.base_floor.entries[0].value == 0.5
+
+    def test_emit_noops_without_sink(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """flag-off (sink None): no error — the byte-invariant path."""
+        runtime = WorldRuntime(cycle=mock_cycle, clock=manual_clock)  # type: ignore[arg-type]
+        runtime.register_agent(make_agent_state(), make_persona_spec())
+        rt = runtime._agents[runtime.agent_ids[0]]
+        res = CycleResult(agent_state=rt.state, world_model_saturation=self._snapshot())
+        runtime._emit_floor_input_trace(rt, res)
+
+    def test_emit_noops_when_snapshot_absent(
+        self,
+        manual_clock: ManualClock,
+        mock_cycle: Any,
+        make_agent_state: Any,
+        make_persona_spec: Any,
+    ) -> None:
+        """Sink set but ``world_model_saturation`` None (flag-off result): no call."""
+        captured: list[tuple[str, Any, int]] = []
+        runtime = WorldRuntime(
+            cycle=mock_cycle,  # type: ignore[arg-type]
+            clock=manual_clock,
+            floor_input_trace_sink=lambda aid, snap, t: captured.append((aid, snap, t)),
+        )
+        runtime.register_agent(make_agent_state(), make_persona_spec())
+        rt = runtime._agents[runtime.agent_ids[0]]
+        res = CycleResult(agent_state=rt.state, world_model_saturation=None)
+        runtime._emit_floor_input_trace(rt, res)
+        assert captured == []
+
+
 class TestDrainOrdering:
     async def test_drain_is_fifo(
         self,

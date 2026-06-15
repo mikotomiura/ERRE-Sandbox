@@ -112,6 +112,16 @@ from erre_sandbox.evidence.individuation.trace_ddl import (
 from erre_sandbox.evidence.individuation.trace_ddl import (
     column_names as _individual_state_trace_columns,
 )
+from erre_sandbox.evidence.saturation.floor_input_trace_ddl import (
+    TABLE_NAME as _FLOOR_INPUT_TRACE_TABLE,
+)
+from erre_sandbox.evidence.saturation.floor_input_trace_ddl import (
+    bootstrap_floor_input_trace_schema,
+    build_floor_input_trace_row,
+)
+from erre_sandbox.evidence.saturation.floor_input_trace_ddl import (
+    column_names as _floor_input_trace_columns,
+)
 from erre_sandbox.evidence.saturation.trace_ddl import (
     TABLE_NAME as _SATURATION_TRACE_TABLE,
 )
@@ -898,6 +908,58 @@ def _make_hint_engagement_trace_sink(
             con.execute(insert_sql, row.to_row())
         except duckdb.Error as exc:
             state.set_fatal(f"duckdb swm_hint_engagement_trace insert failed: {exc!r}")
+            raise CaptureFatalError(state.fatal_error) from exc
+
+    return sink
+
+
+def _make_floor_input_trace_sink(
+    *,
+    con: duckdb.DuckDBPyConnection,
+    run_id: str,
+    seed: int,
+    individual_layer_enabled: bool,
+    state: _SinkState,
+) -> Callable[[str, WorldModelSnapshot, int], None]:
+    """Construct the flag-on reconcile-input floor trace sink (U5 replay infra).
+
+    Mirrors :func:`_make_saturation_trace_sink`'s error contract: a DuckDB INSERT
+    failure sets ``state.fatal_error`` and raises :class:`CaptureFatalError`, so a
+    half-written trace cannot publish through the atomic rename. ``run_id`` / ``seed`` /
+    ``individual_layer_enabled`` are bound here so ``WorldRuntime`` never learns the run
+    identity; the row is built from the **same** post-reconcile pre-nudge
+    ``WorldModelSnapshot`` the saturation sink reads, but persists the full
+    ``snapshot.base_floor`` (the reconcile input) so a deterministic replay can re-feed
+    it into the unchanged ``reconcile_world_model`` kernel — the lossy saturation trace
+    cannot. ``seed`` is the ``derive_seed`` uint64 (UBIGINT column), bound explicitly
+    alongside ``individual_layer_enabled`` so a reader can reject a provenance-false
+    seed. Column order tracks ``_floor_input_trace_columns()`` in lockstep, and the
+    qualified table name is composed from ``METRICS_SCHEMA`` (never a schema-dot
+    literal; CI grep gate).
+    """
+    cols = _floor_input_trace_columns()
+    columns_sql = ", ".join(f'"{c}"' for c in cols)
+    placeholders = ", ".join("?" for _ in cols)
+    insert_sql = (
+        f"INSERT INTO {METRICS_SCHEMA}.{_FLOOR_INPUT_TRACE_TABLE}"  # noqa: S608 — static identifiers only
+        f" ({columns_sql}) VALUES ({placeholders})"
+    )
+
+    def sink(individual_id: str, snapshot: WorldModelSnapshot, tick: int) -> None:
+        if state.fatal_error is not None:
+            return
+        row = build_floor_input_trace_row(
+            snapshot,
+            run_id=run_id,
+            seed=seed,
+            individual_id=individual_id,
+            tick=tick,
+            individual_layer_enabled=individual_layer_enabled,
+        )
+        try:
+            con.execute(insert_sql, row.to_row())
+        except duckdb.Error as exc:
+            state.set_fatal(f"duckdb swm_floor_input_trace insert failed: {exc!r}")
             raise CaptureFatalError(state.fatal_error) from exc
 
     return sink
@@ -1721,6 +1783,10 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         # the same individual-layer-enabled branch so a flag-off run never issues this
         # DDL and the DuckDB stays byte-identical (new-module shadow).
         bootstrap_hint_engagement_trace_schema(con, METRICS_SCHEMA)
+        # U5 replay infra: flag-on conditional reconcile-input floor trace table,
+        # created in the same individual-layer-enabled branch so a flag-off run never
+        # issues this DDL and the DuckDB stays byte-identical (new-module shadow).
+        bootstrap_floor_input_trace_schema(con, METRICS_SCHEMA)
 
     # SH-4: validate (symlink/prefix/overwrite) for explicit paths, fall back to
     # ME-2 default ``/tmp/p3a_natural_<persona>_run<idx>.sqlite`` when None.
@@ -1798,6 +1864,22 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         if individual_layer_on
         else None
     )
+    # U5 replay infra: flag-on per-(agent, tick) reconcile-input floor sink. Reads the
+    # same snapshot as the saturation sink but persists the full ``base_floor`` so a
+    # deterministic replay can re-feed it into the unchanged reconcile kernel; ``seed``
+    # / ``individual_layer_enabled`` bound here for the same provenance reason as the
+    # saturation sink; ``None`` flag-off keeps the trace table absent.
+    floor_input_trace_sink = (
+        _make_floor_input_trace_sink(
+            con=con,
+            run_id=run_id,
+            seed=seed_root,
+            individual_layer_enabled=individual_layer_on,
+            state=state,
+        )
+        if individual_layer_on
+        else None
+    )
 
     # Build the WorldRuntime + cognition stack.  ``runtime_factory`` is the
     # injection seam used by the unit test to swap in a ManualClock-driven
@@ -1833,6 +1915,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             individual_trace_sink=trace_sink,
             saturation_trace_sink=saturation_trace_sink,
             hint_engagement_trace_sink=hint_engagement_trace_sink,
+            floor_input_trace_sink=floor_input_trace_sink,
         )
     else:
         runtime = runtime_factory(
@@ -1845,6 +1928,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             individual_trace_sink=trace_sink,
             saturation_trace_sink=saturation_trace_sink,
             hint_engagement_trace_sink=hint_engagement_trace_sink,
+            floor_input_trace_sink=floor_input_trace_sink,
         )
 
     def _persona_resolver(agent_id: str) -> str | None:
