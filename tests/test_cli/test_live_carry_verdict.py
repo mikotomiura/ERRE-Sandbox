@@ -29,6 +29,16 @@ from erre_sandbox.evidence.capture_sidecar import (
     sidecar_path_for,
     write_sidecar_atomic,
 )
+from erre_sandbox.evidence.individuation.trace_ddl import (
+    TABLE_NAME as _STATE_TABLE,
+)
+from erre_sandbox.evidence.individuation.trace_ddl import (
+    IndividualStateTraceRow,
+    bootstrap_individual_state_trace_schema,
+)
+from erre_sandbox.evidence.individuation.trace_ddl import (
+    column_names as _state_columns,
+)
 from erre_sandbox.evidence.live_carry import constants as _c
 from erre_sandbox.evidence.saturation.floor_input_trace_ddl import (
     TABLE_NAME as _FLOOR_TABLE,
@@ -103,7 +113,25 @@ def _write_cell(
         con.execute(f"CREATE SCHEMA {METRICS_SCHEMA}")
         bootstrap_floor_input_trace_schema(con, METRICS_SCHEMA)
         bootstrap_saturation_trace_schema(con, METRICS_SCHEMA)
+        bootstrap_individual_state_trace_schema(con, METRICS_SCHEMA)
         for tick in range(15):
+            # Coherence non-inferiority is a required M2 gate (flat ON==OFF series).
+            _insert(
+                con,
+                _STATE_TABLE,
+                _state_columns(),
+                IndividualStateTraceRow(
+                    run_id=run_id,
+                    individual_id="kant",
+                    tick=tick,
+                    development_stage=None,
+                    coherence_score=0.7,
+                    belief_classes_json=None,
+                    arc_segment_count=0,
+                    world_model_keys_json=None,
+                    world_model_evidence_json=None,
+                ).to_row(),
+            )
             _insert(
                 con,
                 _FLOOR_TABLE,

@@ -95,6 +95,8 @@ class M1Report(BaseModel):
 
     go: bool
     coverage_ok: bool
+    nulls_complete: bool
+    sanity_complete: bool
     rank_non_overlap: bool
     ratio_ok: bool
     on_noise_ok: bool
@@ -191,6 +193,8 @@ def build_live_carry_verdict_report(
         else M1Report(
             go=result.m1.go,
             coverage_ok=result.m1.coverage_ok,
+            nulls_complete=result.m1.nulls_complete,
+            sanity_complete=result.m1.sanity_complete,
             rank_non_overlap=result.m1.rank_non_overlap,
             ratio_ok=result.m1.ratio_ok,
             on_noise_ok=result.m1.on_noise_ok,

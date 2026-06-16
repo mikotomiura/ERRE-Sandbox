@@ -20,6 +20,7 @@ from erre_sandbox.evidence.live_carry.scorer import (
     INCONCLUSIVE,
     INVALID,
     NO_DETECTABLE,
+    _cap_violation,
     score_live_carry,
 )
 from erre_sandbox.evidence.live_carry.trace_reader import (
@@ -113,6 +114,14 @@ def _benign_sat(
     )
 
 
+def _coherence(*, score: float = 0.7, n_ticks: int = 15) -> tuple[CoherenceRow, ...]:
+    """A flat per-tick coherence series (ON == OFF → non-inferiority passes)."""
+    return tuple(
+        CoherenceRow(individual_id="kant", tick=t, coherence_score=score)
+        for t in range(n_ticks)
+    )
+
+
 def _capture(
     seed: int,
     arm: str,
@@ -121,8 +130,12 @@ def _capture(
     keys: list[_Key],
     sat: tuple[SaturationTraceRow, ...],
     n_ticks: int = 15,
-    coherence: tuple[CoherenceRow, ...] = (),
+    coherence: tuple[CoherenceRow, ...] | None = None,
 ) -> LiveCarryCapture:
+    # Coherence is a required M2 gate (HIGH-3); default to a flat in-bounds series so a
+    # fixture that does not exercise coherence still produces an evaluable M2.
+    if coherence is None:
+        coherence = _coherence(n_ticks=n_ticks)
     return LiveCarryCapture(
         path=f"{seed}_{arm}_{rep}.duckdb",
         seed=seed,
@@ -432,3 +445,103 @@ def test_invalid_wrong_seed_count() -> None:
     ]
     result = score_live_carry(caps)
     assert result.verdict == INVALID
+
+
+# ---------------------------------------------------------------------------
+# Codex HIGH regressions: partial null/sanity, transient cap, required coherence
+# ---------------------------------------------------------------------------
+
+
+def test_inconclusive_partial_off_off_null() -> None:
+    """One seed's OFF/OFF null degenerate → null incomplete → INCONCLUSIVE (HIGH-1)."""
+    caps = _matrix(on_keys=[("self", "on_key")], off_keys=[("self", "off_key")])
+    # seed 1: both OFF floors empty → OFF/OFF union empty → degenerate (None) null.
+    caps[2] = _capture(1, "off", 0, keys=[], sat=_benign_sat(1, "off", 0))
+    caps[3] = _capture(1, "off", 1, keys=[], sat=_benign_sat(1, "off", 1))
+    result = score_live_carry(caps)
+    assert result.verdict == INCONCLUSIVE
+    assert result.m1 is not None
+    assert not result.m1.nulls_complete
+
+
+def test_inconclusive_partial_on_on_sanity() -> None:
+    """One seed's ON/ON sanity degenerate → incomplete → INCONCLUSIVE (HIGH-1)."""
+    caps = _matrix(on_keys=[("self", "on_key")], off_keys=[("self", "off_key")])
+    # seed 1: both ON floors empty → ON/ON union empty → degenerate (None) sanity.
+    caps[0] = _capture(1, "on", 0, keys=[], sat=_engagement_sat(1, "on", 0, events=6))
+    caps[1] = _capture(1, "on", 1, keys=[], sat=_benign_sat(1, "on", 1))
+    result = score_live_carry(caps)
+    assert result.verdict == INCONCLUSIVE
+    assert result.m1 is not None
+    assert not result.m1.sanity_complete
+
+
+def _sat_row(*, tick: int, offset: float) -> SaturationTraceRow:
+    return SaturationTraceRow(
+        run_id="r",
+        seed=1,
+        individual_id="kant",
+        axis="self",
+        key="c",
+        tick=tick,
+        base_floor_value=0.5,
+        modulated_value=0.5 + offset,
+        floor_fingerprint_hash=f"fp{tick}",
+        individual_layer_enabled=True,
+    )
+
+
+def test_cap_violation_sustained_vs_transient() -> None:
+    """Sustained over-cap is a violation; a single re-clamped transient is allowed."""
+    # Sustained 0.18 across two consecutive ticks (no re-clamp) → violation.
+    assert _cap_violation(
+        (_sat_row(tick=0, offset=0.18), _sat_row(tick=1, offset=0.18))
+    )
+    # Transient 0.18 at injection, re-clamped to 0.10 next tick → allowed.
+    assert not _cap_violation(
+        (_sat_row(tick=0, offset=0.18), _sat_row(tick=1, offset=0.10))
+    )
+    # Within the steady cap → allowed.
+    assert not _cap_violation((_sat_row(tick=0, offset=0.10),))
+    # A single over-cap row with no next tick to confirm the re-clamp → violation.
+    assert _cap_violation((_sat_row(tick=0, offset=0.18),))
+    # Beyond even the transient tolerance (0.25 > 0.15 + 0.05) → violation.
+    assert _cap_violation(
+        (_sat_row(tick=0, offset=0.25), _sat_row(tick=1, offset=0.10))
+    )
+
+
+def test_invalid_sustained_over_cap() -> None:
+    """A sustained 0.18 offset (< blanket 0.20 but not transient) → INVALID (HIGH-2)."""
+    caps = _matrix(
+        on_keys=[("self", "on_key")],
+        off_keys=[("self", "off_key")],
+        on_r0_cap_offset=0.18,  # every ON r0 tick over the 0.15 cap → sustained
+    )
+    result = score_live_carry(caps)
+    assert result.verdict == INVALID
+    assert result.m2 is not None
+    assert not result.m2.cap_ok
+
+
+def test_invalid_missing_coherence() -> None:
+    """No coherence observations → M2 non-evaluable → INVALID_MEASUREMENT (HIGH-3)."""
+    caps = _matrix(on_keys=[("self", "on_key")], off_keys=[("self", "off_key")])
+    caps = [replace(c, coherence_rows=()) for c in caps]
+    result = score_live_carry(caps)
+    assert result.verdict == INVALID
+    assert result.m2 is not None
+    assert not result.m2.coherence_ok
+
+
+def test_invalid_nonfinite_coherence() -> None:
+    """A non-finite (NaN) coherence score → M2 INVALID (HIGH-3 data integrity)."""
+    nan_coh = (
+        CoherenceRow(individual_id="kant", tick=0, coherence_score=float("nan")),
+    )
+    caps = _matrix(on_keys=[("self", "on_key")], off_keys=[("self", "off_key")])
+    caps[0] = replace(caps[0], coherence_rows=nan_coh)
+    result = score_live_carry(caps)
+    assert result.verdict == INVALID
+    assert result.m2 is not None
+    assert not result.m2.coherence_ok

@@ -2294,9 +2294,10 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             " matrix is seed x arm{ON,OFF} x replicate{0,1} = 12 runs: the same"
             " seed is run twice per arm so the cross-arm scorer can measure the"
             " run-to-run noise floor (OFF r0 vs OFF r1) and the ON/ON sanity null."
-            " REQUIRES --condition natural + --individual-layer on + --stm-carry-arm"
-            " set (a contradictory combination fails fast). Default unset (no"
-            " matrix provenance; backward-compatible with U4 arm captures)."
+            " REQUIRES --condition natural + --individual-layer on (the arm may be"
+            " on or off — both are valid matrix members; a contradictory combination"
+            " fails fast). Default unset (no matrix provenance; backward-compatible"
+            " with U4 arm captures)."
         ),
     )
     parser.add_argument(

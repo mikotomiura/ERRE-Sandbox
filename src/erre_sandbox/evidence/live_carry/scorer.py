@@ -26,6 +26,7 @@ forbidden, ADR §1/§9).
 from __future__ import annotations
 
 import itertools
+import math
 import statistics
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -104,6 +105,8 @@ class M1Result:
 
     go: bool
     coverage_ok: bool
+    nulls_complete: bool
+    sanity_complete: bool
     rank_non_overlap: bool
     ratio_ok: bool
     on_noise_ok: bool
@@ -323,9 +326,56 @@ def _distinct_ticks(rows: Sequence[FloorInputTraceRow]) -> int:
 
 
 def _median_coherence(rows: Sequence[CoherenceRow]) -> float | None:
-    """Median of the non-NULL per-tick coherence observations (``None`` if none)."""
-    values = [r.coherence_score for r in rows if r.coherence_score is not None]
+    """Median of the **finite** non-NULL per-tick coherence observations.
+
+    ``None`` when no finite observation exists (the M2 non-inferiority gate is then
+    non-evaluable → INVALID, Codex HIGH-3). A non-finite (NaN/inf) score is dropped
+    here and separately flagged by :func:`_has_nonfinite_coherence`.
+    """
+    values = [
+        r.coherence_score
+        for r in rows
+        if r.coherence_score is not None and math.isfinite(r.coherence_score)
+    ]
     return statistics.median(values) if values else None
+
+
+def _has_nonfinite_coherence(rows: Sequence[CoherenceRow]) -> bool:
+    """True if any observed coherence score is NaN/inf (a data-integrity violation)."""
+    return any(
+        r.coherence_score is not None and not math.isfinite(r.coherence_score)
+        for r in rows
+    )
+
+
+def _cap_violation(rows: Sequence[SaturationTraceRow]) -> bool:
+    """True if any channel breaches the frozen cap beyond a single injection transient.
+
+    ADR §5 caps the steady offset ``|modulated - base_floor|`` at ``M2_CAP`` (0.15) and
+    tolerates one ``VALUE_STEP`` (0.05) transient **only at injection**, which the next
+    reconcile re-clamps. So an offset in ``(M2_CAP, M2_CAP + M2_TRANSIENT_TOL]`` is
+    allowed only if the **next** observed tick of the same channel re-clamps to
+    ``<= M2_CAP``; a sustained over-cap (next tick still over cap, or no next tick to
+    confirm the re-clamp) and any offset beyond ``M2_CAP + M2_TRANSIENT_TOL`` are
+    violations (Codex HIGH-2 — a blanket ``+0.05`` cap would let a sustained 0.18 pass).
+    """
+    by_channel: dict[tuple[str, str, str], list[SaturationTraceRow]] = {}
+    for row in rows:
+        by_channel.setdefault((row.individual_id, row.axis, row.key), []).append(row)
+    for channel_rows in by_channel.values():
+        ordered = sorted(channel_rows, key=lambda r: r.tick)
+        for idx, row in enumerate(ordered):
+            offset = abs(row.modulated_value - row.base_floor_value)
+            if offset > _c.M2_CAP + _c.M2_TRANSIENT_TOL:
+                return True  # beyond even a transient injection
+            if offset > _c.M2_CAP:
+                nxt = ordered[idx + 1] if idx + 1 < len(ordered) else None
+                if (
+                    nxt is None
+                    or abs(nxt.modulated_value - nxt.base_floor_value) > _c.M2_CAP
+                ):
+                    return True  # sustained over-cap (no confirmed re-clamp)
+    return False
 
 
 def _score_m2(
@@ -335,25 +385,34 @@ def _score_m2(
     notes: list[str] = []
     range_ok = True
     cap_ok = True
-    cap_limit = _c.M2_CAP + _c.M2_TRANSIENT_TOL  # steady cap + one transient VALUE_STEP
     for cap in matrix.values():
         for row in cap.saturation_rows:
             if not (-1.0 <= row.modulated_value <= 1.0):
                 range_ok = False
-            if abs(row.modulated_value - row.base_floor_value) > cap_limit:
-                cap_ok = False
+        if _cap_violation(cap.saturation_rows):
+            cap_ok = False
 
     coherence_ok = True
     throughput_ok = True
     for seed in seeds:
         on_r0 = matrix[(seed, "on", 0)]
         off_r0 = matrix[(seed, "off", 0)]
+        # Coherence non-inferiority is a **required** M2 gate (ADR §5): a non-evaluable
+        # series (no finite observation) or a non-finite score cannot rule out carry
+        # degrading the agent, so it routes INVALID — not skipped (Codex HIGH-3).
+        if _has_nonfinite_coherence(on_r0.coherence_rows) or _has_nonfinite_coherence(
+            off_r0.coherence_rows
+        ):
+            coherence_ok = False
+            notes.append(f"seed {seed}: non-finite coherence observation → INVALID")
+            continue
         coh_on = _median_coherence(on_r0.coherence_rows)
         coh_off = _median_coherence(off_r0.coherence_rows)
         if coh_on is None or coh_off is None:
+            coherence_ok = False
             notes.append(
-                f"seed {seed}: coherence non-inferiority not evaluable"
-                " (missing coherence observations); skipped"
+                f"seed {seed}: coherence non-inferiority non-evaluable"
+                " (no finite ON r0 / OFF r0 observation) → INVALID"
             )
         elif coh_on < coh_off - _c.M2_COHERENCE_MARGIN:
             coherence_ok = False
@@ -427,12 +486,26 @@ def _score_m1(
     valid_on_off = [s for s in on_off if s is not None]
     valid_on_on = [s for s in on_on if s is not None]
 
+    # ADR §2 is a strict 3-vs-3 descriptive comparison + an ON/ON sanity null over all
+    # seeds. A *partial* null or sanity substrate (a degenerate run-pair on some seed)
+    # cannot support the rank/sanity claim, so it routes INCONCLUSIVE — never CONFIRMED
+    # / NO_DETECTABLE (Codex HIGH-1). ``on_noise_ok`` therefore defaults False (a
+    # missing sanity is not a silent pass).
+    on_off_complete = len(valid_on_off) == _c.N_SEED
+    nulls_complete = len(valid_nulls) == _c.N_SEED
+    sanity_complete = len(valid_on_on) == _c.N_SEED
+
     rank_non_overlap = False
     ratio_ok = False
-    on_noise_ok = True
-    if not valid_nulls:
-        notes.append("no valid OFF/OFF null → INCONCLUSIVE_LOW_POWER")
-    elif len(valid_on_off) == _c.N_SEED:
+    on_noise_ok = False
+    if not nulls_complete:
+        notes.append("OFF/OFF null incomplete (need N_SEED valid) → INCONCLUSIVE")
+    if not sanity_complete:
+        notes.append("ON/ON sanity incomplete (need N_SEED valid) → INCONCLUSIVE")
+    if not on_off_complete:
+        notes.append("a primary ON-OFF pair has no valid separation → INCONCLUSIVE")
+
+    if on_off_complete and nulls_complete:
         max_null = max(valid_nulls)
         rank_non_overlap = min(valid_on_off) > max_null
         median_on_off = statistics.median(valid_on_off)
@@ -442,17 +515,17 @@ def _score_m1(
             )  # all-zero null → floor
         else:
             ratio_ok = (median_on_off / max_null) >= _c.R_MIN
-        if valid_on_on:
-            max_off_off = max(valid_nulls)
-            on_noise_ok = max(valid_on_on) <= _c.ON_NOISE_FACTOR * max_off_off
-            if not on_noise_ok:
-                notes.append("ON/ON sanity FAIL (ON-specific noise suspected)")
-    else:
-        notes.append("a primary ON-OFF pair has no valid separation → INCONCLUSIVE")
+
+    if sanity_complete and nulls_complete:
+        on_noise_ok = max(valid_on_on) <= _c.ON_NOISE_FACTOR * max(valid_nulls)
+        if not on_noise_ok:
+            notes.append("ON/ON sanity FAIL (ON-specific noise suspected)")
 
     go = (
         coverage_ok
-        and bool(valid_nulls)
+        and on_off_complete
+        and nulls_complete
+        and sanity_complete
         and rank_non_overlap
         and ratio_ok
         and on_noise_ok
@@ -460,6 +533,8 @@ def _score_m1(
     return M1Result(
         go=go,
         coverage_ok=coverage_ok,
+        nulls_complete=nulls_complete,
+        sanity_complete=sanity_complete,
         rank_non_overlap=rank_non_overlap,
         ratio_ok=ratio_ok,
         on_noise_ok=on_noise_ok,
@@ -513,8 +588,9 @@ def score_live_carry(captures: Sequence[LiveCarryCapture]) -> LiveCarryResult:
         notes_parts.append("M0 engagement 1..4 (under-engaged)")
     elif (
         not m1.coverage_ok
+        or not m1.nulls_complete
+        or not m1.sanity_complete
         or not m1.on_noise_ok
-        or all(s is None for s in m1.s_off_off_null)
     ):
         verdict = INCONCLUSIVE
     # Substantive calls — M0 PASS ∧ M2 PASS.
