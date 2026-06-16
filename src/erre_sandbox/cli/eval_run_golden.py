@@ -2285,6 +2285,21 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--replicate-id",
+        type=int,
+        choices=(0, 1),
+        default=None,
+        help=(
+            "Fork III-a live §5.3 capture-matrix replicate index (0 or 1). The"
+            " matrix is seed x arm{ON,OFF} x replicate{0,1} = 12 runs: the same"
+            " seed is run twice per arm so the cross-arm scorer can measure the"
+            " run-to-run noise floor (OFF r0 vs OFF r1) and the ON/ON sanity null."
+            " REQUIRES --condition natural + --individual-layer on + --stm-carry-arm"
+            " set (a contradictory combination fails fast). Default unset (no"
+            " matrix provenance; backward-compatible with U4 arm captures)."
+        ),
+    )
+    parser.add_argument(
         "--runtime-drain-grace-s",
         type=float,
         default=_RUNTIME_DRAIN_GRACE_S,
@@ -2425,6 +2440,19 @@ def _publish_capture(
         ),
         seed=result.seed,
         seed_salt=result.seed_salt,
+        # Fork III-a live §5.3 12-run capture-matrix replicate index. Recorded only
+        # for an arm-bearing capture (natural + --individual-layer on), the same gate
+        # as ``stm_carry_arm``; ``_validate_replicate_id`` already rejected
+        # --replicate-id outside the full arm combination, so ``args.replicate_id`` is
+        # None here unless the arm is live.
+        replicate_id=(
+            getattr(args, "replicate_id", None)
+            if (
+                args.condition == "natural"
+                and getattr(args, "individual_layer", "off") == "on"
+            )
+            else None
+        ),
     )
     write_sidecar_atomic(sidecar_path, payload)
 
@@ -2621,11 +2649,42 @@ def _validate_stm_carry_arm(
             )
 
 
+def _validate_replicate_id(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    """Fail-fast: ``--replicate-id`` requires the full live-§5.3 arm combination.
+
+    The 12-run capture matrix (``seed x arm{ON,OFF} x replicate{0,1}``, freeze ADR
+    §0/§3) only exists for an arm-bearing natural run, so a replicate index is
+    meaningless without ``--condition natural`` + ``--individual-layer on``. Both
+    arm values are valid matrix members (the OFF replicates supply the run-to-run
+    noise floor), so ``--stm-carry-arm`` is **not** additionally constrained here. A
+    contradictory combination is rejected with ``parser.error`` (argparse exit code
+    2) before any capture begins, so an operator never produces a sidecar whose
+    ``replicate_id`` the runtime would have silently dropped. ``--replicate-id`` unset
+    is allowed (backward-compatible U4 arm captures); the cross-arm scorer — not this
+    CLI — enforces matrix completeness (missing / duplicate / role-swapped key =
+    INVALID_MEASUREMENT, ADR §0/§3/§7).
+    """
+    if args.replicate_id is not None:
+        if args.condition != "natural":
+            parser.error(
+                "--replicate-id requires --condition natural (the stimulus"
+                " condition has no individual-layer / STM-carry matrix)"
+            )
+        if args.individual_layer != "on":
+            parser.error(
+                "--replicate-id requires --individual-layer on (the live §5.3"
+                " capture matrix only exists when the individual layer is live)"
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Console entry — used by both the live CLI and the smoke tests."""
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
     _validate_stm_carry_arm(parser, args)
+    _validate_replicate_id(parser, args)
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",

@@ -107,6 +107,19 @@ class SidecarV1(BaseModel):
     a reader confirm two captures share the same seed lineage. ``None`` for
     pre-U4 sidecars. Optional (``extra="allow"``)."""
 
+    replicate_id: int | None = None
+    """Fork III-a live §5.3 12-run capture-matrix replicate index (0 or 1).
+
+    The matrix is ``seed_id x arm{ON,OFF} x replicate_id{0,1}`` = 12 runs (freeze
+    ADR §0/§3): the **same** ``seed`` is run twice per arm so the cross-arm scorer
+    can measure the run-to-run noise floor (OFF r0 vs OFF r1) and the ON/ON sanity
+    null, and ``replicate_id`` is the only thing distinguishing the two same-seed
+    same-arm captures. Recorded **only** for an arm-bearing capture (natural +
+    ``--individual-layer on`` + ``--stm-carry-arm`` set), ``None`` otherwise and for
+    any pre-live-§5.3 sidecar. Optional (``extra="allow"``) so older sidecars
+    validate unchanged. The scorer keys ``(seed, stm_carry_arm, replicate_id)`` and
+    treats a missing / duplicate / role-swapped key as ``INVALID_MEASUREMENT``."""
+
 
 def sidecar_path_for(duckdb_path: Path | str) -> Path:
     """Return the conventional sidecar path for *duckdb_path*."""
