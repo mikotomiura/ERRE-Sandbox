@@ -1,9 +1,17 @@
-"""Loader + scorer coverage for the bond-affinity near-miss diagnostic (ADR 3.4).
+"""Loader + scorer coverage for the bond-affinity near-miss diagnostic.
 
-CPU-only, synthetic fixtures. Covers the read round-trip (incl. nullable recency),
-near-miss gate recompute, the stale-bond guard (HIGH-1), the cap-exposure join
-(individual vs entry-linked, MED-3), the signed trust/clash split, the seed-paired
-cross-arm contrast, and low-power → INCONCLUSIVE (never folded into (ii)).
+CPU-only, synthetic fixtures. Two layers:
+
+* **descriptive** (PR #25, byte-invariant): the read round-trip (incl. nullable
+  recency), the near-miss gate recompute, the stale-bond guard (HIGH-1), the
+  cap-exposure join (individual vs entry-linked, MED-3), the signed trust/clash split,
+  and the no-exposure-leak invariants. These exercise ``identify_near_miss`` /
+  ``_cell_stats`` whose statistics are unchanged by the v2 decision layer.
+* **decision (v2, freeze ADR §1-§3)**: the signal-to-noise / non-circular null
+  hierarchy — replicate-cell power gate (MED-1), 2-of-3 paired-seed floor (MED-3),
+  ON-noise sanity, materiality floor + ratio with degenerate-null handling (HIGH-2),
+  rank-non-overlap, and the six closed routing states incl. INCONCLUSIVE_MIXED_SEED
+  (HIGH-1) and provenance-false → INVALID_MEASUREMENT (ADR §7, was INCONCLUSIVE).
 """
 
 from __future__ import annotations
@@ -18,6 +26,9 @@ from erre_sandbox.evidence.relational.bond_affinity_trace_ddl import (
     column_names,
 )
 from erre_sandbox.evidence.relational.loader import (
+    BondAffinityProbeResult,
+    CellStats,
+    has_eligible_near_miss,
     identify_near_miss,
     read_bond_affinity_trace_rows,
     score_bond_affinity,
@@ -71,6 +82,66 @@ def _bond_row(individual, other, tick, affinity, *, count, last_tick, run_id, se
         individual_layer_enabled=True,
     )
     return rows[0]
+
+
+# --- v2 matrix fixture helpers ------------------------------------------------
+
+
+def _matrix(cells, *, individual="kant", tick=10):
+    """Build (bond_rows, sat_rows, arm_of, replicate_of) for a list of cell specs.
+
+    Each cell spec is ``(seed, arm, replicate, abs_aff, sign, n)``: *n* near-miss bonds
+    at distinct dyads, all touched at *tick* with ``|affinity| == abs_aff`` and the
+    given *sign*, plus one cap-saturated saturation entry for the cell's run. A cell
+    filled with *n* equal magnitudes has ``p95 == abs_aff`` exactly, so the per-seed S
+    values are deterministic.
+    """
+    bond_rows: list = []
+    sat_rows: list = []
+    arm_of: dict[str, str] = {}
+    replicate_of: dict[str, int] = {}
+    for seed, arm, replicate, abs_aff, sign, n in cells:
+        run_id = f"s{seed}_{arm}{replicate}"
+        arm_of[run_id] = arm
+        replicate_of[run_id] = replicate
+        bond_rows.extend(
+            _bond_row(
+                individual,
+                f"o{i}",
+                tick,
+                sign * abs_aff,
+                count=6,
+                last_tick=tick,
+                run_id=run_id,
+                seed=seed,
+            )
+            for i in range(n)
+        )
+        sat_rows.append(
+            _sat_row(individual, tick, offset=0.15, seed=seed, run_id=run_id)
+        )
+    return bond_rows, sat_rows, arm_of, replicate_of
+
+
+def _seed_quad(seed, on0, off0, off1, on1, *, n=10):
+    """Four powered cells for one seed at the given p95 proximities."""
+    return [
+        (seed, "ON", 0, on0, 1.0, n),
+        (seed, "OFF", 0, off0, 1.0, n),
+        (seed, "OFF", 1, off1, 1.0, n),
+        (seed, "ON", 1, on1, 1.0, n),
+    ]
+
+
+def _find_cell(result: BondAffinityProbeResult, seed, arm, replicate) -> CellStats:
+    for c in result.cells:
+        if (c.seed, c.arm, c.replicate) == (seed, arm, replicate):
+            return c
+    msg = f"cell ({seed}, {arm}, {replicate}) not in result"
+    raise AssertionError(msg)
+
+
+# --- descriptive layer (PR #25, byte-invariant) -------------------------------
 
 
 def test_read_round_trip_all_columns_incl_nullable(tmp_path) -> None:
@@ -160,102 +231,65 @@ def test_stale_guard_excludes_parked_bond() -> None:
     assert obs[0].touched_this_tick
 
 
+def test_exposure_does_not_leak_across_arms() -> None:
+    """An ON-arm cap exposure must not make an OFF-arm same-tick bond a near-miss."""
+    # Only the ON run has a cap-saturated entry at (kant, 10).
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+    on = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
+    off = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="off", seed=1)
+    obs = identify_near_miss([on, off], sat)
+    # Only the ON bond joins the exposure; the OFF bond does not inherit it.
+    assert {o.run_id for o in obs} == {"on"}
+
+
+def test_exposure_does_not_leak_across_seeds() -> None:
+    """A seed-1 cap exposure must not make a seed-2 same-tick bond a near-miss."""
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+    s1 = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
+    s2 = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=2)
+    obs = identify_near_miss([s1, s2], sat)
+    assert {o.seed for o in obs} == {1}
+
+
+def test_clash_bond_rising_in_magnitude_is_fresh() -> None:
+    """A clash bond moving -0.30 -> -0.44 (|aff| rising) is fresh via the abs slope."""
+    sat = [_sat_row("kant", 30, offset=0.15, run_id="on", seed=1)]
+    # |affinity| rises into tick 30 though signed affinity falls; never touched.
+    series = [
+        _bond_row("kant", "a", t, aff, count=7, last_tick=5, run_id="on", seed=1)
+        for t, aff in [(26, -0.30), (27, -0.34), (28, -0.38), (29, -0.41), (30, -0.44)]
+    ]
+    obs = identify_near_miss(series, sat)
+    assert len(obs) == 1
+    assert obs[0].lagged_slope > 0  # abs(affinity) slope, not signed
+    assert not obs[0].touched_this_tick
+
+
 def test_signed_split_trust_vs_clash() -> None:
-    sat = [_sat_row("kant", 10, offset=0.15)]
+    """The per-cell signed split is unchanged from PR #25 (read via cells now)."""
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
     rows = [
         _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1),
         _bond_row("kant", "b", 10, -0.43, count=6, last_tick=10, run_id="on", seed=1),
     ]
-    result = score_bond_affinity(rows, sat, arm_of={"on": "ON"}, min_near_miss_n=1)
-    assert result.on_stats is not None
-    assert result.on_stats.n_trust == 1
-    assert result.on_stats.n_clash == 1
+    result = score_bond_affinity(rows, sat, arm_of={"on": "ON"}, replicate_of={"on": 0})
+    cell = _find_cell(result, 1, "ON", 0)
+    assert cell.n_trust == 1
+    assert cell.n_clash == 1
 
 
-def test_low_power_is_inconclusive_not_ii() -> None:
-    sat = [_sat_row("kant", 10, offset=0.15, run_id="on")]
+def test_neutral_affinity_counted_separately() -> None:
+    """``affinity == 0.0`` is neutral; n_trust + n_clash + n_neutral == n."""
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
     rows = [
-        _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
+        _bond_row("kant", "a", 10, 0.30, count=6, last_tick=10, run_id="on", seed=1),
+        _bond_row("kant", "b", 10, -0.30, count=6, last_tick=10, run_id="on", seed=1),
+        _bond_row("kant", "c", 10, 0.0, count=6, last_tick=10, run_id="on", seed=1),
     ]
-    # default min floor (10) not met by a single observation.
-    result = score_bond_affinity(rows, sat, arm_of={"on": "ON", "off": "OFF"})
-    assert result.verdict == "INCONCLUSIVE"
-    assert "low power" in result.notes
-
-
-def _arm_rows(run_id: str, individual: str, affinities, *, seed: int):
-    """One near-miss bond per affinity at distinct dyads, all touched at tick 10."""
-    rows = []
-    for i, aff in enumerate(affinities):
-        rows.append(
-            _bond_row(
-                individual,
-                f"other{i}",
-                10,
-                aff,
-                count=6,
-                last_tick=10,
-                run_id=run_id,
-                seed=seed,
-            )
-        )
-    return rows
-
-
-def test_cross_arm_i_leaning_when_on_approaches_more() -> None:
-    sat = [
-        _sat_row("kant", 10, offset=0.15, run_id="on", seed=1),
-        _sat_row("kant", 10, offset=0.15, run_id="off", seed=1),
-    ]
-    # ON max|aff| ~0.44, OFF max|aff| ~0.20 -> ON approaches the 0.45 gate more.
-    on = _arm_rows("on", "kant", [0.30, 0.44] * 6, seed=1)
-    off = _arm_rows("off", "kant", [0.15, 0.20] * 6, seed=1)
-    result = score_bond_affinity(
-        on + off,
-        sat,
-        arm_of={"on": "ON", "off": "OFF"},
-        min_near_miss_n=5,
-        min_paired_seeds=1,
-    )
-    assert result.verdict == "(i)-LEANING"
-    assert result.median_paired_gap is not None
-    assert result.median_paired_gap > 0
-
-
-def test_cross_arm_ii_leaning_when_arms_match() -> None:
-    sat = [
-        _sat_row("kant", 10, offset=0.15, run_id="on", seed=1),
-        _sat_row("kant", 10, offset=0.15, run_id="off", seed=1),
-    ]
-    on = _arm_rows("on", "kant", [0.30, 0.40] * 6, seed=1)
-    off = _arm_rows("off", "kant", [0.30, 0.40] * 6, seed=1)
-    result = score_bond_affinity(
-        on + off,
-        sat,
-        arm_of={"on": "ON", "off": "OFF"},
-        min_near_miss_n=5,
-        min_paired_seeds=1,
-    )
-    assert result.verdict == "(ii)-LEANING"
-
-
-def test_no_paired_seed_is_inconclusive() -> None:
-    sat = [
-        _sat_row("kant", 10, offset=0.15, run_id="on", seed=1),
-        _sat_row("kant", 10, offset=0.15, run_id="off", seed=2),
-    ]
-    on = _arm_rows("on", "kant", [0.40] * 12, seed=1)
-    off = _arm_rows("off", "kant", [0.40] * 12, seed=2)  # different seed
-    result = score_bond_affinity(
-        on + off,
-        sat,
-        arm_of={"on": "ON", "off": "OFF"},
-        min_near_miss_n=5,
-        min_paired_seeds=1,
-    )
-    assert result.verdict == "INCONCLUSIVE"
-    assert result.paired_seeds == []
-    assert "paired seeds" in result.notes
+    result = score_bond_affinity(rows, sat, arm_of={"on": "ON"}, replicate_of={"on": 0})
+    cell = _find_cell(result, 1, "ON", 0)
+    assert (cell.n_trust, cell.n_clash, cell.n_neutral) == (1, 1, 1)
+    assert cell.n_trust + cell.n_clash + cell.n_neutral == cell.n
 
 
 def test_total_rows_equals_sum_of_per_tick_bonds(tmp_path) -> None:
@@ -293,41 +327,24 @@ def test_total_rows_equals_sum_of_per_tick_bonds(tmp_path) -> None:
     assert count[0] == expected_total
 
 
-def test_exposure_does_not_leak_across_arms() -> None:
-    """An ON-arm cap exposure must not make an OFF-arm same-tick bond a near-miss."""
-    # Only the ON run has a cap-saturated entry at (kant, 10).
+# --- Phase 0 preflight helper (freeze ADR §5) ---------------------------------
+
+
+def test_has_eligible_near_miss_single_condition() -> None:
     sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
-    on = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
-    off = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="off", seed=1)
-    obs = identify_near_miss([on, off], sat)
-    # Only the ON bond joins the exposure; the OFF bond does not inherit it.
-    assert {o.run_id for o in obs} == {"on"}
-
-
-def test_exposure_does_not_leak_across_seeds() -> None:
-    """A seed-1 cap exposure must not make a seed-2 same-tick bond a near-miss."""
-    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
-    s1 = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
-    s2 = _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=2)
-    obs = identify_near_miss([s1, s2], sat)
-    assert {o.seed for o in obs} == {1}
-
-
-def test_clash_bond_rising_in_magnitude_is_fresh() -> None:
-    """A clash bond moving -0.30 -> -0.44 (|aff| rising) is fresh via the abs slope."""
-    sat = [_sat_row("kant", 30, offset=0.15, run_id="on", seed=1)]
-    # |affinity| rises into tick 30 though signed affinity falls; never touched.
-    series = [
-        _bond_row("kant", "a", t, aff, count=7, last_tick=5, run_id="on", seed=1)
-        for t, aff in [(26, -0.30), (27, -0.34), (28, -0.38), (29, -0.41), (30, -0.44)]
+    rows = [
+        _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
     ]
-    obs = identify_near_miss(series, sat)
-    assert len(obs) == 1
-    assert obs[0].lagged_slope > 0  # abs(affinity) slope, not signed
-    assert not obs[0].touched_this_tick
+    assert has_eligible_near_miss(rows, sat) is True
+    # No cap-saturated exposure -> the join fails -> not eligible.
+    assert has_eligible_near_miss(rows, []) is False
 
 
-def test_provenance_false_is_inconclusive() -> None:
+# --- v2 decision layer: routing states ----------------------------------------
+
+
+def test_provenance_false_is_invalid_measurement() -> None:
+    """A provenance-false row routes INVALID_MEASUREMENT (ADR §7; was INCONCLUSIVE)."""
     sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
     flagged = build_bond_affinity_trace_rows(
         [_bond("a", 0.44, count=6, last_tick=10)],
@@ -338,39 +355,181 @@ def test_provenance_false_is_inconclusive() -> None:
         individual_layer_enabled=False,  # provenance-false row
     )
     result = score_bond_affinity(
-        flagged, sat, arm_of={"on": "ON"}, min_near_miss_n=1, min_paired_seeds=1
+        flagged, sat, arm_of={"on": "ON"}, replicate_of={"on": 0}
     )
-    assert result.verdict == "INCONCLUSIVE"
+    assert result.verdict == "INVALID_MEASUREMENT"
     assert "provenance_false" in result.notes
 
 
-def test_min_paired_seeds_floor_is_inconclusive() -> None:
-    """A single paired seed (default floor 2) is not seed-reproducible."""
-    sat = [
-        _sat_row("kant", 10, offset=0.15, run_id="on", seed=1),
-        _sat_row("kant", 10, offset=0.15, run_id="off", seed=1),
-    ]
-    on = _arm_rows("on", "kant", [0.40] * 12, seed=1)
-    off = _arm_rows("off", "kant", [0.40] * 12, seed=1)
-    result = score_bond_affinity(
-        on + off, sat, arm_of={"on": "ON", "off": "OFF"}, min_near_miss_n=5
-    )  # default min_paired_seeds=2, only seed 1 is paired
-    assert result.verdict == "INCONCLUSIVE"
-    assert "paired seeds" in result.notes
-
-
-def test_neutral_affinity_counted_separately() -> None:
-    """``affinity == 0.0`` is neutral; n_trust + n_clash + n_neutral == n."""
-    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
-    rows = [
-        _bond_row("kant", "a", 10, 0.30, count=6, last_tick=10, run_id="on", seed=1),
-        _bond_row("kant", "b", 10, -0.30, count=6, last_tick=10, run_id="on", seed=1),
-        _bond_row("kant", "c", 10, 0.0, count=6, last_tick=10, run_id="on", seed=1),
-    ]
-    result = score_bond_affinity(
-        rows, sat, arm_of={"on": "ON"}, min_near_miss_n=1, min_paired_seeds=1
+def test_no_near_miss_routes_inconclusive_no_near_miss() -> None:
+    """Cells mapped but no cap exposure anywhere -> empty substrate."""
+    bond_rows, _sat, arm_of, replicate_of = _matrix(
+        _seed_quad(1, 0.40, 0.40, 0.40, 0.40) + _seed_quad(2, 0.40, 0.40, 0.40, 0.40)
     )
-    s = result.on_stats
-    assert s is not None
-    assert (s.n_trust, s.n_clash, s.n_neutral) == (1, 1, 1)
-    assert s.n_trust + s.n_clash + s.n_neutral == s.n
+    # Pass no saturation rows -> require_exposure drops every bond.
+    result = score_bond_affinity(
+        bond_rows, [], arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_NO_NEAR_MISS"
+    assert all(c.n == 0 for c in result.cells)
+
+
+def test_low_power_too_few_paired_seeds_via_cell_granularity() -> None:
+    """One under-floor replicate cell drops its whole seed (4-cell power, MED-1)."""
+    # seed 1: all four cells powered (n=10 >= frozen floor). seed 2: ON r0 has only n=4,
+    # so even with three strong cells seed 2 is not paired -> only seed 1 paired (< 2).
+    cells = [
+        *_seed_quad(1, 0.40, 0.20, 0.20, 0.40),
+        (2, "ON", 0, 0.40, 1.0, 4),  # under the frozen floor -> seed 2 not paired
+        (2, "OFF", 0, 0.20, 1.0, 10),
+        (2, "OFF", 1, 0.20, 1.0, 10),
+        (2, "ON", 1, 0.40, 1.0, 10),
+    ]
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_LOW_POWER"
+    assert result.paired_seeds == (1,)
+    assert "paired seed" in result.notes
+
+
+def test_low_power_on_noise_sanity_violation() -> None:
+    """ON-specific run-to-run noise above the OFF/OFF floor downgrades to LOW_POWER."""
+    # S(ON/ON) = |0.44 - 0.20| = 0.24, S(OFF/OFF) = 0 -> on_noise_ok False.
+    cells = _seed_quad(1, 0.44, 0.30, 0.30, 0.20) + _seed_quad(
+        2, 0.44, 0.30, 0.30, 0.20
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_LOW_POWER"
+    assert result.on_noise_ok is False
+    assert "ON-specific noise" in result.notes
+
+
+def test_i_leaning_non_degenerate_null() -> None:
+    """ON approaches the gate above a real noise floor (ratio path) -> (i)-LEANING."""
+    cells = _seed_quad(1, 0.44, 0.20, 0.16, 0.44) + _seed_quad(
+        2, 0.44, 0.20, 0.16, 0.44
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(i)-LEANING"
+    assert result.paired_seeds == (1, 2)
+    assert result.null_degenerate is False
+    assert result.magnitude_ok is True
+    assert result.rank_ok is True
+    assert result.on_noise_ok is True
+    # null hierarchy exposed (LOW-1): S(OFF/OFF) ~= 0.04, S(ON/ON) ~= 0.
+    assert result.max_off_off_null is not None
+    assert abs(result.max_off_off_null - 0.04) < 1e-9
+    assert result.max_on_on_null is not None
+    assert abs(result.max_on_on_null) < 1e-9
+
+
+def test_i_leaning_degenerate_floor_when_null_all_zero() -> None:
+    """An all-zero OFF/OFF null falls back to the absolute materiality floor."""
+    cells = _seed_quad(1, 0.30, 0.20, 0.20, 0.30) + _seed_quad(
+        2, 0.30, 0.20, 0.20, 0.30
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(i)-LEANING"
+    assert result.null_degenerate is True  # max S(OFF/OFF) == 0
+
+
+def test_ii_leaning_when_separation_below_materiality() -> None:
+    """A separation under the materiality floor -> (ii)-LEANING (not decoupling)."""
+    cells = _seed_quad(1, 0.21, 0.20, 0.18, 0.21) + _seed_quad(
+        2, 0.21, 0.20, 0.18, 0.21
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(ii)-LEANING"
+    assert result.magnitude_ok is False
+
+
+def test_near_zero_null_does_not_fake_i_leaning_high2() -> None:
+    """A tiny non-zero null must not let a sub-materiality signal pass (ratio blow-up).
+
+    S(ON-OFF)=0.015 (< floor 0.02), S(OFF/OFF)=1e-6. The naive ratio 0.015/1e-6=15000
+    would clear R_MIN_BOND; the degenerate-null floor (HIGH-2) instead requires the
+    absolute materiality floor, which 0.015 fails -> (ii)-LEANING, never (i).
+    """
+    cells = _seed_quad(1, 0.215, 0.200000, 0.200001, 0.215) + _seed_quad(
+        2, 0.215, 0.200000, 0.200001, 0.215
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(ii)-LEANING"
+    assert result.null_degenerate is True
+    assert result.magnitude_ok is False
+
+
+def test_mixed_seed_when_magnitude_passes_but_rank_fails() -> None:
+    """Median clears magnitude but a per-seed signal sinks into noise -> MIXED_SEED."""
+    # seed 1 strong (S_on_off=0.30, S_off_off=0.05); seed 2 weak (S_on_off=0.01).
+    cells = _seed_quad(1, 0.44, 0.14, 0.09, 0.44) + _seed_quad(
+        2, 0.30, 0.29, 0.29, 0.30
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_MIXED_SEED"
+    assert result.magnitude_ok is True
+    assert result.rank_ok is False
+
+
+def test_unmapped_run_rows_are_dropped() -> None:
+    """A run absent from arm_of/replicate_of cannot be placed in the matrix."""
+    cells = _seed_quad(1, 0.44, 0.20, 0.16, 0.44) + _seed_quad(
+        2, 0.44, 0.20, 0.16, 0.44
+    )
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(cells)
+    # Drop one run from the maps -> its seed loses a cell -> not paired.
+    del arm_of["s2_ON0"]
+    del replicate_of["s2_ON0"]
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_LOW_POWER"
+    assert result.paired_seeds == (1,)
+
+
+def test_all_unmapped_with_eligible_near_miss_is_invalid() -> None:
+    """Eligible near-miss exist but every run is unmapped -> broken assembly (MED-2).
+
+    A genuinely empty substrate routes NO_NEAR_MISS; an empty *matrix* over a non-empty
+    substrate (all runs absent from the maps) is an assembly error -> INVALID, never
+    masked as "no near-miss".
+    """
+    cells = _seed_quad(1, 0.44, 0.20, 0.16, 0.44)
+    bond_rows, sat_rows, _arm_of, _replicate_of = _matrix(cells)
+    result = score_bond_affinity(bond_rows, sat_rows, arm_of={}, replicate_of={})
+    assert result.verdict == "INVALID_MEASUREMENT"
+    assert "none mapped" in result.notes
+
+
+def test_has_eligible_near_miss_false_on_provenance_false() -> None:
+    """A provenance-false (flag-off) smoke is not diagnostically eligible (LOW-1)."""
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+    flagged = build_bond_affinity_trace_rows(
+        [_bond("a", 0.44, count=6, last_tick=10)],
+        run_id="on",
+        seed=1,
+        individual_id="kant",
+        tick=10,
+        individual_layer_enabled=False,
+    )
+    assert has_eligible_near_miss(flagged, sat) is False
