@@ -524,6 +524,46 @@ def test_invalid_sustained_over_cap() -> None:
     assert not result.m2.cap_ok
 
 
+def test_cap_at_exactly_frozen_cap_not_flagged() -> None:
+    """A legal at-cap offset of exactly ``3 * VALUE_STEP`` is not a violation (DA-6).
+
+    The carry saturates at exactly ``M2_CAP`` (= ``3 * 0.05``), which IEEE-754 renders
+    as ``0.15000000000000002`` — strictly ``> 0.15``. Without ``M2_CAP_FLOAT_TOL`` the
+    strict ``offset > M2_CAP`` comparison mis-flagged this *legal* at-cap offset
+    (ADR §5 ``<= M2_CAP``) as a sustained over-cap, producing the live 12-run's false
+    INVALID_MEASUREMENT. The tolerance must absorb the representation error without
+    relaxing the cap for a genuine over-cap.
+    """
+    at_cap = 3 * 0.05  # == 0.15000000000000002 in IEEE-754
+    assert at_cap > 0.15  # document the artifact this test guards against
+    # Sustained at exactly the cap across many ticks → NOT a violation.
+    assert not _cap_violation(tuple(_sat_row(tick=t, offset=at_cap) for t in range(5)))
+    # A single at-cap row with no successor → NOT a violation (no false re-clamp fail).
+    assert not _cap_violation((_sat_row(tick=0, offset=at_cap),))
+    # Cap not relaxed: a genuine sustained over-cap above tolerance still flags.
+    assert _cap_violation(
+        (_sat_row(tick=0, offset=0.16), _sat_row(tick=1, offset=0.16))
+    )
+
+
+def test_no_detectable_at_cap_offset_full_matrix() -> None:
+    """A full matrix whose ON r0 saturates at exactly the cap (3*VALUE_STEP) is bounded.
+
+    End-to-end guard for the live 12-run artifact: identical ON/OFF floors (no
+    separation) + engagement + an at-cap (``0.15000000000000002``) ON r0 offset must
+    route to NO_DETECTABLE — M2 is PASS (the at-cap offset is legal), not INVALID.
+    """
+    caps = _matrix(
+        on_keys=[("self", "shared")],
+        off_keys=[("self", "shared")],
+        on_r0_cap_offset=3 * 0.05,  # at-cap saturation, IEEE-754 0.15000000000000002
+    )
+    result = score_live_carry(caps)
+    assert result.m2 is not None
+    assert result.m2.cap_ok
+    assert result.verdict == NO_DETECTABLE
+
+
 def test_invalid_missing_coherence() -> None:
     """No coherence observations → M2 non-evaluable → INVALID_MEASUREMENT (HIGH-3)."""
     caps = _matrix(on_keys=[("self", "on_key")], off_keys=[("self", "off_key")])

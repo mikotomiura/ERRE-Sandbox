@@ -33,8 +33,12 @@ from erre_sandbox.evidence.live_carry import constants as _c
 if TYPE_CHECKING:
     from erre_sandbox.evidence.live_carry.scorer import LiveCarryResult
 
-LIVE_CARRY_VERDICT_SCHEMA_VERSION: Final[str] = "live-carry-verdict-1"
-"""Sidecar schema version — bump on any breaking field change."""
+LIVE_CARRY_VERDICT_SCHEMA_VERSION: Final[str] = "live-carry-verdict-2"
+"""Sidecar schema version — bump on any breaking field change.
+
+``-2`` adds :class:`ImplementationTolerances` (``m2_cap_float_tol``) so the durable
+artifact records the IEEE-754 cap tolerance the M2 ``cap_ok`` decision depends on
+(Codex LOW, DA-6) — distinct from the frozen §0 :class:`FrozenThresholds`."""
 
 LIVE_CARRY_VERDICT_SIDECAR_SUFFIX: Final[str] = ".live_carry_verdict.json"
 """Sidecar suffix appended to the first capture's filename for the default --out."""
@@ -62,6 +66,21 @@ class FrozenThresholds(BaseModel):
     reach_pos_min: float
     n_seed: int
     rerun_per_arm: int
+
+
+class ImplementationTolerances(BaseModel):
+    """Non-§0 numeric tolerances the decision depends on (reported, not frozen).
+
+    These are **implementation** tolerances, not frozen ADR §0 thresholds: they make
+    the scorer's float comparisons implement the ADR's intended semantics against
+    IEEE-754 representation error, and could only ever pass a value within a few
+    ``ulp`` of a frozen bound. Recorded separately from :class:`FrozenThresholds` so
+    the §0 / implementation distinction stays explicit (Codex LOW, DA-6).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    m2_cap_float_tol: float
 
 
 class SourceProvenance(BaseModel):
@@ -137,6 +156,7 @@ class LiveCarryVerdictReport(BaseModel):
     notes: str
     sources: tuple[SourceProvenance, ...]
     thresholds: FrozenThresholds
+    implementation_tolerances: ImplementationTolerances
 
     def to_sidecar_dict(self) -> dict[str, object]:
         """JSON-serialisable dict."""
@@ -161,6 +181,11 @@ def _frozen_thresholds() -> FrozenThresholds:
         n_seed=_c.N_SEED,
         rerun_per_arm=_c.RERUN_PER_ARM,
     )
+
+
+def _implementation_tolerances() -> ImplementationTolerances:
+    """Snapshot the non-§0 implementation tolerances into the sidecar model."""
+    return ImplementationTolerances(m2_cap_float_tol=_c.M2_CAP_FLOAT_TOL)
 
 
 def file_sha256(path: Path | str) -> str:
@@ -230,6 +255,7 @@ def build_live_carry_verdict_report(
         notes=result.notes,
         sources=sources,
         thresholds=_frozen_thresholds(),
+        implementation_tolerances=_implementation_tolerances(),
     )
 
 
@@ -267,6 +293,7 @@ __all__ = [
     "LIVE_CARRY_VERDICT_SCHEMA_VERSION",
     "LIVE_CARRY_VERDICT_SIDECAR_SUFFIX",
     "FrozenThresholds",
+    "ImplementationTolerances",
     "LiveCarryVerdictReport",
     "M0Report",
     "M1Report",
