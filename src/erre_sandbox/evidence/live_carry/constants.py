@@ -89,6 +89,23 @@ M2_TRANSIENT_TOL: Final[float] = 0.05
 reconcile re-clamps (ADR §0/§5). Mirrors ``cognition.world_model.VALUE_STEP`` as a
 local constant (evidence never imports cognition); USE-only, not independently tuned."""
 
+M2_CAP_FLOAT_TOL: Final[float] = 1e-9
+"""IEEE-754 boundary tolerance for the cap comparison — **not** a §0 threshold and
+**not** a relaxation of the frozen cap.
+
+The carry saturates at exactly ``M2_CAP`` = ``3 * VALUE_STEP``, but ``3 * 0.05``
+evaluates to ``0.15000000000000002`` in IEEE-754, i.e. ``> M2_CAP`` by ~2e-17. A
+strict ``offset > M2_CAP`` comparison therefore mis-flags a *legal* at-cap offset
+(ADR §5 caps the offset at ``<= M2_CAP``) as a sustained over-cap. This tolerance
+absorbs that representation error so the comparison implements the ADR's ``<=``
+semantics; a genuine over-cap (``offset > M2_CAP + 1e-9``, e.g. 0.16) still violates.
+The cap is therefore not *substantively* relaxed — only the sub-``ulp`` band
+``(M2_CAP, M2_CAP + 1e-9]`` is tolerated, which the reconcile kernel can never
+produce (it clamps to the cap). ``1e-9`` is ~7 orders of magnitude above the
+few-``ulp`` arithmetic error yet ~8 orders below the cap. Discovered on the live
+12-run (false INVALID_MEASUREMENT, DA-6); superseding micro-ADR
+``cap-float-boundary-fix-adr.md``."""
+
 M2_COHERENCE_MARGIN: Final[float] = 0.10
 """Non-inferiority slack: ``median coherence(ON r0) >= median coherence(OFF r0) - this``
 (ADR §0/§5). A violation is INVALID_MEASUREMENT (carry degraded the agent, so the
@@ -124,6 +141,7 @@ __all__ = [
     "DEGENERATE_NULL_FLOOR",
     "M0_ENGAGEMENT_FLOOR",
     "M2_CAP",
+    "M2_CAP_FLOAT_TOL",
     "M2_COHERENCE_MARGIN",
     "M2_THROUGHPUT_RATIO",
     "M2_TRANSIENT_TOL",

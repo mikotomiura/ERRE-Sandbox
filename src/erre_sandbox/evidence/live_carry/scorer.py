@@ -358,7 +358,14 @@ def _cap_violation(rows: Sequence[SaturationTraceRow]) -> bool:
     ``<= M2_CAP``; a sustained over-cap (next tick still over cap, or no next tick to
     confirm the re-clamp) and any offset beyond ``M2_CAP + M2_TRANSIENT_TOL`` are
     violations (Codex HIGH-2 — a blanket ``+0.05`` cap would let a sustained 0.18 pass).
+
+    Every cap comparison carries ``M2_CAP_FLOAT_TOL`` so a *legal* at-cap offset of
+    exactly ``3 * VALUE_STEP`` — which IEEE-754 renders as ``0.15000000000000002``,
+    i.e. ``> M2_CAP`` by ~2e-17 — is read as ``<= M2_CAP`` (ADR §5 semantics) rather
+    than a sustained over-cap. A genuine over-cap (>= cap + 1e-9) still violates; the
+    cap is not relaxed (DA-6, live 12-run false-INVALID artifact).
     """
+    cap = _c.M2_CAP + _c.M2_CAP_FLOAT_TOL
     by_channel: dict[tuple[str, str, str], list[SaturationTraceRow]] = {}
     for row in rows:
         by_channel.setdefault((row.individual_id, row.axis, row.key), []).append(row)
@@ -366,14 +373,11 @@ def _cap_violation(rows: Sequence[SaturationTraceRow]) -> bool:
         ordered = sorted(channel_rows, key=lambda r: r.tick)
         for idx, row in enumerate(ordered):
             offset = abs(row.modulated_value - row.base_floor_value)
-            if offset > _c.M2_CAP + _c.M2_TRANSIENT_TOL:
+            if offset > _c.M2_CAP + _c.M2_TRANSIENT_TOL + _c.M2_CAP_FLOAT_TOL:
                 return True  # beyond even a transient injection
-            if offset > _c.M2_CAP:
+            if offset > cap:
                 nxt = ordered[idx + 1] if idx + 1 < len(ordered) else None
-                if (
-                    nxt is None
-                    or abs(nxt.modulated_value - nxt.base_floor_value) > _c.M2_CAP
-                ):
+                if nxt is None or abs(nxt.modulated_value - nxt.base_floor_value) > cap:
                     return True  # sustained over-cap (no confirmed re-clamp)
     return False
 

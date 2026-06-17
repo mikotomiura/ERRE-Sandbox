@@ -254,11 +254,13 @@ def test_cli_confirmed_end_to_end(tmp_path: Path) -> None:
     payload = _run(tmp_path, _confirmed_matrix(tmp_path), run_id="live-run")
     assert payload["verdict"] == "LIVE_CARRY_TRAJECTORY_EFFECT_CONFIRMED"
     assert payload["run_id"] == "live-run"
-    assert payload["schema_version"] == "live-carry-verdict-1"
+    assert payload["schema_version"] == "live-carry-verdict-2"
     assert sorted(payload["seeds"]) == [1, 2, 3]
     assert payload["m1"]["go"] is True
     assert payload["m0"]["status"] == "pass"
     assert payload["m2"]["status"] == "pass"
+    # schema -2: the non-§0 cap float tolerance is recorded for transparency (DA-6).
+    assert payload["implementation_tolerances"]["m2_cap_float_tol"] == 1e-9
 
 
 def test_cli_provenance_and_thresholds(tmp_path: Path) -> None:
