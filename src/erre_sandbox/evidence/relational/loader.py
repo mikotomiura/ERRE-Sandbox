@@ -61,6 +61,7 @@ if TYPE_CHECKING:
 
     import duckdb
 
+    from erre_sandbox.evidence.relational.trace_reader import BondAffinityCapture
     from erre_sandbox.evidence.saturation.trace_ddl import SaturationTraceRow
 
 Verdict = Literal[
@@ -611,6 +612,120 @@ def score_bond_affinity(
     return _route_paired_verdict(cell_tuple, cells, paired)
 
 
+def _capture_identity_note(cap: BondAffinityCapture, run_ids: set[str]) -> str | None:
+    """Per-capture integrity check (returns an INVALID note, or ``None`` if coherent).
+
+    A sound single-run capture carries exactly one ``run_id`` and one seed; the cell key
+    uses each row's **own** ``seed`` (:func:`_assemble_cells`), so a capture whose rows
+    disagree with each other (or with the sidecar seed) would silently populate / merge
+    cells past the cross-capture checks (Codex HIGH-1). An arm-bearing capture must also
+    carry a complete, in-domain identity: a seed and a replicate in ``{0, 1}`` (Codex
+    HIGH-2, mirroring live_carry's out-of-domain key rejection). A null-arm capture
+    claims no cell and is tolerated (its rows are dropped by the arm/replicate-blind
+    scorer).
+    """
+    row_seeds = {r.seed for r in cap.bond_rows} | {r.seed for r in cap.saturation_rows}
+    if len(run_ids) > 1:
+        return (
+            f"capture {cap.path} carries multiple run_ids {sorted(run_ids)} "
+            "— contaminated single-run capture"
+        )
+    if len(row_seeds) > 1:
+        return (
+            f"capture {cap.path} carries multiple row seeds {sorted(row_seeds)} "
+            "— contaminated single-run capture"
+        )
+    if cap.seed is not None and row_seeds and row_seeds != {cap.seed}:
+        return (
+            f"capture {cap.path} sidecar seed {cap.seed} disagrees with row "
+            f"seed(s) {sorted(row_seeds)} — provenance mismatch"
+        )
+    if cap.arm in (_ARM_ON, _ARM_OFF) and (
+        cap.seed is None or cap.replicate_id not in (0, 1)
+    ):
+        return (
+            f"capture {cap.path} declares arm {cap.arm} but has an invalid matrix "
+            f"identity (seed={cap.seed}, replicate_id={cap.replicate_id}) "
+            "— out-of-domain matrix key"
+        )
+    return None
+
+
+def score_bond_affinity_captures(
+    captures: Sequence[BondAffinityCapture],
+) -> BondAffinityProbeResult:
+    """Capture-level entry: assemble the matrix maps from sidecars, then score.
+
+    The pure :func:`score_bond_affinity` is arm/replicate-**blind** by design (PR #26,
+    freeze ADR §3.2-5): it folds whatever ``arm_of`` / ``replicate_of`` the caller hands
+    it and cannot, by construction, see when **two captures claim the same matrix cell**
+    (a duplicate ``(seed, arm, replicate)`` sidecar key) or when **one ``run_id`` spans
+    two captures** (a role-swapped / cross-contaminated manifest) — it would silently
+    merge them. This thin capture-level wrapper restores that matrix-integrity check
+    (mirroring the live-carry scorer's internal ``_assemble_matrix``, which routes an
+    incoherent matrix to ``INVALID_MEASUREMENT``): a duplicate cell or a shared
+    ``run_id`` routes to ``INVALID_MEASUREMENT`` here, before delegating the (unchanged)
+    statistical decision to :func:`score_bond_affinity`.
+
+    A capture without a complete arm identity (``arm`` not ``ON`` / ``OFF``, or a
+    ``None`` ``replicate_id`` / ``seed``) contributes its rows but is not placed in a
+    cell — :func:`score_bond_affinity` then drops its runs and adjudicates the rest. An
+    incomplete-but-coherent matrix routes to ``INCONCLUSIVE_LOW_POWER`` via the power
+    gate; eligible near-miss mapping to no cell route to ``INVALID_MEASUREMENT``. Each
+    capture's ``run_id`` is read from its own bond + saturation rows (a sound single-run
+    capture carries exactly one); the wrapper adds **no** verdict thresholds
+    (forking-paths guard), only the assembly + the structural-integrity gate.
+    """
+    bond_rows: list[BondAffinityTraceRow] = []
+    saturation_rows: list[SaturationTraceRow] = []
+    arm_of: dict[str, str] = {}
+    replicate_of: dict[str, int] = {}
+    seen_cells: dict[_CellKey, str] = {}
+    runid_owner: dict[str, str] = {}
+    for cap in captures:
+        bond_rows.extend(cap.bond_rows)
+        saturation_rows.extend(cap.saturation_rows)
+        run_ids = {r.run_id for r in cap.bond_rows} | {
+            r.run_id for r in cap.saturation_rows
+        }
+        note = _capture_identity_note(cap, run_ids)
+        if note is not None:
+            return BondAffinityProbeResult(verdict="INVALID_MEASUREMENT", notes=note)
+        for rid in run_ids:
+            owner = runid_owner.get(rid)
+            if owner is not None and owner != cap.path:
+                return BondAffinityProbeResult(
+                    verdict="INVALID_MEASUREMENT",
+                    notes=(
+                        f"run_id {rid!r} spans two captures ({owner} and {cap.path}) "
+                        "— role-swapped / cross-contaminated matrix assembly"
+                    ),
+                )
+            runid_owner[rid] = cap.path
+        # ``_capture_identity_note`` already INVALIDated an arm-bearing capture with a
+        # ``None`` seed or out-of-domain replicate, so the guards here only narrow the
+        # types for the cell key; a null-arm capture claims no cell and is tolerated.
+        if cap.arm in (_ARM_ON, _ARM_OFF) and (
+            cap.seed is not None and cap.replicate_id is not None
+        ):
+            cell = (cap.seed, cap.arm, cap.replicate_id)
+            if cell in seen_cells:
+                return BondAffinityProbeResult(
+                    verdict="INVALID_MEASUREMENT",
+                    notes=(
+                        f"duplicate matrix cell {cell} claimed by two captures "
+                        f"({seen_cells[cell]} and {cap.path}) — duplicate sidecar key"
+                    ),
+                )
+            seen_cells[cell] = cap.path
+            for rid in run_ids:
+                arm_of[rid] = cap.arm
+                replicate_of[rid] = cap.replicate_id
+    return score_bond_affinity(
+        bond_rows, saturation_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+
+
 def read_bond_affinity_trace_rows(
     con: duckdb.DuckDBPyConnection,
     *,
@@ -660,4 +775,5 @@ __all__ = [
     "identify_near_miss",
     "read_bond_affinity_trace_rows",
     "score_bond_affinity",
+    "score_bond_affinity_captures",
 ]
