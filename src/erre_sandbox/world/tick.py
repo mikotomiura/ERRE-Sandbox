@@ -149,6 +149,23 @@ if TYPE_CHECKING:
         None,
     ]
 
+    # Bond-affinity trace (instrumentation ADR section 3.3, carrier A): flag-on
+    # per-(agent, tick) sink. Args are ``(individual_id, relationships, tick)`` — the
+    # agent's ``list[RelationshipBond]`` carried out on ``CycleResult.agent_state`` (no
+    # new carrier field; ``world`` already consumes ``res.agent_state``). The
+    # orchestrator's closure binds ``run_id`` / ``seed`` / ``individual_layer_enabled``
+    # and builds the rows, so ``world`` never imports ``evidence`` / learns the run
+    # identity. ``RelationshipBond`` is a ``schemas`` type ``world`` already imports, so
+    # the sink adds no new dependency.
+    BondAffinityTraceSink = Callable[
+        [
+            str,
+            list[RelationshipBond],
+            int,
+        ],
+        None,
+    ]
+
 logger = logging.getLogger(__name__)
 
 
@@ -494,6 +511,7 @@ class WorldRuntime:
         saturation_trace_sink: SaturationTraceSink | None = None,
         hint_engagement_trace_sink: HintEngagementTraceSink | None = None,
         floor_input_trace_sink: FloorInputTraceSink | None = None,
+        bond_affinity_trace_sink: BondAffinityTraceSink | None = None,
     ) -> None:
         self._cycle = cycle
         # M11-C2: flag-on individual-state trace sink. ``None`` (flag-off / live
@@ -520,6 +538,14 @@ class WorldRuntime:
         # byte-identical (the new table is never bootstrapped).
         self._floor_input_trace_sink: FloorInputTraceSink | None = (
             floor_input_trace_sink
+        )
+        # Bond-affinity trace (instrumentation ADR section 3.3): flag-on per-(agent,
+        # tick) bond sink, wired only by the eval orchestrator's individual-layer
+        # branch. ``None`` (flag-off / live flow) makes ``_emit_bond_affinity_trace`` a
+        # no-op so the flag-off DuckDB stays byte-identical (the table is never
+        # bootstrapped).
+        self._bond_affinity_trace_sink: BondAffinityTraceSink | None = (
+            bond_affinity_trace_sink
         )
         self._clock: Clock = clock if clock is not None else RealClock()
         self._physics_dt = 1.0 / (physics_hz or self.DEFAULT_PHYSICS_HZ)
@@ -1640,6 +1666,11 @@ class WorldRuntime:
         # snapshot as the saturation trace, but persists the full ``base_floor`` so a
         # deterministic replay can re-feed it into the unchanged reconcile kernel.
         self._emit_floor_input_trace(rt, res)
+        # Bond-affinity trace (instrumentation ADR section 3.3, carrier A): emit this
+        # tick's per-dyad bond affinity / interaction-count trace (flag-on only). Same
+        # no-op-when-unset contract; reads ``res.agent_state.relationships`` (the bonds
+        # ``world`` already persisted above), so no new carrier and no evidence import.
+        self._emit_bond_affinity_trace(rt, res)
         # M6-A-2b: observations detected post-LLM (stress crossings) are
         # surfaced one tick late — append them to ``pending`` so the next
         # cognition tick sees the signal. Empty for agents whose stress
@@ -1761,6 +1792,27 @@ class WorldRuntime:
         if snapshot is None:
             return
         self._floor_input_trace_sink(rt.agent_id, snapshot, rt.state.tick)
+
+    def _emit_bond_affinity_trace(self, rt: AgentRuntime, res: CycleResult) -> None:
+        """Emit this tick's bond-affinity trace via the flag-on sink (ADR section 3.3).
+
+        No-op when ``_bond_affinity_trace_sink`` is ``None`` (flag-off / live runs), so
+        the new trace table is never written and the flag-off DuckDB stays
+        byte-identical. Reads ``res.agent_state.relationships`` — the agent's
+        ``list[RelationshipBond]`` ``world`` has just persisted to ``rt.state``; these
+        are ``schemas`` types ``world`` already uses, so passing them straight through
+        adds no ``evidence`` / ``cognition`` import (the orchestrator's closure builds
+        the rows, ADR section 3.2-7). ``rt.state.tick`` is the same post-step tick label
+        the saturation / floor / hint / individual traces record, keeping them joinable
+        on ``(individual, tick)`` for the cap-exposure join. The orchestrator's sink
+        closure owns the DuckDB-write error semantics (CaptureFatalError), mirroring the
+        saturation sink — not swallowed.
+        """
+        if self._bond_affinity_trace_sink is None:
+            return
+        self._bond_affinity_trace_sink(
+            rt.agent_id, res.agent_state.relationships, rt.state.tick
+        )
 
     # ----- Scheduling helper -----
 

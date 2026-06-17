@@ -112,6 +112,16 @@ from erre_sandbox.evidence.individuation.trace_ddl import (
 from erre_sandbox.evidence.individuation.trace_ddl import (
     column_names as _individual_state_trace_columns,
 )
+from erre_sandbox.evidence.relational.bond_affinity_trace_ddl import (
+    TABLE_NAME as _BOND_AFFINITY_TRACE_TABLE,
+)
+from erre_sandbox.evidence.relational.bond_affinity_trace_ddl import (
+    bootstrap_bond_affinity_trace_schema,
+    build_bond_affinity_trace_rows,
+)
+from erre_sandbox.evidence.relational.bond_affinity_trace_ddl import (
+    column_names as _bond_affinity_trace_columns,
+)
 from erre_sandbox.evidence.saturation.floor_input_trace_ddl import (
     TABLE_NAME as _FLOOR_INPUT_TRACE_TABLE,
 )
@@ -165,6 +175,7 @@ if TYPE_CHECKING:
         WorldModelSnapshot,
     )
     from erre_sandbox.evidence.capture_sidecar import CaptureStatus, StopReason
+    from erre_sandbox.schemas import RelationshipBond
 
 logger = logging.getLogger(__name__)
 
@@ -960,6 +971,59 @@ def _make_floor_input_trace_sink(
             con.execute(insert_sql, row.to_row())
         except duckdb.Error as exc:
             state.set_fatal(f"duckdb swm_floor_input_trace insert failed: {exc!r}")
+            raise CaptureFatalError(state.fatal_error) from exc
+
+    return sink
+
+
+def _make_bond_affinity_trace_sink(
+    *,
+    con: duckdb.DuckDBPyConnection,
+    run_id: str,
+    seed: int,
+    individual_layer_enabled: bool,
+    state: _SinkState,
+) -> Callable[[str, list[RelationshipBond], int], None]:
+    """Construct the flag-on bond-affinity trace sink (instrumentation ADR section 3.3).
+
+    Mirrors :func:`_make_saturation_trace_sink`'s error contract: a DuckDB INSERT
+    failure sets ``state.fatal_error`` and raises :class:`CaptureFatalError`, so a
+    half-written trace cannot publish through the atomic rename. ``run_id`` / ``seed`` /
+    ``individual_layer_enabled`` are bound here so ``WorldRuntime`` never learns the run
+    identity; the rows are built from the agent's ``list[RelationshipBond]`` carried off
+    ``CycleResult.agent_state`` (carrier A — no new carrier field), so ``world`` imports
+    neither ``evidence`` nor ``cognition``. ``seed`` is the ``derive_seed`` uint64
+    (UBIGINT column), bound explicitly alongside ``individual_layer_enabled`` so the
+    loader can reject a provenance-false seed. Column order tracks
+    ``_bond_affinity_trace_columns()`` in lockstep, and the qualified table name is
+    composed from ``METRICS_SCHEMA`` (never a schema-dot literal; CI grep gate).
+    """
+    cols = _bond_affinity_trace_columns()
+    columns_sql = ", ".join(f'"{c}"' for c in cols)
+    placeholders = ", ".join("?" for _ in cols)
+    insert_sql = (
+        f"INSERT INTO {METRICS_SCHEMA}.{_BOND_AFFINITY_TRACE_TABLE}"  # noqa: S608 — static identifiers only
+        f" ({columns_sql}) VALUES ({placeholders})"
+    )
+
+    def sink(
+        individual_id: str, relationships: list[RelationshipBond], tick: int
+    ) -> None:
+        if state.fatal_error is not None:
+            return
+        rows = build_bond_affinity_trace_rows(
+            relationships,
+            run_id=run_id,
+            seed=seed,
+            individual_id=individual_id,
+            tick=tick,
+            individual_layer_enabled=individual_layer_enabled,
+        )
+        try:
+            for row in rows:
+                con.execute(insert_sql, row.to_row())
+        except duckdb.Error as exc:
+            state.set_fatal(f"duckdb swm_bond_affinity_trace insert failed: {exc!r}")
             raise CaptureFatalError(state.fatal_error) from exc
 
     return sink
@@ -1787,6 +1851,11 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         # created in the same individual-layer-enabled branch so a flag-off run never
         # issues this DDL and the DuckDB stays byte-identical (new-module shadow).
         bootstrap_floor_input_trace_schema(con, METRICS_SCHEMA)
+        # Bond-affinity trace (instrumentation ADR section 3.3): flag-on conditional
+        # trace table, created in the same individual-layer-enabled branch so a flag-off
+        # run never issues this DDL and the DuckDB stays byte-identical (new-module
+        # shadow; the frozen 4 traces above are untouched).
+        bootstrap_bond_affinity_trace_schema(con, METRICS_SCHEMA)
 
     # SH-4: validate (symlink/prefix/overwrite) for explicit paths, fall back to
     # ME-2 default ``/tmp/p3a_natural_<persona>_run<idx>.sqlite`` when None.
@@ -1880,6 +1949,21 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
         if individual_layer_on
         else None
     )
+    # Bond-affinity trace (instrumentation ADR section 3.3, carrier A): flag-on
+    # per-(agent, tick) bond sink. ``seed`` / ``individual_layer_enabled`` bound here
+    # for the same provenance reason as the saturation sink; ``None`` flag-off keeps the
+    # trace table absent.
+    bond_affinity_trace_sink = (
+        _make_bond_affinity_trace_sink(
+            con=con,
+            run_id=run_id,
+            seed=seed_root,
+            individual_layer_enabled=individual_layer_on,
+            state=state,
+        )
+        if individual_layer_on
+        else None
+    )
 
     # Build the WorldRuntime + cognition stack.  ``runtime_factory`` is the
     # injection seam used by the unit test to swap in a ManualClock-driven
@@ -1916,6 +2000,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             saturation_trace_sink=saturation_trace_sink,
             hint_engagement_trace_sink=hint_engagement_trace_sink,
             floor_input_trace_sink=floor_input_trace_sink,
+            bond_affinity_trace_sink=bond_affinity_trace_sink,
         )
     else:
         runtime = runtime_factory(
@@ -1929,6 +2014,7 @@ async def capture_natural(  # noqa: C901, PLR0915 — composition root mirrors b
             saturation_trace_sink=saturation_trace_sink,
             hint_engagement_trace_sink=hint_engagement_trace_sink,
             floor_input_trace_sink=floor_input_trace_sink,
+            bond_affinity_trace_sink=bond_affinity_trace_sink,
         )
 
     def _persona_resolver(agent_id: str) -> str | None:
