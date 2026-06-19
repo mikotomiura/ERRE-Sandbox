@@ -37,8 +37,14 @@ if TYPE_CHECKING:
         CellStats,
     )
 
-BOND_AFFINITY_VERDICT_SCHEMA_VERSION: Final[str] = "bond-affinity-verdict-1"
-"""Sidecar schema version — bump on any breaking field change."""
+BOND_AFFINITY_VERDICT_SCHEMA_VERSION: Final[str] = "bond-affinity-verdict-2"
+"""Sidecar schema version — bump on any breaking field change.
+
+``-2`` (estimand-redesign superseding ADR, Codex M4): adds the bare-gate §2'.4 / §2'.3 /
+§3' fields — per-cell tick concentration + fresh sensitivity + promotion incidence +
+the within-cell cap-saturation secondary split, and the result-level truncation guard
+(``promotion_incidence_*`` / ``promotion_imbalance`` / ``truncation_guard_fired``) plus
+the ``promotion_imbalance_factor`` frozen threshold."""
 
 BOND_AFFINITY_VERDICT_SIDECAR_SUFFIX: Final[str] = ".bond_affinity_verdict.json"
 """Sidecar suffix appended to the first capture's filename for the default --out."""
@@ -63,6 +69,7 @@ class FrozenThresholds(BaseModel):
     min_near_miss_n: int
     min_paired_seeds: int
     slope_window: int
+    promotion_imbalance_factor: float
 
 
 class SourceProvenance(BaseModel):
@@ -80,7 +87,7 @@ class SourceProvenance(BaseModel):
 
 
 class CellReport(BaseModel):
-    """One ``(seed, arm, replicate)`` cell's §3 near-miss distribution."""
+    """One ``(seed, arm, replicate)`` cell's §3 + §2'.4/§2'.3/§3' distribution."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -89,6 +96,8 @@ class CellReport(BaseModel):
     replicate: int
     n: int
     unique_dyads: int
+    distinct_ticks: int
+    max_tick_share: float | None
     p90_abs: float | None
     p95_abs: float | None
     max_abs: float | None
@@ -96,6 +105,16 @@ class CellReport(BaseModel):
     n_trust: int
     n_clash: int
     n_neutral: int
+    n_no_fresh: int
+    n_fresh_dropped: int
+    promoted_dyads: int
+    promotion_incidence: float | None
+    cap_exposed_n: int
+    cap_exposed_p95_abs: float | None
+    cap_exposed_eps_band_density: float | None
+    cap_unexposed_n: int
+    cap_unexposed_p95_abs: float | None
+    cap_unexposed_eps_band_density: float | None
 
 
 class BondAffinityVerdictReport(BaseModel):
@@ -119,6 +138,10 @@ class BondAffinityVerdictReport(BaseModel):
     rank_ok: bool
     on_noise_ok: bool
     null_degenerate: bool
+    promotion_incidence_on: dict[int, float]
+    promotion_incidence_off: dict[int, float]
+    promotion_imbalance: float | None
+    truncation_guard_fired: bool
     notes: str
     sources: tuple[SourceProvenance, ...]
     thresholds: FrozenThresholds
@@ -142,6 +165,7 @@ def _frozen_thresholds() -> FrozenThresholds:
         min_near_miss_n=_c.MIN_NEAR_MISS_N,
         min_paired_seeds=_c.MIN_PAIRED_SEEDS,
         slope_window=_c.SLOPE_WINDOW,
+        promotion_imbalance_factor=_c.PROMOTION_IMBALANCE_FACTOR,
     )
 
 
@@ -153,6 +177,8 @@ def _cell_report(cell: CellStats) -> CellReport:
         replicate=cell.replicate,
         n=cell.n,
         unique_dyads=cell.unique_dyads,
+        distinct_ticks=cell.distinct_ticks,
+        max_tick_share=cell.max_tick_share,
         p90_abs=cell.p90_abs,
         p95_abs=cell.p95_abs,
         max_abs=cell.max_abs,
@@ -160,6 +186,16 @@ def _cell_report(cell: CellStats) -> CellReport:
         n_trust=cell.n_trust,
         n_clash=cell.n_clash,
         n_neutral=cell.n_neutral,
+        n_no_fresh=cell.n_no_fresh,
+        n_fresh_dropped=cell.n_fresh_dropped,
+        promoted_dyads=cell.promoted_dyads,
+        promotion_incidence=cell.promotion_incidence,
+        cap_exposed_n=cell.cap_exposed_n,
+        cap_exposed_p95_abs=cell.cap_exposed_p95_abs,
+        cap_exposed_eps_band_density=cell.cap_exposed_eps_band_density,
+        cap_unexposed_n=cell.cap_unexposed_n,
+        cap_unexposed_p95_abs=cell.cap_unexposed_p95_abs,
+        cap_unexposed_eps_band_density=cell.cap_unexposed_eps_band_density,
     )
 
 
@@ -197,6 +233,10 @@ def build_bond_affinity_verdict_report(
         rank_ok=result.rank_ok,
         on_noise_ok=result.on_noise_ok,
         null_degenerate=result.null_degenerate,
+        promotion_incidence_on=dict(result.promotion_incidence_on),
+        promotion_incidence_off=dict(result.promotion_incidence_off),
+        promotion_imbalance=result.promotion_imbalance,
+        truncation_guard_fired=result.truncation_guard_fired,
         notes=result.notes,
         sources=sources,
         thresholds=_frozen_thresholds(),

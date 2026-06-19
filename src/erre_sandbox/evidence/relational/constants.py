@@ -101,6 +101,29 @@ SLOPE_WINDOW: Final[int] = 5
 Descriptive (it shapes which bonds count as a *fresh* approach), not a verdict cutoff;
 frozen here so the single source covers it too. Change requires a superseding ADR."""
 
+# --- estimand-redesign superseding ADR §1' (ACCEPTED 2026-06-19) ---------------------
+# The freeze-ADR §2 estimand (exposure-gated cross-arm proximity) is superseded by a
+# bare-gate primary + within-ON cap-saturation secondary (estimand-redesign-adr.md §2').
+# The §1 values above are *temporally preserved* (re-used unchanged by the bare-gate
+# substrate). This one value is *added* by the superseding ADR, frozen result-blind
+# (the v2 routed S / verdict numbers were not read before fixing it, §0/§1').
+
+PROMOTION_IMBALANCE_FACTOR: Final[float] = 2.0
+"""Truncation guard (superseding ADR §1'/§3', Codex HIGH-2): the bare near-miss
+substrate is an outcome-band (``|affinity| < BELIEF_THRESHOLD``) selection, so an ON arm
+that promotes bonds *past* the 0.45 gate drains its own near-miss pool — the surviving
+``(ii)``-LEANING p95 can then be a survivor artifact, not a real null. Per cell the
+promotion incidence is ``ρ = (distinct dyads reaching |affinity| >= BELIEF_THRESHOLD
+with the interaction gate met) / distinct ticks``; when
+``median_seed ρ(ON r0) / median_seed ρ(OFF r0) > this`` the verdict suppresses a bare
+``(ii)``-LEANING and routes ``INCONCLUSIVE_TRUNCATED`` instead. A degenerate
+``ρ(OFF)=0`` fires the guard only when the ON promotion is non-negligible against the
+surviving near-miss pool (``median ON promoted dyads >= median ON near-miss n / this``),
+so a single stray promotion cannot trip it. The guard is asymmetric — applied only to
+the ``(ii)`` route, never ``(i)`` (a drained survivor pool weakens ``(i)``, so ``(i)``
+needs no such protection, §3'). Same ``2.0`` spirit as ``R_MIN_BOND`` (ON at 2x OFF is
+where differential promotion becomes plausible). Change requires a superseding ADR."""
+
 __all__ = [
     "BELIEF_MIN_INTERACTIONS",
     "BELIEF_THRESHOLD",
@@ -111,6 +134,7 @@ __all__ = [
     "MIN_NEAR_MISS_N",
     "MIN_PAIRED_SEEDS",
     "ON_NOISE_FACTOR",
+    "PROMOTION_IMBALANCE_FACTOR",
     "R_MIN_BOND",
     "SLOPE_WINDOW",
 ]

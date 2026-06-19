@@ -330,14 +330,20 @@ def test_total_rows_equals_sum_of_per_tick_bonds(tmp_path) -> None:
 # --- Phase 0 preflight helper (freeze ADR §5) ---------------------------------
 
 
-def test_has_eligible_near_miss_single_condition() -> None:
-    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+def test_has_eligible_near_miss_is_bare_gate() -> None:
+    """Phase 0 is now bare-gate (superseding §5'): exposure is no longer required."""
     rows = [
         _bond_row("kant", "a", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
     ]
+    # A bare near-miss is eligible with or without cap exposure.
+    assert has_eligible_near_miss(rows, []) is True
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
     assert has_eligible_near_miss(rows, sat) is True
-    # No cap-saturated exposure -> the join fails -> not eligible.
-    assert has_eligible_near_miss(rows, []) is False
+    # A bond above the affinity gate is not a near-miss -> not eligible.
+    promoted = [
+        _bond_row("kant", "a", 10, 0.46, count=6, last_tick=10, run_id="on", seed=1)
+    ]
+    assert has_eligible_near_miss(promoted, []) is False
 
 
 # --- v2 decision layer: routing states ----------------------------------------
@@ -362,11 +368,15 @@ def test_provenance_false_is_invalid_measurement() -> None:
 
 
 def test_no_near_miss_routes_inconclusive_no_near_miss() -> None:
-    """Cells mapped but no cap exposure anywhere -> empty substrate."""
+    """All bonds above the affinity gate -> empty bare substrate (bare-gate §2'.2).
+
+    Under the superseding bare-gate the exposure join no longer filters, so an empty
+    substrate now means the bonds themselves fail the gate (here |aff| >= 0.45,
+    i.e. already promoted), not "no cap exposure".
+    """
     bond_rows, _sat, arm_of, replicate_of = _matrix(
-        _seed_quad(1, 0.40, 0.40, 0.40, 0.40) + _seed_quad(2, 0.40, 0.40, 0.40, 0.40)
+        _seed_quad(1, 0.50, 0.50, 0.50, 0.50) + _seed_quad(2, 0.50, 0.50, 0.50, 0.50)
     )
-    # Pass no saturation rows -> require_exposure drops every bond.
     result = score_bond_affinity(
         bond_rows, [], arm_of=arm_of, replicate_of=replicate_of
     )
@@ -533,3 +543,177 @@ def test_has_eligible_near_miss_false_on_provenance_false() -> None:
         individual_layer_enabled=False,
     )
     assert has_eligible_near_miss(flagged, sat) is False
+
+
+# --- estimand-redesign §2'.2/§2'.3/§3': bare-gate, secondary, truncation guard --------
+
+
+def _truncation_matrix(*, on_r0_promoted: int, off_r0_promoted: int):
+    """Two paired seeds, p95 equal across arms (magnitude unmet), ON r0 promotion-heavy.
+
+    Each cell holds 10 near-miss bonds at |aff|=0.30 (so every S(ON-OFF)=0 → magnitude
+    unmet → the (ii) route is reached and the truncation guard is evaluated). Promoted
+    bonds (|aff|=0.50, gate met) are added to the ON r0 / OFF r0 cells over ticks 11-14
+    to drive the promotion incidence ρ.
+    """
+    bond_rows: list = []
+    arm_of: dict[str, str] = {}
+    replicate_of: dict[str, int] = {}
+    for seed in (1, 2):
+        for arm, replicate in (("ON", 0), ("OFF", 0), ("OFF", 1), ("ON", 1)):
+            run_id = f"s{seed}_{arm}{replicate}"
+            arm_of[run_id] = arm
+            replicate_of[run_id] = replicate
+            bond_rows.extend(
+                _bond_row(
+                    "kant",
+                    f"n{i}",
+                    10,
+                    0.30,
+                    count=6,
+                    last_tick=10,
+                    run_id=run_id,
+                    seed=seed,
+                )
+                for i in range(10)
+            )
+            promoted = (
+                on_r0_promoted
+                if (arm, replicate) == ("ON", 0)
+                else off_r0_promoted
+                if (arm, replicate) == ("OFF", 0)
+                else 0
+            )
+            bond_rows.extend(
+                _bond_row(
+                    "kant",
+                    f"p{j}",
+                    11 + (j % 4),
+                    0.50,
+                    count=6,
+                    last_tick=11 + (j % 4),
+                    run_id=run_id,
+                    seed=seed,
+                )
+                for j in range(promoted)
+            )
+    return bond_rows, arm_of, replicate_of
+
+
+def test_truncation_guard_degenerate_fires_inconclusive_truncated() -> None:
+    """ON drains its near-miss pool (ρ(OFF)=0) -> INCONCLUSIVE_TRUNCATED, not (ii)."""
+    bond_rows, arm_of, replicate_of = _truncation_matrix(
+        on_r0_promoted=6, off_r0_promoted=0
+    )
+    result = score_bond_affinity(
+        bond_rows, [], arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_TRUNCATED"
+    assert result.truncation_guard_fired is True
+    assert result.magnitude_ok is False
+    # degenerate ρ(OFF)=0 -> imbalance ratio undefined (None), guard via the count test.
+    assert result.promotion_imbalance is None
+    assert all(v > 0 for v in result.promotion_incidence_on.values())
+    assert all(v == 0 for v in result.promotion_incidence_off.values())
+
+
+def test_truncation_guard_ratio_fires_inconclusive_truncated() -> None:
+    """ON ρ over 2x OFF ρ (non-degenerate) -> INCONCLUSIVE_TRUNCATED via the ratio."""
+    bond_rows, arm_of, replicate_of = _truncation_matrix(
+        on_r0_promoted=8, off_r0_promoted=2
+    )
+    result = score_bond_affinity(
+        bond_rows, [], arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "INCONCLUSIVE_TRUNCATED"
+    assert result.truncation_guard_fired is True
+    assert result.promotion_imbalance is not None
+    assert result.promotion_imbalance > 2.0
+
+
+def test_truncation_guard_passes_yields_ii_leaning() -> None:
+    """No ON promotion imbalance -> the (ii) route is not suppressed (guard passes)."""
+    bond_rows, arm_of, replicate_of = _truncation_matrix(
+        on_r0_promoted=0, off_r0_promoted=0
+    )
+    result = score_bond_affinity(
+        bond_rows, [], arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(ii)-LEANING"
+    assert result.truncation_guard_fired is False
+
+
+def test_truncation_guard_not_applied_to_i_leaning() -> None:
+    """Even a promotion imbalance does not block (i)-LEANING (asymmetric guard, §3')."""
+    # (i)-LEANING magnitude path (ON 0.44 vs OFF 0.20/0.16), plus heavy ON r0 promotion.
+    bond_rows, sat_rows, arm_of, replicate_of = _matrix(
+        _seed_quad(1, 0.44, 0.20, 0.16, 0.44) + _seed_quad(2, 0.44, 0.20, 0.16, 0.44)
+    )
+    for seed in (1, 2):
+        run_id = f"s{seed}_ON0"
+        bond_rows.extend(
+            _bond_row(
+                "kant",
+                f"p{j}",
+                11 + (j % 4),
+                0.50,
+                count=6,
+                last_tick=11 + (j % 4),
+                run_id=run_id,
+                seed=seed,
+            )
+            for j in range(8)
+        )
+    result = score_bond_affinity(
+        bond_rows, sat_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    assert result.verdict == "(i)-LEANING"
+    assert result.truncation_guard_fired is False
+
+
+def test_secondary_cap_exposed_split_is_descriptive() -> None:
+    """Within-cell near-miss splits cap-exposed vs non-exposed (§2'.3, descriptive)."""
+    # 6 near-miss at tick 10 (cap-saturated), 4 at tick 20 (no saturation there).
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+    rows = [
+        _bond_row("kant", f"e{i}", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1)
+        for i in range(6)
+    ]
+    rows += [
+        _bond_row("kant", f"u{i}", 20, 0.44, count=6, last_tick=20, run_id="on", seed=1)
+        for i in range(4)
+    ]
+    result = score_bond_affinity(rows, sat, arm_of={"on": "ON"}, replicate_of={"on": 0})
+    cell = _find_cell(result, 1, "ON", 0)
+    assert cell.n == 10
+    assert cell.cap_exposed_n == 6
+    assert cell.cap_unexposed_n == 4
+    assert cell.cap_exposed_p95_abs is not None
+    assert cell.cap_unexposed_p95_abs is not None
+
+
+def test_fresh_sensitivity_and_promotion_fields_reported() -> None:
+    """n_no_fresh >= n, fresh drop counted, and promotion incidence over raw ticks."""
+    sat = [_sat_row("kant", 10, offset=0.15, run_id="on", seed=1)]
+    # one fresh near-miss (touched) + one stale parked one (dropped by fresh guard).
+    rows = [
+        _bond_row(
+            "kant", "fresh", 10, 0.44, count=6, last_tick=10, run_id="on", seed=1
+        ),
+        *[
+            _bond_row(
+                "kant", "park", t, 0.44, count=7, last_tick=2, run_id="on", seed=1
+            )
+            for t in (6, 7, 8, 9, 10)
+        ],
+        # a promoted dyad at tick 11 (leaves the near-miss pool).
+        _bond_row("kant", "prom", 11, 0.50, count=6, last_tick=11, run_id="on", seed=1),
+    ]
+    result = score_bond_affinity(rows, sat, arm_of={"on": "ON"}, replicate_of={"on": 0})
+    cell = _find_cell(result, 1, "ON", 0)
+    assert cell.n == 1  # only the fresh near-miss
+    assert cell.n_no_fresh >= 2  # fresh + parked both pass the bare gate without fresh
+    assert cell.n_fresh_dropped == cell.n_no_fresh - cell.n
+    assert cell.promoted_dyads == 1
+    assert cell.distinct_ticks == 1  # the near-miss substrate spans only tick 10
+    assert cell.promotion_incidence is not None
