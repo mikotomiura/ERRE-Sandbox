@@ -127,15 +127,26 @@ def test_duplicate_cell_routes_invalid() -> None:
     assert "duplicate" in result.notes.lower()
 
 
-def test_shared_run_id_routes_invalid() -> None:
-    """One run_id spanning two captures -> INVALID (role-swap / contamination)."""
-    caps = [
-        _capture(1, "ON", 0, 0.44, run_id="shared"),
-        _capture(2, "OFF", 1, 0.16, run_id="shared"),
-    ]
+def test_shared_run_id_across_seed_cells_is_tolerated() -> None:
+    """Per-capture assembly (工程1): a seed's four cells sharing one run_id is fine.
+
+    The frozen captures reuse ``kant_natural_run{idx}`` across a seed's four cells; the
+    old shared-run_id guard wrongly INVALIDated that. With sidecar-keyed per-capture
+    assembly there is no cross-capture exposure leak, so a coherent 12-cell matrix whose
+    cells share a per-seed run_id routes the substantive verdict, not INVALID.
+    """
+    caps = []
+    for seed in (1, 2, 3):
+        shared = (
+            f"kant_natural_run{seed}"  # one run_id for all four of the seed's cells
+        )
+        caps.append(_capture(seed, "ON", 0, 0.44, run_id=shared))
+        caps.append(_capture(seed, "OFF", 0, 0.20, run_id=shared))
+        caps.append(_capture(seed, "OFF", 1, 0.16, run_id=shared))
+        caps.append(_capture(seed, "ON", 1, 0.44, run_id=shared))
     result = score_bond_affinity_captures(caps)
-    assert result.verdict == "INVALID_MEASUREMENT"
-    assert "run_id" in result.notes
+    assert result.verdict == "(i)-LEANING"
+    assert result.paired_seeds == (1, 2, 3)
 
 
 def test_incomplete_matrix_routes_low_power() -> None:

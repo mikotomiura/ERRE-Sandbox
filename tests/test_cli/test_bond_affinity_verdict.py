@@ -186,7 +186,7 @@ def test_cli_i_leaning_end_to_end(tmp_path: Path) -> None:
     payload = _run(tmp_path, _i_leaning_matrix(tmp_path), run_id="bond-run")
     assert payload["verdict"] == "(i)-LEANING"
     assert payload["run_id"] == "bond-run"
-    assert payload["schema_version"] == "bond-affinity-verdict-1"
+    assert payload["schema_version"] == "bond-affinity-verdict-2"
     assert sorted(payload["paired_seeds"]) == [1, 2, 3]
     assert payload["magnitude_ok"] is True
     assert payload["rank_ok"] is True
@@ -219,6 +219,7 @@ def test_cli_provenance_and_thresholds(tmp_path: Path) -> None:
         "min_near_miss_n": _c.MIN_NEAR_MISS_N,
         "min_paired_seeds": _c.MIN_PAIRED_SEEDS,
         "slope_window": _c.SLOPE_WINDOW,
+        "promotion_imbalance_factor": _c.PROMOTION_IMBALANCE_FACTOR,
     }
     assert thr == expected
 
@@ -260,12 +261,22 @@ def test_phase0_go(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert capsys.readouterr().out.strip() == "GO"
 
 
-def test_phase0_no_near_miss_when_no_exposure(
+def test_phase0_go_without_exposure_bare_gate(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """Bare-gate Phase 0 (§5'): a bare near-miss is GO even with no exposure."""
     cap = _write_cell(
         tmp_path, seed=1, arm="ON", replicate_id=0, abs_aff=0.44, exposure=False
     )
+    assert main(["--phase0", "--capture", str(cap)]) == 0
+    assert capsys.readouterr().out.strip() == "GO"
+
+
+def test_phase0_no_near_miss_when_above_gate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture whose bonds are above the affinity gate has no bare near-miss."""
+    cap = _write_cell(tmp_path, seed=1, arm="ON", replicate_id=0, abs_aff=0.50)
     assert main(["--phase0", "--capture", str(cap)]) == 0
     assert capsys.readouterr().out.strip() == "INCONCLUSIVE_NO_NEAR_MISS"
 

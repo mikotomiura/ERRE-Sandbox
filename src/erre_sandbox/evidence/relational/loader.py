@@ -7,27 +7,29 @@ joins against for cap exposure):
   No ``raw_dialog`` egress guard (it is an internal ``metrics -> analysis`` read), and
   the qualified name is composed from ``METRICS_SCHEMA`` (never a schema-dot literal; CI
   grep gate). Nullable recency columns deserialise to ``int | None`` / ``str | None``.
-* :func:`score_bond_affinity` — a pure function implementing the **v2 signal-to-noise**
-  decision layer the freeze ADR pre-registered
-  (``.steering/20260617-bond-affinity-diagnostic-freeze/threshold-freeze-adr.md`` §1-§3,
-  ACCEPTED 2026-06-17, binding=user). It recomputes the near-miss gate
-  (``|affinity| < BELIEF_THRESHOLD`` ∧ ``ichigo_ichie_count >= MIN_INTERACTIONS``) from
-  raw rows, joins each near-miss bond to its tick's cap-saturation exposure, applies the
-  stale-bond guard (ADR HIGH-1), folds each ``(seed, arm, replicate)`` cell's near-miss
-  population into a proximity statistic (the **p95 |affinity|**), and routes the
-  cross-arm verdict by contrasting the ON-OFF separation against the same-arm
-  run-to-run noise floor — **non-circular**, unlike the PR #25 single-shot absolute
-  margin (which never compared the ON-OFF gap to any noise; circular, freeze ADR §0).
+* :func:`route_bond_affinity_cells` — the signal-to-noise decision layer the freeze ADR
+  pre-registered (``…/20260617-bond-affinity-diagnostic-freeze/threshold-freeze-adr.md``
+  §1-§3, ACCEPTED 2026-06-17) as **superseded** by the estimand-redesign ADR
+  (``…/20260619-bond-affinity-estimand-redesign/estimand-redesign-adr.md`` §2', ACCEPTED
+  2026-06-19, binding=user). The substrate is now the **bare** near-miss
+  (``|affinity| < BELIEF_THRESHOLD`` ∧ ``ichigo_ichie_count >= MIN_INTERACTIONS`` ∧
+  fresh) — the cap-saturation exposure join was a post-treatment collider and is **no
+  longer** a verdict gate (§0). It folds each ``(seed, arm, replicate)`` cell into a
+  proximity statistic (the **p95 |affinity|**) and routes the cross-arm verdict by
+  contrasting the ON-OFF separation against the same-arm run-to-run noise floor —
+  non-circular (freeze ADR §0) — with a §3' **truncation guard** suppressing a survivor
+  ``(ii)`` when ON drains its near-miss pool by promotion.
 
-The v2 layer ports the III-a live §5.3 null-hierarchy structure
+The decision layer ports the III-a live §5.3 null-hierarchy structure
 (:mod:`erre_sandbox.evidence.live_carry.scorer`): a per-seed ``S(ON-OFF)`` cross-arm
 signal, an ``S(OFF/OFF)`` run-to-run noise floor, and an ``S(ON/ON)`` ON-specific
 sanity null, gated by a materiality floor + ratio (degenerate-null aware, HIGH-2),
-rank-non-overlap, and a 4-replicate-cell power gate (MED-1). The numeric thresholds are
-now **frozen** (freeze ADR §1) — imported from :mod:`.constants` as the defaults of the
-keyword parameters; a caller overrides only for unit tests. The descriptive half
-(near-miss identification, the stale guard, the signed trust/clash split, the per-cell
-report statistics) is unchanged from PR #25.
+rank-non-overlap, and a 4-replicate-cell power gate (MED-1). Each cell also reports the
+within-cell cap-saturation **secondary** split (§2'.3, descriptive / routing-inert) and
+the promotion incidence (§3'). The numeric thresholds are **frozen** (freeze ADR §1 +
+estimand-redesign §1') — imported from :mod:`.constants`. The **production** scorer is
+:func:`score_bond_affinity_captures` (per-capture assembly, no cross-capture exposure
+leak); :func:`score_bond_affinity` is a **test-only** routing helper (DA-4).
 """
 
 from __future__ import annotations
@@ -52,6 +54,7 @@ from erre_sandbox.evidence.relational.constants import (
     MIN_NEAR_MISS_N,
     MIN_PAIRED_SEEDS,
     ON_NOISE_FACTOR,
+    PROMOTION_IMBALANCE_FACTOR,
     R_MIN_BOND,
     SLOPE_WINDOW,
 )
@@ -70,26 +73,35 @@ Verdict = Literal[
     "INCONCLUSIVE_MIXED_SEED",
     "INCONCLUSIVE_LOW_POWER",
     "INCONCLUSIVE_NO_NEAR_MISS",
+    "INCONCLUSIVE_TRUNCATED",
     "INVALID_MEASUREMENT",
 ]
-"""The six closed verdict states (freeze ADR §3 routing, all states reachable).
+"""The seven closed verdict states (freeze ADR §3 routing + estimand-redesign §3').
 
-``(i)-LEANING`` = cap-binding suggested (ON pushes near-miss bonds closer to the 0.45
-gate than OFF, above the noise floor) → warrants a cap-relax GO/NO-GO **in a separate
-ADR** (this scorer does not authorise cap variation). ``(ii)-LEANING`` = no differential
-approach above the noise floor (lowers fork (C) VoI; *not* a decoupling proof, ADR
+``(i)-LEANING`` = cap-binding **suggested** (a *weak* warrant): the ON arm pushes the
+**bare** near-miss bonds closer to the 0.45 gate than OFF, above the noise floor — a
+necessary condition for cap-binding, but the bare-gate substrate does **not** isolate
+the cap from generic carry (superseding ADR §6', Codex L2), so it warrants a cap-relax
+GO/NO-GO **in a separate ADR**, never proves it (this scorer does not authorise cap
+variation). ``(ii)-LEANING`` = no differential approach above the noise floor **and**
+the truncation guard did not fire (lowers fork (C) VoI; *not* a decoupling proof, ADR
 MED-2). ``INCONCLUSIVE_MIXED_SEED`` = the median separation clears magnitude but a
 per-seed signal sinks into the noise (seed reproducibility absent, HIGH-1).
 ``INCONCLUSIVE_LOW_POWER`` = under-powered (a replicate cell below the near-miss floor,
 too few paired seeds, or ON-specific noise). ``INCONCLUSIVE_NO_NEAR_MISS`` = the
-diagnostic substrate is empty. ``INVALID_MEASUREMENT`` = a provenance-false row (freeze
-ADR §7: PR #25 returned INCONCLUSIVE here, v2 raises it to INVALID)."""
+diagnostic substrate is empty. ``INCONCLUSIVE_TRUNCATED`` = magnitude unmet **but** the
+ON arm promotes near-miss bonds past the gate at a rate imbalanced against OFF
+(``ρ(ON)/ρ(OFF) > PROMOTION_IMBALANCE_FACTOR``), so the surviving-near-miss p95 may be a
+truncation artifact — ``(ii)`` is suppressed and the claim bounded to *survivor
+near-miss only* (superseding ADR §3'/§6', Codex HIGH-2). ``INVALID_MEASUREMENT`` = a
+provenance-false row (freeze ADR §7: PR #25 was INCONCLUSIVE; v2 raises to INVALID)."""
 
 I_LEANING: Final[str] = "(i)-LEANING"
 II_LEANING: Final[str] = "(ii)-LEANING"
 INCONCLUSIVE_MIXED_SEED: Final[str] = "INCONCLUSIVE_MIXED_SEED"
 INCONCLUSIVE_LOW_POWER: Final[str] = "INCONCLUSIVE_LOW_POWER"
 INCONCLUSIVE_NO_NEAR_MISS: Final[str] = "INCONCLUSIVE_NO_NEAR_MISS"
+INCONCLUSIVE_TRUNCATED: Final[str] = "INCONCLUSIVE_TRUNCATED"
 INVALID_MEASUREMENT: Final[str] = "INVALID_MEASUREMENT"
 
 _ARM_ON: Final[str] = "ON"
@@ -154,8 +166,23 @@ class CellStats:
     """Per ``(seed, arm, replicate)`` near-miss distribution (ADR §3 report unit).
 
     The proximity statistic the verdict uses is :attr:`p95_abs` (the p95 ``|affinity|``
-    of this cell's near-miss population); the rest are the ADR §3 / LOW-1 mandatory
-    report so the verdict never rests on a single statistic.
+    of this cell's **bare** near-miss population, superseding ADR §2'.2); the rest are
+    the §3 / LOW-1 / §2'.4 mandatory report so the verdict never rests on one statistic.
+    Three blocks of read-only fields are added by the estimand-redesign superseding ADR:
+
+    * **tick concentration + fresh sensitivity** (§2'.4 / Codex L1 / M1):
+      :attr:`distinct_ticks` + :attr:`max_tick_share` expose whether the cell rides a
+      few dyads / a single tick (a bare-gate ``n >= MIN_NEAR_MISS_N`` can otherwise be a
+      weak power guard); :attr:`n_no_fresh` + :attr:`n_fresh_dropped` are the
+      ``require_fresh`` sensitivity (did the stale guard drive the result?).
+    * **promotion incidence** (§2'.2 / §3' / Codex HIGH-2): :attr:`promoted_dyads` +
+      :attr:`promotion_incidence` (``ρ`` = promoted dyads / distinct ticks) are the
+      truncation-guard substrate — they quantify how much the outcome-band selection
+      drained this cell's pool.
+    * **within-cell cap-saturation secondary** (§2'.3 / Codex M2): the bare near-miss
+      split into cap-exposed vs non-exposed sub-populations. **Descriptive only**
+      (routing-inert) — a *consistent descriptive co-incidence* of cap exposure with
+      high proximity, never causal corroboration.
     """
 
     seed: int
@@ -163,6 +190,11 @@ class CellStats:
     replicate: int  # 0 | 1
     n: int
     unique_dyads: int
+    distinct_ticks: int
+    """distinct ticks the cell's near-miss bonds span (tick-concentration context)."""
+    max_tick_share: float | None
+    """fraction of the near-miss population in its single busiest tick (``None`` when
+    empty) — a high share warns the verdict rides one tick (§2'.4, Codex L1)."""
     p90_abs: float | None
     p95_abs: float | None
     max_abs: float | None
@@ -172,6 +204,23 @@ class CellStats:
     n_neutral: int
     """near-miss bonds with ``affinity == 0.0`` (neither trust nor clash). Kept so the
     invariant ``n_trust + n_clash + n_neutral == n`` holds (Codex/CR HIGH-1)."""
+    n_no_fresh: int
+    """near-miss count with the stale guard **off** (``require_fresh=False``) — the
+    fresh-sensitivity numerator (§2'.2, Codex M1)."""
+    n_fresh_dropped: int
+    """``n_no_fresh - n``: how many gate-passing bonds the stale guard removed."""
+    promoted_dyads: int
+    """distinct dyads in this cell that reached ``|affinity| >= BELIEF_THRESHOLD`` with
+    the interaction gate met — bonds that *left* the pool by promoting (§3')."""
+    promotion_incidence: float | None
+    """``ρ`` = :attr:`promoted_dyads` / distinct ticks of the raw cell rows (``None`` if
+    the cell has no ticks) — the truncation-guard rate (superseding ADR §1'/§3')."""
+    cap_exposed_n: int
+    cap_exposed_p95_abs: float | None
+    cap_exposed_eps_band_density: float | None
+    cap_unexposed_n: int
+    cap_unexposed_p95_abs: float | None
+    cap_unexposed_eps_band_density: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,6 +249,16 @@ class BondAffinityProbeResult:
     rank_ok: bool = False
     on_noise_ok: bool = False
     null_degenerate: bool = False
+    promotion_incidence_on: dict[int, float] = field(default_factory=dict)
+    """per paired seed: ``ρ`` of the ON r0 cell (promoted dyads / distinct ticks)."""
+    promotion_incidence_off: dict[int, float] = field(default_factory=dict)
+    """per paired seed: ``ρ`` of the OFF r0 cell (the truncation-guard denominator)."""
+    promotion_imbalance: float | None = None
+    """``median_seed ρ(ON r0) / median_seed ρ(OFF r0)`` (``None`` for a degenerate
+    ``ρ(OFF)=0`` null — the guard then uses the non-negligibility branch, §3')."""
+    truncation_guard_fired: bool = False
+    """True only when the verdict is ``INCONCLUSIVE_TRUNCATED`` (the (ii) route was
+    suppressed because ON promotion drained the near-miss pool, §3'/Codex HIGH-2)."""
     notes: str = ""
 
 
@@ -317,16 +376,21 @@ def has_eligible_near_miss(
     *,
     slope_window: int = SLOPE_WINDOW,
 ) -> bool:
-    """Phase 0 preflight (freeze ADR §5): is there >= 1 diagnostic-eligible near-miss?
+    """Phase 0 preflight (superseding ADR §5'): is there >= 1 **bare** near-miss?
 
-    A single condition over :func:`identify_near_miss` with both gates on
-    (``require_exposure`` ∧ ``require_fresh``) — raw near-miss presence and the
-    cap-exposure join are checked **together**, not separately (instrumentation ADR
-    MED-2). A future smoke audit calls this on a sufficient-horizon flag-on capture
-    before committing to the 12-run GPU matrix: an empty result on an adequate-horizon
-    smoke routes ``INCONCLUSIVE_NO_NEAR_MISS`` (capture cannot discriminate), stopping
-    the GPU investment early. A short-horizon empty is **not** a stop signal — the smoke
-    must satisfy the live §5.3 horizon convention first (the caller's responsibility).
+    The primary substrate is now bare-gate (``require_exposure=False`` ∧
+    ``require_fresh=True``, superseding ADR §2'.2): the cap-exposure join was a
+    post-treatment collider and is no longer a verdict gate, so the Phase 0 stop-gate
+    must match — it is now satisfied by a bare near-miss alone, **not** cap-exposed
+    (the old exposure-gated smoke depended on the superseded §2 estimand, Codex HIGH-1).
+    The secondary cap-saturation diagnostic (§2'.3) is descriptive and does **not** stop
+    the smoke, so a capture with bare near-miss but zero cap exposure is still GO.
+
+    A future smoke audit calls this on a sufficient-horizon flag-on capture before
+    committing to the 12-run GPU matrix: an empty result on an adequate-horizon smoke
+    routes ``INCONCLUSIVE_NO_NEAR_MISS`` (capture cannot discriminate), stopping the GPU
+    investment early. A short-horizon empty is **not** a stop signal — the smoke must
+    satisfy the live §5.3 horizon convention first (the caller's responsibility).
 
     A provenance-false capture is **not** eligible (returns ``False``): an
     ``individual_layer_enabled=False`` row means the smoke was misconfigured (flag-off),
@@ -341,38 +405,95 @@ def has_eligible_near_miss(
         identify_near_miss(
             bond_rows,
             saturation_rows,
-            require_exposure=True,
+            require_exposure=False,
             require_fresh=True,
             slope_window=slope_window,
         )
     )
 
 
-def _cell_stats(
-    seed: int, arm: str, replicate: int, obs: Sequence[NearMissObservation]
-) -> CellStats:
-    """Fold one ``(seed, arm, replicate)`` cell's near-miss obs into the report unit.
+def _band_density(obs: Sequence[NearMissObservation]) -> float | None:
+    """ε-band density over the near-miss obs (``None`` when the cell is empty)."""
+    if not obs:
+        return None
+    n_band = sum(1 for o in obs if EPS_BAND_LO <= o.abs_affinity < BELIEF_THRESHOLD)
+    return n_band / len(obs)
 
-    The statistical computation (p95 / p90 / max / ε-band density / signed split) is
-    unchanged from PR #25's per-arm fold — only the grouping key is finer (per replicate
-    cell, freeze ADR §2 / MED-1).
+
+def _cell_stats(
+    seed: int,
+    arm: str,
+    replicate: int,
+    bond_rows: Sequence[BondAffinityTraceRow],
+    saturation_rows: Sequence[SaturationTraceRow],
+) -> CellStats:
+    """Fold one ``(seed, arm, replicate)`` cell's raw rows into the §3/§2'.4 report.
+
+    The primary substrate is the **bare** near-miss (superseding ADR §2'.2,
+    ``require_exposure=False`` ∧ ``require_fresh=True``): the cap-exposure join is no
+    longer a verdict gate (it was a post-treatment collider, ADR §0). Exposure is still
+    *tagged* on each obs, so the within-cell cap-saturation secondary (§2'.3) can split
+    the population descriptively. The promotion incidence (§3') and the fresh
+    sensitivity (§2'.2) come from the same raw rows. The p95 / p90 / max / ε-band
+    density / signed split are the PR #25 statistics, now over the bare substrate.
     """
+    obs = identify_near_miss(
+        bond_rows, saturation_rows, require_exposure=False, require_fresh=True
+    )
+    obs_no_fresh = identify_near_miss(
+        bond_rows, saturation_rows, require_exposure=False, require_fresh=False
+    )
     abs_vals = [o.abs_affinity for o in obs]
     dyads = {(o.individual_id, o.other_agent_id) for o in obs}
-    n_band = sum(1 for v in abs_vals if EPS_BAND_LO <= v < BELIEF_THRESHOLD)
+
+    # tick concentration — distinct ticks + the busiest single tick's share (§2'.4, L1).
+    by_tick: dict[int, int] = {}
+    for o in obs:
+        by_tick[o.tick] = by_tick.get(o.tick, 0) + 1
+    max_tick_share = (max(by_tick.values()) / len(obs)) if obs else None
+
+    # promotion incidence — dyads that left the pool by reaching the gate, over the raw
+    # cell rows (NOT the near-miss obs, which by construction exclude them, §3').
+    promoted = {
+        (r.individual_id, r.other_agent_id)
+        for r in bond_rows
+        if r.ichigo_ichie_count >= BELIEF_MIN_INTERACTIONS
+        and abs(r.affinity) >= BELIEF_THRESHOLD
+    }
+    raw_distinct_ticks = len({r.tick for r in bond_rows})
+    promotion_incidence = (
+        len(promoted) / raw_distinct_ticks if raw_distinct_ticks > 0 else None
+    )
+
+    # within-cell cap-saturation secondary — descriptive split (routing-inert, §2'.3).
+    exposed = [o for o in obs if o.under_individual_exposure]
+    unexposed = [o for o in obs if not o.under_individual_exposure]
+
     return CellStats(
         seed=seed,
         arm=arm,
         replicate=replicate,
         n=len(obs),
         unique_dyads=len(dyads),
+        distinct_ticks=len(by_tick),
+        max_tick_share=max_tick_share,
         p90_abs=_percentile(abs_vals, 0.90),
         p95_abs=_percentile(abs_vals, 0.95),
         max_abs=max(abs_vals) if abs_vals else None,
-        eps_band_density=(n_band / len(abs_vals)) if abs_vals else None,
+        eps_band_density=_band_density(obs),
         n_trust=sum(1 for o in obs if o.affinity > 0.0),
         n_clash=sum(1 for o in obs if o.affinity < 0.0),
         n_neutral=sum(1 for o in obs if o.affinity == 0.0),
+        n_no_fresh=len(obs_no_fresh),
+        n_fresh_dropped=len(obs_no_fresh) - len(obs),
+        promoted_dyads=len(promoted),
+        promotion_incidence=promotion_incidence,
+        cap_exposed_n=len(exposed),
+        cap_exposed_p95_abs=_percentile([o.abs_affinity for o in exposed], 0.95),
+        cap_exposed_eps_band_density=_band_density(exposed),
+        cap_unexposed_n=len(unexposed),
+        cap_unexposed_p95_abs=_percentile([o.abs_affinity for o in unexposed], 0.95),
+        cap_unexposed_eps_band_density=_band_density(unexposed),
     )
 
 
@@ -386,15 +507,17 @@ def _assemble_cells(
     arm_of: Mapping[str, str],
     replicate_of: Mapping[str, int],
 ) -> dict[_CellKey, CellStats]:
-    """Group near-miss observations by ``(seed, arm, replicate)`` and fold each cell.
+    """Group rows by ``(seed, arm, replicate)`` via run_id maps and fold each cell.
 
-    A row is placed by ``arm_of[run_id]`` / ``replicate_of[run_id]`` (the caller
-    assembles the matrix from the capture sidecars, mirroring the live-carry bundle
-    assembler — the trace itself is arm/replicate-blind, ADR §3.2-5). A row whose
-    ``run_id`` is absent from either map, or whose arm is not ON/OFF, is dropped (it
-    cannot be placed in the matrix). The near-miss identification per cell is identical
-    to the per-arm fold because :func:`identify_near_miss` keys its dyad series and
-    exposure join by ``(run_id, seed, ...)`` — grouping never changes which bonds count.
+    **Test-only assembly path** (synthetic routing unit checks): production uses the
+    per-capture :func:`score_bond_affinity_captures`, which keys cells by the capture
+    sidecar identity and never passes a global saturation table to a cell (no
+    cross-capture exposure leak, superseding ADR §9 / Codex MED-3). Here a row is placed
+    by ``arm_of[run_id]`` / ``replicate_of[run_id]``; a row whose ``run_id`` is absent
+    from either map, or whose arm is not ON/OFF, is dropped. The exposure tag is still
+    keyed by ``(run_id, seed, ...)`` inside :func:`identify_near_miss`, so a synthetic
+    fixture whose saturation rows carry the matching run_id/seed gets the correct
+    per-cell split despite the shared table.
     """
     rows_by_cell: dict[_CellKey, list[BondAffinityTraceRow]] = {}
     for r in bond_rows:
@@ -403,11 +526,12 @@ def _assemble_cells(
         if arm not in (_ARM_ON, _ARM_OFF) or replicate is None:
             continue
         rows_by_cell.setdefault((r.seed, arm, replicate), []).append(r)
-    cells: dict[_CellKey, CellStats] = {}
-    for (seed, arm, replicate), cell_rows in rows_by_cell.items():
-        obs = identify_near_miss(cell_rows, saturation_rows)
-        cells[(seed, arm, replicate)] = _cell_stats(seed, arm, replicate, obs)
-    return cells
+    return {
+        (seed, arm, replicate): _cell_stats(
+            seed, arm, replicate, cell_rows, saturation_rows
+        )
+        for (seed, arm, replicate), cell_rows in rows_by_cell.items()
+    }
 
 
 def _proximity(cells: Mapping[_CellKey, CellStats], key: _CellKey) -> float | None:
@@ -416,21 +540,70 @@ def _proximity(cells: Mapping[_CellKey, CellStats], key: _CellKey) -> float | No
     return None if cell is None else cell.p95_abs
 
 
-def _route_paired_verdict(
-    cell_tuple: tuple[CellStats, ...],
-    cells: Mapping[_CellKey, CellStats],
-    paired: Sequence[int],
-) -> BondAffinityProbeResult:
-    """Build the per-seed null hierarchy over the paired seeds and route the verdict.
+def _truncation_imbalanced(
+    rho_on: Mapping[int, float],
+    rho_off: Mapping[int, float],
+    promoted_on: Mapping[int, int],
+    nearmiss_on: Mapping[int, int],
+) -> tuple[float | None, bool]:
+    """Evaluate the §3' truncation guard; return ``(promotion_imbalance, fired)``.
 
-    Split out of :func:`score_bond_affinity` so each half stays within the project's
-    branch-complexity budget. The caller guarantees every paired seed has all four
-    powered cells, so each ``_proximity`` is defined (the ``None`` skip is defensive).
-    All thresholds are the frozen freeze-ADR §1 constants (single source, no override).
+    The guard fires when the ON arm promotes near-miss bonds past the gate at a rate
+    imbalanced against OFF, so the surviving ON p95 may be a truncation artifact rather
+    than a real null (superseding ADR §1'/§3', Codex HIGH-2). With a non-degenerate
+    ``ρ(OFF)`` the test is the ratio ``median ρ(ON) / median ρ(OFF) >
+    PROMOTION_IMBALANCE_FACTOR``. With a degenerate ``ρ(OFF)=0`` the ratio is undefined,
+    so the guard fires only when the ON promotion is **non-negligible** against the
+    surviving near-miss pool (``median ON promoted dyads >= median ON near-miss n /
+    PROMOTION_IMBALANCE_FACTOR``) — a lone stray promotion cannot trip it. The
+    ``promotion_imbalance`` returned is the ratio (``None`` in the degenerate branch).
+    """
+    median_rho_on = median(rho_on.values())
+    median_rho_off = median(rho_off.values())
+    if median_rho_off > 0.0:
+        imbalance = median_rho_on / median_rho_off
+        return imbalance, imbalance > PROMOTION_IMBALANCE_FACTOR
+    # degenerate ρ(OFF)=0 — fall back to the absolute non-negligibility test.
+    median_promoted_on = median(promoted_on.values())
+    median_nearmiss_on = median(nearmiss_on.values())
+    fired = (
+        median_rho_on > 0.0
+        and median_nearmiss_on > 0
+        and median_promoted_on >= median_nearmiss_on / PROMOTION_IMBALANCE_FACTOR
+    )
+    return None, fired
+
+
+@dataclass(frozen=True, slots=True)
+class _PairedSignals:
+    """Per-paired-seed cross-arm signals + ON r0 promotion incidence (assembly unit)."""
+
+    s_on_off: dict[int, float]
+    s_off_off: dict[int, float]
+    s_on_on: dict[int, float]
+    rho_on: dict[int, float]
+    rho_off: dict[int, float]
+    promoted_on: dict[int, int]
+    nearmiss_on: dict[int, int]
+
+
+def _paired_signals(
+    cells: Mapping[_CellKey, CellStats], paired: Sequence[int]
+) -> _PairedSignals:
+    """Assemble per-seed S(ON-OFF) / nulls + ON r0 promotion incidence (r0 contrast).
+
+    The proximity contrast uses replicate 0 (ON r0 vs OFF r0); the OFF/OFF and ON/ON
+    nulls use both replicates. The promotion incidence is read off the ON r0 / OFF r0
+    cells (the same cells the verdict contrasts, §3'). A seed missing any cell proximity
+    is skipped defensively (the caller's power gate already guarantees all four).
     """
     s_on_off: dict[int, float] = {}
     s_off_off: dict[int, float] = {}
     s_on_on: dict[int, float] = {}
+    rho_on: dict[int, float] = {}
+    rho_off: dict[int, float] = {}
+    promoted_on: dict[int, int] = {}
+    nearmiss_on: dict[int, int] = {}
     for seed in paired:
         p_on0 = _proximity(cells, (seed, _ARM_ON, 0))
         p_off0 = _proximity(cells, (seed, _ARM_OFF, 0))
@@ -441,9 +614,40 @@ def _route_paired_verdict(
         s_on_off[seed] = p_on0 - p_off0
         s_off_off[seed] = abs(p_off0 - p_off1)
         s_on_on[seed] = abs(p_on0 - p_on1)
+        on0 = cells[(seed, _ARM_ON, 0)]
+        off0 = cells[(seed, _ARM_OFF, 0)]
+        rho_on[seed] = on0.promotion_incidence or 0.0
+        rho_off[seed] = off0.promotion_incidence or 0.0
+        promoted_on[seed] = on0.promoted_dyads
+        nearmiss_on[seed] = on0.n
+    return _PairedSignals(
+        s_on_off=s_on_off,
+        s_off_off=s_off_off,
+        s_on_on=s_on_on,
+        rho_on=rho_on,
+        rho_off=rho_off,
+        promoted_on=promoted_on,
+        nearmiss_on=nearmiss_on,
+    )
 
-    max_off_off = max(s_off_off.values())
-    max_on_on = max(s_on_on.values())
+
+def _route_paired_verdict(
+    cell_tuple: tuple[CellStats, ...],
+    cells: Mapping[_CellKey, CellStats],
+    paired: Sequence[int],
+) -> BondAffinityProbeResult:
+    """Build the per-seed null hierarchy over the paired seeds and route the verdict.
+
+    The per-seed signals + promotion incidences are assembled by
+    :func:`_paired_signals`; this function applies the gates (freeze ADR §1 + §3'). The
+    caller guarantees every paired seed has all four powered cells, so each proximity is
+    defined. All thresholds are the frozen §1/§1' constants (single source).
+    """
+    sig = _paired_signals(cells, paired)
+    s_on_off = sig.s_on_off
+
+    max_off_off = max(sig.s_off_off.values())
+    max_on_on = max(sig.s_on_on.values())
     median_on_off = median(s_on_off.values())
 
     # ON-noise sanity — ON-specific run-to-run noise must not exceed the OFF/OFF floor
@@ -462,20 +666,40 @@ def _route_paired_verdict(
     # rank-non-overlap — the weakest per-seed signal must clear the strongest noise.
     rank_ok = min(s_on_off.values()) > max_off_off
 
-    # Route (freeze ADR §3, evaluation order = power -> ON-noise -> magnitude -> rank).
+    # truncation guard (superseding ADR §3', Codex HIGH-2) — only the (ii) route can be
+    # a survivor artifact, so it is evaluated just before emitting a bare (ii).
+    promotion_imbalance, truncation_imbalanced = _truncation_imbalanced(
+        sig.rho_on, sig.rho_off, sig.promoted_on, sig.nearmiss_on
+    )
+    med_rho_on = median(sig.rho_on.values())
+    med_rho_off = median(sig.rho_off.values())
+
+    # Route (freeze ADR §3 + §3': power -> ON-noise -> magnitude[+guard] -> rank).
     verdict: Verdict
+    truncation_fired = False
     if not on_noise_ok:
         verdict = "INCONCLUSIVE_LOW_POWER"
         notes = (
             f"ON/ON noise {max_on_on:.4f} > {ON_NOISE_FACTOR} * OFF/OFF "
             f"floor {max_off_off:.4f} (ON-specific noise suspected)"
         )
+    elif not magnitude_ok and truncation_imbalanced:
+        verdict = "INCONCLUSIVE_TRUNCATED"
+        truncation_fired = True
+        notes = (
+            f"magnitude unmet (median S(ON-OFF)={median_on_off:.4f}) but ON drains its "
+            f"pool: median ρ(ON)={med_rho_on:.4f} vs ρ(OFF)={med_rho_off:.4f} "
+            f"(imbalance={promotion_imbalance}, factor={PROMOTION_IMBALANCE_FACTOR}); "
+            "(ii) suppressed — survivor near-miss only (§6')"
+        )
     elif not magnitude_ok:
         verdict = "(ii)-LEANING"
         notes = (
             f"no differential approach above noise: median S(ON-OFF)="
             f"{median_on_off:.4f}, OFF/OFF floor={max_off_off:.4f}, "
-            f"degenerate={null_degenerate} (lowers fork (C) VoI, not decoupling)"
+            f"degenerate={null_degenerate}; truncation guard passed "
+            f"(imbalance {promotion_imbalance} <= {PROMOTION_IMBALANCE_FACTOR}) "
+            "(lowers fork (C) VoI, not decoupling)"
         )
     elif not rank_ok:
         verdict = "INCONCLUSIVE_MIXED_SEED"
@@ -489,7 +713,8 @@ def _route_paired_verdict(
         notes = (
             f"differential approach above noise: median S(ON-OFF)={median_on_off:.4f} "
             f"/ OFF/OFF floor={max_off_off:.4f} >= r_min={R_MIN_BOND} (or degenerate "
-            f"floor); rank-non-overlap holds; {len(paired)} paired seed(s)"
+            f"floor); rank-non-overlap holds; {len(paired)} seed(s). cap-binding "
+            "suggested (weak warrant — bare-gate does not isolate the cap, §6')"
         )
 
     return BondAffinityProbeResult(
@@ -497,8 +722,8 @@ def _route_paired_verdict(
         cells=cell_tuple,
         paired_seeds=tuple(paired),
         s_on_off=s_on_off,
-        s_off_off_null=s_off_off,
-        s_on_on_null=s_on_on,
+        s_off_off_null=sig.s_off_off,
+        s_on_on_null=sig.s_on_on,
         median_s_on_off=median_on_off,
         max_off_off_null=max_off_off,
         max_on_on_null=max_on_on,
@@ -506,36 +731,30 @@ def _route_paired_verdict(
         rank_ok=rank_ok,
         on_noise_ok=on_noise_ok,
         null_degenerate=null_degenerate,
+        promotion_incidence_on=sig.rho_on,
+        promotion_incidence_off=sig.rho_off,
+        promotion_imbalance=promotion_imbalance,
+        truncation_guard_fired=truncation_fired,
         notes=notes,
     )
 
 
-def score_bond_affinity(
-    bond_rows: Sequence[BondAffinityTraceRow],
-    saturation_rows: Sequence[SaturationTraceRow],
-    *,
-    arm_of: Mapping[str, str],
-    replicate_of: Mapping[str, int],
+def route_bond_affinity_cells(
+    cells: Mapping[_CellKey, CellStats],
 ) -> BondAffinityProbeResult:
-    """Score the bond-affinity trace into the v2 non-circular cross-arm verdict (§3).
+    """Route an assembled ``(seed, arm, replicate) -> CellStats`` matrix to the verdict.
 
-    *arm_of* / *replicate_of* map each ``run_id`` to ``"ON"``/``"OFF"`` and to its
-    replicate index ``0``/``1`` (the caller assembles the paired arms + replicates from
-    the capture sidecars, mirroring the live-carry bundle assembler — the trace itself
-    is arm/replicate-blind, ADR §3.2-5).
+    The **single** decision layer (Codex MED-3): both the production capture path
+    (:func:`score_bond_affinity_captures`) and the test-only :func:`score_bond_affinity`
+    assemble their cells, then delegate here. No provenance / assembly-integrity logic
+    lives here (the callers own that) — only statistical routing over a coherent cell
+    map. The proximity statistic per cell is the **p95 |affinity|** of its bare
+    population (superseding ADR §2'.2). Per paired seed it forms a cross-arm signal
+    ``S(ON-OFF) = p95(ON r0) - p95(OFF r0)``, a run-to-run noise floor
+    ``S(OFF/OFF) = |p95(OFF r0) - p95(OFF r1)|``, and an ON-specific sanity null
+    ``S(ON/ON) = |p95(ON r0) - p95(ON r1)|``. Routing order (freeze ADR §3 + §3'):
 
-    The proximity statistic per ``(seed, arm, replicate)`` cell is the **p95
-    |affinity|** of its near-miss population (robust to a single outlier dyad, ADR
-    MED-1). Per paired seed the scorer forms a cross-arm signal
-    ``S(ON-OFF) = p95(ON r0) - p95(OFF r0)``,
-    a run-to-run noise floor ``S(OFF/OFF) = |p95(OFF r0) - p95(OFF r1)|``, and an
-    ON-specific sanity null ``S(ON/ON) = |p95(ON r0) - p95(ON r1)|``. The verdict is
-    routed (freeze ADR §3, all states closed) by, in order:
-
-    * provenance-false row → ``INVALID_MEASUREMENT`` (freeze ADR §7);
-    * no eligible near-miss anywhere → ``INCONCLUSIVE_NO_NEAR_MISS``; but eligible
-      near-miss that **exist yet land in no cell** (every run absent from the maps = a
-      broken assembly, not an empty substrate) → ``INVALID_MEASUREMENT`` (MED-2);
+    * all cells empty → ``INCONCLUSIVE_NO_NEAR_MISS``;
     * power gate — a *paired seed* has all four cells (ON r0 / OFF r0 / OFF r1 / ON r1)
       with ``>= MIN_NEAR_MISS_N`` near-misses; fewer than ``MIN_PAIRED_SEEDS`` paired →
       ``INCONCLUSIVE_LOW_POWER`` (MED-1 / MED-3, 2-of-3 dropout-tolerant);
@@ -543,42 +762,17 @@ def score_bond_affinity(
       ``INCONCLUSIVE_LOW_POWER``;
     * magnitude — a materiality floor ``median S(ON-OFF) >= DEGENERATE_GAP_FLOOR``
       always, plus (when the null is non-degenerate) a ratio
-      ``median S(ON-OFF) / max S(OFF/OFF) >= R_MIN_BOND``; a degenerate null
-      (``max S(OFF/OFF) < DEGENERATE_GAP_FLOOR / R_MIN_BOND``, near-zero included) needs
-      only the floor (HIGH-2 — no near-zero ratio blow-up). Unmet → ``(ii)-LEANING``;
+      ``median S(ON-OFF) / max S(OFF/OFF) >= R_MIN_BOND``; a degenerate null needs only
+      the floor (HIGH-2). Unmet → the **truncation guard** (§3'): an ON-imbalanced
+      promotion incidence routes ``INCONCLUSIVE_TRUNCATED``, else ``(ii)-LEANING``;
     * rank-non-overlap — ``min S(ON-OFF) > max S(OFF/OFF)``; magnitude met but rank
       failed → ``INCONCLUSIVE_MIXED_SEED`` (HIGH-1); both met → ``(i)-LEANING``.
 
-    All thresholds are the frozen freeze-ADR §1 constants (:mod:`.constants`, single
-    source); they are not parameters — changing one needs a superseding ADR.
+    All thresholds are the frozen §1/§1' constants (:mod:`.constants`, single source).
     """
-    if any(not r.individual_layer_enabled for r in bond_rows) or any(
-        not r.individual_layer_enabled for r in saturation_rows
-    ):
-        return BondAffinityProbeResult(
-            verdict="INVALID_MEASUREMENT",
-            notes="provenance_false (a row carries individual_layer_enabled=False)",
-        )
-
-    cells = _assemble_cells(
-        bond_rows, saturation_rows, arm_of=arm_of, replicate_of=replicate_of
-    )
     cell_tuple = tuple(cells[k] for k in sorted(cells))
 
     if sum(c.n for c in cell_tuple) == 0:
-        # Distinguish a genuinely empty substrate from a broken assembly (Codex MED-2):
-        # if eligible near-miss exist over the raw rows but none landed in a cell, every
-        # run is unmapped (arm_of/replicate_of incomplete) — that is an INVALID matrix,
-        # not "no near-miss". A truly empty substrate (raw eligible 0) is NO_NEAR_MISS.
-        if has_eligible_near_miss(bond_rows, saturation_rows):
-            return BondAffinityProbeResult(
-                verdict="INVALID_MEASUREMENT",
-                cells=cell_tuple,
-                notes=(
-                    "eligible near-miss exist but none mapped to a cell "
-                    "(arm_of/replicate_of incomplete — broken matrix assembly)"
-                ),
-            )
         return BondAffinityProbeResult(
             verdict="INCONCLUSIVE_NO_NEAR_MISS",
             cells=cell_tuple,
@@ -610,6 +804,53 @@ def score_bond_affinity(
         )
 
     return _route_paired_verdict(cell_tuple, cells, paired)
+
+
+def score_bond_affinity(
+    bond_rows: Sequence[BondAffinityTraceRow],
+    saturation_rows: Sequence[SaturationTraceRow],
+    *,
+    arm_of: Mapping[str, str],
+    replicate_of: Mapping[str, int],
+) -> BondAffinityProbeResult:
+    """**Test-only** routing helper over synthetic ``run_id``-keyed rows (DA-4).
+
+    Production scoring is :func:`score_bond_affinity_captures` (per-capture assembly, no
+    cross-capture exposure leak, superseding ADR §9 / Codex MED-3). This helper is kept
+    only for the synthetic routing unit tests, which hand-build ``arm_of`` /
+    ``replicate_of`` maps to exercise a single closed verdict state; it shares the exact
+    decision path (:func:`route_bond_affinity_cells`) so those tests stay valid, but
+    it passes a **global** saturation table to :func:`_assemble_cells`, so must not be
+    used on real multi-capture stock (that is the leak the capture path closes). It
+    handles provenance + the broken-assembly distinction itself, then delegates routing.
+    """
+    if any(not r.individual_layer_enabled for r in bond_rows) or any(
+        not r.individual_layer_enabled for r in saturation_rows
+    ):
+        return BondAffinityProbeResult(
+            verdict="INVALID_MEASUREMENT",
+            notes="provenance_false (a row carries individual_layer_enabled=False)",
+        )
+
+    cells = _assemble_cells(
+        bond_rows, saturation_rows, arm_of=arm_of, replicate_of=replicate_of
+    )
+    result = route_bond_affinity_cells(cells)
+    # Distinguish a genuinely empty substrate from a broken assembly (Codex MED-2): if
+    # eligible near-miss exist over the raw rows but none landed in a cell (every run
+    # unmapped), that is an INVALID matrix, not "no near-miss".
+    if result.verdict == "INCONCLUSIVE_NO_NEAR_MISS" and has_eligible_near_miss(
+        bond_rows, saturation_rows
+    ):
+        return BondAffinityProbeResult(
+            verdict="INVALID_MEASUREMENT",
+            cells=result.cells,
+            notes=(
+                "eligible near-miss exist but none mapped to a cell "
+                "(arm_of/replicate_of incomplete — broken matrix assembly)"
+            ),
+        )
+    return result
 
 
 def _capture_identity_note(cap: BondAffinityCapture, run_ids: set[str]) -> str | None:
@@ -654,76 +895,87 @@ def _capture_identity_note(cap: BondAffinityCapture, run_ids: set[str]) -> str |
 def score_bond_affinity_captures(
     captures: Sequence[BondAffinityCapture],
 ) -> BondAffinityProbeResult:
-    """Capture-level entry: assemble the matrix maps from sidecars, then score.
+    """Capture-level entry — the **only** production scorer (Codex MED-3).
 
-    The pure :func:`score_bond_affinity` is arm/replicate-**blind** by design (PR #26,
-    freeze ADR §3.2-5): it folds whatever ``arm_of`` / ``replicate_of`` the caller hands
-    it and cannot, by construction, see when **two captures claim the same matrix cell**
-    (a duplicate ``(seed, arm, replicate)`` sidecar key) or when **one ``run_id`` spans
-    two captures** (a role-swapped / cross-contaminated manifest) — it would silently
-    merge them. This thin capture-level wrapper restores that matrix-integrity check
-    (mirroring the live-carry scorer's internal ``_assemble_matrix``, which routes an
-    incoherent matrix to ``INVALID_MEASUREMENT``): a duplicate cell or a shared
-    ``run_id`` routes to ``INVALID_MEASUREMENT`` here, before delegating the (unchanged)
-    statistical decision to :func:`score_bond_affinity`.
+    Per-capture assembly mirroring the live-carry ``_assemble_matrix``, then route. Each
+    capture is indexed by its **sidecar** identity ``(seed, arm, replicate_id)`` and its
+    near-miss is computed from **that capture's own rows only** (superseding ADR §9):
+    ``identify_near_miss`` is never handed a global saturation table, so the ON arm's
+    cap-saturation can no longer leak into an OFF cell's exposure join (the structural
+    fix the freeze-ADR run_id-key assumption missed — the frozen captures reuse one
+    ``run_id`` = ``persona_natural_run{idx}`` across a seed's four cells, which the old
+    shared-``run_id`` guard wrongly INVALIDated). Because cells are keyed by sidecar
+    identity, a shared ``run_id`` across captures is now **irrelevant** (no leak).
 
-    A capture without a complete arm identity (``arm`` not ``ON`` / ``OFF``, or a
-    ``None`` ``replicate_id`` / ``seed``) contributes its rows but is not placed in a
-    cell — :func:`score_bond_affinity` then drops its runs and adjudicates the rest. An
-    incomplete-but-coherent matrix routes to ``INCONCLUSIVE_LOW_POWER`` via the power
-    gate; eligible near-miss mapping to no cell route to ``INVALID_MEASUREMENT``. Each
-    capture's ``run_id`` is read from its own bond + saturation rows (a sound single-run
-    capture carries exactly one); the wrapper adds **no** verdict thresholds
-    (forking-paths guard), only the assembly + the structural-integrity gate.
+    Integrity gates retained (mirroring ``_assemble_matrix`` incoherence handling): a
+    provenance-false row anywhere, a capture whose rows span multiple ``run_id`` / seeds
+    or disagree with the sidecar seed, an arm-bearing capture with an out-of-domain
+    matrix key, and a **duplicate** ``(seed, arm, replicate)`` cell all route
+    ``INVALID_MEASUREMENT``. A null-arm capture (stimulus / flag-off natural) adds
+    no cell and is tolerated. An incomplete-but-coherent matrix routes
+    ``INCONCLUSIVE_LOW_POWER`` via the power gate; a non-empty bare near-miss substrate
+    that lands in **no** cell (every eligible capture non-arm) routes
+    ``INVALID_MEASUREMENT`` (broken assembly, MED-2), not masked as "no near-miss".
     """
-    bond_rows: list[BondAffinityTraceRow] = []
-    saturation_rows: list[SaturationTraceRow] = []
-    arm_of: dict[str, str] = {}
-    replicate_of: dict[str, int] = {}
-    seen_cells: dict[_CellKey, str] = {}
-    runid_owner: dict[str, str] = {}
+    # provenance gate (global) — a single flag-off row invalidates the whole matrix.
     for cap in captures:
-        bond_rows.extend(cap.bond_rows)
-        saturation_rows.extend(cap.saturation_rows)
+        if any(not r.individual_layer_enabled for r in cap.bond_rows) or any(
+            not r.individual_layer_enabled for r in cap.saturation_rows
+        ):
+            return BondAffinityProbeResult(
+                verdict="INVALID_MEASUREMENT",
+                notes="provenance_false (a row carries individual_layer_enabled=False)",
+            )
+
+    matrix: dict[_CellKey, BondAffinityCapture] = {}
+    seen_cells: dict[_CellKey, str] = {}
+    for cap in captures:
         run_ids = {r.run_id for r in cap.bond_rows} | {
             r.run_id for r in cap.saturation_rows
         }
         note = _capture_identity_note(cap, run_ids)
         if note is not None:
             return BondAffinityProbeResult(verdict="INVALID_MEASUREMENT", notes=note)
-        for rid in run_ids:
-            owner = runid_owner.get(rid)
-            if owner is not None and owner != cap.path:
-                return BondAffinityProbeResult(
-                    verdict="INVALID_MEASUREMENT",
-                    notes=(
-                        f"run_id {rid!r} spans two captures ({owner} and {cap.path}) "
-                        "— role-swapped / cross-contaminated matrix assembly"
-                    ),
-                )
-            runid_owner[rid] = cap.path
         # ``_capture_identity_note`` already INVALIDated an arm-bearing capture with a
         # ``None`` seed or out-of-domain replicate, so the guards here only narrow the
         # types for the cell key; a null-arm capture claims no cell and is tolerated.
         if cap.arm in (_ARM_ON, _ARM_OFF) and (
             cap.seed is not None and cap.replicate_id is not None
         ):
-            cell = (cap.seed, cap.arm, cap.replicate_id)
-            if cell in seen_cells:
+            cell_key = (cap.seed, cap.arm, cap.replicate_id)
+            if cell_key in seen_cells:
                 return BondAffinityProbeResult(
                     verdict="INVALID_MEASUREMENT",
                     notes=(
-                        f"duplicate matrix cell {cell} claimed by two captures "
-                        f"({seen_cells[cell]} and {cap.path}) — duplicate sidecar key"
+                        f"duplicate matrix cell {cell_key} claimed by two captures "
+                        f"({seen_cells[cell_key]} and {cap.path}) — dup sidecar key"
                     ),
                 )
-            seen_cells[cell] = cap.path
-            for rid in run_ids:
-                arm_of[rid] = cap.arm
-                replicate_of[rid] = cap.replicate_id
-    return score_bond_affinity(
-        bond_rows, saturation_rows, arm_of=arm_of, replicate_of=replicate_of
-    )
+            seen_cells[cell_key] = cap.path
+            matrix[cell_key] = cap
+
+    # per-capture fold — each cell's near-miss is over its own rows + own saturation.
+    cells: dict[_CellKey, CellStats] = {
+        cell_key: _cell_stats(
+            cell_key[0], cell_key[1], cell_key[2], cap.bond_rows, cap.saturation_rows
+        )
+        for cell_key, cap in matrix.items()
+    }
+    result = route_bond_affinity_cells(cells)
+    # broken assembly (MED-2): an empty matrix substrate over captures that *do* carry a
+    # bare near-miss (every eligible capture non-arm) is INVALID, not "no near-miss".
+    if result.verdict == "INCONCLUSIVE_NO_NEAR_MISS" and any(
+        has_eligible_near_miss(cap.bond_rows, cap.saturation_rows) for cap in captures
+    ):
+        return BondAffinityProbeResult(
+            verdict="INVALID_MEASUREMENT",
+            cells=result.cells,
+            notes=(
+                "eligible near-miss exist but none mapped to a cell "
+                "(every eligible capture is non-arm — broken matrix assembly)"
+            ),
+        )
+    return result
 
 
 def read_bond_affinity_trace_rows(
@@ -766,6 +1018,7 @@ __all__ = [
     "INCONCLUSIVE_LOW_POWER",
     "INCONCLUSIVE_MIXED_SEED",
     "INCONCLUSIVE_NO_NEAR_MISS",
+    "INCONCLUSIVE_TRUNCATED",
     "INVALID_MEASUREMENT",
     "I_LEANING",
     "BondAffinityProbeResult",
@@ -774,6 +1027,7 @@ __all__ = [
     "has_eligible_near_miss",
     "identify_near_miss",
     "read_bond_affinity_trace_rows",
+    "route_bond_affinity_cells",
     "score_bond_affinity",
     "score_bond_affinity_captures",
 ]
