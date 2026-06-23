@@ -937,7 +937,15 @@ class CognitionCycle:
         if not query:
             return []
         try:
-            return await self._retriever.retrieve(agent_state.agent_id, query)
+            # M13-ES1 SPDM: pass the agent's current place so a spatially-aware
+            # retriever (spatial_weight > 0) can bias toward memories formed nearby.
+            # With the production default spatial_weight=0 this is a no-op (the
+            # ranking stays bit-identical to pre-SPDM).
+            return await self._retriever.retrieve(
+                agent_state.agent_id,
+                query,
+                current_location=agent_state.position,
+            )
         except (OllamaUnavailableError, EmbeddingUnavailableError) as exc:
             logger.warning(
                 "Retrieve failed for agent %s: %s — continuing with no memories",
@@ -1472,10 +1480,24 @@ def _observation_content_for_embed(obs: Observation) -> str:  # noqa: PLR0911 �
 def _build_retrieval_query(
     observations: Iterable[Observation],
     agent_state: AgentState,
+    *,
+    include_zone_vocab: bool = True,
 ) -> str:
-    zone = agent_state.position.zone.value
+    """Render the retrieval query from the agent's state + recent observations.
+
+    ``include_zone_vocab`` (M13-ES1 SPDM, Codex HIGH-3 confound control): the
+    default ``True`` keeps the production prefix ``agent at {zone} in {mode} mode``.
+    A SPDM apparatus passes ``False`` to drop the explicit zone token, so a measured
+    retrieval-landscape divergence cannot ride on the zone *string* matching
+    zone-tagged memory content — it must come from the spatial-binding term.
+    """
     mode = agent_state.erre.name.value
-    parts: list[str] = [f"agent at {zone} in {mode} mode"]
+    parts: list[str] = []
+    if include_zone_vocab:
+        zone = agent_state.position.zone.value
+        parts.append(f"agent at {zone} in {mode} mode")
+    else:
+        parts.append(f"agent in {mode} mode")
     parts.extend(_observation_content_for_embed(obs) for obs in observations)
     return " | ".join(parts)
 

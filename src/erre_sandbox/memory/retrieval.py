@@ -29,13 +29,29 @@ if TYPE_CHECKING:
 
     from erre_sandbox.memory.embedding import EmbeddingClient
     from erre_sandbox.memory.store import MemoryStore
-    from erre_sandbox.schemas import MemoryEntry
+    from erre_sandbox.schemas import MemoryEntry, Position, SpatialContext
 
 _SECONDS_PER_DAY: Final[float] = 86_400.0
 DEFAULT_DECAY_LAMBDA: Final[float] = 0.1  # half-life ≈ ln(2)/0.1 ≈ 6.93 days
 DEFAULT_RECALL_BOOST: Final[float] = 0.2
 DEFAULT_K_AGENT: Final[int] = 8
 DEFAULT_K_WORLD: Final[int] = 3
+DEFAULT_SPATIAL_WEIGHT: Final[float] = 0.0
+"""Default weight of the spatial-proximity term (M13-ES1 SPDM).
+
+``0.0`` ⇒ the spatial factor is exactly ``1.0`` ⇒ the score is **bit-identical** to
+the pre-SPDM ranking. Only the SPDM probe / a spatially-aware caller raises it."""
+
+DEFAULT_SPATIAL_GAMMA: Final[float] = 0.5
+"""Spatial-proximity decay (mirrors frozen ``evidence.spdm.constants.SPATIAL_GAMMA``).
+
+Kept as a local default so ``memory`` does not import ``evidence`` (dependency
+direction); ``tests/test_evidence/test_spdm_scorer_identity.py`` pins the two equal.
+Unused when ``spatial_weight == 0`` (the production default)."""
+
+DEFAULT_SPATIAL_COORD_REF: Final[float] = 1.0
+"""Reference scale the proximity distance is divided by before the exp decay
+(mirrors ``evidence.spdm.constants.SPATIAL_COORD_REF``)."""
 DEFAULT_KINDS: Final[tuple[MemoryKind, ...]] = (
     MemoryKind.EPISODIC,
     MemoryKind.SEMANTIC,
@@ -50,16 +66,53 @@ def score(
     cosine_sim: float,
     decay_lambda: float = DEFAULT_DECAY_LAMBDA,
     recall_boost: float = DEFAULT_RECALL_BOOST,
+    spatial_weight: float = DEFAULT_SPATIAL_WEIGHT,
+    proximity: float = 0.0,
 ) -> float:
-    """Combine importance, recency, recall and semantic fit into one score.
+    """Combine importance, recency, recall, semantic fit and spatial context.
 
     Pure function; see ``tests/test_memory/test_retrieval.py`` for the
     invariants this guarantees (monotone decay in ``age_days``, monotone
     boost in ``recall_count``, multiplicative in ``cosine_sim``).
+
+    The spatial term (M13-ES1 SPDM) is a **multiplicative identity**: the factor
+    ``1 + spatial_weight * proximity`` collapses to ``1.0`` when
+    ``spatial_weight == 0`` (production default) or ``proximity == 0`` (no formation
+    location ⇒ no spatial binding), so the pre-SPDM score is reproduced bit-for-bit.
+    ``proximity ∈ [0, 1]`` (1 = co-located with the current position, decaying with
+    distance); a positive ``spatial_weight`` boosts memories formed near where the
+    agent now is, making *which* memories surface depend on the movement history.
     """
     decay = math.exp(-decay_lambda * max(age_days, 0.0))
     boost = 1.0 + recall_boost * max(recall_count, 0)
-    return importance * decay * boost * cosine_sim
+    spatial = 1.0 + spatial_weight * proximity
+    return importance * decay * boost * cosine_sim * spatial
+
+
+def spatial_proximity(
+    now: SpatialContext | Position | None,
+    formed: SpatialContext | None,
+    *,
+    gamma: float = DEFAULT_SPATIAL_GAMMA,
+    coord_ref: float = DEFAULT_SPATIAL_COORD_REF,
+) -> float:
+    """Proximity ∈ [0, 1] between the agent's current place and a formation place.
+
+    ``exp(-gamma * euclidean(now, formed) / coord_ref)``: 1.0 when co-located,
+    decaying to 0 with distance. Returns ``0.0`` (⇒ spatially neutral, score
+    bit-identical) when either place is ``None`` — so a memory without a formation
+    location, or retrieval issued without a current position, receives no spatial
+    boost. The distance is normalised by ``coord_ref`` so ``gamma`` is invariant to
+    the arbitrary scale of the world coordinate frame (SPDM Codex MEDIUM-2).
+    """
+    if now is None or formed is None:
+        return 0.0
+    dx = now.x - formed.x
+    dy = now.y - formed.y
+    dz = now.z - formed.z
+    dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+    ref = coord_ref if coord_ref > 0.0 else 1.0
+    return math.exp(-gamma * dist / ref)
 
 
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
@@ -108,6 +161,9 @@ class Retriever:
         recall_boost: float = DEFAULT_RECALL_BOOST,
         limit_candidates: int = 50,
         now_factory: (datetime | None) = None,
+        spatial_weight: float = DEFAULT_SPATIAL_WEIGHT,
+        spatial_gamma: float = DEFAULT_SPATIAL_GAMMA,
+        spatial_coord_ref: float = DEFAULT_SPATIAL_COORD_REF,
     ) -> None:
         self._store = store
         self._embedding = embedding
@@ -117,6 +173,12 @@ class Retriever:
         # ``now_factory`` is optionally a fixed datetime for deterministic tests;
         # ``None`` means "use real wall clock" (see :meth:`_now`).
         self._fixed_now = now_factory
+        # M13-ES1 SPDM spatial term. ``spatial_weight=0`` (default) ⇒ the score is
+        # bit-identical to pre-SPDM; the spatial factor only engages when a caller
+        # raises the weight *and* passes a ``current_location`` to :meth:`retrieve`.
+        self._spatial_weight = spatial_weight
+        self._spatial_gamma = spatial_gamma
+        self._spatial_coord_ref = spatial_coord_ref
 
     def _now(self) -> datetime:
         return self._fixed_now if self._fixed_now is not None else datetime.now(tz=UTC)
@@ -129,7 +191,21 @@ class Retriever:
         k_agent: int = DEFAULT_K_AGENT,
         k_world: int = DEFAULT_K_WORLD,
         kinds: Sequence[MemoryKind] = DEFAULT_KINDS,
+        current_location: SpatialContext | Position | None = None,
+        mark_recalled: bool = True,
     ) -> list[RankedMemory]:
+        """Rank the agent's memories for ``query``.
+
+        ``current_location`` (M13-ES1 SPDM) is the agent's place *now*; combined
+        with each memory's formation location and a non-zero ``spatial_weight`` it
+        makes which memories surface depend on the movement history. ``None`` ⇒ no
+        spatial boost (bit-identical to pre-SPDM).
+
+        ``mark_recalled`` (SPDM Codex HIGH-3): when ``False`` the ``recall_count``
+        side effect is skipped, so a multi-query measurement battery does not let
+        earlier queries perturb later ones (a measurement-order artifact). Defaults
+        to ``True`` (production behaviour bit-identical).
+        """
         q_vec = await self._embedding.embed_query(query)
         now = self._now()
 
@@ -139,6 +215,7 @@ class Retriever:
             kinds=kinds,
             agent_id=agent_id,
             world=False,
+            current_location=current_location,
         )
         world_ranked = await self._rank_scope(
             q_vec=q_vec,
@@ -146,13 +223,14 @@ class Retriever:
             kinds=kinds,
             agent_id=agent_id,
             world=True,
+            current_location=current_location,
         )
 
         top_agent = agent_ranked[:k_agent]
         top_world = world_ranked[:k_world]
         combined = [*top_agent, *top_world]
 
-        if combined:
+        if combined and mark_recalled:
             await self._store.mark_recalled([r.entry.id for r in combined])
         return combined
 
@@ -164,6 +242,7 @@ class Retriever:
         kinds: Sequence[MemoryKind],
         agent_id: str,
         world: bool,
+        current_location: SpatialContext | Position | None = None,
     ) -> list[RankedMemory]:
         candidates: list[MemoryEntry] = []
         for kind in kinds:
@@ -188,6 +267,16 @@ class Retriever:
             vec = await self._store.get_embedding(entry.id)
             sim = cosine_similarity(vec, q_vec) if vec is not None else 0.0
             age = _age_days(entry.created_at, now)
+            prox = (
+                spatial_proximity(
+                    current_location,
+                    entry.location,
+                    gamma=self._spatial_gamma,
+                    coord_ref=self._spatial_coord_ref,
+                )
+                if self._spatial_weight != 0.0
+                else 0.0
+            )
             strength = score(
                 importance=entry.importance,
                 age_days=age,
@@ -195,6 +284,8 @@ class Retriever:
                 cosine_sim=sim,
                 decay_lambda=self._decay_lambda,
                 recall_boost=self._recall_boost,
+                spatial_weight=self._spatial_weight,
+                proximity=prox,
             )
             scored.append(RankedMemory(entry=entry, strength=strength, cosine_sim=sim))
         scored.sort(key=lambda r: r.strength, reverse=True)
@@ -212,8 +303,12 @@ __all__ = [
     "DEFAULT_K_AGENT",
     "DEFAULT_K_WORLD",
     "DEFAULT_RECALL_BOOST",
+    "DEFAULT_SPATIAL_COORD_REF",
+    "DEFAULT_SPATIAL_GAMMA",
+    "DEFAULT_SPATIAL_WEIGHT",
     "RankedMemory",
     "Retriever",
     "cosine_similarity",
     "score",
+    "spatial_proximity",
 ]
