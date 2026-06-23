@@ -25,6 +25,7 @@ from erre_sandbox.schemas import (
     MemoryEntry,
     MemoryKind,
     SemanticMemoryRecord,
+    SpatialContext,
 )
 
 if TYPE_CHECKING:
@@ -132,7 +133,8 @@ class MemoryStore:
                         last_recalled_at TEXT,
                         recall_count INTEGER NOT NULL DEFAULT 0,
                         source_observation_id TEXT,
-                        tags TEXT NOT NULL DEFAULT '[]'
+                        tags TEXT NOT NULL DEFAULT '[]',
+                        location_json TEXT
                     )
                     """,
                 )
@@ -154,7 +156,8 @@ class MemoryStore:
                         tags TEXT NOT NULL DEFAULT '[]',
                         origin_reflection_id TEXT,
                         belief_kind TEXT,
-                        confidence REAL NOT NULL DEFAULT 1.0
+                        confidence REAL NOT NULL DEFAULT 1.0,
+                        location_json TEXT
                     )
                     """,
                 )
@@ -193,6 +196,10 @@ class MemoryStore:
                     )
                     """,
                 )
+                # M13-ES1 SPDM: add NULLable ``location_json`` to all four kind
+                # tables (idempotent; new DBs get it from the CREATE TABLEs above
+                # once those carry the column, existing DBs via ALTER TABLE).
+                self._migrate_location_schema(conn)
                 # Shared vec0 virtual table.
                 conn.execute(
                     f"""
@@ -307,6 +314,30 @@ class MemoryStore:
             )
 
     @staticmethod
+    def _migrate_location_schema(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure every memory table carries the M13-ES1 ``location_json``.
+
+        M13-ES1 (SPDM): adds a NULLable ``location_json`` TEXT column to all four
+        kind tables so a memory row can record its canonical formation
+        :class:`~erre_sandbox.schemas.SpatialContext` (zone + coordinates) — the
+        spatial binding the retrieval scorer's spatial term reads.
+
+        New DBs receive the column via the ``CREATE TABLE`` above; existing DBs
+        (m4 … M11 era) reach here without it and we apply ``ALTER TABLE ADD COLUMN``
+        on demand. **No backfill**: pre-SPDM rows read back ``location=None`` and the
+        scorer treats them as spatially neutral (bit-identical to pre-SPDM).
+        Idempotent: re-running ``create_schema()`` is a no-op once present.
+        """
+        for table in _KIND_TO_TABLE.values():
+            existing = {
+                row["name"] for row in conn.execute(f"PRAGMA table_info({table})")
+            }
+            if "location_json" not in existing:
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN location_json TEXT",
+                )
+
+    @staticmethod
     def _migrate_dialog_turns_schema(conn: sqlite3.Connection) -> None:
         """Idempotently ensure ``dialog_turns`` carries the M7ε ``epoch_phase`` column.
 
@@ -366,8 +397,9 @@ class MemoryStore:
                     conn.execute(
                         "INSERT INTO episodic_memory("
                         "id, agent_id, content, importance, created_at, "
-                        "last_recalled_at, recall_count, source_observation_id, tags"
-                        ") VALUES (?,?,?,?,?,?,?,?,?)",
+                        "last_recalled_at, recall_count, source_observation_id, tags, "
+                        "location_json"
+                        ") VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (
                             entry.id,
                             entry.agent_id,
@@ -378,6 +410,7 @@ class MemoryStore:
                             entry.recall_count,
                             entry.source_observation_id,
                             json.dumps(entry.tags, ensure_ascii=False),
+                            _location_to_text(entry.location),
                         ),
                     )
                 elif entry.kind is MemoryKind.SEMANTIC:
@@ -390,8 +423,8 @@ class MemoryStore:
                     conn.execute(
                         "INSERT INTO semantic_memory("
                         "id, agent_id, content, importance, created_at, "
-                        "last_recalled_at, recall_count, tags"
-                        ") VALUES (?,?,?,?,?,?,?,?)",
+                        "last_recalled_at, recall_count, tags, location_json"
+                        ") VALUES (?,?,?,?,?,?,?,?,?)",
                         (
                             entry.id,
                             entry.agent_id,
@@ -401,14 +434,15 @@ class MemoryStore:
                             _dt_to_text_opt(entry.last_recalled_at),
                             entry.recall_count,
                             json.dumps(entry.tags, ensure_ascii=False),
+                            _location_to_text(entry.location),
                         ),
                     )
                 elif entry.kind is MemoryKind.PROCEDURAL:
                     conn.execute(
                         "INSERT INTO procedural_memory("
                         "id, agent_id, content, importance, created_at, "
-                        "last_recalled_at, recall_count, tags"
-                        ") VALUES (?,?,?,?,?,?,?,?)",
+                        "last_recalled_at, recall_count, tags, location_json"
+                        ") VALUES (?,?,?,?,?,?,?,?,?)",
                         (
                             entry.id,
                             entry.agent_id,
@@ -418,14 +452,15 @@ class MemoryStore:
                             _dt_to_text_opt(entry.last_recalled_at),
                             entry.recall_count,
                             json.dumps(entry.tags, ensure_ascii=False),
+                            _location_to_text(entry.location),
                         ),
                     )
                 elif entry.kind is MemoryKind.RELATIONAL:
                     conn.execute(
                         "INSERT INTO relational_memory("
                         "id, agent_id, content, importance, created_at, "
-                        "last_recalled_at, recall_count, tags"
-                        ") VALUES (?,?,?,?,?,?,?,?)",
+                        "last_recalled_at, recall_count, tags, location_json"
+                        ") VALUES (?,?,?,?,?,?,?,?,?)",
                         (
                             entry.id,
                             entry.agent_id,
@@ -435,6 +470,7 @@ class MemoryStore:
                             _dt_to_text_opt(entry.last_recalled_at),
                             entry.recall_count,
                             json.dumps(entry.tags, ensure_ascii=False),
+                            _location_to_text(entry.location),
                         ),
                     )
                 else:  # pragma: no cover — exhaustive via MemoryKind enum
@@ -700,8 +736,8 @@ class MemoryStore:
                     "INSERT OR REPLACE INTO semantic_memory("
                     "id, agent_id, content, importance, created_at, "
                     "last_recalled_at, recall_count, tags, "
-                    "origin_reflection_id, belief_kind, confidence"
-                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    "origin_reflection_id, belief_kind, confidence, location_json"
+                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         record.id,
                         record.agent_id,
@@ -714,6 +750,7 @@ class MemoryStore:
                         record.origin_reflection_id,
                         record.belief_kind,
                         record.confidence,
+                        _location_to_text(record.location),
                     ),
                 )
                 # The ``vec0`` virtual table does not support INSERT OR REPLACE
@@ -1146,6 +1183,7 @@ def _row_to_memory_entry(row: sqlite3.Row, kind: MemoryKind) -> MemoryEntry:
             row["source_observation_id"] if kind is MemoryKind.EPISODIC else None
         ),
         tags=json.loads(row["tags"]) if row["tags"] else [],
+        location=_row_location(row),
     )
 
 
@@ -1169,7 +1207,32 @@ def _semantic_row_to_record(
         belief_kind=row["belief_kind"],
         confidence=row["confidence"] if row["confidence"] is not None else 1.0,
         created_at=_text_to_dt(row["created_at"]),
+        location=_row_location(row),
     )
+
+
+def _location_to_text(loc: SpatialContext | None) -> str | None:
+    """Serialise a :class:`SpatialContext` to JSON text (None → NULL column)."""
+    return loc.model_dump_json() if loc is not None else None
+
+
+def _text_to_location(s: str | None) -> SpatialContext | None:
+    """Parse a ``location_json`` column back to :class:`SpatialContext` (None-safe).
+
+    Pre-SPDM rows (column absent / NULL) read back as ``None`` → spatially neutral.
+    """
+    return SpatialContext.model_validate_json(s) if s else None
+
+
+def _row_location(row: sqlite3.Row) -> SpatialContext | None:
+    """Read ``location_json`` from a row (None-safe, pre-migration tolerant).
+
+    The column may be absent on a row fetched before ``create_schema`` ran the
+    additive migration; such a row reads back as ``location=None``.
+    """
+    if "location_json" not in row.keys():  # noqa: SIM118 — sqlite3.Row needs .keys()
+        return None
+    return _text_to_location(row["location_json"])
 
 
 def _dt_to_text(dt: datetime) -> str:

@@ -450,6 +450,44 @@ class Position(BaseModel):
     pitch: float = Field(default=0.0, description="Head tilt in radians (bow, gaze).")
 
 
+class SpatialContext(BaseModel):
+    """Canonical formation-location of a memory (M13-ES1 SPDM).
+
+    The ``MemoryEntry`` / ``SemanticMemoryRecord`` *formation* place — where the
+    agent was when the memory was laid down — recorded as zone + world
+    coordinates. This is the canonical spatial binding the retrieval scorer's
+    spatial term reads (``memory/retrieval.py``), the substrate that was missing
+    when the core thesis closed (no ``location`` on memory rows → no "path" for
+    path-dependence to accumulate along).
+
+    Additive and **nullable** on the memory types: existing rows / wire payloads
+    carry ``location=None`` and the scorer treats them as spatially neutral
+    (proximity factor 1.0), so the pre-SPDM behaviour stays bit-identical.
+
+    ``source_count`` is provenance for the **semantic** path: a reflection-derived
+    record's location is the centroid (mean ``x/y/z``, modal ``zone``) of its
+    source episodic locations, and ``source_count`` records how many were folded
+    in (``None`` for a directly-formed episodic location). Holding a single
+    centroid keeps the scorer uniform (one record → one proximity); the source
+    distribution itself is an ES-2 concern.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    zone: Zone
+    x: float
+    y: float
+    z: float
+    source_count: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Number of source episodic locations aggregated into this centroid "
+            "(semantic records only); None for a directly-formed episodic location."
+        ),
+    )
+
+
 class Physical(BaseModel):
     """Long-timescale somatic state (CSDG HumanCondition adopted as skeleton).
 
@@ -795,6 +833,14 @@ class MemoryEntry(BaseModel):
     recall_count: int = Field(default=0, ge=0)
     source_observation_id: str | None = None
     tags: list[str] = Field(default_factory=list)
+    location: SpatialContext | None = Field(
+        default=None,
+        description=(
+            "Formation location (M13-ES1 SPDM). None for pre-SPDM rows and "
+            "wire payloads without a spatial binding; the retrieval scorer then "
+            "treats the row as spatially neutral (bit-identical to pre-SPDM)."
+        ),
+    )
 
 
 class ReflectionEvent(BaseModel):
@@ -1041,6 +1087,15 @@ class SemanticMemoryRecord(BaseModel):
         ),
     )
     created_at: datetime = Field(default_factory=_utc_now)
+    location: SpatialContext | None = Field(
+        default=None,
+        description=(
+            "Formation location (M13-ES1 SPDM): the centroid of the source "
+            "episodic locations folded into this reflection-derived record "
+            "(``source_count`` provenance). None for pre-SPDM rows; the scorer "
+            "then treats the row as spatially neutral (bit-identical to pre-SPDM)."
+        ),
+    )
 
 
 # =============================================================================
@@ -1489,6 +1544,7 @@ __all__ = [
     "SamplingDelta",
     "SemanticMemoryRecord",
     "ShuhariStage",
+    "SpatialContext",
     "SpeechEvent",
     "SpeechMsg",
     "TemporalEvent",
