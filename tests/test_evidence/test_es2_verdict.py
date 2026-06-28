@@ -85,12 +85,12 @@ def test_temporal_control_not_failing_is_inconclusive() -> None:
     assert "temporal-replay" in v.reasons[0]
 
 
-def test_sparse_support_noise_is_inconclusive() -> None:
-    # median(D_obs) <= 1.5 * max(median(D_self), floor) ⇒ cross-agent divergence
-    # does not exceed within-agent sampling noise (Codex H6).
+def test_split_half_noise_gate_is_inconclusive() -> None:
+    # median(D_obs) <= 1.5 * max(median(D_self), FLOOR_REL) ⇒ cross-agent JS does not
+    # exceed within-agent split-half sampling noise (self-calibrating, Codex H1/H6).
     v = evaluate_verdict(_bank(_c.MIN_VALID_SEEDS, d_obs=0.50, d_self=0.50))
     assert v.verdict == "INCONCLUSIVE"
-    assert "sparse-support noise" in v.reasons[0]
+    assert "split-half noise gate" in v.reasons[0]
 
 
 def test_negative_path_dependence_is_no_go() -> None:

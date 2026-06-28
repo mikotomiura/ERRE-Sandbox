@@ -6,13 +6,18 @@ pre-registration freeze fixed **before** any replay result was seen
 value can only change by a deliberate edit here, which itself requires a
 **superseding ADR**. No value is read off a result and then tuned.
 
-The table is the ``design-final.md`` §11 freeze verbatim (``.steering/
-20260628-m13-es2-replay/``, /reimagine hybrid + Codex ADOPT-WITH-CHANGES, all 6
-HIGH reflected before freeze). Several thresholds are **inherited** from the
-ES-1 / III-a freeze rather than newly invented: ``CI_ALPHA`` / ``N_RESAMPLES`` /
-``NULL_NOISE_FACTOR`` / ``DENOVO_DIVERGENCE_FLOOR`` / ``NO_SPURIOUS_TOL`` track
-the established Jaccard-divergence house style so a freshly chosen threshold does
-not re-introduce arbitrariness. The freeze is pinned verbatim in
+The apparatus table is the original ``design-final.md`` §11 freeze (``.steering/
+20260628-m13-es2-replay/``). The **scoring** constants were **superseded** by the
+measurable ADR (``.steering/20260628-es2-measurable-adr/design-final.md``,
+/reimagine set→distribution + Codex ADOPT-WITH-CHANGES, all HIGH reflected before
+freeze): the set-Jaccard scoring (and its absolute ``DENOVO_DIVERGENCE_FLOOR``)
+gave way to a **Jensen-Shannon divergence over the directed-transition
+distribution** (``DIVERGENCE`` / ``TRANSITION_SUPPORT``) with a fully
+self-calibrating gate (``FLOOR_REL = 0.0`` ⇒ no absolute floor). Several
+thresholds remain **inherited** from the ES-1 / III-a freeze rather than newly
+invented: ``CI_ALPHA`` / ``N_RESAMPLES`` / ``NULL_NOISE_FACTOR`` /
+``NO_SPURIOUS_TOL`` track the established house style so a freshly chosen
+threshold does not re-introduce arbitrariness. The freeze is pinned verbatim in
 ``tests/test_evidence/test_es2_constants.py``.
 
 Claim boundary (``design-final.md`` §0): a GO verdict means "eligible to proceed
@@ -87,16 +92,33 @@ seed-structure set is under-sampled → INCONCLUSIVE (absolute sampling adequacy
 ~6 % of ``N_REPLAY=4096``; calibration-free, no pilot threshold)."""
 
 NULL_NOISE_FACTOR: Final[float] = 1.5
-"""Relative noise gate (ES-1 integration): ``median(D_obs) <= NULL_NOISE_FACTOR *
-max(median(D_self), DENOVO_DIVERGENCE_FLOOR)`` ⇒ the cross-agent divergence does
-not effectively exceed within-agent split-half sampling noise → INCONCLUSIVE.
-The floor protects a degenerate (near-0) ``D_self`` from skipping the gate."""
+"""Relative noise gate (measurable ADR §4, Codex H1): ``median(D_obs) <=
+NULL_NOISE_FACTOR * max(median(D_self), FLOOR_REL)`` ⇒ the cross-agent JS does not
+effectively exceed within-agent split-half sampling noise → INCONCLUSIVE. With
+``FLOOR_REL = 0.0`` this is fully self-calibrating against ``D_self`` (the new
+metric is consistent, so ``D_self`` shrinks with sample size rather than pinning at
+the saturation ceiling that forced the old absolute floor)."""
+
+# --- scoring: Jensen-Shannon divergence (measurable ADR §1-§2) ----------------
+
+DIVERGENCE: Final[str] = "jensen_shannon_base2"
+"""The verdict divergence (measurable ADR §2, Codex L1): Jensen-Shannon, base-2,
+∈[0,1] — bounded, symmetric, **non-saturating**, smoothing-parameter-free. It
+supersedes the set-Jaccard scoring (which saturated on the ``48^4`` tuple support)."""
+
+FLOOR_REL: Final[float] = 0.0
+"""Absolute JS floor — **撤去** (measurable ADR §4, Codex H1 option X). Set to 0 so
+the verdict is fully self-calibrating: the primary gate is ``CI_lower({delta_s}) >
+0`` (matched N-a null relative) and the only practical bar is the relative noise
+gate against ``D_self``. No un-calibrated absolute JS magic number is introduced."""
+
+TRANSITION_SUPPORT: Final[int] = M_FRAGMENTS * (M_FRAGMENTS - 1)
+"""Directed off-diagonal bigram cell count ``M²−M = 2256`` (measurable ADR §1).
+Derived from the frozen ``M_FRAGMENTS = 48`` (not an independent free parameter):
+the support of the primary transition distribution, ≪ the ~12288 transitions
+observed per arm, which is what makes the JS estimator consistent."""
 
 # --- verdict thresholds (§10, conjunctive) ------------------------------------
-
-DENOVO_DIVERGENCE_FLOOR: Final[float] = 0.10
-"""Always-on minimum practical effect: ``median(D_obs) >= this`` (ES-1 practical
-floor integration); a thin A/B structure separation cannot GO."""
 
 NOVELTY_FLOOR: Final[float] = 0.20
 """Lower bound on the median novel directed-transition seed rate (a *floor*, not a
@@ -127,9 +149,10 @@ meaning; Codex M3)."""
 __all__ = [
     "CI_ALPHA",
     "COMPETITION_MIN_VAR",
-    "DENOVO_DIVERGENCE_FLOOR",
+    "DIVERGENCE",
     "EMBED_DIM",
     "EMBED_SALT",
+    "FLOOR_REL",
     "L_SEED",
     "MIN_DENOVO_SEEDS",
     "MIN_VALID_SEEDS",
@@ -143,4 +166,5 @@ __all__ = [
     "N_SEED",
     "PERM_NULL_QUANTILE",
     "POLYA_ALPHA",
+    "TRANSITION_SUPPORT",
 ]

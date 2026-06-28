@@ -10,11 +10,15 @@ path-dependent** novel seeds above a **content-stratified matched permutation
 null**, under explicit **synthetic semantic competition**.
 
 The package is **USE-only** over the frozen core: it imports
-``memory.retrieval.spatial_proximity`` (the ES-1 spatial term), the
-``evidence.spdm`` Jaccard primitive, and ``evidence.bootstrap_ci`` read-only,
-and never imports ``cognition`` or mutates an ES-1 frozen asset. World geometry
-is **mirrored** (not imported) and pinned to ``world.zones`` in the scenario
-test. Every threshold in :mod:`constants` is pre-registered *before* any result.
+``memory.retrieval.spatial_proximity`` (the ES-1 spatial term) and
+``evidence.bootstrap_ci`` read-only, and never imports ``cognition`` or mutates an
+ES-1 frozen asset. The scoring is a **Jensen-Shannon divergence over the
+directed-transition distribution** (:mod:`divergence`, measurable ADR
+``.steering/20260628-es2-measurable-adr/``), superseding the saturated
+``evidence.spdm`` set-Jaccard primitive (now a forensic contrast only, pinned in
+the test). World geometry is **mirrored** (not imported) and pinned to
+``world.zones`` in the scenario test. Every threshold in :mod:`constants` is
+pre-registered *before* any result.
 
 **Non-circularity** (the design's central guarantee, ``design-final.md`` §12):
 
@@ -28,9 +32,9 @@ test. Every threshold in :mod:`constants` is pre-registered *before* any result.
   floor — the apparatus-validity floor, Codex H3);
 * the null is **content-stratified** (each permutation arm preserves the full
   content multiset; only per-content A/B location binding swaps, Codex H4);
-* the seed comparison key is **canonical** (``canonical_seed_structure_id`` over
-  shared content ids; raw fragment ids — disjoint per arm — never enter the
-  verdict, Codex H1);
+* the comparison is on a **canonical content key** — the transition cells are
+  directed bigrams over the shared canonical content index; raw fragment ids —
+  disjoint per arm — never enter a cell or the verdict (Codex H1);
 * the bootstrap unit is the **scenario seed** (per-seed null quantile feeds a
   ``delta_s``; ``N_PERM`` is not a sample size, Codex H5);
 * low A/B divergence (5-zone hub convergence) is **INCONCLUSIVE**, never NO_GO

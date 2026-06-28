@@ -49,7 +49,7 @@ class SeedResult:
     seed: int
     valid: bool
     d_obs: float
-    """A/B de-novo seed-structure Jaccard divergence (frozen ``jaccard_distance``)."""
+    """A/B de-novo directed-transition Jensen-Shannon divergence (measurable ADR §2)."""
     null_q_a: float
     """N-a per-seed null quantile ``quantile(D_perm_a, PERM_NULL_QUANTILE)``."""
     delta_a: float
@@ -69,9 +69,9 @@ class SeedResult:
     effective_zones_a: int
     effective_zones_b: int
     d_self: float
-    """Within-agent split-half self-divergence (mean of the two arms)."""
+    """Within-agent split-half self-divergence (median of the two arms, JS)."""
     no_spurious_margin: float
-    """③ semantic-isomorphic relabel position-set divergence margin (Codex M2)."""
+    """③ semantic-isomorphic relabel transition-distribution JS margin (Codex M2)."""
     var_cosine: float
     """② ``var(pairwise cosine)`` over the synthetic embeddings (validity gate)."""
 
@@ -191,15 +191,16 @@ def _inconclusive_reason(m: _Metrics) -> str | None:  # noqa: PLR0911 — guard 
             f"{m.median_temporal:.4f} >= NOVELTY_FLOOR {_c.NOVELTY_FLOOR}); "
             "apparatus invalid"
         )
-    # Relative noise gate: cross-agent D_obs must exceed within-agent split-half
-    # sampling noise. The floor protects a degenerate (near-0) D_self from skipping
-    # the gate (reusing a frozen constant, not a new magic number).
-    noise_ref = max(m.median_d_self, _c.DENOVO_DIVERGENCE_FLOOR)
+    # Relative noise gate (self-calibrating, measurable ADR §4 / Codex H1): the
+    # cross-agent JS must exceed the within-agent split-half JS noise. With
+    # FLOOR_REL = 0.0 there is no absolute JS floor — the consistent JS estimator
+    # makes D_self shrink with sample size, so the noise reference is D_self itself.
+    noise_ref = max(m.median_d_self, _c.FLOOR_REL)
     if m.median_d_obs <= _c.NULL_NOISE_FACTOR * noise_ref:
         return (
-            f"sparse-support noise: median(D_obs) {m.median_d_obs:.4f} <= "
+            f"split-half noise gate: median(D_obs) {m.median_d_obs:.4f} <= "
             f"{_c.NULL_NOISE_FACTOR} * max(median(D_self) {m.median_d_self:.4f}, "
-            f"floor {_c.DENOVO_DIVERGENCE_FLOOR})"
+            f"FLOOR_REL {_c.FLOOR_REL})"
         )
     return None
 
@@ -214,11 +215,6 @@ def _go_failures(m: _Metrics) -> list[str]:
         )
     if m.ci_lower <= 0.0:
         failures.append(f"N-a bootstrap CI lower {m.ci_lower:.4f} <= 0 (90% CI)")
-    if m.median_d_obs < _c.DENOVO_DIVERGENCE_FLOOR:
-        failures.append(
-            f"median D_obs {m.median_d_obs:.4f} < practical floor "
-            f"{_c.DENOVO_DIVERGENCE_FLOOR}"
-        )
     if m.median_no_spurious > _c.NO_SPURIOUS_TOL:
         failures.append(
             f"③ no-spurious margin {m.median_no_spurious:.4f} > "
