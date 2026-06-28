@@ -60,37 +60,56 @@ def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
-def compose_sampling(base: SamplingBase, delta: SamplingDelta) -> ResolvedSampling:
-    """Compose ``base + delta`` per field and clamp into the valid range.
+def compose_sampling(
+    base: SamplingBase,
+    mode_delta: SamplingDelta,
+    loco_delta: SamplingDelta | None = None,
+) -> ResolvedSampling:
+    """Compose ``base + mode_delta + loco_delta`` per field and clamp.
 
     Each field is the plain **sum** of ``base`` (the persona's absolute
-    parameter) and ``delta`` (the ERRE mode's signed additive offset), then
-    clamped into the ranges declared on :class:`ResolvedSampling`. Misconfigured
-    personas or ERRE tables therefore cannot produce an invalid payload — the
+    parameter), ``mode_delta`` (the ERRE mode's signed additive offset), and
+    ``loco_delta`` (the M13-ES3 locomotion offset; see
+    :func:`erre_sandbox.erre.locomotion_sampling.locomotion_delta`), then clamped
+    into the ranges declared on :class:`ResolvedSampling`. Misconfigured personas
+    or ERRE / locomotion tables therefore cannot produce an invalid payload — the
     worst case is a saturated boundary value.
+
+    ``loco_delta`` defaults to ``None`` and is then treated as the all-zero
+    delta, so ``compose_sampling(base, mode_delta)`` and
+    ``compose_sampling(base, mode_delta, None)`` are **bit-identical** to the
+    pre-ES3 two-argument composition (backward-compatibility invariant, Codex
+    M4 / L2 — pinned across every call path in
+    ``tests/test_inference/test_sampling.py``).
 
     Args:
         base: The persona's default sampling (``PersonaSpec.default_sampling``).
-        delta: The ERRE mode's sampling overrides
+        mode_delta: The ERRE mode's sampling overrides
             (``AgentState.erre.sampling_overrides``).
+        loco_delta: The locomotion sampling offset, or ``None`` (= all-zero, the
+            pre-ES3 behaviour). Produced by ``locomotion_delta`` from
+            ``AgentState.locomotion``.
 
     Returns:
         A frozen :class:`ResolvedSampling` containing the three post-clamp
         values.
     """
+    loco_t = loco_delta.temperature if loco_delta is not None else 0.0
+    loco_p = loco_delta.top_p if loco_delta is not None else 0.0
+    loco_r = loco_delta.repeat_penalty if loco_delta is not None else 0.0
     return ResolvedSampling(
         temperature=_clamp(
-            base.temperature + delta.temperature,
+            base.temperature + mode_delta.temperature + loco_t,
             _TEMPERATURE_MIN,
             _TEMPERATURE_MAX,
         ),
         top_p=_clamp(
-            base.top_p + delta.top_p,
+            base.top_p + mode_delta.top_p + loco_p,
             _TOP_P_MIN,
             _TOP_P_MAX,
         ),
         repeat_penalty=_clamp(
-            base.repeat_penalty + delta.repeat_penalty,
+            base.repeat_penalty + mode_delta.repeat_penalty + loco_r,
             _REPEAT_PENALTY_MIN,
             _REPEAT_PENALTY_MAX,
         ),

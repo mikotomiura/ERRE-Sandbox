@@ -54,9 +54,9 @@ def test_schema_version_is_m7g() -> None:
     ``RelationshipBond.latest_belief_kind``), and M9-A adds
     ``ReasoningTrace.trigger_event``. The surface this file exercises
     remains valid against the current SCHEMA_VERSION pin
-    (``0.10.0-m7h``).
+    (``0.11.0-m13es3``).
     """
-    assert SCHEMA_VERSION == "0.10.0-m7h"
+    assert SCHEMA_VERSION == "0.11.0-m13es3"
 
 
 # ---------- §7 WorldLayoutMsg discriminator ----------------------------------

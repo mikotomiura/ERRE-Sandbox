@@ -335,6 +335,54 @@ def test_agent_state_json_round_trip_is_lossless() -> None:
     assert re_loaded == original
 
 
+# --- M13-ES3 LocomotionState (additive, nullable, backward-compatible) --------
+
+
+def test_agent_state_locomotion_defaults_to_none() -> None:
+    """A freshly built AgentState has no locomotion channel (pre-ES3 behaviour)."""
+    assert _make_agent_state().locomotion is None
+
+
+def test_agent_state_without_locomotion_field_deserialises_to_none() -> None:
+    """An old wire payload (no ``locomotion`` key) loads with ``locomotion=None``.
+
+    This is the migration guarantee: existing serialised AgentState rows predate
+    the field and must not fail validation.
+    """
+    payload = _make_agent_state().model_dump(mode="json")
+    payload.pop("locomotion", None)
+    assert "locomotion" not in payload
+    re_loaded = AgentState.model_validate(payload)
+    assert re_loaded.locomotion is None
+
+
+def test_agent_state_round_trip_with_locomotion() -> None:
+    from erre_sandbox.schemas import LocomotionState
+
+    state = _make_agent_state().model_copy(
+        update={"locomotion": LocomotionState(lam=0.42, gait="walk")},
+    )
+    re_loaded = AgentState.model_validate_json(state.model_dump_json())
+    assert re_loaded == state
+    assert re_loaded.locomotion is not None
+    assert re_loaded.locomotion.lam == pytest.approx(0.42)
+    assert re_loaded.locomotion.gait == "walk"
+
+
+def test_locomotion_state_defaults_and_bounds() -> None:
+    from erre_sandbox.schemas import LocomotionState
+
+    default = LocomotionState()
+    assert default.lam == 0.0
+    assert default.gait is None
+    with pytest.raises(ValidationError):
+        LocomotionState(lam=1.5)  # _Unit upper bound
+    with pytest.raises(ValidationError):
+        LocomotionState(lam=-0.1)  # _Unit lower bound
+    with pytest.raises(ValidationError):
+        LocomotionState(unknown=1)  # type: ignore[call-arg]  # extra=forbid
+
+
 def test_persona_spec_json_round_trip_is_lossless() -> None:
     spec = PersonaSpec(
         persona_id="kant",
@@ -378,7 +426,7 @@ def test_schema_version_is_current_milestone() -> None:
     Pin is intentionally reusable: each milestone bump updates this literal
     together with the ``schema_version`` check in ``test_schemas_m{N}.py``.
     """
-    assert SCHEMA_VERSION == "0.10.0-m7h"
+    assert SCHEMA_VERSION == "0.11.0-m13es3"
 
 
 def test_agent_spec_validates_minimal_shape() -> None:

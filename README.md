@@ -45,7 +45,7 @@ primitives, then observes what emergent intellectual behavior appears.
 
 ## 🧭 Status
 
-> **Wire schema `0.10.0-m7h`** · three-agent society live on Godot 4.6 ·
+> **Wire schema `0.11.0-m13es3`** · three-agent society live on Godot 4.6 ·
 > M9-C-adopt (kant LoRA pilot) **closed** · next milestone: **M10-11 evaluation framework**
 
 The three-agent society boots through

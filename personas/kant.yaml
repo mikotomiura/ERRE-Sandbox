@@ -10,7 +10,7 @@
 #   legend      — widely transmitted but source support is weak
 #   speculative — our cognitive-neuroscience interpretation of an attested fact
 
-schema_version: "0.10.0-m7h"
+schema_version: "0.11.0-m13es3"
 persona_id: kant
 display_name: "Immanuel Kant"
 era: "1724-1804"

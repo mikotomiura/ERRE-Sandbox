@@ -17,7 +17,7 @@
 - **Contracts レイヤー (実)**: `src/erre_sandbox/contracts/` (PR #111 で導入、F5)。`schemas.py` と並ぶ ui-allowable boundary。M9-eval 用に `eval_paths.py` を追加 (PR #128 系列): `raw_dialog` / `metrics` の schema 名・列 allow-list・`RawTrainingRelation` Protocol・`EvaluationContaminationError` を提供
 - **Evidence レイヤー (実)**: `src/erre_sandbox/evidence/` 配下に `metrics.py` (M8 baseline quality)、`scaling_metrics.py` (M8 scaling profile)、`tier_a/` (Burrows / MATTR / NLI / novelty / Empath proxy)、`bootstrap_ci.py`、`golden_baseline.py`、`eval_store.py` (DuckDB)、`capture_sidecar.py` を実装済 (M8 + M9-eval system)
 - **Eval CLI (実)**: `erre-sandbox` サブコマンドに `baseline-metrics` / `scaling-metrics` / `export-log` を実装済。M9-eval 用に `python -m erre_sandbox.cli.eval_run_golden` / `python -m erre_sandbox.cli.eval_audit` が独立コマンドとして提供される (`erre-eval-run-golden` / `erre-eval-audit` prog)
-- **Wire schema (実)**: `SCHEMA_VERSION = "0.10.0-m7h"` (M9-A `event-boundary-observability` bump、M7ζ `live-resonance` の上)。`HandshakeMsg` で MacBook / G-GEAR / Godot の lockstep を強制
+- **Wire schema (実)**: `SCHEMA_VERSION = "0.11.0-m13es3"` (M9-A `event-boundary-observability` bump、M7ζ `live-resonance` の上)。`HandshakeMsg` で MacBook / G-GEAR / Godot の lockstep を強制
 - **M9-A trigger-event 観測 (実)**: `ReasoningTrace.trigger_event: TriggerEventTag | None` (M9-A 加算) が Reflector → gateway → Godot `ReasoningPanel` まで伝搬し、観測者は反省発火の理由を視認可能
 
 ### 全体図 (現状 + planned 混在表記)
