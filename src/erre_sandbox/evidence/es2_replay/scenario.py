@@ -10,12 +10,15 @@ embeddings); **only where each content is formed differs, as a consequence of th
 walk** — never hand-assigned.
 
 Each arm's experience fragments feed the verdict-blind **replay kernel**
-(:mod:`recombination`) → ``N_REPLAY`` seed structures. The de-novo-eligible
-structures (:mod:`novelty`) of A vs B give ``D_obs`` (frozen
-:func:`erre_sandbox.evidence.spdm.probe.jaccard_distance`), measured against the
-content-stratified N-a permutation null (:mod:`permutation_null`), with the N-b
-within-agent pairing permutation as a sensitivity. The per-seed readouts feed the
-frozen conjunctive verdict (:mod:`verdict_report`).
+(:mod:`recombination`) → ``N_REPLAY`` seed structures. The de-novo-eligible seeds
+(:mod:`novelty`) of A vs B give ``D_obs`` = the **Jensen-Shannon divergence** over
+their pooled directed-transition distributions (:mod:`divergence`, measurable ADR
+``.steering/20260628-es2-measurable-adr/`` — this supersedes the saturated
+set-Jaccard scoring), measured against the content-stratified N-a permutation null
+(:mod:`permutation_null`), with the N-b within-agent pairing permutation as a
+sensitivity. The per-seed readouts feed the frozen conjunctive verdict
+(:mod:`verdict_report`). The superseded Jaccard ``D_obs`` is kept as a forensic
+contrast only.
 
 This is **path-recombination** replay, distinct from
 :mod:`erre_sandbox.cognition.world_model_replay` (fixed-stream reconcile replay).
@@ -38,6 +41,16 @@ from typing import TYPE_CHECKING, Final
 import numpy as np
 
 from erre_sandbox.evidence.es2_replay import constants as _c
+from erre_sandbox.evidence.es2_replay.divergence import (
+    co_occurrence_distribution,
+    effective_support,
+    js_divergence,
+    novel_only_transition_distribution,
+    transition_distribution,
+    transition_distribution_all,
+    tv_distance,
+    unigram_distribution,
+)
 from erre_sandbox.evidence.es2_replay.novelty import (
     de_novo_structure_ids,
     exact_de_novo_rate,
@@ -64,7 +77,6 @@ from erre_sandbox.evidence.es2_replay.verdict_report import (
     SeedResult,
     evaluate_verdict,
 )
-from erre_sandbox.evidence.spdm.probe import jaccard_distance
 from erre_sandbox.schemas import Zone
 
 if TYPE_CHECKING:
@@ -152,13 +164,20 @@ def _arm_replay(
 def _split_half_d_self(
     seeds: np.ndarray,
     valid: np.ndarray,
-    struct: np.ndarray,
+    m: int,
 ) -> float:
-    """Within-agent split-half self-divergence (Codex H6 noise reference)."""
+    """Within-agent split-half self-divergence (Codex H6 noise reference, JS).
+
+    Each half's de-novo directed-transition distribution is scored by JS. Because
+    the new metric is **consistent** (the transition support ≪ the per-half
+    transition count), this self-null shrinks with sample size instead of pinning at
+    the saturation ceiling that made the old set-Jaccard ``D_self`` ≈ 1 — the
+    structural defect the measurable ADR resolves.
+    """
     half = seeds.shape[0] // 2
-    ids_1 = de_novo_structure_ids(struct[:half], seeds[:half], valid[:half])
-    ids_2 = de_novo_structure_ids(struct[half:], seeds[half:], valid[half:])
-    return jaccard_distance_int(ids_1, ids_2)
+    p1 = transition_distribution(seeds[:half], valid[:half], m)
+    p2 = transition_distribution(seeds[half:], valid[half:], m)
+    return js_divergence(p1, p2)
 
 
 def _no_spurious_margin(
@@ -179,22 +198,30 @@ def _no_spurious_margin(
     raw-id artifact (the ES-1 HIGH-2 / parity-confound failure mode). Realised as
     two replays of the identical apparatus on the **same** rng stream (the strongest
     isomorphism = identity semantic matrix); a non-zero margin could only appear if a
-    raw-id dependence had leaked into the kernel.
+    raw-id dependence had leaked into the kernel. Scored by JS over the de-novo
+    directed-transition distribution (bit-identical inputs ⇒ JS = 0).
     """
-    seeds_ref, valid_ref, struct_ref = _arm_replay(
+    seeds_ref, valid_ref, _struct_ref = _arm_replay(
         coords, semantic, m, n_replay, l_seed, _rng(seed, _STREAM_NO_SPURIOUS)
     )
-    seeds_iso, valid_iso, struct_iso = _arm_replay(
+    seeds_iso, valid_iso, _struct_iso = _arm_replay(
         coords, semantic, m, n_replay, l_seed, _rng(seed, _STREAM_NO_SPURIOUS)
     )
-    ids_ref = de_novo_structure_ids(struct_ref, seeds_ref, valid_ref)
-    ids_iso = de_novo_structure_ids(struct_iso, seeds_iso, valid_iso)
-    return jaccard_distance_int(ids_ref, ids_iso)
+    p_ref = transition_distribution(seeds_ref, valid_ref, m)
+    p_iso = transition_distribution(seeds_iso, valid_iso, m)
+    return js_divergence(p_ref, p_iso)
 
 
 @dataclass(frozen=True)
 class SeedForensic:
-    """Per-seed blind-generator provenance + diagnostics (recorded verbatim)."""
+    """Per-seed blind-generator provenance + diagnostics (recorded verbatim).
+
+    The verdict-driving fields mirror :class:`SeedResult`; the remaining fields are
+    **forensic only** (measurable ADR §6, non-promoting: they never change the
+    verdict). They record the superseded Jaccard contrast, the TV / R-2 / R-3 /
+    novel-only divergence contrasts, and the Codex H2 effective-support diagnostics
+    that distinguish a true low-power INCONCLUSIVE from a metric artifact.
+    """
 
     seed: int
     start_zone: Zone
@@ -215,6 +242,31 @@ class SeedForensic:
     d_self: float
     no_spurious_margin: float
     var_cosine: float
+    # --- forensic only (non-promoting, measurable ADR §6) ---
+    d_obs_jaccard: float
+    """Superseded set-Jaccard ``D_obs`` (old saturated metric), kept for contrast."""
+    tv_obs: float
+    """Total-variation distance of the A/B transition distributions (contrast)."""
+    novel_only_js: float
+    """JS over the novel-only directed-transition distributions (Codex M1 contrast)."""
+    cooccur_js: float
+    """R-2 JS over the undirected co-occurrence distributions (marginal contrast)."""
+    unigram_js: float
+    """R-3 JS over the occupancy unigram distributions (marginal contrast)."""
+    eff_support_a: float
+    eff_support_b: float
+    """Inverse-Simpson effective support of each arm's transition distribution (H2)."""
+    hill1_a: float
+    hill1_b: float
+    """Shannon effective support ``exp(H)`` of each arm's transition dist (H2)."""
+    nonzero_a: int
+    nonzero_b: int
+    """Occupied-cell count of each arm's transition distribution (H2)."""
+    coverage_a: float
+    coverage_b: float
+    """Occupied fraction of the ``M²−M`` support of each arm (H2)."""
+    temporal_nonzero: int
+    """Occupied-cell count of the temporal-control unfiltered transition dist."""
 
 
 def _content_var_cosine(semantic_cosine: np.ndarray) -> float:
@@ -256,19 +308,23 @@ def build_seed_result(
     semantic = semantic_matrix(embeddings)
     var_cosine = _content_var_cosine(cosine)
 
-    # ③ replay both arms; D_obs over de-novo seed-structure sets (frozen Jaccard).
+    # ③ replay both arms; D_obs = JS over the de-novo directed-transition
+    # distributions (measurable ADR §1-§2). The replay kernel / walk / de-novo filter
+    # are the frozen apparatus; only the readout is the JS-scored distribution.
     seeds_a, valid_a, struct_a = _arm_replay(
         coords_a, semantic, m, n_replay, l_seed, _rng(seed, _STREAM_REPLAY_A)
     )
     seeds_b, valid_b, struct_b = _arm_replay(
         coords_b, semantic, m, n_replay, l_seed, _rng(seed, _STREAM_REPLAY_B)
     )
+    dist_a = transition_distribution(seeds_a, valid_a, m)
+    dist_b = transition_distribution(seeds_b, valid_b, m)
+    d_obs = js_divergence(dist_a, dist_b)
+
+    # de-novo seed counts (sampling-adequacy gate input) + superseded Jaccard contrast.
     ids_a = de_novo_structure_ids(struct_a, seeds_a, valid_a)
     ids_b = de_novo_structure_ids(struct_b, seeds_b, valid_b)
-    d_obs = jaccard_distance(
-        frozenset(str(i) for i in ids_a.tolist()),
-        frozenset(str(i) for i in ids_b.tolist()),
-    )
+    d_obs_jaccard = jaccard_distance_int(ids_a, ids_b)
 
     # ① N-a primary null + N-b sensitivity null → per-seed quantiles/deltas.
     d_perm_a = n_a_null_distribution(
@@ -311,14 +367,35 @@ def build_seed_result(
     temporal_valid = np.ones(temporal_seeds.shape[0], dtype=bool)
     temporal_novel = novel_transition_rate(temporal_seeds, temporal_valid)
 
-    # Codex H6 noise reference + Codex M2 no-spurious control.
+    # Codex H6 noise reference (split-half JS) + Codex M2 no-spurious control (JS).
     d_self = statistics.median(
         [
-            _split_half_d_self(seeds_a, valid_a, struct_a),
-            _split_half_d_self(seeds_b, valid_b, struct_b),
+            _split_half_d_self(seeds_a, valid_a, m),
+            _split_half_d_self(seeds_b, valid_b, m),
         ]
     )
     no_spurious = _no_spurious_margin(coords_a, semantic, m, n_replay, l_seed, seed)
+
+    # Forensic contrasts (non-promoting, measurable ADR §6): TV / R-2 / R-3 /
+    # novel-only divergences + Codex H2 effective-support diagnostics + temporal JS.
+    tv_obs = tv_distance(dist_a, dist_b)
+    novel_only_js = js_divergence(
+        novel_only_transition_distribution(seeds_a, valid_a, m),
+        novel_only_transition_distribution(seeds_b, valid_b, m),
+    )
+    cooccur_js = js_divergence(
+        co_occurrence_distribution(seeds_a, valid_a, m),
+        co_occurrence_distribution(seeds_b, valid_b, m),
+    )
+    unigram_js = js_divergence(
+        unigram_distribution(seeds_a, valid_a, m),
+        unigram_distribution(seeds_b, valid_b, m),
+    )
+    supp_a = effective_support(dist_a)
+    supp_b = effective_support(dist_b)
+    temporal_nonzero = effective_support(
+        transition_distribution_all(temporal_seeds, m)
+    ).nonzero
 
     eff_a = _effective_zones(traj_a)
     eff_b = _effective_zones(traj_b)
@@ -361,6 +438,20 @@ def build_seed_result(
         d_self=d_self,
         no_spurious_margin=no_spurious,
         var_cosine=var_cosine,
+        d_obs_jaccard=d_obs_jaccard,
+        tv_obs=tv_obs,
+        novel_only_js=novel_only_js,
+        cooccur_js=cooccur_js,
+        unigram_js=unigram_js,
+        eff_support_a=supp_a.simpson,
+        eff_support_b=supp_b.simpson,
+        hill1_a=supp_a.hill1,
+        hill1_b=supp_b.hill1,
+        nonzero_a=supp_a.nonzero,
+        nonzero_b=supp_b.nonzero,
+        coverage_a=supp_a.coverage,
+        coverage_b=supp_b.coverage,
+        temporal_nonzero=int(temporal_nonzero),
     )
     return result, forensic
 

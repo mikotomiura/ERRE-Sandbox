@@ -1,10 +1,13 @@
-"""① null fidelity for the ES-2 apparatus (Codex H4 + jaccard reuse pin).
+"""① null mechanism fidelity for the ES-2 apparatus (Codex H4 + jaccard contrast pin).
 
-Pins: the fast integer :func:`jaccard_distance_int` equals the frozen
-:func:`erre_sandbox.evidence.spdm.probe.jaccard_distance` (so the hot permutation
-loop cannot drift from the headline ``D_obs``); and the N-a content-stratified
-paired permutation preserves each arm's **full content multiset** (Codex H4:
-location binding swaps, composition is never nulled).
+Pins the **frozen permutation mechanism** (unchanged by the measurable ADR): the
+N-a content-stratified paired permutation preserves each arm's **full content
+multiset** (Codex H4: location binding swaps, composition is never nulled). Also
+pins the retained forensic-contrast primitive :func:`jaccard_distance_int` equal to
+the frozen :func:`erre_sandbox.evidence.spdm.probe.jaccard_distance` — after the
+measurable ADR the null/headline metric is the Jensen-Shannon divergence
+(:mod:`erre_sandbox.evidence.es2_replay.divergence`); the set-Jaccard survives only
+as the recorded forensic contrast, so its equivalence pin still matters.
 """
 
 from __future__ import annotations

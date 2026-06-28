@@ -25,23 +25,28 @@ estimates the per-seed quantile and is never a bootstrap sample size. That step
 lives in :mod:`verdict_report`; this module produces the per-seed ``D_perm``
 distributions.
 
-For speed the inner loop uses :func:`jaccard_distance_int` (a ``numpy`` set
-divergence over integer structure ids); ``tests/test_evidence/
-test_es2_permutation_null.py`` pins it byte-equal to the frozen
-:func:`erre_sandbox.evidence.spdm.probe.jaccard_distance` so the fast path cannot
-drift from the headline ``D_obs`` (which uses the frozen function directly).
+**Scoring (measurable ADR §3)**: the permutation *mechanism* is frozen
+(:func:`stratified_swap` content-stratified swap / the N-b within-agent pairing),
+but the per-permutation score is the **Jensen-Shannon divergence over the
+directed-transition distribution** (:mod:`divergence`), matching the superseded
+headline ``D_obs``. The legacy set-Jaccard primitive :func:`jaccard_distance_int`
+is retained as a **forensic contrast only** (it lets the run record the old
+saturated metric side-by-side) and is pinned byte-equal to the frozen
+:func:`erre_sandbox.evidence.spdm.probe.jaccard_distance` in the test.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from erre_sandbox.evidence.es2_replay.novelty import de_novo_structure_ids
+from erre_sandbox.evidence.es2_replay.divergence import (
+    js_divergence,
+    transition_distribution,
+)
 from erre_sandbox.evidence.es2_replay.recombination import (
     kernel_weights,
     proximity_matrix,
     replay_walks,
-    structure_ids,
 )
 
 
@@ -49,8 +54,9 @@ def jaccard_distance_int(a: np.ndarray, b: np.ndarray) -> float:
     """Jaccard distance ``1 - |a∩b| / |a∪b|`` over integer id sets ∈ [0, 1].
 
     Mirrors :func:`erre_sandbox.evidence.spdm.probe.jaccard_distance` (two empty
-    sets ⇒ distance 0) but on ``numpy`` integer arrays for the hot permutation
-    loop. Pinned equal to the frozen string-set version in the test.
+    sets ⇒ distance 0) but on ``numpy`` integer arrays. **Forensic contrast only**
+    after the measurable ADR (the superseded set metric); pinned equal to the frozen
+    string-set version in the test.
     """
     sa = np.unique(a)
     sb = np.unique(b)
@@ -82,17 +88,22 @@ def stratified_swap(
     return arm_a, arm_b
 
 
-def _arm_de_novo_ids(
+def _arm_transition_distribution(
     coords: np.ndarray,
     semantic: np.ndarray,
     n_replay: int,
     l_seed: int,
     rng: np.random.Generator,
 ) -> np.ndarray:
-    """Replay one arm from its fragment locations → its de-novo structure-id set."""
+    """Replay one arm → its de-novo directed-transition distribution (measurable ADR).
+
+    The replay kernel (proximity × semantic), self-avoiding walk and de-novo filter
+    are the frozen apparatus; only the readout is the JS-scored transition
+    distribution instead of the superseded structure-id set.
+    """
     weights = kernel_weights(proximity_matrix(coords), semantic)
     seeds, valid = replay_walks(weights, n_replay, l_seed, rng)
-    return de_novo_structure_ids(structure_ids(seeds, coords.shape[0]), seeds, valid)
+    return transition_distribution(seeds, valid, coords.shape[0])
 
 
 def n_a_null_distribution(
@@ -118,9 +129,9 @@ def n_a_null_distribution(
     d_perm = np.empty(n_perm, dtype=np.float64)
     for p in range(n_perm):
         arm_a, arm_b = stratified_swap(coords_a, coords_b, coins[p])
-        ids_a = _arm_de_novo_ids(arm_a, semantic, n_replay, l_seed, rng)
-        ids_b = _arm_de_novo_ids(arm_b, semantic, n_replay, l_seed, rng)
-        d_perm[p] = jaccard_distance_int(ids_a, ids_b)
+        dist_a = _arm_transition_distribution(arm_a, semantic, n_replay, l_seed, rng)
+        dist_b = _arm_transition_distribution(arm_b, semantic, n_replay, l_seed, rng)
+        d_perm[p] = js_divergence(dist_a, dist_b)
     return d_perm
 
 
@@ -147,9 +158,9 @@ def n_b_null_distribution(
     for p in range(n_perm):
         arm_a = coords_a[rng.permutation(m)]
         arm_b = coords_b[rng.permutation(m)]
-        ids_a = _arm_de_novo_ids(arm_a, semantic, n_replay, l_seed, rng)
-        ids_b = _arm_de_novo_ids(arm_b, semantic, n_replay, l_seed, rng)
-        d_perm[p] = jaccard_distance_int(ids_a, ids_b)
+        dist_a = _arm_transition_distribution(arm_a, semantic, n_replay, l_seed, rng)
+        dist_b = _arm_transition_distribution(arm_b, semantic, n_replay, l_seed, rng)
+        d_perm[p] = js_divergence(dist_a, dist_b)
     return d_perm
 
 
