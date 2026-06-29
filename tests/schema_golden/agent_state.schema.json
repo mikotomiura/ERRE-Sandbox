@@ -138,6 +138,35 @@
       "title": "ERREModeName",
       "type": "string"
     },
+    "LocomotionState": {
+      "additionalProperties": false,
+      "description": "Kinetic-history locomotion intensity (M13-ES3 歩行→sampling 変調).\n\nThe agent's **movement history** as an EMA intensity ``lam`` ∈ [0, 1],\ndeliberately distinct from the *location* channel (the ``peripatetic`` ERRE\nmode's zone-triggered static +0.3 temperature bump). ``lam`` rises on a\nwalking streak (a zone change this tick) and decays on stay, per\n``lam_t = (1-α)·lam_{t-1} + α·move_t`` where ``move_t ∈ {0, 1}`` is \"did the\nzone change this tick\" (see\n:func:`erre_sandbox.erre.locomotion_sampling.locomotion_delta`). It is the\ninput to the locomotion sampling delta — the **third additive term** of\n:func:`erre_sandbox.inference.sampling.compose_sampling`.\n\nAdditive and **nullable** on :class:`AgentState`: an agent with\n``locomotion=None`` produces no locomotion delta, so the pre-ES3 sampling\ncomposition stays **bit-identical** (backward compatible; existing rows /\nwire payloads deserialise with ``locomotion=None``). ``gait`` is an optional\nfree-form forensic/observer descriptor (e.g. ``\"walk\"`` / ``\"stay\"``); it\nnever enters the sampling math.",
+      "properties": {
+        "gait": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional forensic gait label (walk/stay); never enters sampling.",
+          "title": "Gait"
+        },
+        "lam": {
+          "default": 0.0,
+          "description": "Locomotion intensity EMA λ ∈ [0,1]: (1-α)·λ_prev + α·move_t, move_t∈{0,1} = did the containing zone change this tick. 0 = at rest; rises on a walking streak, decays on stay.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Lam",
+          "type": "number"
+        }
+      },
+      "title": "LocomotionState",
+      "type": "object"
+    },
     "Physical": {
       "additionalProperties": false,
       "description": "Long-timescale somatic state (CSDG HumanCondition adopted as skeleton).\n\nAll fields move on a daily / half-life scale. Instantaneous affect lives in\n:class:`Cognitive` (``valence`` / ``arousal``) instead.",
@@ -404,6 +433,18 @@
     "erre": {
       "$ref": "#/$defs/ERREMode"
     },
+    "locomotion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocomotionState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kinetic-history locomotion intensity (M13-ES3). None → no locomotion sampling delta → pre-ES3 composition bit-identical."
+    },
     "persona_id": {
       "title": "Persona Id",
       "type": "string"
@@ -422,7 +463,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "0.10.0-m7h",
+      "default": "0.11.0-m13es3",
       "title": "Schema Version",
       "type": "string"
     },

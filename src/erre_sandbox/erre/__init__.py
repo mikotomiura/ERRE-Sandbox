@@ -22,6 +22,7 @@ from erre_sandbox.erre.fsm import (
     ZONE_TO_DEFAULT_ERRE_MODE,
     DefaultERREModePolicy,
 )
+from erre_sandbox.erre.locomotion_sampling import locomotion_delta
 from erre_sandbox.erre.sampling_table import SAMPLING_DELTA_BY_MODE
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "SHUHARI_TO_MODE",
     "ZONE_TO_DEFAULT_ERRE_MODE",
     "DefaultERREModePolicy",
+    "locomotion_delta",
 ]

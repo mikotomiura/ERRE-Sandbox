@@ -1049,3 +1049,52 @@ async def test_flag_on_fallback_unparseable_carrier_records_status(
     assert carrier.llm_status == "unparseable"
     assert carrier.emitted is False
     assert carrier.disposition == "not_emitted"
+
+
+# --- M13-ES3 locomotion live wiring (_advance_locomotion) ---------------------
+
+
+def test_advance_locomotion_none_stays_none() -> None:
+    """No locomotion channel ⇒ stays None (pre-ES3 bit-identical)."""
+    from erre_sandbox.cognition.cycle import _advance_locomotion
+
+    assert (
+        _advance_locomotion(None, destination_zone=Zone.AGORA, current_zone=Zone.STUDY)
+        is None
+    )
+
+
+def test_advance_locomotion_move_raises_lambda() -> None:
+    from erre_sandbox.cognition.cycle import _advance_locomotion
+    from erre_sandbox.schemas import LocomotionState
+
+    out = _advance_locomotion(
+        LocomotionState(lam=0.0),
+        destination_zone=Zone.AGORA,
+        current_zone=Zone.STUDY,
+    )
+    assert out is not None
+    assert out.lam == pytest.approx(0.3)  # move_t=1, α=0.3
+
+
+def test_advance_locomotion_same_zone_or_no_destination_decays() -> None:
+    from erre_sandbox.cognition.cycle import _advance_locomotion
+    from erre_sandbox.schemas import LocomotionState
+
+    # destination == current zone → move_t=0 → decay
+    same = _advance_locomotion(
+        LocomotionState(lam=1.0),
+        destination_zone=Zone.STUDY,
+        current_zone=Zone.STUDY,
+    )
+    assert same is not None
+    assert same.lam == pytest.approx(0.7)
+
+    # no destination at all → move_t=0 → decay
+    no_dest = _advance_locomotion(
+        LocomotionState(lam=1.0),
+        destination_zone=None,
+        current_zone=Zone.STUDY,
+    )
+    assert no_dest is not None
+    assert no_dest.lam == pytest.approx(0.7)

@@ -82,6 +82,13 @@ from erre_sandbox.contracts.cognition_layers import (
     WorldModelSnapshot,
 )
 from erre_sandbox.erre import SAMPLING_DELTA_BY_MODE
+from erre_sandbox.erre.locomotion_sampling import (
+    DEFAULT_LOCO_ALPHA,
+    DEFAULT_LOCO_GAIN_P,
+    DEFAULT_LOCO_GAIN_T,
+    advance_lambda,
+    locomotion_delta,
+)
 from erre_sandbox.inference import (
     ChatMessage,
     OllamaChatClient,
@@ -102,6 +109,7 @@ from erre_sandbox.schemas import (
     ERREModeShiftEvent,
     ERREModeTransitionPolicy,
     InternalEvent,
+    LocomotionState,
     MemoryEntry,
     MemoryKind,
     MoveMsg,
@@ -158,6 +166,29 @@ class BiasFiredEvent:
     from_zone: str
     to_zone: str
     bias_p: float
+
+
+def _advance_locomotion(
+    locomotion: LocomotionState | None,
+    *,
+    destination_zone: Zone | None,
+    current_zone: Zone,
+) -> LocomotionState | None:
+    """Advance the M13-ES3 locomotion intensity λ by this tick's movement.
+
+    ``move_t`` = 1 when the agent commits to a zone change this tick (a MoveMsg
+    to a different zone is emitted), else 0; λ follows the frozen EMA
+    ``(1-α)·λ + α·move_t``. Returns the locomotion state with the updated λ, or
+    ``None`` when the agent has no locomotion channel — keeping the pre-ES3
+    behaviour bit-identical and the apparatus (``evidence.es3_locomotion``)
+    independent of this live wiring.
+    """
+    if locomotion is None:
+        return None
+    move_t = int(destination_zone is not None and destination_zone != current_zone)
+    return locomotion.model_copy(
+        update={"lam": advance_lambda(locomotion.lam, move_t, DEFAULT_LOCO_ALPHA)},
+    )
 
 
 _REFLECTION_ZONES: Final[frozenset[Zone]] = frozenset({Zone.PERIPATOS, Zone.CHASHITSU})
@@ -595,10 +626,18 @@ class CognitionCycle:
             flag_on=flag_on, beliefs=beliefs, agent_state=agent_state
         )
 
-        # Step 5-6: build prompts and call the LLM.
+        # Step 5-6: build prompts and call the LLM. The M13-ES3 locomotion delta
+        # is the third additive term; ``locomotion=None`` makes
+        # ``locomotion_delta`` return the all-zero delta, so an agent without the
+        # locomotion channel composes bit-identically to the pre-ES3 path.
         sampling = compose_sampling(
             persona.default_sampling,
             agent_state.erre.sampling_overrides,
+            locomotion_delta(
+                agent_state.locomotion,
+                gain_t=DEFAULT_LOCO_GAIN_T,
+                gain_p=DEFAULT_LOCO_GAIN_P,
+            ),
         )
         system_prompt = build_system_prompt(persona, agent_state)
         user_prompt = build_user_prompt(
@@ -754,12 +793,20 @@ class CognitionCycle:
             tick=agent_state.tick + 1,
         )
 
-        # Step 9: assemble the post-tick state + envelopes.
+        # Step 9: assemble the post-tick state + envelopes. The M13-ES3 live
+        # wiring advances the locomotion intensity λ from this tick's movement
+        # decision (see :func:`_advance_locomotion`); ``locomotion=None`` stays
+        # None, leaving the pre-ES3 behaviour bit-identical.
         new_state = agent_state.model_copy(
             update={
                 "tick": agent_state.tick + 1,
                 "physical": new_physical,
                 "cognitive": new_cognitive,
+                "locomotion": _advance_locomotion(
+                    agent_state.locomotion,
+                    destination_zone=plan.destination_zone,
+                    current_zone=agent_state.position.zone,
+                ),
             },
         )
         envelopes = self._build_envelopes(
@@ -1194,6 +1241,14 @@ class CognitionCycle:
             update={
                 "tick": agent_state.tick + 1,
                 "physical": new_physical,
+                # M13-ES3: a fallback tick makes no movement decision, so λ decays
+                # with move_t=0 (same as a stay). Freezing λ through outages would
+                # leave a walking agent's intensity stuck elevated.
+                "locomotion": _advance_locomotion(
+                    agent_state.locomotion,
+                    destination_zone=None,
+                    current_zone=agent_state.position.zone,
+                ),
             },
         )
         envelopes: list[ControlEnvelope] = [

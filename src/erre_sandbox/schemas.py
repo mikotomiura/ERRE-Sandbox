@@ -38,7 +38,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # §1 Protocol constants
 # =============================================================================
 
-SCHEMA_VERSION: Final[str] = "0.10.0-m7h"
+SCHEMA_VERSION: Final[str] = "0.11.0-m13es3"
 """Semantic version of the wire contract.
 
 Bumped whenever any on-wire model gains or loses a field, or a discriminator
@@ -108,6 +108,16 @@ by any :class:`ControlEnvelope` member — consumers that ignore it remain
 wire-compatible. The new ``EpochPhase`` name is deliberately distinct from
 the gateway-layer ``SessionPhase`` at ``integration/protocol.py`` so the two
 orthogonal state machines cannot be confused.
+
+M13-ES3 bump (0.10.0-m7h → 0.11.0-m13es3): one additive nested field tied to
+the embodiment-substrate arc's locomotion → sampling channel. :class:`AgentState`
+gains ``locomotion: LocomotionState | None`` (the kinetic-history EMA intensity λ
+that feeds the third additive term of ``inference.sampling.compose_sampling``).
+The new :class:`LocomotionState` pins ``ConfigDict(extra="forbid")``;
+default-``None`` on :class:`AgentState` keeps pre-ES3 producers wire-compatible
+(old payloads deserialise with ``locomotion=None`` → bit-identical composition).
+The bump is required because ``HandshakeMsg`` does a strict version match and the
+Godot client's ``CLIENT_SCHEMA_VERSION`` must move in lockstep.
 
 M9-A bump (0.9.0-m7z → 0.10.0-m7h): one additive nested field tied to the
 event-boundary-observability work. :class:`ReasoningTrace` gains
@@ -609,6 +619,43 @@ class RelationshipBond(BaseModel):
     )
 
 
+class LocomotionState(BaseModel):
+    """Kinetic-history locomotion intensity (M13-ES3 歩行→sampling 変調).
+
+    The agent's **movement history** as an EMA intensity ``lam`` ∈ [0, 1],
+    deliberately distinct from the *location* channel (the ``peripatetic`` ERRE
+    mode's zone-triggered static +0.3 temperature bump). ``lam`` rises on a
+    walking streak (a zone change this tick) and decays on stay, per
+    ``lam_t = (1-α)·lam_{t-1} + α·move_t`` where ``move_t ∈ {0, 1}`` is "did the
+    zone change this tick" (see
+    :func:`erre_sandbox.erre.locomotion_sampling.locomotion_delta`). It is the
+    input to the locomotion sampling delta — the **third additive term** of
+    :func:`erre_sandbox.inference.sampling.compose_sampling`.
+
+    Additive and **nullable** on :class:`AgentState`: an agent with
+    ``locomotion=None`` produces no locomotion delta, so the pre-ES3 sampling
+    composition stays **bit-identical** (backward compatible; existing rows /
+    wire payloads deserialise with ``locomotion=None``). ``gait`` is an optional
+    free-form forensic/observer descriptor (e.g. ``"walk"`` / ``"stay"``); it
+    never enters the sampling math.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    lam: _Unit = Field(
+        default=0.0,
+        description=(
+            "Locomotion intensity EMA λ ∈ [0,1]: (1-α)·λ_prev + α·move_t, "
+            "move_t∈{0,1} = did the containing zone change this tick. "
+            "0 = at rest; rises on a walking streak, decays on stay."
+        ),
+    )
+    gait: str | None = Field(
+        default=None,
+        description="Optional forensic gait label (walk/stay); never enters sampling.",
+    )
+
+
 class AgentState(BaseModel):
     """Snapshot of an agent at a given tick.
 
@@ -627,6 +674,13 @@ class AgentState(BaseModel):
     physical: Physical = Field(default_factory=Physical)
     cognitive: Cognitive = Field(default_factory=Cognitive)
     erre: ERREMode
+    locomotion: LocomotionState | None = Field(
+        default=None,
+        description=(
+            "Kinetic-history locomotion intensity (M13-ES3). None → no "
+            "locomotion sampling delta → pre-ES3 composition bit-identical."
+        ),
+    )
     relationships: list[RelationshipBond] = Field(default_factory=list)
 
 
@@ -1522,6 +1576,7 @@ __all__ = [
     "HabitFlag",
     "HandshakeMsg",
     "InternalEvent",
+    "LocomotionState",
     "MemoryEntry",
     "MemoryKind",
     "MoveMsg",

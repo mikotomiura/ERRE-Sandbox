@@ -19,7 +19,7 @@
 # sits closer to ERRE's "body drives cognition" thesis than the usual
 # wabi-sabi aesthetic gloss.
 
-schema_version: "0.10.0-m7h"
+schema_version: "0.11.0-m13es3"
 persona_id: rikyu
 display_name: "千 利休"
 era: "1522-1591"
