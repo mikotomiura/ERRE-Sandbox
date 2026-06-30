@@ -1,0 +1,12 @@
+{
+  "phase": "phase0",
+  "n_generations": 3200,
+  "n_judgements": 26274,
+  "n_scores": 121,
+  "wall_clock_s": 13648.51874465,
+  "smoke": false,
+  "sglang_version": "0.5.10.post1",
+  "model": "qwen/Qwen3-8B",
+  "endpoint": "http://127.0.0.1:30000",
+  "kind": "real-phase-a"
+}

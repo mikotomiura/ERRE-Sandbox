@@ -1,0 +1,54 @@
+{
+  "phase": "phase0",
+  "verdict": "INVALID_SCORER",
+  "reasons": [
+    "(a1) min AUC 0.500 < 0.8; (a2) held-out residual ΔDQ CI_lower -0.0083 ≤ 0 (entropy proxy)"
+  ],
+  "n_clusters": 48,
+  "delta_dq": 0.0048737397524308895,
+  "delta_dq_ci_lower": -0.0026063259103584475,
+  "delta_dq_ci_upper": 0.012549596037796406,
+  "delta_dq_std": 0.150870623142748,
+  "delta_dq_std_ci_lower": -0.08492404907227402,
+  "monotone_supported": false,
+  "garbage_rate_a2": 0.0,
+  "a1_min_auc": 0.5,
+  "adversarial_auc": 0.9125,
+  "a2_residual_ci_lower": -0.008335985603850552,
+  "forensic": {},
+  "caveats": [
+    "claim boundary (design-final §0/§9): a GO (Phase 1) means ACTUATOR SUFFICIENCY (qwen3:8b frozen decoding: locomotion->temperature moves output into a divergent-favouring regime, on-task rarity up), NOT walking->creative divergence and NOT a re-proof of the closed-loop core thesis.",
+    "forking-paths seal (design-final §5): the floors / MDE / bands / gains are frozen; whatever verdict (5 vocabulary) comes out is recorded as-is. INCONCLUSIVE_UNDERPOWERED and INVALID_* are kept distinct from NO_GO_EFFECT_ABSENT (ES-2/ES-3 discipline)."
+  ],
+  "extras": {
+    "r_object_hashes": {
+      "brick": "c33413a31dbc17339c6ce883e315ca05",
+      "paperclip": "fb372f5964c23283747733b3ee269260",
+      "newspaper": "90e9ee3ee863a29891e573e13cb79746",
+      "blanket": "c78385814180f16e8d01f7d15404b7a0",
+      "bottle": "bb03f2b89c90d95d0906403b83061443",
+      "key": "3f65fdd4ea2f32ac1f8fc441d7a7fb29",
+      "shoe": "1536dfe5111b54b16fcdcbf40313ff81",
+      "candle": "f631aea963a3d8a79398ea9787371bde",
+      "tent_peg": "8098424dabd5985b0625acc05c50dbcc",
+      "bottle_cap": "67ebfd82ebee77a5dcff29530081a881",
+      "rubber_band": "1715e9d422198e54eb9db1b89640a40d",
+      "floor_tile": "4436f007d3467c77f26603ec0af1c404",
+      "clothes_hanger": "7ad49eeb116b30c055d66bfc8141752e",
+      "paper_cup": "b3b5216f24254f29d1e37c7af4c02030",
+      "twist_tie": "24e669b80fa2473b2072c2a5cd99b3c0",
+      "cork": "337f2375d9ccad183fc0c3defaa7b8af"
+    },
+    "n_references": 16,
+    "persona_sep_min": 0.035779327478263734,
+    "persona_sep_mean": 0.05032585005639678,
+    "phase_a_wall_clock_s": 13648.51874465,
+    "phase_b_wall_clock_s": 97.98165553800027,
+    "phase0_total_gpu_hours": 3.818472333385556,
+    "replay_misses": {
+      "inference": 0,
+      "judge": 0,
+      "score": 0
+    }
+  }
+}
