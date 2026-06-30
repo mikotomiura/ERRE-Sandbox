@@ -13,6 +13,9 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
+import pytest
+
+from erre_sandbox.evidence.es4_actuator import constants as _c
 from erre_sandbox.evidence.es4_actuator.backend import (
     build_replay_seams,
     load_phase_a,
@@ -32,6 +35,22 @@ from erre_sandbox.evidence.es4_actuator.pipeline import run_phase
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def _shrink_apparatus(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shrink the frozen N for these tests so the full pipeline runs fast in CI.
+
+    The replay-vs-direct equivalence is *structural* — both sides read the same
+    (patched) roster / seed / resample counts with the same bootstrap seed — so the
+    round-trip assertion still holds, while the per-test cost drops from the frozen
+    3 persona × 16 item × 10 seed (+ 800 reference) pipeline to a tiny one. These
+    tests assert plumbing equivalence, not a scientific verdict.
+    """
+    monkeypatch.setattr(_c, "N_RESAMPLES", 256)
+    monkeypatch.setattr(_c, "PERSONA_ROSTER", _c.PERSONA_ROSTER[:1])
+    monkeypatch.setattr(_c, "N_SEED_PHASE0", 2)
+    monkeypatch.setattr(_c, "REF_SEEDS", 3)
 
 
 # --- parsers ------------------------------------------------------------------
