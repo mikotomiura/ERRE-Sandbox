@@ -1,0 +1,72 @@
+# M13-ES4 task-battery + reference schema (single source of truth)
+#
+# Governs the four frozen data files in this directory. The loader
+# (``erre_sandbox.evidence.es4_actuator.battery``) and
+# ``tests/test_evidence/test_es4_battery.py`` contract structure / enum / id
+# uniqueness against this schema. Every list is a frozen pre-registration
+# (``design-final.md`` §6 / §2.2b); items are not added/removed after a result.
+
+schema_version: "0.1.0-m13es4"
+
+# --- aut_battery.yaml ---------------------------------------------------------
+# Alternate Uses Task (divergent primary). 16 objects = 8 classic + 8 novel.
+aut_battery:
+  root:
+    schema_version: { type: str, value: "0.1.0-m13es4", strict: true }
+    prompt_template: { type: str, must_contain: "{object}" }
+    total_count: { type: int, value: 16, strict: true }
+    classic_count: { type: int, value: 8, strict: true }
+    novel_count: { type: int, value: 8, strict: true }
+    items: { type: "list[aut_item]" }
+  aut_item:
+    object_id:
+      type: str
+      pattern: "^[a-z][a-z0-9_]*$"
+      unique: true
+    object: { type: str, min_length: 2 }
+    stratum: { type: str, enum: [classic, novel] }
+
+# --- rat_battery.yaml ---------------------------------------------------------
+# Remote Associates Test (convergent supporting). 16 triples → one answer word.
+rat_battery:
+  root:
+    schema_version: { type: str, value: "0.1.0-m13es4", strict: true }
+    total_count: { type: int, value: 16, strict: true }
+    items: { type: "list[rat_item]" }
+  rat_item:
+    item_id:
+      type: str
+      pattern: "^rat_[0-9]{2}$"
+      unique: true
+    cues: { type: "list[str]", length: 3 }
+    answer: { type: str, min_length: 2 }
+
+# --- common_uses.yaml ---------------------------------------------------------
+# Curated common-use anchor for the rarity reference R_object (§2.2b step 1).
+# Keyed by the same ``object_id`` as aut_battery; exactly N_CURATED=10 each.
+common_uses:
+  root:
+    schema_version: { type: str, value: "0.1.0-m13es4", strict: true }
+    objects: { type: "map[object_id -> list[str]]", per_object_count: 10 }
+
+# --- adversarial_labeled.yaml -------------------------------------------------
+# Frozen labeled set for the scorer/judge AUC gate (§3). One positive class
+# (appropriate good divergent uses) + six negative categories.
+adversarial_labeled:
+  root:
+    schema_version: { type: str, value: "0.1.0-m13es4", strict: true }
+    items: { type: "list[adv_item]" }
+  adv_item:
+    text: { type: str, min_length: 1 }
+    object: { type: str, min_length: 2 }
+    label: { type: str, enum: [appropriate, inappropriate] }
+    category:
+      type: str
+      enum:
+        - good
+        - garbage
+        - word_salad
+        - plausible_off_task
+        - common_use_only
+        - object_mismatch
+        - metaphor_only

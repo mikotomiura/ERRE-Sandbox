@@ -1,0 +1,36 @@
+# M13-ES4 Alternate Uses Task battery (divergent primary, design-final.md §6).
+#
+# 16 objects = 8 classic (well-studied AUT stimuli) + 8 novel-but-simple
+# (memorisation stratification, Codex L-2). Frozen at pre-registration; a GO is
+# recorded separately for classic vs novel (classic-only GO = contamination
+# caveat, forensic not a hard gate).
+#
+# Refs:
+#   - golden equivalent: golden/stimulus/_schema.yaml (mirror discipline)
+#   - schema: ./_schema.yaml
+
+schema_version: "0.1.0-m13es4"
+prompt_template: "List as many unusual uses as you can for a {object}."
+total_count: 16
+classic_count: 8
+novel_count: 8
+
+items:
+  # --- classic 8 ---
+  - { object_id: brick,      object: brick,      stratum: classic }
+  - { object_id: paperclip,  object: paperclip,  stratum: classic }
+  - { object_id: newspaper,  object: newspaper,  stratum: classic }
+  - { object_id: blanket,    object: blanket,    stratum: classic }
+  - { object_id: bottle,     object: bottle,     stratum: classic }
+  - { object_id: key,        object: key,        stratum: classic }
+  - { object_id: shoe,       object: shoe,       stratum: classic }
+  - { object_id: candle,     object: candle,     stratum: classic }
+  # --- novel-but-simple 8 ---
+  - { object_id: tent_peg,       object: tent peg,        stratum: novel }
+  - { object_id: bottle_cap,     object: bottle cap,      stratum: novel }
+  - { object_id: rubber_band,    object: rubber band,     stratum: novel }
+  - { object_id: floor_tile,     object: floor tile,      stratum: novel }
+  - { object_id: clothes_hanger, object: clothes hanger,  stratum: novel }
+  - { object_id: paper_cup,      object: paper cup,       stratum: novel }
+  - { object_id: twist_tie,      object: twist tie,       stratum: novel }
+  - { object_id: cork,           object: cork,            stratum: novel }

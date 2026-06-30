@@ -1,0 +1,144 @@
+# M13-ES4 frozen adversarial labeled set (scorer/judge AUC gate, §3).
+#
+# >=120 strings across one positive class (appropriate) and six negative
+# categories. Drives the appropriateness-judge AUC gate (>= AUC_FLOOR 0.80): the
+# binary on-task-use judge must separate ``appropriate`` (a valid use of the
+# object) from ``inappropriate`` (garbage / word-salad / off-task / wrong-object /
+# vague-metaphor). ``common_use_only`` is labeled ``appropriate`` — it IS a valid
+# on-task use; the *rarity* scorer (against R_object), not the appropriateness
+# gate, is what penalises commonness. This frozen set mitigates self-judge
+# circularity (Codex M-4). Labels are fixed at pre-registration.
+#
+# Refs: schema ./_schema.yaml ; gate design-final.md §2.3 / §3
+
+schema_version: "0.1.0-m13es4"
+
+items:
+  # ---- good (appropriate, creative valid uses) ----
+  - { text: "carve it into a phone amplifier slot", object: brick, label: appropriate, category: good }
+  - { text: "use it as a mould to cast concrete planters", object: brick, label: appropriate, category: good }
+  - { text: "grind it to make red pigment for paint", object: brick, label: appropriate, category: good }
+  - { text: "bend it into a tiny three-legged easel", object: paperclip, label: appropriate, category: good }
+  - { text: "shape it into a SIM-card ejector tool", object: paperclip, label: appropriate, category: good }
+  - { text: "weave several into a small chain bracelet", object: paperclip, label: appropriate, category: good }
+  - { text: "roll it into a fireplace log substitute", object: newspaper, label: appropriate, category: good }
+  - { text: "shred it for packaging cushioning", object: newspaper, label: appropriate, category: good }
+  - { text: "fold it into a disposable paint tray", object: newspaper, label: appropriate, category: good }
+  - { text: "stitch two into a weighted lap pad", object: blanket, label: appropriate, category: good }
+  - { text: "stretch it as a sun shade between trees", object: blanket, label: appropriate, category: good }
+  - { text: "cut a neck hole to make a poncho", object: blanket, label: appropriate, category: good }
+  - { text: "fill it with sand as a fitness weight", object: bottle, label: appropriate, category: good }
+  - { text: "cut the bottom into a funnel", object: bottle, label: appropriate, category: good }
+  - { text: "string several as a wind chime", object: bottle, label: appropriate, category: good }
+  - { text: "file the teeth into a tiny saw", object: key, label: appropriate, category: good }
+  - { text: "use the bow as a stencil for circles", object: key, label: appropriate, category: good }
+  - { text: "fill it with concrete as a bookend", object: shoe, label: appropriate, category: good }
+  - { text: "melt it down to waterproof boots", object: candle, label: appropriate, category: good }
+  - { text: "chain several into a climbing anchor", object: tent_peg, label: appropriate, category: good }
+  - { text: "press it into clay to stamp a pattern", object: bottle_cap, label: appropriate, category: good }
+  - { text: "loop many into a stress-relief fidget", object: rubber_band, label: appropriate, category: good }
+  - { text: "score it as a drip tray for a planter", object: floor_tile, label: appropriate, category: good }
+  - { text: "unbend it into a marshmallow roasting fork", object: clothes_hanger, label: appropriate, category: good }
+  - { text: "cut slits to make a tea-light lantern", object: paper_cup, label: appropriate, category: good }
+  # ---- common_use_only (appropriate but ordinary) ----
+  - { text: "build a wall", object: brick, label: appropriate, category: common_use_only }
+  - { text: "hold sheets of paper together", object: paperclip, label: appropriate, category: common_use_only }
+  - { text: "read the news", object: newspaper, label: appropriate, category: common_use_only }
+  - { text: "keep warm in bed", object: blanket, label: appropriate, category: common_use_only }
+  - { text: "hold a drink of water", object: bottle, label: appropriate, category: common_use_only }
+  - { text: "unlock a door", object: key, label: appropriate, category: common_use_only }
+  - { text: "wear it on your foot", object: shoe, label: appropriate, category: common_use_only }
+  - { text: "give light in the dark", object: candle, label: appropriate, category: common_use_only }
+  - { text: "stake down a tent", object: tent_peg, label: appropriate, category: common_use_only }
+  - { text: "seal a bottle", object: bottle_cap, label: appropriate, category: common_use_only }
+  - { text: "bundle cables together", object: rubber_band, label: appropriate, category: common_use_only }
+  - { text: "cover the floor", object: floor_tile, label: appropriate, category: common_use_only }
+  - { text: "hang up a shirt", object: clothes_hanger, label: appropriate, category: common_use_only }
+  - { text: "drink coffee from it", object: paper_cup, label: appropriate, category: common_use_only }
+  - { text: "close a bread bag", object: twist_tie, label: appropriate, category: common_use_only }
+  - { text: "seal a wine bottle", object: cork, label: appropriate, category: common_use_only }
+  # ---- garbage (degenerate) ----
+  - { text: "asdf asdf asdf asdf asdf", object: brick, label: inappropriate, category: garbage }
+  - { text: "the the the the the the the the", object: paperclip, label: inappropriate, category: garbage }
+  - { text: "................................", object: newspaper, label: inappropriate, category: garbage }
+  - { text: "use use use use use use use use", object: blanket, label: inappropriate, category: garbage }
+  - { text: "qwertyuiop zxcvbnm qwertyuiop", object: bottle, label: inappropriate, category: garbage }
+  - { text: "###### @@@@@@ ###### @@@@@@", object: key, label: inappropriate, category: garbage }
+  - { text: "aaaaaaaaaaaaaaaaaaaaaaaaaaaa", object: shoe, label: inappropriate, category: garbage }
+  - { text: "1 2 3 4 5 6 7 8 9 0 1 2 3 4 5", object: candle, label: inappropriate, category: garbage }
+  - { text: "lorem ipsum lorem ipsum lorem", object: tent_peg, label: inappropriate, category: garbage }
+  - { text: "blah blah blah blah blah blah", object: bottle_cap, label: inappropriate, category: garbage }
+  - { text: "xxxxxxxx yyyyyyyy xxxxxxxx", object: rubber_band, label: inappropriate, category: garbage }
+  - { text: "uh um uh um uh um uh um uh um", object: floor_tile, label: inappropriate, category: garbage }
+  - { text: "----- ----- ----- ----- -----", object: clothes_hanger, label: inappropriate, category: garbage }
+  - { text: "object object object object object", object: paper_cup, label: inappropriate, category: garbage }
+  - { text: "zzzzz zzzzz zzzzz zzzzz zzzzz", object: twist_tie, label: inappropriate, category: garbage }
+  - { text: "?????????????????????????????", object: cork, label: inappropriate, category: garbage }
+  # ---- word_salad (random coherent words, no use) ----
+  - { text: "purple velocity mountain breakfast", object: brick, label: inappropriate, category: word_salad }
+  - { text: "ocean trumpet ladder yesterday glass", object: paperclip, label: inappropriate, category: word_salad }
+  - { text: "running calendar happiness copper", object: newspaper, label: inappropriate, category: word_salad }
+  - { text: "seven whisper galaxy umbrella forest", object: blanket, label: inappropriate, category: word_salad }
+  - { text: "thunder velvet October pencil river", object: bottle, label: inappropriate, category: word_salad }
+  - { text: "marble engine laughter window stone", object: key, label: inappropriate, category: word_salad }
+  - { text: "silver appetite triangle morning cloud", object: shoe, label: inappropriate, category: word_salad }
+  - { text: "garden electricity violin pocket sky", object: candle, label: inappropriate, category: word_salad }
+  - { text: "rocket pillow tomorrow cinnamon door", object: tent_peg, label: inappropriate, category: word_salad }
+  - { text: "honey compass quiet airplane brick", object: bottle_cap, label: inappropriate, category: word_salad }
+  - { text: "lantern courage spiral noon harbor", object: rubber_band, label: inappropriate, category: word_salad }
+  - { text: "feather magnet autumn jelly mirror", object: floor_tile, label: inappropriate, category: word_salad }
+  - { text: "compass meadow trumpet salt orbit", object: clothes_hanger, label: inappropriate, category: word_salad }
+  - { text: "velvet tunnel apricot signal moss", object: paper_cup, label: inappropriate, category: word_salad }
+  - { text: "ribbon thunder pebble lantern dusk", object: twist_tie, label: inappropriate, category: word_salad }
+  - { text: "ember spiral cobweb anchor noon", object: cork, label: inappropriate, category: word_salad }
+  # ---- plausible_off_task (coherent, but not a use) ----
+  - { text: "bricks are usually made of fired clay", object: brick, label: inappropriate, category: plausible_off_task }
+  - { text: "paperclips were patented in the late 1800s", object: paperclip, label: inappropriate, category: plausible_off_task }
+  - { text: "newspapers are printed on cheap pulp paper", object: newspaper, label: inappropriate, category: plausible_off_task }
+  - { text: "this blanket feels soft and warm to touch", object: blanket, label: inappropriate, category: plausible_off_task }
+  - { text: "the bottle is green and made of glass", object: bottle, label: inappropriate, category: plausible_off_task }
+  - { text: "keys are often cut from brass blanks", object: key, label: inappropriate, category: plausible_off_task }
+  - { text: "shoes come in many different sizes", object: shoe, label: inappropriate, category: plausible_off_task }
+  - { text: "candles can be scented or unscented", object: candle, label: inappropriate, category: plausible_off_task }
+  - { text: "tent pegs are sold in camping shops", object: tent_peg, label: inappropriate, category: plausible_off_task }
+  - { text: "bottle caps are made of thin metal", object: bottle_cap, label: inappropriate, category: plausible_off_task }
+  - { text: "rubber bands lose elasticity over time", object: rubber_band, label: inappropriate, category: plausible_off_task }
+  - { text: "floor tiles can be ceramic or stone", object: floor_tile, label: inappropriate, category: plausible_off_task }
+  - { text: "clothes hangers come in wood or wire", object: clothes_hanger, label: inappropriate, category: plausible_off_task }
+  - { text: "paper cups are often coated with wax", object: paper_cup, label: inappropriate, category: plausible_off_task }
+  - { text: "twist ties have a wire core inside", object: twist_tie, label: inappropriate, category: plausible_off_task }
+  - { text: "cork is harvested from oak tree bark", object: cork, label: inappropriate, category: plausible_off_task }
+  # ---- object_mismatch (a use for a different object) ----
+  - { text: "use it to seal a wine bottle", object: brick, label: inappropriate, category: object_mismatch }
+  - { text: "wear it on your foot for a walk", object: paperclip, label: inappropriate, category: object_mismatch }
+  - { text: "unlock the front door with it", object: newspaper, label: inappropriate, category: object_mismatch }
+  - { text: "hold sheets of paper together", object: blanket, label: inappropriate, category: object_mismatch }
+  - { text: "stake down a tent in the wind", object: bottle, label: inappropriate, category: object_mismatch }
+  - { text: "give light during a power cut", object: key, label: inappropriate, category: object_mismatch }
+  - { text: "build a brick garden wall", object: shoe, label: inappropriate, category: object_mismatch }
+  - { text: "bundle loose cables together", object: candle, label: inappropriate, category: object_mismatch }
+  - { text: "drink hot coffee out of it", object: tent_peg, label: inappropriate, category: object_mismatch }
+  - { text: "keep a baby warm at night", object: bottle_cap, label: inappropriate, category: object_mismatch }
+  - { text: "pave a garden path with it", object: rubber_band, label: inappropriate, category: object_mismatch }
+  - { text: "tie back your hair with it", object: floor_tile, label: inappropriate, category: object_mismatch }
+  - { text: "read this morning's news", object: clothes_hanger, label: inappropriate, category: object_mismatch }
+  - { text: "open a beer bottle with it", object: paper_cup, label: inappropriate, category: object_mismatch }
+  - { text: "prop a heavy door open", object: twist_tie, label: inappropriate, category: object_mismatch }
+  - { text: "hang a coat in the closet", object: cork, label: inappropriate, category: object_mismatch }
+  # ---- metaphor_only (vague metaphor, not actionable) ----
+  - { text: "it is the foundation of all friendship", object: brick, label: inappropriate, category: metaphor_only }
+  - { text: "a symbol of how small things bind us", object: paperclip, label: inappropriate, category: metaphor_only }
+  - { text: "a window into the soul of the city", object: newspaper, label: inappropriate, category: metaphor_only }
+  - { text: "the warm embrace of a forgotten childhood", object: blanket, label: inappropriate, category: metaphor_only }
+  - { text: "a vessel for the dreams we cannot speak", object: bottle, label: inappropriate, category: metaphor_only }
+  - { text: "the answer to a door we have not found", object: key, label: inappropriate, category: metaphor_only }
+  - { text: "every journey begins where it has walked", object: shoe, label: inappropriate, category: metaphor_only }
+  - { text: "a flame that whispers of mortality", object: candle, label: inappropriate, category: metaphor_only }
+  - { text: "the quiet anchor of a wandering heart", object: tent_peg, label: inappropriate, category: metaphor_only }
+  - { text: "a tiny crown sealing forgotten joy", object: bottle_cap, label: inappropriate, category: metaphor_only }
+  - { text: "the tension that holds a life in shape", object: rubber_band, label: inappropriate, category: metaphor_only }
+  - { text: "the ground beneath every silent step", object: floor_tile, label: inappropriate, category: metaphor_only }
+  - { text: "the shoulders that carry our weariness", object: clothes_hanger, label: inappropriate, category: metaphor_only }
+  - { text: "a fragile holder of fleeting warmth", object: paper_cup, label: inappropriate, category: metaphor_only }
+  - { text: "the thread that quietly keeps us whole", object: twist_tie, label: inappropriate, category: metaphor_only }
+  - { text: "a stopper against the flood of time", object: cork, label: inappropriate, category: metaphor_only }

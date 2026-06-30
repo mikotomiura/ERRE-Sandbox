@@ -1,0 +1,190 @@
+# M13-ES4 curated common-use anchor for the rarity reference R_object (§2.2b).
+#
+# This is the hand-frozen "authoritative common use" anchor (step 1 of the
+# R_object recipe). rarity(idea) = 1 - max cos(idea, R_object), so a use close to
+# one of these canonical common uses scores LOW rarity. Held-out high-frequency
+# augmentation (step 2) is added at run time from verdict-disjoint REF_SEEDS;
+# this file is its frozen human anchor. Exactly N_CURATED=10 per object, keyed by
+# the same object_id as aut_battery.yaml. content-hash pinned in the run manifest.
+#
+# Refs: schema ./_schema.yaml ; recipe design-final.md §2.2b
+
+schema_version: "0.1.0-m13es4"
+
+objects:
+  brick:
+    - building a wall
+    - paving a path
+    - using it as a doorstop
+    - using it as a bookend
+    - weighing something down
+    - building a barbecue or fire pit
+    - a step or raised platform
+    - edging a garden bed
+    - propping up a shelf
+    - a makeshift hammer
+  paperclip:
+    - holding sheets of paper together
+    - a bookmark
+    - resetting a device with a pinhole button
+    - a zipper pull
+    - hanging a small ornament
+    - a money clip
+    - clearing a clogged nozzle
+    - a cable or cord organiser
+    - a temporary keyring
+    - picking a simple lock
+  newspaper:
+    - reading the news
+    - wrapping fragile items
+    - lining a pet cage or litter tray
+    - cleaning windows
+    - starting a fire
+    - making papier-mache
+    - a floor protector when painting
+    - wrapping food like fish and chips
+    - lining shelves or drawers
+    - swatting insects
+  blanket:
+    - keeping warm in bed
+    - a picnic ground cover
+    - wrapping a baby
+    - a couch throw for decoration
+    - insulating a water heater
+    - a makeshift curtain
+    - padding for moving furniture
+    - a beach mat
+    - a pet bed
+    - a fort or den for children
+  bottle:
+    - holding water or a drink
+    - a flower vase
+    - a bird feeder
+    - storing homemade sauces
+    - a rolling pin
+    - a piggy bank for coins
+    - a watering can with holes in the cap
+    - a candle holder
+    - a message in a bottle
+    - a terrarium
+  key:
+    - locking and unlocking a door
+    - starting a car
+    - a bottle opener
+    - scratching a lottery ticket
+    - a screwdriver in a pinch
+    - a paperweight on a keyring
+    - a pendant or necklace charm
+    - opening a paint can lid
+    - a zipper pull
+    - a guitar-string winder
+  shoe:
+    - wearing it on your foot
+    - a doorstop
+    - hammering a nail in an emergency
+    - a plant pot
+    - a phone stand
+    - storage for small items
+    - throwing it to get attention
+    - a bookend
+    - a chew toy for a dog
+    - reaching something on a high shelf
+  candle:
+    - providing light
+    - scenting a room
+    - lubricating a sticky drawer or zipper
+    - sealing an envelope with wax
+    - marking a romantic dinner
+    - a birthday cake decoration
+    - waterproofing a thread or seam
+    - an emergency heat source
+    - a power-cut backup light
+    - filling a crack with melted wax
+  tent_peg:
+    - staking down a tent
+    - securing a tarp
+    - anchoring garden netting
+    - marking rows in a vegetable bed
+    - a ground hook for a dog lead
+    - holding down a picnic blanket
+    - a makeshift skewer
+    - propping a small plant upright
+    - a cable stake for outdoor wiring
+    - digging a small hole
+  bottle_cap:
+    - sealing a bottle
+    - a game counter or token
+    - a checkers piece
+    - a small paint or glue palette
+    - a fridge magnet craft
+    - a tiny candle mould
+    - a spinning top
+    - measuring a small dose of liquid
+    - a mosaic tile for art
+    - a furniture foot to stop scratches
+  rubber_band:
+    - bundling papers or cables together
+    - sealing an open food bag
+    - gripping a stuck jar lid
+    - a hair tie
+    - a slingshot or shooter
+    - holding a phone case closed
+    - reminding yourself by wearing it
+    - a bookmark around a book
+    - tensioning a homemade catapult
+    - keeping a wallet closed
+  floor_tile:
+    - covering a floor
+    - a coaster or trivet
+    - a drinks mat
+    - a paint mixing surface
+    - a chalkboard or dry-erase surface
+    - a base for a potted plant
+    - a mosaic art piece
+    - a cooling surface for dough
+    - a heavy paperweight
+    - a small stepping stone
+  clothes_hanger:
+    - hanging up clothes
+    - unclogging a drain
+    - retrieving something behind furniture
+    - a car-antenna replacement
+    - a marshmallow roasting stick
+    - holding a wreath on a door
+    - a phone or tablet stand bent from wire
+    - a bubble wand frame
+    - reaching to unlock a car door
+    - hanging plants or decorations
+  paper_cup:
+    - drinking water or coffee
+    - a seed-starting pot
+    - measuring an ingredient
+    - a paint or glue container
+    - a phone speaker amplifier
+    - a craft for kids
+    - a small storage cup for screws
+    - a megaphone
+    - a stencil for circles
+    - a string-telephone end
+  twist_tie:
+    - closing a bread bag
+    - bundling loose cables
+    - a plant tie for stems
+    - a temporary keyring
+    - a zipper pull replacement
+    - marking a key or cable by colour
+    - a small hook
+    - holding a broken strap together
+    - a bag-handle reinforcement
+    - shaping into a tiny figure
+  cork:
+    - sealing a wine bottle
+    - a bulletin or pin board
+    - a coaster
+    - a fishing float
+    - a craft stamp
+    - a knife-tip protector
+    - a furniture foot pad
+    - a plant-marker holder
+    - a trivet for hot pots
+    - a floating keyring

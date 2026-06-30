@@ -1,0 +1,29 @@
+# M13-ES4 Remote Associates Test battery (convergent supporting, §6).
+#
+# 16 triples → one common associate (exact-match scored). Convergent accuracy is
+# a SUPPORTING / forensic axis only (§2.6 dissociation; convergent null is very
+# low certainty in the human meta), never a GO driver. Contamination exclusion
+# (base accuracy ≥ RAT_ACC_MAX) thins the pool; valid ≥ MIN_VALID_RAT required.
+#
+# Refs: schema ./_schema.yaml
+
+schema_version: "0.1.0-m13es4"
+total_count: 16
+
+items:
+  - { item_id: rat_01, cues: [cottage, swiss, cake],        answer: cheese }
+  - { item_id: rat_02, cues: [cream, skate, water],         answer: ice }
+  - { item_id: rat_03, cues: [loser, throat, spot],         answer: sore }
+  - { item_id: rat_04, cues: [show, life, row],             answer: boat }
+  - { item_id: rat_05, cues: [night, wrist, stop],          answer: watch }
+  - { item_id: rat_06, cues: [duck, fold, dollar],          answer: bill }
+  - { item_id: rat_07, cues: [rocking, wheel, high],        answer: chair }
+  - { item_id: rat_08, cues: [dew, comb, bee],              answer: honey }
+  - { item_id: rat_09, cues: [fountain, baking, pop],       answer: soda }
+  - { item_id: rat_10, cues: [preserve, ranger, tropical],  answer: forest }
+  - { item_id: rat_11, cues: [aid, rubber, wagon],          answer: band }
+  - { item_id: rat_12, cues: [flake, mobile, cone],         answer: snow }
+  - { item_id: rat_13, cues: [cracker, fly, fighter],       answer: fire }
+  - { item_id: rat_14, cues: [safety, cushion, point],      answer: pin }
+  - { item_id: rat_15, cues: [cane, daddy, plum],           answer: sugar }
+  - { item_id: rat_16, cues: [dream, break, light],         answer: day }
