@@ -1,0 +1,128 @@
+{
+  "kind": "M13-ES4 Phase 0 full-freeze pre-registration manifest",
+  "frozen_at": "2026-06-30",
+  "git_head": "6237dc2a20ca3bee9cca5dc6505f7f02d464ed2e",
+  "note": "forking-paths seal: §5 constants + apparatus + battery + R_object recipe frozen BEFORE any verdict generation. Regenerate ONLY via a superseding ADR.",
+  "apparatus_and_data_sha256": {
+    "constants.py": "2e545bc20b122fb60be2c8b4dbbf219e57ee15cce0c565b8944a8c83b6d174d4",
+    "scenario.py": "0c1eaf14f6f3be6a0beddaeb735ce5e84fdce5a0888b1968b033afb8e3e342b3",
+    "scoring.py": "d725fa9750da3790153c6986204e7210d65cf969ba63d4c972c3aad3fd9ecebd",
+    "controls.py": "63712be882db9fd6e9cadc51c83fa5ce0ce3dfa5451f4708fee50fec60e9d031",
+    "reference.py": "08abac3a591c4f476ee67e921241560c31446aa24cd1b487756f25fde191d50a",
+    "decomposition.py": "d578b272949dfc598eeb1ff86b43f00a312a57ce3f3c6094d08a2ad9b774264f",
+    "pipeline.py": "f0f32f1d86df49534cdb8aae55aa064be7235ebf0ea41612d270fc6be4d17551",
+    "verdict_report.py": "25786066dc1a745870905ddf2575b674fa9aeacc6e0ab7fd9f614cb30f68da5a",
+    "battery.py": "ce16e92ff388c612e58b9f1479267e45715706bc87b9df8584008a477470f9bc",
+    "aut_battery.yaml": "ebf0775b2fb45fbc485985393f19dc1fba3a7b5ff1c13683697259194e216fd3",
+    "rat_battery.yaml": "7eb88a3a64d571b1df5e56087d1b67b045bd66c764d8c80205f5307eefccaea0",
+    "common_uses.yaml": "ff212c197d211de0bd8eabaf27cdc0151e1d8c0396f97fb493ac275fc56d417f",
+    "adversarial_labeled.yaml": "5d705c006a220a70425e83f18983fdd0d1034f5a4d7c1337e3a41cc926ccdc64",
+    "_schema.yaml": "8c5049a179aa05a529c9714a32917ed9154cf4778d0a61ffe9ffec2dd7093ba9"
+  },
+  "constants_s5": {
+    "PERSONA_ROSTER": [
+      [
+        "kant",
+        {
+          "temperature": 0.6,
+          "top_p": 0.85,
+          "repeat_penalty": 1.12
+        }
+      ],
+      [
+        "nietzsche",
+        {
+          "temperature": 0.85,
+          "top_p": 0.8,
+          "repeat_penalty": 0.95
+        }
+      ],
+      [
+        "rikyu",
+        {
+          "temperature": 0.45,
+          "top_p": 0.78,
+          "repeat_penalty": 1.25
+        }
+      ]
+    ],
+    "LOCO_GAIN_T": 0.3,
+    "LOCO_GAIN_P": 0.0,
+    "LAMBDA_A0": 0.0,
+    "LAMBDA_BAND_A1": [
+      0.4,
+      0.6
+    ],
+    "LAMBDA_BAND_A2": [
+      0.85,
+      1.0
+    ],
+    "F_TEMP_DELTA": 0.8,
+    "N_AUT": 16,
+    "N_RAT": 16,
+    "MIN_VALID_AUT": 12,
+    "MIN_VALID_RAT": 8,
+    "N_SEED_PHASE0": 10,
+    "N_SEED_PHASE1": 20,
+    "K_IDEAS": 5,
+    "MIN_VALID_IDEAS_FOR_DQ": 2,
+    "NUM_PREDICT_AUT": 384,
+    "NUM_PREDICT_RAT": 32,
+    "MDE_CLUSTER_D": 0.4,
+    "POWER": 0.8,
+    "ALPHA_ONE_SIDED": 0.05,
+    "PROJECTED_CLUSTER_MAX": 48,
+    "DQ_FLOOR_STD_CI_LOWER": 0.2,
+    "DQ_FLOOR_RAW": 0.02,
+    "AUC_FLOOR": 0.8,
+    "DELTA_EQUIV": 0.15,
+    "GARBAGE_RATE_CEILING": 0.3,
+    "EMPTY_PARSE_FAIL_CEILING": 0.05,
+    "CROSS_COND_DIVERGENCE_MAX": 0.3,
+    "CI_ALPHA": 0.1,
+    "N_RESAMPLES": 10000,
+    "PHASE0_GPU_HOUR_CAP": 8.0,
+    "PHASE1_GPU_HOUR_CAP": 30.0
+  },
+  "r_object_recipe": {
+    "N_CURATED": 10,
+    "REF_SEEDS": 50,
+    "REF_FREQ_MIN": 0.2,
+    "REF_DEDUP": 0.9,
+    "N_R_MIN": 8,
+    "N_R_MAX": 30,
+    "REF_TEMP": 0.7,
+    "REF_BASE": {
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "repeat_penalty": 1.1
+    }
+  },
+  "seed_streams": {
+    "ES4_SALT": "m13-es4-v1",
+    "M2_SEED_OFFSET": 1000,
+    "REF_SEED_OFFSET": 1000000
+  },
+  "backend": {
+    "generation": "SGLang fp8 Qwen/Qwen3-8B (single backend)",
+    "sglang_version": "0.5.10.post1",
+    "attention_backend": "triton (Blackwell SM120 required; flashinfer crashes — DA-PH0-7)",
+    "quantization": "fp8",
+    "mem_fraction_static": 0.85,
+    "max_total_tokens": 2048,
+    "max_running_requests": 1,
+    "think_suppression": "chat_template_kwargs.enable_thinking=False",
+    "judge_score": "binary appropriateness judge at temperature=0 with logprobs; score=P(yes), judge=is_yes (Codex HIGH-1/HIGH-2)",
+    "encoder": "all-mpnet-base-v2 (CPU, raw embeddings via tier_b/vendi id)",
+    "phase_flip": "stop SGLang server to free GPU, then CPU encoder; replay seams never call SGLang (DA-PH0-1)"
+  },
+  "pre_flight_sampling_hash": {
+    "status": "PASS",
+    "loco_zero_equals_none": true,
+    "m2_equals_a2_distribution": true,
+    "max_abs_temp_diff": 0.0
+  },
+  "deferred_run_blockers": [
+    "B-6: persona_collapse threshold not pre-registered → gate deferred to superseding ADR; Burrows/separation recorded as forensic only"
+  ]
+}
