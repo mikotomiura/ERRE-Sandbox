@@ -1,0 +1,12 @@
+{
+  "phase": "phase0",
+  "n_generations": 10,
+  "n_judgements": 61,
+  "n_scores": 8,
+  "wall_clock_s": 28.160214553999992,
+  "smoke": true,
+  "sglang_version": "0.5.10.post1",
+  "model": "qwen/Qwen3-8B",
+  "endpoint": "http://127.0.0.1:30000",
+  "kind": "real-wiring-smoke"
+}
