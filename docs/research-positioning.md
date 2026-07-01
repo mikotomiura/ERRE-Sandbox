@@ -143,6 +143,11 @@
    forward = 別の sampling proxy でも GPU-only-scorer 再走でもなく、**フル仮説をテスト可能にする
    substrate 建設 + 非循環 measurement prevalidation を先に建てる** (§8)。ES-1/ES-3 の GO
    conformance は次 substrate milestone の入力資産として保全する。
+6. **substrate を建てる (scoping FROZEN 2026-07-01)**: 次 milestone = **situated 3D embodiment**
+   (名指しの missing substrate) を新規次元に、outcome を structural/behavioral に付け替え、計測基盤
+   ファーストで **二層 D0 pack** (structural conformance + semantic prevalidation) を G-GEAR 先行で
+   valid 化してから cross-machine Godot フル apparatus を次工程へ。これは substrate + 計測能力の前進で
+   あって **divergence 仮説の検定ではない** (§8 claim 境界・2×2 停止規則)。
 
 ## 7. 成功時の社会的インパクト
 
@@ -187,12 +192,24 @@
     (単一 forward channel・no feedback amplification) ゆえ再 litigate しない。
   - **two-sided guard**: positive/negative の **両方が finding**。**verdict 未取得の ES-4 を「成功する」
     とも「H4 は偽」とも書かない** (forking-paths ガード)。
-- **forward / re-entry (方向決定 ADR FROZEN 2026-07-01)**: forward = 別 sampling proxy でも GPU-only-scorer
-  再走でもなく、**フル仮説をテスト可能にする substrate 建設**。次 substrate milestone は long horizon /
-  memory recomposition / situated 3D state / closed-loop action-observation のいずれか新規次元を追加し、
-  第一成果物に **非循環 measurement prevalidation (`D0 pack`)** を含める。D (GPU-only scorer 再入) /
-  richer-channel は **pre-validation gate 付き preserved re-entry** = GPU 禁止でなく「sealed run 前に
+- **forward / re-entry (disposition ADR FROZEN 2026-07-01)**: forward = 別 sampling proxy でも
+  GPU-only-scorer 再走でもなく、**フル仮説をテスト可能にする substrate 建設**。次 substrate milestone は
+  long horizon / memory recomposition / situated 3D state / closed-loop action-observation のいずれか新規
+  次元を追加し、第一成果物に **非循環 measurement prevalidation (`D0 pack`)** を含める。D (GPU-only scorer
+  再入) / richer-channel は **pre-validation gate 付き preserved re-entry** = GPU 禁止でなく「sealed run 前に
   非循環 validity を示せない scorer を block」。
+- **substrate milestone scoping (方向決定 ADR FROZEN 2026-07-01)**: 上記 forward を具体化。**採用 =
+  situated 3D embodiment を新規生成次元** (post_close_direction 名指しの「実際の missing substrate」)、
+  **outcome class を semantic-text 発散から structural/behavioral に付け替える** (ES-1/ES-3 が非循環に測れた
+  precedent)。順序 = **計測基盤ファースト** (G-GEAR 上で二層 D0 pack を先行 valid 化してから cross-machine
+  Godot フル apparatus を次工程に支出)。**二層 D0 pack** = (a) structural conformance track [D0a synthetic
+  trace + D0b 最小 live/replay smoke] + (b) semantic reference-free-originality prevalidation track (壁を攻め
+  D re-entry を開く)。**claim 境界**: この milestone は substrate 建設 + 計測能力の前進であって
+  **divergence 仮説そのものの検定ではない** (necessary-substrate + measurement-capability、ES-1/ES-3 同型)。
+  **停止規則 (2×2)**: structural READY ∧ semantic NO_VALID_SCORER の場合、semantic scorer superseding ADR を
+  通すまで「divergence に近づいた」と主張禁止 (structural 積み上げによる永久 defer を block)。memory
+  recomposition は 3D substrate の component/fallback seam に、closed-loop (RQ-SWM-1) は 3 条件付き re-entry
+  door に保全。核心診断「計測壁は semantic 固有」は **作業仮説** (richer structural の測定可能性は D0 で実証)。
 - **現状の到達点 (2026-07-01)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)**。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という核心の
   問いには **まだ答えを出していない** (計測器が建たず測れていない)。
@@ -201,6 +218,8 @@
 
 - **やる**:
   - 身体を外した in-silico での「記憶再編チャネル単独」の発散種生成の測定 (ES 系列)。
+  - **situated 3D embodiment substrate の建設と、その出力を structural/behavioral outcome で非循環に測る
+    計測基盤 (二層 D0 pack) の先行 valid 化** (substrate scoping FROZEN 2026-07-01)。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
