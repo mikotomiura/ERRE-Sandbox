@@ -210,9 +210,22 @@
   通すまで「divergence に近づいた」と主張禁止 (structural 積み上げによる永久 defer を block)。memory
   recomposition は 3D substrate の component/fallback seam に、closed-loop (RQ-SWM-1) は 3 条件付き re-entry
   door に保全。核心診断「計測壁は semantic 固有」は **作業仮説** (richer structural の測定可能性は D0 で実証)。
+- **M13-SUB1 D0 pack apparatus 事前登録 (ADR FROZEN 2026-07-01、doc-only)**: 上記 scoping の apparatus
+  具体化。第一成果物 = **二層 D0 pack + 最小 deterministic 3D-state 生成 stub** を G-GEAR 完結で pre-register
+  (数値 floor + verdict schema を run 前凍結、実装・GPU run は更に次工程)。(a) structural conformance =
+  ES-1 retrieval-landscape estimand を **complexity ladder R0(=ES-1)→R1(連続位置)→R2(kinematics)→R3(action⇄obs
+  closure)** に一般化し、readout 固定・state richness 可変で「どの複雑度まで richer structural を非循環に
+  測れるか」を rung ごとに実証 (**anti-collapse gate** で R1 が ES-1 を黙って再測定する偽 GO を封鎖)。live 層は
+  authoritative physics が Python 側 (`step_kinematics`+`ManualClock`) ゆえ **D0b-runtime を必須**とし、真の
+  Godot render-loop coupling は cross-machine milestone に defer。(b) semantic reference-free-originality
+  prevalidation = **独立 provenance corpus + leave-anchor-out hard gate + surviving-fraction floor +
+  entropy-residual 固定 baseline 直交 gate** で ES-4 の自己 anchor 認識循環を構造的に不能化。process =
+  /reimagine (v1 破棄→独立 v2→hybrid) + Codex ADOPT-WITH-CHANGES 7 件全反映。**claim 境界 = substrate 配線 +
+  計測能力の実証であって divergence 検定でない** (2×2 停止規則配線)。
 - **現状の到達点 (2026-07-01)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
-  bounded close (H4 効果未判定)**。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という核心の
-  問いには **まだ答えを出していない** (計測器が建たず測れていない)。
+  bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack apparatus pre-register (実装前)**。「身体なしの記憶
+  再編ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない** (計測器が建たず
+  測れていない)。次は「測れるかをまず測る」を二層 D0 pack で実装 valid 化する。
 
 ## 9. スコープ / 非スコープ
 
