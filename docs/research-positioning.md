@@ -102,12 +102,17 @@
   因果・分離・恒等性消失で配線されたことを **GO** で実証 (D_loco=0.0468 / CI_lower=0.0453 ≥
   AMP_FLOOR、zone-function control=7.4e-17 で非トートロジー、ablation で bit-identical 消失)。
   ただしこれは **channel 配線の conformance** であって「歩行 → 創造的発散」そのものではない。
-- **H4 (ES-4、staged、未走)**: その channel を LLM 生成に当てたとき、**locomotion 駆動の温度
-  actuator が qwen3:8b (frozen decoding) の出力を divergent-favoring regime に動かす sufficiency**
-  があるか。→ ES-2 の種生成を介さず ES-1/ES-3 channel に直接配線する **actuator calibration**。
-  3 重 negative control 下で staged (Phase 0 feasibility/power gate → Phase 1 full) に測る。
-  **これは「発散研究」ではなく actuator sufficiency test** であり、GO でも中核命題の再証明でも
-  genuine な創造の主張でもない (§7 過大主張ガード)。
+- **H4 (ES-4、bounded closed as measurement line; effect unjudged)**: その channel を LLM 生成に
+  当てたとき、locomotion 駆動の温度 actuator が qwen3:8b (frozen decoding) 出力を divergent-favoring
+  regime に動かす sufficiency があるか。→ staged (Phase 0 gate → Phase 1) の **actuator sufficiency
+  test** として起票したが、**計測ラインが frozen apparatus 下で建たず bounded close**。主語 =
+  Phase 0 sealed run `INVALID_SCORER` + 方向 C offline 診断 `NO_VALID_SCORER`。二重 bottleneck =
+  ① on-task rarity 計測器を非循環に測れない (全 embedding rarity が leave-anchor-out audit で崩落 =
+  R_object anchor の自己認識循環、唯一 lexical Jaccard も entropy 還元可能 + 効果 floor 未満) +
+  ② actuator channel の near-null 信号 (温度 +0.3 で estimand 構造ほぼ不変)。**棄却されたのは ES-4 の
+  計測器であって H4 効果ではない — H4 効果は未判定** (効果判定 gate に未到達、反証していない)。GO でも
+  中核命題再証明でも genuine 創造でもない (§7)。D (GPU-only scorer) / richer-channel は §8 の
+  pre-validation gate 付き preserved re-entry。
 
 > **arc 再定義 (旧直列鎖の撤回)**: 当初の鎖は「ES-2 が path-dependent な種を生み、その種が
 > ES-3 で sampling 変調を介して発話に効く」という **直列依存**で描いていた。ES-2 が bounded
@@ -128,14 +133,16 @@
 3. **channel を配線する (ES-3)**: ES-2 の種を介さず、ES-1 の spatial→memory 土台の上に
    locomotion (運動史 EMA) → sampling (temperature/top_p) channel を直接配線し、因果・分離・
    恒等性消失 (ablation で bit-identical 消失) で conformance を測る → GO。
-4. **actuator を校正する (ES-4、staged)**: ES-3 channel を LLM 生成に当て、locomotion 駆動の
-   温度 actuator が qwen3:8b 出力を divergent-favoring regime に動かす sufficiency を、3 重
-   negative control 下で staged (Phase 0 feasibility/power gate → Phase 1 full) に測る。
-   ES-2 種生成チャネルを介さない直接 calibration。
-5. **主張 (over-claim guard 付き)**: ES-4 が PASS/GO なら「locomotion→sampling actuator が
-   frozen decoding 下で出力を divergent-favoring regime に動かす **sufficiency**」止まり、
-   NO_GO/null なら「単一 temperature 軸では発散を担えない honest negative」。**どちらに転んでも
-   情報量がある**が、いずれも「歩行が genuine な創造的発散を生む」「中核命題の再証明」は主張しない。
+4. **actuator を校正する (ES-4、staged) → 計測ライン bounded close**: ES-3 channel を LLM 生成に
+   当て、locomotion 駆動の温度 actuator の sufficiency を staged に測ろうとしたが、**frozen apparatus
+   下で on-task rarity 計測器が非循環に建たず bounded close** (Phase 0 `INVALID_SCORER` + 診断
+   `NO_VALID_SCORER`)。棄却は計測器であって H4 効果ではない (未判定)。
+5. **主張 (measurement line close / H4 効果未判定)**: ES-4 は actuator sufficiency について
+   **sufficiency も insufficiency も claim しない** — valid 計測器が建たず verdict に未到達。
+   near-null channel signal は再走優先度を下げる forensic であって negative verdict ではない。
+   forward = 別の sampling proxy でも GPU-only-scorer 再走でもなく、**フル仮説をテスト可能にする
+   substrate 建設 + 非循環 measurement prevalidation を先に建てる** (§8)。ES-1/ES-3 の GO
+   conformance は次 substrate milestone の入力資産として保全する。
 
 ## 7. 成功時の社会的インパクト
 
@@ -149,37 +156,46 @@
   convergent null は very low certainty)。positive でも「人間機構の再現」ではなく「別ルートの
   十分性」に主張を限定する。ES-2 が測るのは厳密には **「発散の前段 = 経路依存的な種の生成」**で
   あって発散そのものではない (claim 境界)。
-- **ES-4 の claim 境界 (actuator sufficiency 止まり)**: ES-4 GO の意味は
-  **「locomotion→sampling actuator (open-loop forward channel) が、qwen3:8b local under frozen
-  decoding で、出力を divergent-favoring regime に動かす sufficiency」**に厳密限定する。**「歩行が
-  genuine な創造的発散を生む」とも「閉ループ創発 (中核命題) の再証明」とも言わない**。locomotion は
-  temperature の唯一の channel ゆえ「temperature を超える locomotion 固有の発散」は構造的に
-  存在しない (honest)。generic な温度効果と scorer-entropy artifact は 3 重 negative control 下に
-  置く (§8)。
+- **ES-4 の claim 境界 (計測ライン close / 何も claim しない)**: ES-4 は actuator sufficiency に
+  ついて **sufficiency も insufficiency も claim しない**。valid な非循環計測器が frozen apparatus
+  下で建たず verdict に未到達だからである (Phase 0 `INVALID_SCORER` + 診断 `NO_VALID_SCORER`)。
+  **棄却されたのは ES-4 の計測器であって H4 効果ではない — H4 効果は未判定** (「歩行が genuine な
+  発散を生む」とも「単一 temperature 軸では発散を担えない」とも言わない)。near-null channel signal は
+  再走優先度を下げる forensic であって negative verdict ではない。大 dose / richer-channel は現 ES-4
+  frozen honest envelope の外ゆえ扱わず、別仮説として pre-validation gate 付きで re-entry しうる (§8)。
 
 ## 8. 成功基準 / 反証条件
 
-- **成功とみなす条件 (現最前線 = ES-4)**: ES-3 GO (channel 配線) を達成済 → ES-4 進資格。
-  ES-4 は **staged**: Phase 0 (feasibility / power / hard budget gate) が PASS した場合のみ、
-  ES-4 ADR で凍結済の N・閾値・課題 battery・scorer で Phase 1 full run に進む。Phase 1 の成功 =
-  **3 重 negative control 下で actuator が divergent-favoring effect を生む sufficiency**。
-  *(数値定数・battery・estimand 演算・閾値は ES-4 ADR が freeze する。本 SSOT は方向と claim
-  境界のみを記し、apparatus を焼かない。)*
+- **ES-4 の disposition (計測ライン bounded close)**: ES-4 は staged で起票し Phase 0 sealed run を
+  実走したが、verdict = `INVALID_SCORER` (Phase 0) + `NO_VALID_SCORER` (方向 C offline 診断) →
+  **on-task rarity 計測ラインを bounded close**。主語は計測器 validity の失敗であって H4 効果ではない
+  (効果判定 gate に未到達 = **H4 効果は未判定**)。
+- **「測れるかをまず測る」= arc-level 規律 (明文化)**: 中核命題 H0 が検出力壁で、ES-4 が計測器の
+  非トートロジー壁で死んだ二重の経験を踏まえ、**sealed run に投資する前に計測 validity を非循環に
+  establish できることを必須ゲート**とする。この 2 連続失敗は **research-management / VoI rationale**
+  であって arc 命題への empirical 反証ではない (ES-1/ES-3 GO を巻き込まない)。
 - **反証条件 / verdict 語彙 (falsification)**:
   - ES-4 Phase 0/1 の verdict 語彙 = `PASS` / `INCONCLUSIVE_UNDERPOWERED` / `INVALID_SCORER` /
     `INVALID_TASK_BATTERY` / `NO_GO_EFFECT_ABSENT`。**apparatus-invalid を低検出力と混同しない**
-    (ES-2 で「metric artifact と真の low-power を峻別」した同型規律)。
-  - `NO_GO_EFFECT_ABSENT` = **前進的 finding** (単一 temperature 軸では発散を担えない =
-    richer channel re-entry の trigger)。ES-2 が bounded INCONCLUSIVE に留まったのも同様に
-    「答えが出ていない」を honest に記録した finding であり、下流の必須前提にはしない。
+    (ES-2 で「metric artifact と真の low-power を峻別」した同型規律)。実際に発火したのは
+    `INVALID_SCORER` (計測器 validity)。
+  - **`NO_GO_EFFECT_ABSENT` は今回 "未取得 verdict"** — ES-4 は効果判定 gate に到達していないため
+    「単一 temperature 軸では発散を担えない」という negative は **取得していない** (near-null channel
+    は forensic であって verdict でない)。この語彙は将来 valid 計測器下でのみ発火しうる。
   - 中核命題 H0 は既に bounded envelope 内で **non-divergence として CLOSE** 済み — 同一空間の
-    薄いプロキシ再走は禁止 (継続バイアスガード)。ES-4 は中核命題 (閉ループ δ 増幅) と機構が別
+    薄いプロキシ再走は禁止 (継続バイアスガード)。ES-4 も中核命題 (閉ループ δ 増幅) と機構が別
     (単一 forward channel・no feedback amplification) ゆえ再 litigate しない。
-  - **two-sided guard**: positive/negative の **両方が finding** であり、片側のみを成功とする
-    設計を禁じる。**verdict 未取得の ES-4 を「成功する」と書かない** (forking-paths ガード)。
-- **現状の到達点 (2026-06-29)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO。ES-4 は方向
-  決定 ADR が FROZEN され、両 phase full pre-register の ES-4 ADR 起票待ち (未走)。「身体なしの
-  記憶再編ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない**。
+  - **two-sided guard**: positive/negative の **両方が finding**。**verdict 未取得の ES-4 を「成功する」
+    とも「H4 は偽」とも書かない** (forking-paths ガード)。
+- **forward / re-entry (方向決定 ADR FROZEN 2026-07-01)**: forward = 別 sampling proxy でも GPU-only-scorer
+  再走でもなく、**フル仮説をテスト可能にする substrate 建設**。次 substrate milestone は long horizon /
+  memory recomposition / situated 3D state / closed-loop action-observation のいずれか新規次元を追加し、
+  第一成果物に **非循環 measurement prevalidation (`D0 pack`)** を含める。D (GPU-only scorer 再入) /
+  richer-channel は **pre-validation gate 付き preserved re-entry** = GPU 禁止でなく「sealed run 前に
+  非循環 validity を示せない scorer を block」。
+- **現状の到達点 (2026-07-01)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
+  bounded close (H4 効果未判定)**。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という核心の
+  問いには **まだ答えを出していない** (計測器が建たず測れていない)。
 
 ## 9. スコープ / 非スコープ
 
