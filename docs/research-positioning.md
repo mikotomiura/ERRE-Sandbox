@@ -239,12 +239,26 @@
   fork C (semantic track) は `NOT_EVALUATED` のまま deprioritize (破棄でない)。process = /reimagine
   (v1=bounded pivot 自動昇格 → 破棄 → v2=arc 全体 close 優先で独立再生成 → hybrid) + Codex
   Adopt-with-changes (MEDIUM 2 + LOW 2 全反映)。
+- **memory-recomposition seam costed pre-register ADR (ADR FROZEN 2026-07-02)**: disposition ADR
+  §4 の 6 項目ゲートを満たす形で re-entry を具体化。**estimand を ES-2 の output-diversity 型
+  (生成物集合の多様性を外側から要約) から ES-1/ES-3 が非循環に GO した channel-conformance 型
+  (入力チャネルが下流の離散決定を因果的に偏らせるか) へ転換**: 入力チャネル `C` = idle
+  recomposition batch の pooled content-bigram 遷移分布の argmax セル、下流決定 `D` = 独立 RNG
+  stream で再インスタンス化した post-idle walk (`C` の formation zone 一致項のみ既存 `POLYA_ALPHA`
+  を再利用)。stop rule は D0 pack §8 型の 2×2 (apparatus 有効性 × conformance CI 符号)、verdict
+  token は ES-1/ES-2/ES-3 と同型の `GO`/`NO_GO`/`INCONCLUSIVE`。process = /reimagine (v1 破棄→
+  独立 v2 [v1 と独立に同一 estimand class 転換へ収束]→hybrid) + Codex (Verdict=Revise→HIGH3
+  [`C` の型誤り/cost ceiling と tune-to-pass 凍結の矛盾/gate 数値閾値未定義]・MEDIUM2・LOW1 全反映)。
+  **claim 境界 = necessary-substrate 型の下流因果偏り測定であって H4 (身体性が発散を生む) の証明
+  ではない**、live agent/Godot への接続なし。次工程 = apparatus 実装 + verdict run (別 fresh
+  session)。
 - **現状の到達点 (2026-07-02)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
-  (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**。
-  「身体なしの記憶再編ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない**
-  (計測器が zone-level を超える richness を今の apparatus では測れていない)。次は memory-recomposition
-  seam の costed pre-register ADR で「測れるかをまず測る」を継続する。
+  (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
+  / **memory-recomposition seam costed pre-register ADR = FROZEN (estimand class 転換の設計完了、
+  実装・verdict run は未実施)**。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という
+  核心の問いには **まだ答えを出していない** (計測器が zone-level を超える richness を今の
+  apparatus では測れていない、memory-recomposition seam の verdict run もこれから)。
 
 ## 9. スコープ / 非スコープ
 
