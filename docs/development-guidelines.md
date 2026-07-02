@@ -75,6 +75,18 @@ feat(cognition): add DMN-inspired idle reflection window
 - 各リリースで Zenodo DOI を自動発行
 - CITATION.cff で BibTeX を配信
 
+### Loop Engineering ワークフロー
+複数 issue に割れる / 長時間 / 有界自律実行したいタスクは Loop Engineering で回す
+(運用 SSOT = `docs/loop-engineering.md`、ここでは要点のみ・詳細を再掲しない):
+
+- **1 issue = 1 worktree = 1 PR 候補**。issue は vertical slice で切る (`issue-slicing` skill)。
+- worktree 内で `/loop-issue` を有界起動 (`/goal … or stop after N`)、各 attempt を
+  test-runner→loop-watchdog で客観検証 (`verify_level: recheck` は独立再実行で緑確認)。
+- 停止は二段: `loop-guard.sh` (無料・fingerprint/attempt/token) + `loop-watchdog` (Haiku・意味判断)。
+- 全 issue 緑 + 統合フル CI 緑の後、最終 merge の**前**に TASK-POST `/cross-review`
+  (code-reviewer(Opus) + Codex(gpt-5.5) 二者レビュー統合)。HIGH は merge 前に必ず反映。
+- 管理ファイルは `loop/` に集約 (DA-LOOP-1)、監視は `/loop-status` (board 単一書き手)。
+
 ## 3. テスト方針
 
 ### テストの種類
@@ -182,6 +194,8 @@ uv run python -m erre_sandbox --allow-unauthenticated-lan
 
 ### プロジェクトドキュメント
 - `docs/` の永続ドキュメント: 日本語メイン
+- `docs/loop-engineering.md`: Loop Engineering 運用の単一 SSOT (issue 単位ループ・Done/Stop・
+  budget・events/board・Codex ゲート)。CLAUDE.md / AGENTS.md 参照テーブルからリンク。
 - `README.md`: 英語主体、冒頭に「日本語」ジャンプリンク
 - MkDocs Material + mkdocstrings で API ドキュメント自動生成
 - mkdocs-static-i18n で JA/EN 言語スイッチャ

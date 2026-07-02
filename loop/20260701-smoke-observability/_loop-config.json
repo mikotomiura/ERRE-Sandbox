@@ -1,0 +1,3 @@
+{ "task": "smoke-observability",
+  "budget": { "max_attempts": 6, "token_ceiling": 2000000, "parallel": 3 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260701-smoke-observability/_loop-events.jsonl" }

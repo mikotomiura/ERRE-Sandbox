@@ -1,0 +1,4 @@
+{"ts":"2026-07-01T15:32:10Z","issue":"002","phase":"execute","event":"attempt_start","attempt":3}
+{"ts":"2026-07-01T15:33:41Z","issue":"002","phase":"verify","event":"test_fail","attempt":3,"exit":1,"fingerprint":"pytest::test_login::AssertionError@auth.py:42","detail":"401!=200"}
+{"ts":"2026-07-01T15:34:02Z","issue":"003","phase":"verify","event":"no_progress_stop","attempt":4,"fingerprint":"...","detail":"同一fingerprint×4、budget超で停止"}
+{"ts":"2026-07-01T15:40:00Z","issue":"001","phase":"done","event":"issue_done","attempt":2,"pr":"#12"}

@@ -1,0 +1,9 @@
+{
+  "task": "add-user-auth",
+  "verify": { "test": "pytest -q", "typecheck": "mypy .", "lint": "ruff check ." },
+  "ci_command": "make ci",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 3 },
+  "events_path": "<ABSOLUTE>/loop/20260701-add-user-auth/_loop-events.jsonl"
+}
