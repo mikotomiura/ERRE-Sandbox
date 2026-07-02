@@ -222,10 +222,29 @@
   entropy-residual 固定 baseline 直交 gate** で ES-4 の自己 anchor 認識循環を構造的に不能化。process =
   /reimagine (v1 破棄→独立 v2→hybrid) + Codex ADOPT-WITH-CHANGES 7 件全反映。**claim 境界 = substrate 配線 +
   計測能力の実証であって divergence 検定でない** (2×2 停止規則配線)。
-- **現状の到達点 (2026-07-01)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
-  bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack apparatus pre-register (実装前)**。「身体なしの記憶
-  再編ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない** (計測器が建たず
-  測れていない)。次は「測れるかをまず測る」を二層 D0 pack で実装 valid 化する。
+- **M13-SUB1 D0 pack structural track 実装 + verdict run (PR #44 MERGED)**: apparatus 事前登録の忠実
+  実装。verdict = **`structural_status=NO_STRUCTURAL_FLOOR`、`R*=R0`**。R0 (ES-1 anchor) は非循環に
+  測れたが、R1 の anti-ES-1-collapse gate は floor 未達 (`median(Δ_1)=0.0`、64 seed 中 63 が exact
+  ゼロ)。機序解析 = retrieval top-k membership が zone-level 情報のみで決まる構造的低検出力
+  (**この apparatus パラメータ組 [K_RETRIEVE/M_MEMORIES/SPATIAL_GAMMA] 限定の honest negative**、
+  metric のバグでも一般的な「richer structural 測定不能」の証明でもない)。TASK-POST `/cross-review`
+  の HIGH 3 件反映後も verdict は byte-identical に不変。
+- **M13-SUB1 forward disposition (ADR FROZEN 2026-07-02)**: 上記 `NO_STRUCTURAL_FLOOR` は scoping ADR
+  §4 の falsifiable 条件 (i) に該当し、fork-2 fallback (memory-recomposition seam) を発動。**採用 =
+  situated-3D-richness (R1+) を primary structural target から bounded close するが、M13 substrate
+  arc 全体は継続** (棄却スコープ = 現行 apparatus パラメータ下の R1+ 測定ラインのみ、ES-1/ES-3 GO・
+  「身体性 substrate を建てる」大方針は不変)。memory-recomposition seam は **自動昇格でなく**、
+  ES-2 failure mechanism 対応・検出力方針・cost ceiling・stop rule・success/fail token・
+  tune-to-pass 防止の 6 項目を必須とする costed pre-register ADR をゲートとする条件付き re-entry。
+  fork C (semantic track) は `NOT_EVALUATED` のまま deprioritize (破棄でない)。process = /reimagine
+  (v1=bounded pivot 自動昇格 → 破棄 → v2=arc 全体 close 優先で独立再生成 → hybrid) + Codex
+  Adopt-with-changes (MEDIUM 2 + LOW 2 全反映)。
+- **現状の到達点 (2026-07-02)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
+  bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
+  (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**。
+  「身体なしの記憶再編ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない**
+  (計測器が zone-level を超える richness を今の apparatus では測れていない)。次は memory-recomposition
+  seam の costed pre-register ADR で「測れるかをまず測る」を継続する。
 
 ## 9. スコープ / 非スコープ
 
