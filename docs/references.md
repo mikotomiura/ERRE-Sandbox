@@ -17,6 +17,11 @@
 | [4] | arXiv:2411.00114 | AL et al. (Altera) — *Project Sid: Many-agent simulations toward AI civilization* | arXiv, 2024 | research-positioning §3/§4; glossary (PIANO) | active |
 | [5] | DOI:10.1093/llc/17.3.267 | Burrows, J. — *'Delta': a measure of stylistic difference and a guide to likely authorship* | Literary and Linguistic Computing, 17(3), 267–287, 2002 | research-positioning §3; glossary (Burrows Δ) | active |
 | [6] | DOI:10.1371/journal.pone.0347878 | Thabane, A. et al. — *The impact of walking on creative thinking: A systematic review and meta-analysis* | PLOS ONE, 21(5), e0347878, 2026 | research-positioning §3/§7 | active |
+| [7] | DOI:10.3758/s13428-020-01453-w | Beaty, R. E. & Johnson, D. R. — *Automating creativity assessment with SemDis: An open platform for computing semantic distance* | Behavior Research Methods, 53(2), 757–780, 2021 | docs/literature/20260702-divergent-thinking-benchmarks.md | active |
+| [8] | DOI:10.1073/pnas.2022340118 | Olson, J. A., Nahas, J., Chmoulevitch, D., Cropper, S. J. & Webb, M. E. — *Naming unrelated words predicts creativity* | PNAS, 118(25), e2022340118, 2021 | docs/literature/20260702-divergent-thinking-benchmarks.md | active |
+| [9] | DOI:10.1037/a0027373 | Hills, T. T., Jones, M. N. & Todd, P. M. — *Optimal Foraging in Semantic Memory* | Psychological Review, 119(2), 431–440, 2012 | docs/literature/20260702-divergent-thinking-benchmarks.md; research-positioning §3 (候補) | active |
+| [10] | DOI:10.1038/s41562-018-0467-4 | Wu, C. M., Schulz, E., Speekenbrink, M., Nelson, J. D. & Meder, B. — *Generalization guides human exploration in vast decision spaces* | Nature Human Behaviour, 2, 915–924, 2018 | docs/literature/20260702-divergent-thinking-benchmarks.md | active |
+| [11] | DOI:10.1093/brain/awae199 | Bartoli, E. et al. — *Default mode network electrophysiological dynamics and causal role in creative thinking* | Brain, 147(10), 3409–3425, 2024 | docs/literature/20260702-divergent-thinking-benchmarks.md | active |
 
 ## 追加・撤回ルール
 
