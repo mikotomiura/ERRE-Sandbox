@@ -1,0 +1,13 @@
+{
+  "task": "m13-sub1-d0-structural",
+  "verify": {
+    "test": "pytest -q tests/test_evidence/test_d0_constants.py tests/test_evidence/test_d0_stub.py tests/test_evidence/test_d0_ladder.py tests/test_evidence/test_d0_smoke.py tests/test_evidence/test_d0_verdict.py",
+    "typecheck": "mypy src",
+    "lint": "ruff check ."
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 8, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260702-m13-sub1-d0-structural/_loop-events.jsonl"
+}
