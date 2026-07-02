@@ -10,13 +10,16 @@ import pytest
 from erre_sandbox.evidence.d0_substrate import constants as _c
 from erre_sandbox.evidence.d0_substrate.ladder import (
     _closure_c_ao,
+    _closure_c_ao_within_seed,
     _cone_affordance_set,
     evaluate_r0,
+    evaluate_r0_and_r1,
     evaluate_r1,
     evaluate_r2,
     evaluate_r3,
     r0_r1_seed_point,
 )
+from erre_sandbox.evidence.d0_substrate.stub import ZONE_DEFAULT_NULL_ACTION
 from erre_sandbox.schemas import Zone
 
 _SMALL_SEED_BANK = list(range(16))
@@ -75,6 +78,19 @@ async def test_r1_delta_median_and_ci_present() -> None:
     r1 = await evaluate_r1(_SMALL_SEED_BANK)
     assert r1.delta_median is not None
     assert r1.delta_ci_lower is not None
+
+
+@pytest.mark.asyncio
+async def test_evaluate_r0_and_r1_matches_separate_calls() -> None:
+    """TASK-POST HIGH fix (code-reviewer): the combined entrypoint must be
+    numerically identical to calling evaluate_r0 / evaluate_r1 separately,
+    just without the redundant recomputation.
+    """
+    r0_combined, r1_combined = await evaluate_r0_and_r1(_SMALL_SEED_BANK)
+    r0_separate = await evaluate_r0(_SMALL_SEED_BANK)
+    r1_separate = await evaluate_r1(_SMALL_SEED_BANK)
+    assert r0_combined == r0_separate
+    assert r1_combined == r1_separate
 
 
 # --- R2: perception-cone geometry -------------------------------------------
@@ -185,3 +201,104 @@ def test_c_ao_structure_destroying_null_shuffled_action_collapses() -> None:
     null_residual = _closure_c_ao(zones, shuffled_actions, obs, seeds)
     assert null_residual <= _c.LANDSCAPE_JACCARD_FLOOR
     assert null_residual < real_residual
+
+
+def test_closure_c_ao_within_seed_detects_joint_structure() -> None:
+    """TASK-POST HIGH fix (code-reviewer + Codex, same defect independently
+    found): the per-seed bootstrap unit must NOT be structurally forced to
+    0.0 by a degenerate seed-parity split over rows that all share one seed.
+    """
+    combos = [
+        (Zone.STUDY, 0),
+        (Zone.STUDY, 1),
+        (Zone.CHASHITSU, 0),
+        (Zone.CHASHITSU, 1),
+    ]
+    rows = combos * 20
+    rng = random.Random("d0-test-within-seed")
+    rng.shuffle(rows)
+    zones = [z for z, _a in rows]
+    actions = [a for _z, a in rows]
+    obs = [(z == Zone.CHASHITSU and a == 1) for z, a in rows]
+
+    within_seed_residual = _closure_c_ao_within_seed(zones, actions, obs)
+    assert within_seed_residual > 0.10
+
+    # The old (buggy) call path: seed-parity split with every row sharing
+    # ONE seed value collapses to exactly 0.0 regardless of true signal.
+    degenerate_residual = _closure_c_ao(zones, actions, obs, [7] * len(rows))
+    assert degenerate_residual == 0.0
+    assert within_seed_residual != degenerate_residual
+
+
+def _synthetic_multi_zone_props() -> dict[Zone, tuple[object, ...]]:
+    return {
+        Zone.STUDY: (
+            _c.PropFixture("s1", "test", *_c.ZONE_CENTERS[Zone.STUDY], 0.5),
+            _c.PropFixture(
+                "s2",
+                "test",
+                _c.ZONE_CENTERS[Zone.STUDY][0] + 1.0,
+                _c.ZONE_CENTERS[Zone.STUDY][1],
+                _c.ZONE_CENTERS[Zone.STUDY][2] + 1.0,
+                0.5,
+            ),
+        ),
+        Zone.CHASHITSU: _c.ZONE_PROPS[Zone.CHASHITSU],
+        Zone.PERIPATOS: (),
+        Zone.AGORA: (),
+        Zone.GARDEN: (),
+    }
+
+
+@pytest.mark.asyncio
+async def test_r2_delta_fields_populated_when_prop_fixture_valid(monkeypatch) -> None:
+    """TASK-POST HIGH fix (Codex): R2 must populate delta_median/delta_ci_lower
+    once the prop-fixture gate opens, or it can never PASS the anti-collapse
+    gate (previously these fields were always None for R2).
+    """
+    monkeypatch.setattr(_c, "ZONE_PROPS", _synthetic_multi_zone_props())
+    r2 = await evaluate_r2(list(range(8)))
+    assert r2.prop_fixture_valid is True
+    assert r2.delta_median is not None
+    assert r2.delta_ci_lower is not None
+    assert r2.control_ok == (r2.control_value <= _c.ZERO_TOL)
+
+
+@pytest.mark.asyncio
+async def test_r3_delta_fields_populated_when_prop_fixture_valid(monkeypatch) -> None:
+    """TASK-POST HIGH fix (Codex): R3 must populate delta_median/delta_ci_lower
+    once the prop-fixture gate opens (previously always None for R3 too).
+    """
+    monkeypatch.setattr(_c, "ZONE_PROPS", _synthetic_multi_zone_props())
+    r3 = await evaluate_r3(list(range(8)))
+    assert r3.prop_fixture_valid is True
+    assert r3.delta_median is not None
+    assert r3.delta_ci_lower is not None
+
+
+def test_r3_quantized_action_removes_joint_predictor_edge() -> None:
+    """The R3 anti-collapse comparator (action -> ZONE_DEFAULT_NULL_ACTION for
+    every row) must remove any advantage the joint predictor had over the
+    zone-marginal one, since a constant action carries no information.
+    """
+    combos = [
+        (Zone.STUDY, 0),
+        (Zone.STUDY, 1),
+        (Zone.CHASHITSU, 0),
+        (Zone.CHASHITSU, 1),
+    ]
+    rows = combos * 20
+    rng = random.Random("d0-test-r3-quantized")
+    rng.shuffle(rows)
+    zones = [z for z, _a in rows]
+    actions = [a for _z, a in rows]
+    obs = [(z == Zone.CHASHITSU and a == 1) for z, a in rows]
+
+    real_residual = _closure_c_ao_within_seed(zones, actions, obs)
+    quantized_actions = [ZONE_DEFAULT_NULL_ACTION] * len(actions)
+    quantized_residual = _closure_c_ao_within_seed(zones, quantized_actions, obs)
+
+    assert real_residual > 0.0
+    assert quantized_residual == 0.0
+    assert quantized_residual < real_residual

@@ -48,3 +48,13 @@ def test_smoke_reproducible_across_seeds() -> None:
 
 def test_smoke_tick_rate_pinned_to_production_physics_hz() -> None:
     assert D0B_TICK_HZ == 30.0
+
+
+def test_smoke_zone_transition_actually_exercised() -> None:
+    """TASK-POST LOW fix (Codex): a zero-transition episode makes
+    ``zone_transition_round_trip_ok`` pass vacuously without exercising the
+    schema at all. D0B_EPISODE_TICKS must give the fixed seed's own
+    start/destination pair enough travel to actually cross a zone boundary.
+    """
+    result = run_smoke(D0B_SEED)
+    assert result.n_zone_transitions >= 1

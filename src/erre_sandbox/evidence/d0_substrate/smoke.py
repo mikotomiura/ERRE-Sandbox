@@ -76,10 +76,20 @@ D0B_TICK_HZ: float = 30.0
 ``erre_sandbox.world.tick.WorldRuntime.DEFAULT_PHYSICS_HZ`` (the real
 production tick rate this smoke exercises)."""
 
-D0B_EPISODE_TICKS: int = 90
-"""Fixed episode length (3 seconds at 30 Hz): long enough to cross at least
-one zone boundary from any start/destination pair drawn by
-:func:`erre_sandbox.evidence.d0_substrate.stub.draw_start_terminal`."""
+D0B_EPISODE_TICKS: int = 900
+"""Fixed episode length (30 s at 30 Hz, TASK-POST LOW fix: was 90 ticks =
+3 s = max 3.9 m travel at the default ``Kinematics.speed_mps=1.3`` — far
+short of what :data:`D0B_SEED`'s own start/destination pair needs, so the
+episode never actually crossed a zone and ``zone_transition_round_trip_ok``
+passed vacuously on an empty transition list, Codex TASK-POST finding).
+``D0B_SEED=0`` draws CHASHITSU -> GARDEN
+(:func:`erre_sandbox.evidence.d0_substrate.stub.draw_start_terminal`), whose
+straight-line path crosses the CHASHITSU/GARDEN Voronoi boundary at exactly
+``WORLD_SIZE_M/3 ~= 33.33`` m of travel; 900 ticks gives 39 m, comfortably
+past that. This is empirically verified for seed 0 specifically (``test_
+smoke_zone_transition_actually_exercised``, not derived from a general
+worst-case bound) — if :data:`D0B_SEED` ever changes, re-verify this
+travel/tick relationship for the new seed's own start/destination pair."""
 
 _AFFORDANCE_RADIUS_M = _c.AFFORDANCE_RADIUS_M
 

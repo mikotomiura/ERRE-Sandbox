@@ -18,12 +18,21 @@ this module computes it once per seed and reuses it for both R0's own
 estimand and R1's anti-collapse comparator.
 
 **The anti-ES-1-collapse gate (§2 #5, Codex HIGH-1, the load-bearing gate)**:
-for R1+, ``Delta_r = D_r - D_r^quantized`` is a **seed-paired** statistic
-(the bootstrap unit is one seed's ``(D_r, D_r^quantized)`` pair); PASS
-requires ``median(Delta_r) >= RESIDUAL_JACCARD_FLOOR`` **and**
-``CI_lower(Delta_r) > 0`` (:mod:`erre_sandbox.evidence.bootstrap_ci`, mean
-statistic over per-seed deltas — the same one-sided-relevant bootstrap
-:mod:`erre_sandbox.evidence.es3_locomotion.verdict_report` uses).
+for **every** rung R1+ (not just R1 — TASK-POST Codex HIGH, previously only
+R1 populated ``delta_median``/``delta_ci_lower``, which meant R2/R3 could
+never PASS once evaluable), ``Delta_r = D_r - D_r^quantized`` is a
+**seed-paired** statistic (the bootstrap unit is one seed's ``(D_r,
+D_r^quantized)`` pair); PASS requires ``median(Delta_r) >=
+RESIDUAL_JACCARD_FLOOR`` **and** ``CI_lower(Delta_r) > 0``
+(:mod:`erre_sandbox.evidence.bootstrap_ci`, mean statistic over per-seed
+deltas — the same one-sided-relevant bootstrap
+:mod:`erre_sandbox.evidence.es3_locomotion.verdict_report` uses). R2's
+``D_2^quantized`` is computed identically to its own situated-function
+control (yaw -> zone-default heading; the same per-seed value feeds both);
+R3's ``C_ao^quantized`` uses :func:`~...stub.quantize_trace` with
+``rung="R3"`` (action -> :data:`~...stub.ZONE_DEFAULT_NULL_ACTION`) via the
+row-parity :func:`_closure_c_ao_within_seed` split (TASK-POST HIGH fix —
+see its docstring for the seed-parity degenerate-split bug this replaces).
 
 **Situated-function control** (§2, "structure-destroying null -> 0 /
 situated-function control -> 0" columns) is implemented per-rung to genuinely
@@ -95,6 +104,7 @@ from typing import TYPE_CHECKING, Literal
 from erre_sandbox.evidence.bootstrap_ci import bootstrap_ci
 from erre_sandbox.evidence.d0_substrate import constants as _c
 from erre_sandbox.evidence.d0_substrate.stub import (
+    ZONE_DEFAULT_NULL_ACTION,
     Trace3D,
     build_seed_pair,
     quantize_trace,
@@ -313,11 +323,9 @@ def _ci_lower_mean(values: Sequence[float], bootstrap_seed: int) -> tuple[float,
     return ci.lo, ci.hi
 
 
-async def evaluate_r0(
-    seed_bank: Sequence[int], *, bootstrap_seed: int = 0
+def _r0_result_from_points(
+    points: Sequence[SeedPointR0R1], bootstrap_seed: int
 ) -> RungResult:
-    """R0 (anchor = ES-1): the position-quantized landscape divergence."""
-    points = [await r0_r1_seed_point(s) for s in seed_bank]
     d0_vals = [p.d0 for p in points]
     null_vals = [p.d0_null for p in points]
     diffs = [p.d0 - p.d0_null for p in points]
@@ -342,11 +350,9 @@ async def evaluate_r0(
     )
 
 
-async def evaluate_r1(
-    seed_bank: Sequence[int], *, bootstrap_seed: int = 0
+def _r1_result_from_points(
+    points: Sequence[SeedPointR0R1], bootstrap_seed: int
 ) -> RungResult:
-    """R1 (continuous position) + the load-bearing anti-collapse gate."""
-    points = [await r0_r1_seed_point(s) for s in seed_bank]
     d1_vals = [p.d1 for p in points]
     null_vals = [p.d1_null for p in points]
     diffs = [p.d1 - p.d1_null for p in points]
@@ -376,6 +382,43 @@ async def evaluate_r1(
         delta_median=median_delta,
         delta_ci_lower=delta_ci_lower,
     )
+
+
+async def evaluate_r0_and_r1(
+    seed_bank: Sequence[int], *, bootstrap_seed: int = 0
+) -> tuple[RungResult, RungResult]:
+    """R0 + R1 together, computing :func:`r0_r1_seed_point` **once** per seed.
+
+    ``evaluate_r0`` / ``evaluate_r1`` each independently recompute the full
+    trace-generation + retrieval-battery pipeline for the same seed bank
+    (code-reviewer finding, TASK-POST): calling both doubles the verdict
+    run's wall-clock cost for no benefit, since the underlying
+    :class:`SeedPointR0R1` points are identical. Callers that need the full
+    64-seed verdict run should use this combined entrypoint;
+    ``evaluate_r0`` / ``evaluate_r1`` remain for standalone/test use where the
+    2x cost is negligible (small seed banks).
+    """
+    points = [await r0_r1_seed_point(s) for s in seed_bank]
+    return (
+        _r0_result_from_points(points, bootstrap_seed),
+        _r1_result_from_points(points, bootstrap_seed),
+    )
+
+
+async def evaluate_r0(
+    seed_bank: Sequence[int], *, bootstrap_seed: int = 0
+) -> RungResult:
+    """R0 (anchor = ES-1): the position-quantized landscape divergence."""
+    points = [await r0_r1_seed_point(s) for s in seed_bank]
+    return _r0_result_from_points(points, bootstrap_seed)
+
+
+async def evaluate_r1(
+    seed_bank: Sequence[int], *, bootstrap_seed: int = 0
+) -> RungResult:
+    """R1 (continuous position) + the load-bearing anti-collapse gate."""
+    points = [await r0_r1_seed_point(s) for s in seed_bank]
+    return _r1_result_from_points(points, bootstrap_seed)
 
 
 def _prop_fixture_valid() -> bool:
@@ -465,6 +508,17 @@ async def evaluate_r2(
     max_null = max(null_vals) if null_vals else 0.0
     control_median = statistics.median(control_vals) if control_vals else 0.0
 
+    # Anti-collapse gate (design-final.md §2 #5 applies to every rung R1+, not
+    # just R1, Codex TASK-POST HIGH): control_vals[i] IS D_2^quantized for that
+    # seed (quantize_trace "R2" collapses yaw to the zone-default heading,
+    # position/zone untouched) -- the same quantity the situated-function
+    # control already computes, seed-paired with d2_vals[i] by construction.
+    r2_deltas = [d - q for d, q in zip(d2_vals, control_vals, strict=True)]
+    r2_delta_median = statistics.median(r2_deltas) if r2_deltas else 0.0
+    r2_delta_ci_lower, _r2_delta_ci_upper = _ci_lower_mean(
+        r2_deltas, bootstrap_seed + 1
+    )
+
     return RungResult(
         rung="R2",
         n_valid_seeds=len(seed_bank),
@@ -474,8 +528,13 @@ async def evaluate_r2(
         ci_lower=ci_lower,
         ci_upper=ci_upper,
         null_ok=max_null <= _c.LANDSCAPE_JACCARD_FLOOR,
-        control_ok=control_median <= _c.LANDSCAPE_JACCARD_FLOOR,
+        # design-final.md §2 point 4: situated-function control <= ZERO_TOL
+        # uniformly across rungs (Codex TASK-POST MEDIUM; previously loosened
+        # to LANDSCAPE_JACCARD_FLOOR, which is not the frozen threshold).
+        control_ok=control_median <= _c.ZERO_TOL,
         control_value=control_median,
+        delta_median=r2_delta_median,
+        delta_ci_lower=r2_delta_ci_lower,
         prop_fixture_valid=True,
     )
 
@@ -523,19 +582,21 @@ def _joint_and_marginal_predictors(
     return joint, marginal, global_majority
 
 
-def _closure_c_ao(
+def _closure_c_ao_from_mask(
     zones: Sequence[Zone],
     actions: Sequence[int],
     obs: Sequence[bool],
-    seeds: Sequence[int],
+    train_mask: Sequence[bool],
 ) -> float:
     """Residual accuracy gain of a (zone, action) predictor over zone-only.
 
-    Seed-parity held-out split (even seed -> train, odd seed -> test, no
-    leakage). See the module docstring for why this is a *residual* rather
-    than a bare ``1 - accuracy``.
+    ``train_mask`` is caller-supplied so the pooled (seed-parity) and
+    per-seed (row-parity) callers can each apply a split rule that is
+    actually well-defined for their own data (TASK-POST HIGH fix, see
+    :func:`_closure_c_ao` / :func:`_closure_c_ao_within_seed`). See the
+    module docstring for why this is a *residual* rather than a bare
+    ``1 - accuracy``.
     """
-    train_mask = [s % 2 == 0 for s in seeds]
     train_zone = [z for z, m in zip(zones, train_mask, strict=True) if m]
     train_action = [a for a, m in zip(actions, train_mask, strict=True) if m]
     train_obs = [o for o, m in zip(obs, train_mask, strict=True) if m]
@@ -558,6 +619,41 @@ def _closure_c_ao(
         marginal_correct += int(marginal_pred == o)
     n = len(test_obs)
     return (joint_correct / n) - (marginal_correct / n)
+
+
+def _closure_c_ao(
+    zones: Sequence[Zone],
+    actions: Sequence[int],
+    obs: Sequence[bool],
+    seeds: Sequence[int],
+) -> float:
+    """Pooled ``C_ao`` over a multi-seed sample: seed-parity held-out split.
+
+    Even seed -> train, odd seed -> test, no leakage. Well-defined because a
+    multi-seed sample spans both parities.
+    """
+    train_mask = [s % 2 == 0 for s in seeds]
+    return _closure_c_ao_from_mask(zones, actions, obs, train_mask)
+
+
+def _closure_c_ao_within_seed(
+    zones: Sequence[Zone], actions: Sequence[int], obs: Sequence[bool]
+) -> float:
+    """Per-seed bootstrap-unit ``C_ao``: row-parity held-out split.
+
+    TASK-POST HIGH fix (code-reviewer + Codex, both independently found the
+    same defect): the per-seed bootstrap unit's rows all share **one**
+    ``seed`` value, so applying :func:`_closure_c_ao`'s seed-parity mask to
+    a single seed's own rows put every row on the same side of the split
+    (train xor test always empty) and forced the per-seed ``C_ao`` to
+    exactly 0.0 regardless of the true signal. Splitting by **row index**
+    parity instead gives a genuine within-seed train/test partition (the
+    walk's own tick sequence mixes zones/actions, so this is not
+    systematically confounded the way the row-repeating-period synthetic
+    fixtures in ``test_d0_ladder.py`` can be if constructed carelessly).
+    """
+    train_mask = [i % 2 == 0 for i in range(len(zones))]
+    return _closure_c_ao_from_mask(zones, actions, obs, train_mask)
 
 
 async def evaluate_r3(
@@ -585,38 +681,55 @@ async def evaluate_r3(
 
     per_seed_c_ao: list[float] = []
     per_seed_null: list[float] = []
+    per_seed_c_ao_quantized: list[float] = []
     zones: list[Zone] = []
     actions: list[int] = []
     obs: list[bool] = []
     seeds_col: list[int] = []
     for seed in seed_bank:
         trace_a, _trace_b, _start, _terminal = build_seed_pair(seed)
-        zones.extend(_zone_stream(trace_a))
-        actions.extend(_action_stream(trace_a))
-        obs.extend(_obs_stream(trace_a))
-        seeds_col.extend([seed] * len(trace_a.rows))
-
-        # Per-seed C_ao (bootstrap unit) computed against the SAME held-out
-        # split rule applied to this seed's own rows only, mirroring the
-        # per-walk-seed aggregate discipline ES-3 uses.
-        rng = random.Random(f"d0-r3-null-{seed}")  # noqa: S311
-        shuffled_actions = list(_action_stream(trace_a))
-        rng.shuffle(shuffled_actions)
         seed_zones = _zone_stream(trace_a)
         seed_actions = _action_stream(trace_a)
         seed_obs = _obs_stream(trace_a)
-        seed_seeds = [seed] * len(trace_a.rows)
+        zones.extend(seed_zones)
+        actions.extend(seed_actions)
+        obs.extend(seed_obs)
+        seeds_col.extend([seed] * len(trace_a.rows))
+
+        # Per-seed C_ao (bootstrap unit): row-parity within-seed split
+        # (_closure_c_ao_within_seed, TASK-POST HIGH fix — see its docstring).
+        rng = random.Random(f"d0-r3-null-{seed}")  # noqa: S311
+        shuffled_actions = list(seed_actions)
+        rng.shuffle(shuffled_actions)
         per_seed_c_ao.append(
-            _closure_c_ao(seed_zones, seed_actions, seed_obs, seed_seeds)
+            _closure_c_ao_within_seed(seed_zones, seed_actions, seed_obs)
         )
         per_seed_null.append(
-            _closure_c_ao(seed_zones, shuffled_actions, seed_obs, seed_seeds)
+            _closure_c_ao_within_seed(seed_zones, shuffled_actions, seed_obs)
+        )
+
+        # Anti-collapse gate (design-final.md §2 #5 applies to every rung
+        # R1+, Codex TASK-POST HIGH — R3 never populated this before): the
+        # quantized comparator forces action_id to the zone-default null
+        # action (design-final.md §2: "action -> zone-default action") for
+        # every row, seed-paired with the real per-seed C_ao above.
+        quant_actions = [ZONE_DEFAULT_NULL_ACTION] * len(seed_actions)
+        per_seed_c_ao_quantized.append(
+            _closure_c_ao_within_seed(seed_zones, quant_actions, seed_obs)
         )
 
     pooled_c_ao = _closure_c_ao(zones, actions, obs, seeds_col)
     median_c_ao = statistics.median(per_seed_c_ao) if per_seed_c_ao else 0.0
     max_null = max(per_seed_null) if per_seed_null else 0.0
     ci_lower, ci_upper = _ci_lower_mean(per_seed_c_ao, bootstrap_seed)
+
+    r3_deltas = [
+        c - q for c, q in zip(per_seed_c_ao, per_seed_c_ao_quantized, strict=True)
+    ]
+    r3_delta_median = statistics.median(r3_deltas) if r3_deltas else 0.0
+    r3_delta_ci_lower, _r3_delta_ci_upper = _ci_lower_mean(
+        r3_deltas, bootstrap_seed + 1
+    )
 
     # Situated-function control: obs synthetically forced to be a pure
     # deterministic function of zone (no action dependence by construction).
@@ -634,6 +747,8 @@ async def evaluate_r3(
         null_ok=max_null <= _c.LANDSCAPE_JACCARD_FLOOR,
         control_ok=abs(control_value) <= _c.ZERO_TOL,
         control_value=control_value,
+        delta_median=r3_delta_median,
+        delta_ci_lower=r3_delta_ci_lower,
         prop_fixture_valid=True,
         reasons=(
             f"pooled C_ao={pooled_c_ao:.4f} (forensic, not the verdict statistic)",

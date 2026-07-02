@@ -39,8 +39,7 @@ from erre_sandbox.evidence.d0_substrate import constants as _c
 from erre_sandbox.evidence.d0_substrate.ladder import (
     RungName,
     RungResult,
-    evaluate_r0,
-    evaluate_r1,
+    evaluate_r0_and_r1,
     evaluate_r2,
     evaluate_r3,
 )
@@ -139,11 +138,38 @@ def _smoke_dict(smoke: SmokeResult) -> dict[str, Any]:
 
 
 async def _run_ladder(seed_bank: tuple[int, ...]) -> dict[RungName, RungResult]:
-    r0 = await evaluate_r0(seed_bank)
-    r1 = await evaluate_r1(seed_bank)
+    # evaluate_r0_and_r1 shares one trace-generation/retrieval pass across
+    # both rungs (TASK-POST HIGH fix, code-reviewer: evaluate_r0 + evaluate_r1
+    # independently doubled the 64-seed cost for identical SeedPointR0R1 data).
+    r0, r1 = await evaluate_r0_and_r1(seed_bank)
     r2 = await evaluate_r2(seed_bank)
     r3 = await evaluate_r3(seed_bank)
     return {"R0": r0, "R1": r1, "R2": r2, "R3": r3}
+
+
+def _not_computed_rung(rung: RungName, reason: str) -> RungResult:
+    """Placeholder for a rung the D0b-runtime veto prevented from computing.
+
+    design-final.md §3: a failed smoke must downgrade the verdict to
+    ``INCONCLUSIVE_STRUCTURAL`` *without trusting the ladder estimand* — the
+    ladder must not even be computed on a smoke failure (TASK-POST MEDIUM
+    fix, Codex: the runner previously computed the full ladder before
+    checking the smoke result).
+    """
+    return RungResult(
+        rung=rung,
+        n_valid_seeds=0,
+        median_estimand=0.0,
+        max_null=0.0,
+        ratio=0.0,
+        ci_lower=0.0,
+        ci_upper=0.0,
+        null_ok=False,
+        control_ok=False,
+        control_value=0.0,
+        prop_fixture_valid=False,
+        reasons=(reason,),
+    )
 
 
 def _write_handoff(seed_bank: tuple[int, ...]) -> None:
@@ -227,8 +253,20 @@ def _main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
     seed_bank = default_seed_bank()
-    rung_results = asyncio.run(_run_ladder(seed_bank))
+
+    # D0b-runtime veto FIRST (design-final.md §3): a failed smoke must
+    # prevent the ladder estimand from being computed at all, not merely be
+    # ignored after the fact (TASK-POST MEDIUM fix, Codex).
     smoke = run_smoke()
+    if smoke.passed:
+        rung_results = asyncio.run(_run_ladder(seed_bank))
+    else:
+        rung_results = {
+            rung: _not_computed_rung(
+                rung, "D0b-runtime veto smoke failed; ladder not computed"
+            )
+            for rung in ("R0", "R1", "R2", "R3")
+        }
     verdict = render_structural_verdict(rung_results, smoke)
 
     report = {
