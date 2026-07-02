@@ -124,7 +124,11 @@ erre-sandbox/
 │   ├── architecture.md
 │   ├── repository-structure.md
 │   ├── development-guidelines.md
-│   └── glossary.md
+│   ├── glossary.md
+│   └── loop-engineering.md     # Loop Engineering 単一 SSOT (issue 単位ループ運用)
+├── loop/                       # Loop Engineering 管理ファイル集約 (DA-LOOP-1)
+│   ├── _templates/             # config / issue / retrospective テンプレ
+│   └── [YYYYMMDD]-[task]/      # タスク runtime (_loop-events.jsonl / _loop-board.md / issues/)
 ├── .github/                    # CI/governance
 │   └── workflows/ci.yml        # uv sync --frozen --all-groups → ruff / mypy / pytest を lint/typecheck/test の 3 並列 jobs で実行
 ├── .pre-commit-config.yaml     # local hook (ruff check + ruff format --check) — uv run で uv.lock 固定版を呼ぶ SSoT 構成
@@ -175,8 +179,19 @@ erre-sandbox/
 
 ### `docs/`
 - **目的**: 永続的なプロジェクトドキュメント
-- **置くべきもの**: 機能設計書、技術設計書、リポジトリ構造、開発ガイドライン、用語集
+- **置くべきもの**: 機能設計書、技術設計書、リポジトリ構造、開発ガイドライン、用語集、
+  `loop-engineering.md` (Loop Engineering 単一 SSOT)
 - **置くべきでないもの**: タスク単位の作業記録
+
+### `loop/`
+- **目的**: Loop Engineering (issue 単位の有界自律ループ) の管理ファイルを 1 か所に集約する
+  (DA-LOOP-1、`.steering/20260701-loop-engineering-integration/decisions.md`)
+- **置くべきもの**: `_templates/` (config/issue/retrospective テンプレ) と
+  `[YYYYMMDD]-[task]/` runtime (`_loop-config.json` / `_loop-events.jsonl` append 専用 /
+  `_loop-board.md` 単一書き手 / `issues/00X.md`)
+- **なぜ `.steering/` でなく `loop/` か**: 研究 steering と開発ループ機構を階層で分離し、
+  worktree から見える main checkout の絶対パス 1 か所に集約する (可視性・管理容易性)。
+- **運用 SSOT**: `docs/loop-engineering.md` (用語・Done/Stop・budget・events/board・Codex ゲート)
 
 ## 3. ファイル命名規則
 
