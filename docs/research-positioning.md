@@ -261,15 +261,38 @@
   文献 [8][9][10] の「argmax 離散要約は不安定」警告を argmax-stability 診断が empirical に実証。
   forward = ADR §6 4点セット付き別 channel 定義 (patch-switch [9] / 連続距離 [8][10]) の
   superseding ADR (本 run では不実施)。
-- **現状の到達点 (2026-07-02)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
+- **M13 arc forward disposition (ADR FROZEN 2026-07-03)**: memseam `INCONCLUSIVE` は scoping §8
+  2×2 の右下セル処方 (fork-2 fallback 実行済 → 中核診断再検討) を発動。**採用 = (B)+(C) hybrid**:
+  (1) **frozen-synthetic recomposition 計測ラインを bounded close** (arc 全体は継続 —
+  INCONCLUSIVE ≠ NO_GO ≠ fallback ルート破綻ゆえ disposition §5 の arc-close 条件は厳密には未成立、
+  反証されたのは frozen-substrate instantiation の well-posedness のみ)。(2) **scoping §0 作業仮説を
+  reframe** — 「計測壁は semantic 固有」から「frozen fixtures ⇔ running dynamic substrate の区別
+  導入。running 上は未検証」へ (D0 structural `NO_STRUCTURAL_FLOOR` も memseam `INCONCLUSIVE` も
+  ともに **frozen synthetic fixtures 上**の計測で、running dynamic substrate 上では未検証)。
+  (3) 次 primary = **最小 running dynamic 3D-state substrate 建設** (scoping §1/§4 ratified 大方針
+  への復帰) + 5 条件 pre-register 付き D0a running 再走。**over-read guard**: 4 壁の機序は少なくとも
+  3 系統に分かれ (壁1 ES-2 & 壁4 memseam = 同一 es2_replay kernel の near-uniform 遷移分布 / 壁3 D0 =
+  top-k membership 飽和 / 壁2 ES-4 = semantic 自己 anchor 循環)、「4壁→単一原因」の単純合算は行わない
+  (主張は壁1&4 の near-uniform replay 限定)。**案 A (別 channel 計測ライン継続) は却下** (survey 候補
+  ①外部参照系 [7]/②連続距離 [8][10]/③patch-switch [9] は frozen 上で near-uniformity を回避できる
+  pre-registered/desk-audit 根拠を現状欠く = B/C より VoI 低。不能証明でなく未実証、running 後の
+  re-entry door 保全)。**forking-paths 封鎖 5 条件** (ratified 復帰 / falsifiable kill / apparatus
+  不変 / input trace generator 以外も sealed run 前 freeze / one-shot D0a running run fail は
+  arc-close 再検討トリガー)。scoping §8 の 2×2 停止規則 (semantic-track 反永久延期ガード) を次 ADR に
+  継承 (D0a running pass は structural floor であって divergence 前進でない)。process = /reimagine
+  (v1 機序起点 / v2 framework 義務論起点が独立に (B)+(C) へ収束) + Codex Adopt-with-changes
+  (HIGH 3 [案A過剰却下軟化 / semantic-track ガード継承 / forking-paths を input 側にも] 全反映)。
+- **現状の到達点 (2026-07-03)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
-  / **memory-recomposition seam = 実装 + verdict run 完了 = `INCONCLUSIVE` (channel ill-posed:
-  near-uniform 遷移分布の argmax が不安定、median stability 0.187 < 0.5)**。「身体なしの記憶再編
-  ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない** (今回の
-  argmax-channel apparatus は well-posedness/検出力の前提を満たさず GO/NO_GO に到達しない
-  INCONCLUSIVE = 計測器レベルの帰結。別 channel 定義 [patch-switch / 連続距離] の superseding ADR が
-  未実行の forward)。
+  / **memory-recomposition seam = `INCONCLUSIVE` (channel ill-posed: near-uniform 遷移分布の argmax
+  が不安定、median stability 0.187 < 0.5)** / **arc forward disposition = (B)+(C) hybrid**
+  (frozen 計測ライン bounded close + 診断を frozen⇔running 区別で reframe + 次 primary = 最小
+  running dynamic 3D substrate 建設)。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という
+  核心の問いには **まだ答えを出していない** — arc の 2 つの structural 計測失敗 (D0/memseam) が
+  ともに **frozen synthetic fixtures 上**であり running dynamic substrate 上は未検証、という区別を
+  導入した上で、**当初 ratify 済の substrate 建設大方針へ一回限りの disciplined return** を行う
+  (running 上でも floor/検出力が崩れれば診断 reframe が反証され arc-close 再検討へ)。
 
 ## 9. スコープ / 非スコープ
 
