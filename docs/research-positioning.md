@@ -56,6 +56,18 @@
   d=0.16 [−0.31, 0.63] の **null (very low certainty)**。ただし divergent の positive 研究の多くが
   Oppezzo 単独に由来する点が inconsistency として GRADE で減点されており、**warrant としては強いが
   「効果は身体側に寄る」という機構主張の direct evidence ではない** (§4 の非対称・§7 の過大主張ガード)。
+- **理論アンカー (空間探索↔記憶検索の同型性)**: ES-1 (空間移動 → 経路依存な記憶検索) が暗黙に
+  前提する「移動と記憶検索は構造的に同型」に対し、Hills, Jones & Todd (2012) [9] が独立の実証的
+  裏付けを与える。空間採餌の数理 (optimal foraging / patch-leaving を Marginal Value Theorem で
+  定式化) を意味流暢性課題にそのまま適用し、人間の記憶検索が **「局所探索 → パッチ離脱 → 別領域へ
+  移動」という空間採餌と同型の動的方策**に従うことを示した (BEAGLE 意味空間上のシミュレーションが
+  実際の想起パターン = パッチ内高頻度・低距離 → パッチ間で急な意味距離ジャンプ を再現)。記憶検索と
+  空間探索がドメイン汎用の探索制御プロセスを共有するという主張は、ERRE の spatial→memory channel
+  (ES-1) の設計前提への外部的な理論支持。**ただし注意**: この同型性は人間の意味空間で強く支持される
+  が、**LLM の埋め込み空間や ERRE の記憶再編 seam で同型が成り立つかは別途検証を要する** (ES 系列が
+  暗黙に前提する部分であり、direct evidence ではない — §7 の過大主張ガード)。この foraging 枠組みは
+  「argmax セルでなくパッチ切替イベントを channel にする」という代替 channel 設計 (arc forward
+  disposition §7 の re-entry door ③) の理論的出自でもある。
 - **文体的同一性の計測**: Burrows Δ (2002) [5] を persona identity drift の計測に転用
   (M9-eval Tier-A)。
 
