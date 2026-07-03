@@ -294,17 +294,44 @@
   継承 (D0a running pass は structural floor であって divergence 前進でない)。process = /reimagine
   (v1 機序起点 / v2 framework 義務論起点が独立に (B)+(C) へ収束) + Codex Adopt-with-changes
   (HIGH 3 [案A過剰却下軟化 / semantic-track ガード継承 / forking-paths を input 側にも] 全反映)。
+- **最小 running dynamic 3D-state substrate + D0a running 再走 (ADR FROZEN 2026-07-03、doc-only)**: arc
+  forward disposition §8 が framework-mandated した次 primary の pre-register。**採用 = 最小 closed-loop
+  agent-policy running loop** (G-GEAR 完結・pure Python・deterministic no-LLM policy が既存 physics/tick/
+  memory を回し state が agent 自身の history の帰結として進化 = frozen replay でない) + **凍結 D0a
+  apparatus を tune せず target を blind uniform walk fixture から running trace に差替**て再走 (ladder/
+  floor/verdict/quantize は byte 継承、変更は input trace generator のみ)。**中核的緊張を honest に据える**:
+  D0a の failure は **壁3 = within-zone の top-k 飽和** (K_RETRIEVE=8 vs memory 密度 ~4/zone) であり、
+  running の主機序約束 (壁1&4 の zone-level 非一様性回避) は R0 (zone-level、既 pass) を動かすだけで R\* を
+  前進させない — running substrate が R\* を R1 に進めるには **within-zone 構造**を生み、かつ凍結 retrieval
+  apparatus の top-k を生き延びる必要がある。**tune-to-narrative 禁止**: 「running なら within-zone 構造が
+  measurable」を保証と書かず、4 つの明示 failure 条件 (within-zone 構造なし / 壁3 が構造を破棄 / policy
+  過収束 / policy near-memoryless) + **one-shot kill** (one sealed run fail → arc-close 再検討 ADR 必須
+  起票、無限延期しない) で falsifiable 化。**running-ness gate** (history-ablation probe で「frozen replay
+  同型でない」を `CI_lower(TV) > practical floor` で run-time 検定) + **paired frozen/running contrast**
+  (byte-identical apparatus で blind[既知 R0]/running を並走し R1-pass 差分を running-ness に非循環帰属、
+  ただし §5 policy grammar freeze + gate 併存下で成立) + **saturation forensic probe** で壁3 帰属。verdict =
+  `STRUCTURAL_READY_RUNNING`/`NO_STRUCTURAL_FLOOR_RUNNING`/`INCONCLUSIVE_RUNNING` (INCONCLUSIVE-first)、
+  scoping §8 2×2 継承 (**D0a running pass は structural floor であって divergence 前進でない**、semantic
+  track は `NOT_EVALUATED` asset 保全)。**claim 境界 = substrate 配線 + within-zone 計測能力の実証であって
+  divergence 検定でない**。ZONE_PROPS sparse (CHASHITSU のみ) ゆえ主機序は prop 非依存の memory/
+  preferential-return、R2/R3 は INCONCLUSIVE 既定、CHASHITSU-only pass 時は claim_scope 狭窄。Hills 2012
+  [9] は patch/preferential dynamics を **機序原理としてのみ**参照 (channel 採用でない、survey 候補③は
+  running 実証後の re-entry door)。process = /reimagine (v1 機序起点 破棄 → 独立 v2 [v1 非開示] が核心収束 →
+  v2 spine + hybrid hardening) + Codex Adopt-with-changes (HIGH 2 [policy grammar freeze / ZONE_PROPS
+  sparsity 対応] + MEDIUM 3 全反映)。survey channel ①②③ / RQ-SWM-1 / D re-entry は door 保全のまま。
+  次工程 (別タスク) = 実 running-loop apparatus + running-trace generator の実装 ADR。
 - **現状の到達点 (2026-07-03)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
   / **memory-recomposition seam = `INCONCLUSIVE` (channel ill-posed: near-uniform 遷移分布の argmax
   が不安定、median stability 0.187 < 0.5)** / **arc forward disposition = (B)+(C) hybrid**
   (frozen 計測ライン bounded close + 診断を frozen⇔running 区別で reframe + 次 primary = 最小
-  running dynamic 3D substrate 建設)。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という
-  核心の問いには **まだ答えを出していない** — arc の 2 つの structural 計測失敗 (D0/memseam) が
-  ともに **frozen synthetic fixtures 上**であり running dynamic substrate 上は未検証、という区別を
-  導入した上で、**当初 ratify 済の substrate 建設大方針へ一回限りの disciplined return** を行う
-  (running 上でも floor/検出力が崩れれば診断 reframe が反証され arc-close 再検討へ)。
+  running dynamic 3D substrate 建設) / **最小 running dynamic 3D-state substrate + D0a running 再走
+  ADR pre-register (FROZEN、doc-only、next = 実装 ADR)**。「身体なしの記憶再編ルートで発散の十分機構が
+  存在するか」という核心の問いには **まだ答えを出していない** — arc の 2 つの structural 計測失敗
+  (D0/memseam) がともに **frozen synthetic fixtures 上**であり running dynamic substrate 上は未検証、
+  という区別を導入した上で、**当初 ratify 済の substrate 建設大方針へ一回限りの disciplined return** を
+  行う (running 上でも floor/検出力が崩れれば診断 reframe が反証され arc-close 再検討へ)。
 
 ## 9. スコープ / 非スコープ
 
