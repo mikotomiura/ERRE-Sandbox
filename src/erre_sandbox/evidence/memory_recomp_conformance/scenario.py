@@ -101,6 +101,11 @@ def build_seed_result(
     defaults).
     """
     # (1) shared blind start + (2) formation walk (ES-2 Pólya-urn, byte-inherited).
+    # RNG families differ by design (DA-MEMSEAM-IMPL-7 note): the formation walk uses
+    # the ES-2-inherited stdlib random.Random with a string seed; the post-idle walk C
+    # replay and D use independent numpy streams (_c.stream_rng([_SEED_BASE, seed,
+    # stream])). Independence is guaranteed by the distinct base + stream ids, not by
+    # the RNG family.
     start = random.Random(f"memseam-start-{seed}").randrange(_Z)  # noqa: S311
     formation_rng = random.Random(f"memseam-formation-{seed}")  # noqa: S311
     trajectory = preferential_return_walk(start, m, _NEIGHBORS_IDX, formation_rng)

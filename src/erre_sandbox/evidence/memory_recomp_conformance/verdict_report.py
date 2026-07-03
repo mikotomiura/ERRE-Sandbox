@@ -186,8 +186,11 @@ def evaluate_verdict(
         ci_lower, ci_upper = ci.lo, ci.hi
         median_conform = float(_median(finite_deltas))
     else:
-        ci_lower = ci_upper = 0.0
-        median_conform = 0.0
+        # Unreachable given the MIN_VALID_SEEDS gate (checked below); nan (not 0.0) so a
+        # future gate-order change cannot make an absent CI read as NO_GO/GO by accident
+        # (DA-MEMSEAM-IMPL-7 LOW). Verdict-invariant for the frozen run (n_valid=64).
+        ci_lower = ci_upper = float("nan")
+        median_conform = float("nan")
 
     def _pack(status: RecompStatus, reasons: tuple[str, ...]) -> RecompVerdict:
         return RecompVerdict(

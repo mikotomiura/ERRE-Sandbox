@@ -132,7 +132,12 @@ def exact_permutation_null_quantile(
     The null is ``{conform_row[target_zones[s']] : s' != s_index}`` — seed ``s``'s
     own ``conform`` vector evaluated at every *other* seed's ``target_zone`` (the
     pairing broken). Because ``target_zone`` support is only ``Z`` zones this is the
-    exact ``N_PERM → ∞`` null (design-final.md §4-4); returns its ``quantile``.
+    **deterministic exact Type-7 empirical quantile** over that finite population
+    (design-final.md §4-4). Two caveats (``DA-MEMSEAM-IMPL-7``): (a) it is "exact" only
+    under the ``MIN_VALID_SEEDS`` gate — an extremely small population would lean on
+    ``np.quantile`` interpolation; (b) the population Type-7 quantile differs from the
+    ``N_PERM → ∞`` *sampling* limit (inverse-CDF) by ``≤ 0.00247`` on the verdict run,
+    **verdict-invariant**. Returns the ``quantile``.
     """
     others = np.delete(np.asarray(target_zones, dtype=np.int64), s_index)
     if others.size == 0:

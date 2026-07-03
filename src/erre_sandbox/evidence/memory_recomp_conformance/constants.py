@@ -68,9 +68,13 @@ N_SEED: Final[int] = _es2_c.N_SEED
 N_PERM: Final[int] = _es2_c.N_PERM
 """C↔D pairing-destroying permutation ceiling per scenario seed. The permuted
 ``target_zone`` support is only ``Z = 5`` zones, so rather than draw ``N_PERM``
-samples the null is computed **exactly** as the empirical quantile over the
-population ``target_zone`` assignments — the ``N_PERM → ∞`` limit the design noted
-as identical (design-final.md §4-4). Pinned as the pre-registered ceiling."""
+samples the null is computed **deterministically** as the exact Type-7 empirical
+quantile over the population ``target_zone`` assignments (design-final.md §4-4).
+Note (TASK-POST cross-review, ``DA-MEMSEAM-IMPL-7``): this population Type-7 quantile
+is *not identical* to the ``N_PERM → ∞`` sampling limit (which converges to the
+inverse-CDF quantile) — they differ by ``≤ 0.00247`` on this run, **verdict-invariant**
+(the argmax gate fires first). The deterministic form is used for reproducibility.
+Pinned as the pre-registered ceiling."""
 
 PERM_NULL_QUANTILE: Final[float] = _es2_c.PERM_NULL_QUANTILE
 """One-sided upper quantile of the per-seed permutation null that ``delta_s`` is

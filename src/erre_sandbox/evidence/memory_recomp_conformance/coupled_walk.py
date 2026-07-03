@@ -91,6 +91,12 @@ def post_idle_walk_occupancies(
         ``(C, Z)`` occupancy counts pooled over the ``R`` realizations (each row sums
         to ``R * steps``). Deterministic in
         ``(start, uniforms, target_zones, alpha, bonus)``; no ``C`` dependence.
+
+    Note (``DA-MEMSEAM-IMPL-7``): each realization records ``steps`` occupancy
+    positions produced by ``steps - 1`` moves (position 0 = start). This is the same
+    Pólya-urn *rule* as the ES-2 formation walk but one fewer move than ES-2's
+    ``preferential_return_walk`` (``steps`` moves) — an occupancy-metric convention,
+    not a mechanism change.
     """
     z = adjacency_mask.shape[0]
     c = int(target_zones.size)
@@ -102,6 +108,8 @@ def post_idle_walk_occupancies(
     cfg = np.repeat(np.arange(c), r)  # (B,)
     rea = np.tile(np.arange(r), c)  # (B,)
     tgt = target_zones[cfg]  # (B,)
+    # bonus_grid is step-invariant (fixed target per config); adjacency_mask[here]
+    # below varies every step with the current position.
     bonus_grid = bonus * ((tgt[:, None] == zones[None, :]) & (tgt[:, None] >= 0))
 
     here = np.full(b, start, dtype=np.int64)

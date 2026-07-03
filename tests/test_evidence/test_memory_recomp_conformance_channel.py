@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from erre_sandbox.evidence.memory_recomp_conformance.channel import (
     dominant_transition_cell,
@@ -34,6 +35,12 @@ def test_argmax_tie_break_is_content_index_ascending() -> None:
     dist[_encode(4, 5, m)] = 0.5
     dist[_encode(1, 0, m)] = 0.5  # lower (from, to) → must win the tie
     assert dominant_transition_cell(dist, m) == (1, 0)
+
+
+def test_dominant_transition_cell_rejects_degenerate_m() -> None:
+    # A transition needs ≥2 contents; m < 2 has no off-diagonal cell.
+    with pytest.raises(ValueError, match="m must be >= 2"):
+        dominant_transition_cell(np.array([1.0]), 1)
 
 
 def test_zone_of_formation_reads_trajectory_at_content_index() -> None:
