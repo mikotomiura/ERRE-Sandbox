@@ -320,18 +320,32 @@
   v2 spine + hybrid hardening) + Codex Adopt-with-changes (HIGH 2 [policy grammar freeze / ZONE_PROPS
   sparsity 対応] + MEDIUM 3 全反映)。survey channel ①②③ / RQ-SWM-1 / D re-entry は door 保全のまま。
   次工程 (別タスク) = 実 running-loop apparatus + running-trace generator の実装 ADR。
-- **現状の到達点 (2026-07-03)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
+- **実装 ADR + one sealed D0a running run (2026-07-04)**: 実 running-loop apparatus (P-A terminal-anchored
+  memory-preferential-return policy + running-trace generator + running-ness gate + forensic 対照) を
+  実装・凍結 (commit `104686a`、GPU=0)、one-shot sealed run を tune ゼロで 1 回実行 = verdict
+  **`NO_STRUCTURAL_FLOOR_RUNNING`**。R0 (ES-1 anchor) が running trace 上で floor 未達 (median 0.0)、
+  contiguity 規則で R\*=None。**ただし R1 (within-zone Δ_1) 自体は強く PASS (median 0.769)、running-ness
+  gate も robust に PASS (CI_lower TV 0.317 > floor 0.10)、壁3 (top-k 飽和) は非発火 (`topk_zone_saturated=0`)**
+  = 失敗は blind D0 pack が R1 で fail したのとは**別機序** (R0 anchor 信号の running trace 上での不在に局在)。
+  **claim 境界 = これは §5-5 one-shot kill 発火 → arc-close 再検討 ADR 必須起票のトリガーであって、
+  H4/substrate/divergence の否定でも INCONCLUSIVE (計測器 invalid) でもない** (validity gate 全 pass、R0 は
+  valid に測れた FAIL)。over-read 禁止 = STRUCTURAL_READY 未到達ゆえ structural floor は running trace 上で
+  未確立、tune 再走は seal 違反。詳細 = `.steering/20260703-m13-running-apparatus-impl/verdict-record.md`。
+- **現状の到達点 (2026-07-04)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
   / **memory-recomposition seam = `INCONCLUSIVE` (channel ill-posed: near-uniform 遷移分布の argmax
   が不安定、median stability 0.187 < 0.5)** / **arc forward disposition = (B)+(C) hybrid**
   (frozen 計測ライン bounded close + 診断を frozen⇔running 区別で reframe + 次 primary = 最小
   running dynamic 3D substrate 建設) / **最小 running dynamic 3D-state substrate + D0a running 再走
-  ADR pre-register (FROZEN、doc-only、next = 実装 ADR)**。「身体なしの記憶再編ルートで発散の十分機構が
+  ADR pre-register (FROZEN、doc-only) → 実装 + one sealed run 完了 (2026-07-04) = `NO_STRUCTURAL_FLOOR_RUNNING`
+  (R0 anchor が running trace 上で未達、R1 自体は PASS・running-ness gate PASS・壁3 非発火、§5-5 one-shot
+  kill 発火 → arc-close 再検討 ADR 起票へ)**。「身体なしの記憶再編ルートで発散の十分機構が
   存在するか」という核心の問いには **まだ答えを出していない** — arc の 2 つの structural 計測失敗
-  (D0/memseam) がともに **frozen synthetic fixtures 上**であり running dynamic substrate 上は未検証、
-  という区別を導入した上で、**当初 ratify 済の substrate 建設大方針へ一回限りの disciplined return** を
-  行う (running 上でも floor/検出力が崩れれば診断 reframe が反証され arc-close 再検討へ)。
+  (D0/memseam) がともに **frozen synthetic fixtures 上**であり、running dynamic substrate 上でも
+  **structural floor は R0 anchor で未確立** (計測は valid、H4/divergence 否定でない) という
+  一回限りの disciplined return の結果を得た。この sealed 結果が **frozen⇔running 区別の下での 1 データ点**
+  であり、次工程 = arc-close 再検討 ADR (frozen-synthetic 計測ラインの去就裁定、別タスク)。
 
 ## 9. スコープ / 非スコープ
 
