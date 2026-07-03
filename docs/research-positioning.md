@@ -249,15 +249,27 @@
   独立 v2 [v1 と独立に同一 estimand class 転換へ収束]→hybrid) + Codex (Verdict=Revise→HIGH3
   [`C` の型誤り/cost ceiling と tune-to-pass 凍結の矛盾/gate 数値閾値未定義]・MEDIUM2・LOW1 全反映)。
   **claim 境界 = necessary-substrate 型の下流因果偏り測定であって H4 (身体性が発散を生む) の証明
-  ではない**、live agent/Godot への接続なし。次工程 = apparatus 実装 + verdict run (別 fresh
-  session)。
+  ではない**、live agent/Godot への接続なし。
+- **memory-recomposition seam apparatus 実装 + verdict run = `INCONCLUSIVE` (2026-07-03)**: 上記
+  ADR を忠実実装 (`src/erre_sandbox/evidence/memory_recomp_conformance/`、独立性 pin 含む 36 test、
+  byte-identical 再現確認)。**verdict = `INCONCLUSIVE` (channel ill-posed)**: 入力チャネル C =
+  idle recomposition 遷移分布の argmax セルだが、この分布が near-uniform (実効台 ~1627/2256 —
+  ES-2 が観測した near-uniformity の同一 kernel 経由の持ち越し) ゆえ argmax が bootstrap で 18.7%
+  しか再現せず (median argmax stability 0.187 < gate 0.5)、well-posed な channel を定義できない。
+  独立に synthetic power@1.0 = 0.0 も underpowered を示す。**これは NO_GO と峻別される**
+  (H4/substrate の否定でなく、argmax channel が near-uniform 台で不安定という計測器レベルの帰結)。
+  文献 [8][9][10] の「argmax 離散要約は不安定」警告を argmax-stability 診断が empirical に実証。
+  forward = ADR §6 4点セット付き別 channel 定義 (patch-switch [9] / 連続距離 [8][10]) の
+  superseding ADR (本 run では不実施)。
 - **現状の到達点 (2026-07-02)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
-  / **memory-recomposition seam costed pre-register ADR = FROZEN (estimand class 転換の設計完了、
-  実装・verdict run は未実施)**。「身体なしの記憶再編ルートで発散の十分機構が存在するか」という
-  核心の問いには **まだ答えを出していない** (計測器が zone-level を超える richness を今の
-  apparatus では測れていない、memory-recomposition seam の verdict run もこれから)。
+  / **memory-recomposition seam = 実装 + verdict run 完了 = `INCONCLUSIVE` (channel ill-posed:
+  near-uniform 遷移分布の argmax が不安定、median stability 0.187 < 0.5)**。「身体なしの記憶再編
+  ルートで発散の十分機構が存在するか」という核心の問いには **まだ答えを出していない** (今回の
+  argmax-channel apparatus は well-posedness/検出力の前提を満たさず GO/NO_GO に到達しない
+  INCONCLUSIVE = 計測器レベルの帰結。別 channel 定義 [patch-switch / 連続距離] の superseding ADR が
+  未実行の forward)。
 
 ## 9. スコープ / 非スコープ
 
