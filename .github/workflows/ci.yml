@@ -51,7 +51,12 @@ jobs:
   test:
     name: pytest (non-godot)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # es4 の mock-run テスト (多数 seed のサンプリング = 純計算 CPU 負荷) が
+    # suite 全体を ~10 分に押し上げ、遅い runner を引くと 10 分 timeout で
+    # cancel される (PR #51 で 2 回連続再現、runner 変動でなく systemic)。
+    # 恒久策として 50% の headroom を確保する。es4 slow test の分離/軽量化は
+    # 別途フォローアップ (coverage を落とさない範囲で検討)。
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
