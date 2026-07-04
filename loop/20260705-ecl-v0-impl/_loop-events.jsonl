@@ -1,0 +1,4 @@
+{"ts":"2026-07-05","event":"task_pre_codex","issue":"ALL","detail":"TASK-PRE Codex gpt-5.5 review Verdict=Revise (tokens=167396). HIGH-1/2 反映: I3 を ECL live seam foundation に拡張 (cycle/world seam 全所有)、I4 は integration 純 harness。sink 層 MEDIUM は house-style で解決 (contracts/ecl.py 不要)。全 HIGH/MEDIUM 反映、却下なし。"}
+{"ts":"2026-07-05","event":"attempt_start","issue":"001","detail":"contracts/geometry.py SSOT 昇格 + world/zones.py shim。in-session feature-branch (feat/ecl-v0)。"}
+{"ts":"2026-07-05","event":"test_pass","issue":"001","detail":"test_geometry.py 14 tests 緑 + test_zones/d0_stub 無改変 pass。"}
+{"ts":"2026-07-05","event":"issue_done","issue":"001","detail":"AC1-6 全緑。pre-push CI parity 4 段 ALL CHECKS PASSED (3323 passed, 66 skipped, 416s)。contracts/geometry SSOT 昇格 + zones shim 完了。"}

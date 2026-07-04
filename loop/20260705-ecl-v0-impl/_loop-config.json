@@ -1,0 +1,13 @@
+{
+  "task": "ecl-v0-impl",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check ."
+  },
+  "ci_command": "bash scripts/dev/pre-push-check.sh",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 8, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260705-ecl-v0-impl/_loop-events.jsonl"
+}

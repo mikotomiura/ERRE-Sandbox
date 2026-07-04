@@ -68,6 +68,22 @@ M10-0 → M11-C で段階投入される。
 | 成熟度スコア | Maturity Score | `[0, 1]` の連続値。DevelopmentState stage はこれの view であり、empirical evidence (memory volume + narrative coherence + belief stability の AND) で更新される | M11-B、preregister 必須 |
 | 個体化 metric | Individualization Metric | Burrows ratio が base style retention 専用となる代わりに、個体化を測る別系統 (semantic centroid distance / belief variance / NarrativeArc drift / Agent Identity Evals 型 perturbation recovery) | M10-0、M9-eval sidecar 拡張 |
 
+## M13 ECL (Embodied Cognition Loop) 用語
+
+M13 construction arc 初の実コード器官。ライブ LLM 認知の move 決定を、連続物理 + 履歴依存
+memory 幾何の上で実行する統合器官 (実装-design ADR FROZEN 2026-07-05、PR #53)。**construction で
+あって measurement でない** (統計/floor/landscape 非再入)。
+
+| 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
+|---|---|---|---|
+| 統合器官 | ECL v0 (Embodied Cognition Loop v0) | LLM の zone 選択 (A) を、履歴依存目的地幾何 + 連続 step_kinematics + 決定性 harness (B) の上で回す単一 live loop 器官。v2 spine (resolution を cognition へ引き上げ) + v1 discipline graft の hybrid | 実装-design ADR、cognition/embodiment.py |
+| 履歴依存目的地幾何 | history-dependent destination geometry | LLM が選んだ zone 内の *where* を、agent 自身の過去 memory の strength-weighted centroid → reflect-clamp → disc-jitter で決める幾何。frozen `running/policy.py` P-A 相当 1 形の写経 | policy grammar freeze、K_ECL=8 |
+| policy grammar freeze | policy grammar freeze | LLM の裁量を `destination_zone ∈ {5 zones} + utterance/animation` のみに凍結し、座標・重み・zone 別 hand-weight を LLM から受けない契約。tune-to-pass 防止。allowed history features を閉列挙 | design §論点2、test_ecl_v0_policy_grammar_frozen |
+| two-plane determinism | two-plane determinism | 器官内で発火した全 LLM call (Plane 2) を記録し replay で固定、幾何/物理/memory/RNG/clock/id (Plane 1) を完全 pin する決定性契約。同一 seed+Plane2 で trace_checksum byte 再現 | design §論点3、reflection は record mode で disable |
+| continuity gate | continuity gate | memory→geometry→movement 接続を positive/negative control の座標決定的等価/相異のみで断定する construction 検査。exact oracle `target == reflect_clamp(centroid + fixed_jitter, Z)`。**floor 測定でない** (統計/landscape 不使用、verdict token なし) | design §論点4、DA-ECLIMPL-3 |
+| ECL trace sink | ecl_trace_sink | `world/tick.py` に注入する `Callable\|None=None` の trace 出力口。live 時 None で no-op (byte 不変)、construction driver 時のみ physics-tick 後の trace 行を出す。既存 individual_trace_sink 写経 | design §論点1、world←注入 依存矢印 |
+| cross-machine handoff | cross-machine handoff | G-GEAR (生成) → MacBook Godot (消費) の 2 拠点非同期を跨ぐ再生契約。manifest.json + ecl_trace.jsonl + decisions.jsonl + envelope_stream.jsonl + committed golden。主検証は G-GEAR 側 wire-schema conformance | design §論点5、EclReplayPlayer.gd (dev-only) |
+
 ## 略語
 
 | 略語 | 正式名称 | 意味 |
