@@ -383,6 +383,29 @@
   Adopt-with-changes**。**claim 境界 = substrate 建設であって floor を建てた/測ったでない** (floor 確立は holding)。
   次工程 (別タスク) = Embodied Cognition Loop v0 の実 apparatus 実装 ADR。詳細 =
   `.steering/20260704-m13-construction-milestone-scoping/design-final.md`。
+- **Embodied Cognition Loop v0 実装-design ADR (FROZEN 2026-07-05、doc-only)**: construction scoping ADR §7 が
+  別タスクに委ねた「実 apparatus 実装 ADR」の履行 = **建設側の初 primary の技術契約 (HOW) を sealed 実装前に
+  pre-register**。scoping が WHAT/WHY (A×B 分断を閉じる) を確定済ゆえ本 ADR は 6 中核論点 (モジュール配置 /
+  policy grammar freeze / two-plane determinism 閉集合 / continuity gate causal 定義 / handoff schema /
+  acceptance test 凍結) を裁定する。**決定的な設計判断 = モジュール配置で「履歴依存 resolution を world→cognition
+  へ引き上げる」ことで import 方向緊張を解消** (cognition は memory を合法 import、world には具体座標 MoveMsg を
+  渡すので既存 default_spawn 分岐が発火せず world ほぼ無改変 = 既存 live loop を単一ループのまま器官化)。幾何定数を
+  `contracts/geometry.py` に限定 SSOT 昇格、履歴幾何を `cognition/embodiment.py`、record/replay+converter を
+  `integration/embodied/`、world は injected-sink 1 本 (live no-op) に配置。**policy grammar = LLM は
+  destination_zone 選択のみ・座標生成禁止** (tune-to-pass 防止)、`retrieve(k_agent, k_world=0)` で self memory に
+  限定。**two-plane determinism = 器官内で発火した全 LLM call を記録** (v0 は reflection を record mode で disable)
+  + Plane 1 完全 pin (named substream / fixed clock / deterministic id / 全順序 tie-break / physics-tick と
+  agent-tick 分離)。**continuity gate = exact-oracle の deterministic causal wiring test** (`target ==
+  reflect_clamp(centroid + fixed_jitter, Z)`、統計/floor/landscape 不使用、verdict token を出さない =
+  measurement-line 再入でない、"NOT a structural-floor verdict; verdict は holding")。handoff = manifest
+  (SCHEMA_VERSION + env pins + coord + tick mapping + canonical JSON + artifact hashes + golden) + Godot は
+  dev-only bounded replay player (「Godot 無改変」claim は撤回済)。process = /reimagine (v1 並列 offline 器官 破棄
+  → 独立 v2 が **live seam 器官化へ独立収束** → v2 spine + v1 決定性 harness 規律 graft hybrid) + Codex
+  **Verdict=Revise → HIGH 3** [reflection LLM の Plane 2 欠落 / k_world=0 欠落 / continuity ε tune-to-pass 穴]
+  **+ MEDIUM 3 + LOW 1 全反映後 freeze** (189K token・実ファイル検証)。**claim 境界 = 動く器官の技術契約であって
+  floor verdict でない** (measurement-line 再入は holding、continuity gate は construction wiring 検査)。次工程
+  (別タスク) = 本 ADR を binding 前提に ECL v0 実コード実装 (Loop Engineering 適用判断)。詳細 =
+  `.steering/20260705-ecl-v0-impl-design/design-final.md`。
 - **現状の到達点 (2026-07-04)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
@@ -405,9 +428,14 @@
   2026-07-05) = 「Embodied Cognition Loop v0 (単一 live agent)」= 二重トラック (ライブ LLM 認知 A × frozen
   running-substrate B) の核心的欠落 = A×B 分断を、LLM 移動決定を連続物理+履歴依存 memory 幾何の上で実行する
   統合器官として最初に閉じる方向を確定した** (計測でなく建設側へ舵を切る初 primary、two-plane determinism +
-  causal continuity gate で construction≠measurement を担保、measurement-line 再入は依然 holding)。次工程 =
-  Embodied Cognition Loop v0 の実 apparatus 実装 ADR (別タスク、measurement-line 再入は costed superseding
-  ADR + R-budget 経由のみ)。
+  causal continuity gate で construction≠measurement を担保、measurement-line 再入は依然 holding)。**この方向を
+  受けた Embodied Cognition Loop v0 実装-design ADR (FROZEN 2026-07-05) が技術契約 (HOW) を sealed 実装前に
+  pre-register** = モジュール配置で resolution を cognition へ引き上げ import 緊張を解消 (既存 live loop を単一
+  ループのまま器官化)、policy grammar freeze (LLM 選択のみ)、two-plane determinism (全 LLM call 記録 + Plane 1
+  完全 pin)、continuity gate を exact-oracle causal wiring test 化 (measurement 非再入)、handoff schema + Godot
+  bounded scope。Codex Verdict=Revise → HIGH3/MEDIUM3/LOW1 全反映後 freeze。次工程 = 本 ADR を binding 前提に
+  ECL v0 実コード実装 (別タスク、Loop Engineering 適用判断、measurement-line 再入は costed superseding ADR +
+  R-budget 経由のみ)。
 
 ## 9. スコープ / 非スコープ
 
@@ -418,7 +446,10 @@
   - **construction milestone 第一 deliverable = Embodied Cognition Loop v0 (単一 live agent) の建設** —
     ライブ LLM 認知 (A) と frozen running-substrate (B) の分断を閉じ、LLM 移動決定を連続物理+履歴依存 memory
     幾何の上で実行する統合器官を建てる (construction scoping FROZEN 2026-07-05、measurement でなく建設、
-    two-plane determinism で将来の測定可能性を保全、measurement-line 再入は holding)。
+    two-plane determinism で将来の測定可能性を保全、measurement-line 再入は holding)。**技術契約 (HOW) は実装-design
+    ADR (FROZEN 2026-07-05) で pre-register 済** = resolution を cognition へ引き上げ既存 live loop を単一ループの
+    まま器官化 / policy grammar freeze / 全 LLM call 記録 + Plane 1 完全 pin / continuity gate = exact-oracle
+    causal wiring test (measurement 非再入) / handoff schema + Godot dev-only bounded player。実コード実装は別タスク。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
