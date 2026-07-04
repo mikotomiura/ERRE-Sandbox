@@ -12,6 +12,16 @@ The module is pure: no logging, no I/O, no mutable state. The only exported
 constants (:data:`ZONE_CENTERS`, :data:`ADJACENCY`, :data:`ZONE_PROPS`) are
 wrapped in :class:`types.MappingProxyType` so callers cannot silently mutate
 the layout.
+
+**M13 ECL v0 relocation (DA-ECLIMPL-1 / Codex LOW-1)**: the pure geometry SSOT
+(:data:`WORLD_SIZE_M`, :data:`ZONE_CENTERS`, :func:`locate_zone`,
+:func:`default_spawn`, plus the ECL micro geometry) was relocated to
+:mod:`erre_sandbox.contracts.geometry` so the ``cognition`` layer can resolve
+history-dependent destinations without importing ``world`` (architecture-rules
+dependency direction). This module re-exports them as a shim so every existing
+``from erre_sandbox.world.zones import ...`` keeps working — the same discipline
+as ``contracts.thresholds`` re-exporting ``M2_THRESHOLDS``. ``ZONE_PROPS`` and
+:data:`ADJACENCY` stay here (Godot hard-coded sync note / world-walk use).
 """
 
 from __future__ import annotations
@@ -19,10 +29,28 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from erre_sandbox.schemas import Position, Zone
+from erre_sandbox.contracts.geometry import (
+    _ZONE_OFFSET,
+    WORLD_SIZE_M,
+    ZONE_CENTERS,
+    default_spawn,
+    locate_zone,
+)
+from erre_sandbox.schemas import Zone
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+__all__ = [
+    "ADJACENCY",
+    "WORLD_SIZE_M",
+    "ZONE_CENTERS",
+    "ZONE_PROPS",
+    "PropSpec",
+    "adjacent_zones",
+    "default_spawn",
+    "locate_zone",
+]
 
 
 class PropSpec(NamedTuple):
@@ -42,43 +70,6 @@ class PropSpec(NamedTuple):
     z: float
     salience: float = 0.5
 
-
-WORLD_SIZE_M: Final[float] = 100.0
-"""Edge length (metres) of the square BaseTerrain plane.
-
-Raised from 60 m (Slice α) to 100 m in Slice β so zone centroids spread over
-a visibly larger area while 3-agent trajectories remain observable from a
-single top-down camera preset. All dependent coordinates below derive from
-this constant so future scaling is a one-line change.
-
-Keep :data:`WORLD_SIZE_M` in sync with the ``PlaneMesh.size`` in
-``godot_project/scenes/zones/BaseTerrain.tscn`` and the top-down camera
-``max_distance`` in ``godot_project/scripts/CameraRig.gd``.
-"""
-
-_ZONE_OFFSET: Final[float] = WORLD_SIZE_M / 3.0
-"""XZ offset of non-central zones from peripatos (world origin).
-
-Non-central zones sit at (±_ZONE_OFFSET, 0, ±_ZONE_OFFSET), giving each zone
-a ~_ZONE_OFFSET-radius Voronoi cell inside the terrain bounds.
-"""
-
-ZONE_CENTERS: Final[Mapping[Zone, tuple[float, float, float]]] = MappingProxyType(
-    {
-        Zone.STUDY: (-_ZONE_OFFSET, 0.0, -_ZONE_OFFSET),
-        Zone.PERIPATOS: (0.0, 0.0, 0.0),
-        Zone.CHASHITSU: (_ZONE_OFFSET, 0.0, -_ZONE_OFFSET),
-        Zone.AGORA: (0.0, 0.0, _ZONE_OFFSET),
-        Zone.GARDEN: (_ZONE_OFFSET, 0.0, _ZONE_OFFSET),
-    },
-)
-"""Five zone centroids in world XZ-plane coordinates.
-
-The ``y`` component is kept at 0.0 for the MVP flat-ground assumption; it is
-preserved in the tuple so future terrain work can extend the layout without a
-breaking change to the shape of this mapping. All non-central centres are
-derived from :data:`WORLD_SIZE_M` via :data:`_ZONE_OFFSET`.
-"""
 
 ZONE_PROPS: Final[Mapping[Zone, tuple[PropSpec, ...]]] = MappingProxyType(
     {
@@ -131,47 +122,6 @@ ADJACENCY: Final[Mapping[Zone, frozenset[Zone]]] = MappingProxyType(
     },
 )
 """Walkable adjacency graph between zones (symmetric, anchored at peripatos)."""
-
-
-def locate_zone(x: float, y: float, z: float) -> Zone:
-    """Return the zone whose centroid is nearest in the XZ plane.
-
-    The ``y`` coordinate is currently ignored but kept in the signature so the
-    caller's code does not need to strip it when future terrain support lands.
-
-    Args:
-        x: World X coordinate (metres).
-        y: World Y coordinate (metres, reserved).
-        z: World Z coordinate (metres).
-
-    Returns:
-        The :class:`Zone` with minimal Euclidean distance in the XZ plane.
-        Ties are broken by the iteration order of :data:`ZONE_CENTERS`
-        (``Zone`` enum declaration order: study, peripatos, chashitsu, agora,
-        garden), which is deterministic across interpreters.
-    """
-    del y  # reserved for future vertical layout; see module docstring.
-    best_zone: Zone | None = None
-    best_d2: float = float("inf")
-    for zone, (cx, _cy, cz) in ZONE_CENTERS.items():
-        dx = cx - x
-        dz = cz - z
-        d2 = dx * dx + dz * dz
-        if d2 < best_d2:
-            best_d2 = d2
-            best_zone = zone
-    assert best_zone is not None  # ZONE_CENTERS is non-empty by construction
-    return best_zone
-
-
-def default_spawn(zone: Zone) -> Position:
-    """Return the centroid of ``zone`` as a :class:`Position` with that zone.
-
-    Used by the runtime to place a freshly registered agent at a sensible
-    starting point inside its home zone.
-    """
-    cx, cy, cz = ZONE_CENTERS[zone]
-    return Position(x=cx, y=cy, z=cz, zone=zone)
 
 
 def adjacent_zones(zone: Zone) -> frozenset[Zone]:
