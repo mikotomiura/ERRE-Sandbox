@@ -6,7 +6,7 @@ task: ECL v0 実コード実装 (Embodied Cognition Loop v0)
 | issue | title | state | verify_level | attempt | 最終 event |
 |---|---|---|---|---|---|
 | 001 | contracts/geometry SSOT 昇格 + zones shim | ✅ done | recheck | 1 | issue_done |
-| 002 | cognition/embodiment 履歴依存幾何 + continuity control | ⏳ queued | recheck | 0 | - |
+| 002 | cognition/embodiment 履歴依存幾何 + continuity control | ✅ done | recheck | 1 | issue_done |
 | 003 | ECL live seam foundation (cycle+world seam 全所有) | ⏳ queued | recheck | 0 | - |
 | 004 | integration determinism harness + replay checksum | ⏳ queued | recheck | 0 | - |
 | 005 | handoff converter/manifest/golden + Godot dev player | ⏳ queued | recheck | 0 | - |
