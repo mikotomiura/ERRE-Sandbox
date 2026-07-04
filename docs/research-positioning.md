@@ -354,6 +354,35 @@
   Adopt-with-changes (事実誤認 HIGH なし、HIGH 2 [estimand-class 抜け穴 → R-budget=1 / substrate corroborated
   の over-claim 軟化] + MEDIUM 3 + LOW 1 全反映)。詳細 =
   `.steering/20260704-m13-arc-close-reconsideration/design-final.md`。
+- **construction milestone 第一 deliverable scoping ADR (FROZEN 2026-07-05、doc-only)**: arc-close ADR §3.4 が
+  別タスクに委ねた「next primary = construction milestone 具体 scoping」の履行。**計測でなく建設側へ舵を切る初
+  primary の第一 deliverable を切る**。決定的な現状事実 = **substrate は既に大部分存在するが「二重トラックに
+  分断」** — (A) ライブ LLM 認知ループ (`world/tick`→`cognition/cycle`、複数ペルソナ・Godot LIVE seam 稼働だが
+  移動は抽象 zone-centroid で seed 決定論を欠く) と (B) frozen running-substrate P-A ループ (連続
+  `step_kinematics`+履歴依存 memory geometry+replay checksum だが no-LLM/headless)。**核心的欠落 = A と B が別
+  トラック**。**採用 = 「Embodied Cognition Loop v0 (単一 live agent)」** = (A) の LLM 移動決定を (B) の連続物理+
+  履歴依存 retrieval-centroid 幾何の上で実行する統合器官を新規 non-evidence モジュールで建てる (`evidence/**` は
+  read-only 参照ミラーのみ)。載せる = 連続物理化 + 履歴依存目的地幾何 + ES-3 locomotion 活性化 + record/replay
+  spine + cross-machine handoff contract。区切り = 単一 agent (N 体化/長 horizon/Godot art/measurement は後続・
+  holding)。**construction ≠ measurement**: 成果物 = 動く器官 + replay checksum (再現性という construction 品質)
+  であって structural floor verdict でない。**LLM 非決定 = two-plane determinism** (Plane 1 幾何/物理/memory/
+  RNG/clock/ids = byte 決定的 / Plane 2 LLM = full `LLMPlan`+provenance を記録し replay 決定的、recorded-decision
+  boundary に隔離) で「LLM を loop に入れる」と「replay 決定性」「将来の測定可能性 (holding 解除)」を両立。
+  **anti-thin-proxy**: 実 physics/memory/render を同一ループに載せる (カテゴリ差 = thin proxy からの necessary な
+  離脱条件、sufficient でない) + `test_history_channel_continuity` を **deterministic causal wiring test** 化
+  (positive/negative control で memory→geometry→movement 導通を検査、統計/floor/landscape 一切なし = measurement
+  再入回避)。**binding 継承** = construction/non-measurement 限定・measurement-line (SPDM-landscape R0/R1) 再入は
+  holding (costed ADR + escalation ratchet 経由のみ)・over-read 禁止・5 機序分離・大方針保全・scoping §8 2×2
+  (semantic `NOT_EVALUATED`、LLM utterance 生成は construction であって semantic divergence measurement でない)。
+  cross-machine = G-GEAR が trace/decisions/manifest 出力 + converter が wire-schema conform (Godot 側検証は
+  bounded scope、**「Godot 無改変」claim は Codex H1 で撤回** — `FixturePlayer` は固定 playlist のみ)、handoff
+  spec doc を SSOT 化。process = /reimagine (v1 convergence-first 破棄 → 独立 v2 が **A×B 統合器官へ独立収束** →
+  v2 spine [two-plane determinism / continuity gate / FixturePlayer 再利用] + v1 framing graft + continuity-gate
+  ガードレール hybrid) + Codex **Verdict=Revise → HIGH 4** [FixturePlayer 事実誤認裏取り済 / LLM 決定ログ閉集合 =
+  full LLMPlan / Plane 1 非決定源拡充 / continuity gate causal 化] **+ MEDIUM 3 + LOW 1 全反映後
+  Adopt-with-changes**。**claim 境界 = substrate 建設であって floor を建てた/測ったでない** (floor 確立は holding)。
+  次工程 (別タスク) = Embodied Cognition Loop v0 の実 apparatus 実装 ADR。詳細 =
+  `.steering/20260704-m13-construction-milestone-scoping/design-final.md`。
 - **現状の到達点 (2026-07-04)**: ES-1 GO / ES-2 bounded INCONCLUSIVE / ES-3 GO / **ES-4 計測ライン
   bounded close (H4 効果未判定)** / **M13-SUB1 D0 pack structural = `NO_STRUCTURAL_FLOOR`
   (apparatus パラメータ限定の honest negative) → situated-3D-richness bounded close + arc 継続**
@@ -372,8 +401,13 @@
   measurement line (instrument) bounded-close + escalation ratchet (R-budget=arc-wide 最大 1 回) 付き holding
   disposition** に至った。すなわち計測器 (SPDM-landscape contiguity ladder) は複数 distinct 機序で structural
   floor を gating できなかったが、それは substrate/H4/divergence の否定でなく、substrate 構築大方針は保全され
-  arc は継続する。次工程 = 最小 running dynamic substrate の上に立つ construction milestone scoping (別タスク、
-  measurement-line 再入は costed superseding ADR + R-budget 経由のみ)。
+  arc は継続する。**この holding を消費して construction milestone 第一 deliverable scoping ADR (FROZEN
+  2026-07-05) = 「Embodied Cognition Loop v0 (単一 live agent)」= 二重トラック (ライブ LLM 認知 A × frozen
+  running-substrate B) の核心的欠落 = A×B 分断を、LLM 移動決定を連続物理+履歴依存 memory 幾何の上で実行する
+  統合器官として最初に閉じる方向を確定した** (計測でなく建設側へ舵を切る初 primary、two-plane determinism +
+  causal continuity gate で construction≠measurement を担保、measurement-line 再入は依然 holding)。次工程 =
+  Embodied Cognition Loop v0 の実 apparatus 実装 ADR (別タスク、measurement-line 再入は costed superseding
+  ADR + R-budget 経由のみ)。
 
 ## 9. スコープ / 非スコープ
 
@@ -381,6 +415,10 @@
   - 身体を外した in-silico での「記憶再編チャネル単独」の発散種生成の測定 (ES 系列)。
   - **situated 3D embodiment substrate の建設と、その出力を structural/behavioral outcome で非循環に測る
     計測基盤 (二層 D0 pack) の先行 valid 化** (substrate scoping FROZEN 2026-07-01)。
+  - **construction milestone 第一 deliverable = Embodied Cognition Loop v0 (単一 live agent) の建設** —
+    ライブ LLM 認知 (A) と frozen running-substrate (B) の分断を閉じ、LLM 移動決定を連続物理+履歴依存 memory
+    幾何の上で実行する統合器官を建てる (construction scoping FROZEN 2026-07-05、measurement でなく建設、
+    two-plane determinism で将来の測定可能性を保全、measurement-line 再入は holding)。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
