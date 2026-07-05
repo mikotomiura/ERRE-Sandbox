@@ -166,6 +166,22 @@ if TYPE_CHECKING:
         None,
     ]
 
+    # ECL v0 (Issue 003): flag-on per-(agent, physics-tick) embodiment trace sink.
+    # Args are ``(agent_id, physics_tick_index, x, y, z, yaw, pitch, zone)`` — pure
+    # ``schemas`` primitives; the integration orchestrator's closure binds ``run_id`` /
+    # ``agent_tick`` / ``order_slot`` and builds the trace row, so ``world`` never
+    # imports ``integration`` / ``evidence`` and never learns the run identity. Mirrors
+    # the existing injected-sink house-style (``IndividualTraceSink`` et al.); ``None``
+    # (flag-off / live flow) makes ``_emit_ecl_trace`` a no-op so the live hot path
+    # stays byte-invariant. ``physics_tick_index`` (30 Hz) is kept distinct from the
+    # agent cognition ``tick`` (design §論点3, Codex MEDIUM-2); ``order_slot`` is
+    # derived downstream from ``sorted(agent_id)`` — the sink fires in that order
+    # (Codex MEDIUM-3).
+    EclTraceSink = Callable[
+        [str, int, float, float, float, float, float, Zone],
+        None,
+    ]
+
 logger = logging.getLogger(__name__)
 
 
@@ -512,6 +528,7 @@ class WorldRuntime:
         hint_engagement_trace_sink: HintEngagementTraceSink | None = None,
         floor_input_trace_sink: FloorInputTraceSink | None = None,
         bond_affinity_trace_sink: BondAffinityTraceSink | None = None,
+        ecl_trace_sink: EclTraceSink | None = None,
     ) -> None:
         self._cycle = cycle
         # M11-C2: flag-on individual-state trace sink. ``None`` (flag-off / live
@@ -547,6 +564,15 @@ class WorldRuntime:
         self._bond_affinity_trace_sink: BondAffinityTraceSink | None = (
             bond_affinity_trace_sink
         )
+        # ECL v0 (Issue 003): flag-on embodiment trace sink, wired only by the
+        # integration construction driver's ECL branch. ``None`` (flag-off / live flow)
+        # makes ``_emit_ecl_trace`` a no-op so the physics hot path is byte-invariant.
+        self._ecl_trace_sink: EclTraceSink | None = ecl_trace_sink
+        # 30 Hz physics-tick counter, deliberately separate from the agent cognition
+        # ``tick`` (design §論点3 / Codex MEDIUM-2). Advanced every ``_on_physics_tick``
+        # regardless of the sink so a mid-run wiring sees a monotonic index; read only
+        # by ``_emit_ecl_trace``, so its advance is invisible to every envelope.
+        self._physics_tick_index: int = 0
         self._clock: Clock = clock if clock is not None else RealClock()
         self._physics_dt = 1.0 / (physics_hz or self.DEFAULT_PHYSICS_HZ)
         self._cognition_period = (
@@ -1140,6 +1166,15 @@ class WorldRuntime:
                         to_zone=zone_changed,
                     ),
                 )
+        # ECL v0 (Issue 003): emit this physics tick's embodiment trace immediately
+        # AFTER step_kinematics (design §論点3), in deterministic ``sorted(agent_id)``
+        # order, then advance the 30 Hz physics-tick index. No-op when unset (live /
+        # flag-off) so the hot path stays byte-invariant. Fires before the multi-agent
+        # separation nudge below — v0 is single-agent so separation never fires; a
+        # superseding ADR that lets separation move a live ECL agent would move this
+        # call after ``_apply_separation_force`` to record the settled coordinate.
+        self._emit_ecl_trace()
+        self._physics_tick_index += 1
         # M7ζ-3: pair separation nudge — runs after step_kinematics so it
         # corrects any pair whose Python orchestrator routed them to
         # near-identical waypoints before the proximity-event detector
@@ -1169,6 +1204,27 @@ class WorldRuntime:
         # (two chashitsu tea bowls in the initial scope).
         if self._agents:
             self._fire_affordance_events()
+
+    def _emit_ecl_trace(self) -> None:
+        """Emit this physics tick's embodiment trace via the flag-on sink (Issue 003).
+
+        No-op when ``_ecl_trace_sink`` is ``None`` (flag-off / live runs), so the live
+        physics hot path stays byte-invariant. When wired, fires once per registered
+        agent in deterministic ``sorted(agent_id)`` order (so the downstream
+        ``order_slot`` is a stable function of the id set, not the ``dict`` insertion /
+        ``asyncio.gather`` order — design §論点3, Codex MEDIUM-3), passing pure
+        ``schemas`` primitives plus the current ``physics_tick_index``. The sink never
+        learns ``run_id`` / ``agent_tick`` / ``order_slot`` — the integration closure
+        binds those (house-style, mirroring ``_emit_individual_trace``), so ``world``
+        gains no ``integration`` / ``evidence`` import.
+        """
+        sink = self._ecl_trace_sink
+        if sink is None:
+            return
+        idx = self._physics_tick_index
+        for agent_id in sorted(self._agents):
+            pos = self._agents[agent_id].state.position
+            sink(agent_id, idx, pos.x, pos.y, pos.z, pos.yaw, pos.pitch, pos.zone)
 
     def _apply_separation_force(self) -> None:
         """Nudge agent pairs apart on the XZ plane when distance < radius.
