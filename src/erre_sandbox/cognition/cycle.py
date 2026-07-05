@@ -36,6 +36,11 @@ from erre_sandbox.cognition.development import (
     belief_signature,
     maybe_advance_development,
 )
+
+# ``resolve_destination`` is called at runtime; ``EclDestination`` is a Pydantic field
+# annotation on ``CycleResult`` below, so it must be importable at runtime too (Pydantic
+# resolves it at model-build time).
+from erre_sandbox.cognition.embodiment import EclDestination, resolve_destination
 from erre_sandbox.cognition.hint_engagement import (
     LLM_STATUS_UNAVAILABLE,
     LLM_STATUS_UNPARSEABLE,
@@ -120,6 +125,7 @@ from erre_sandbox.schemas import (
     ReasoningTraceMsg,
     ReflectionEvent,
     ReflectionEventMsg,
+    SpatialContext,
     SpeechMsg,
     TriggerEventTag,
     Zone,
@@ -129,6 +135,7 @@ from erre_sandbox.schemas import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping, Sequence
 
+    from erre_sandbox.cognition.embodiment import EclRecordMode
     from erre_sandbox.cognition.parse import LLMPlan
     from erre_sandbox.contracts.cognition_layers import (
         IndividualLayerConfig,
@@ -139,6 +146,7 @@ if TYPE_CHECKING:
     from erre_sandbox.schemas import (
         ERREModeName,
         PersonaSpec,
+        Position,
         SamplingDelta,
         SemanticMemoryRecord,
     )
@@ -192,6 +200,15 @@ def _advance_locomotion(
 
 
 _REFLECTION_ZONES: Final[frozenset[Zone]] = frozenset({Zone.PERIPATOS, Zone.CHASHITSU})
+
+_ECL_FORAGE_QUERY: Final[str] = "ecl v0 forage prompt"
+"""Deterministic, zone-vocabulary-free forage query for the ECL move channel.
+
+Mirrors the frozen ``running/policy.py`` ``_FORAGE_QUERY`` idiom (design §論点2): the
+resolver's ranking is decided by the memories' spatial term, not this text, so the
+query is a fixed constant — never a tune-to-pass knob. Passed to
+:func:`~erre_sandbox.cognition.embodiment.resolve_destination` only on ECL record-mode
+ticks; the flag-off live path never reads it."""
 
 _PEER_TURNS_LIMIT: Final[int] = 3
 """Cap on peer-persona dialog turns surfaced to reflection (M7γ D1).
@@ -351,6 +368,19 @@ class CycleResult(BaseModel):
     return; only the reject reason is the shadow classifier's. The caller
     (:meth:`WorldRuntime._emit_hint_engagement_trace`) writes it to
     ``swm_hint_engagement_trace``. Substrate only — never drives control."""
+    ecl_destination: EclDestination | None = None
+    """This tick's resolved ECL move-decision provenance (Issue 003, record-mode only).
+
+    ``None`` on every flag-off tick (``ecl_mode is None``) **and** on any record-mode
+    tick whose plan does not move (``destination_zone is None``). When present it is the
+    :class:`~erre_sandbox.cognition.embodiment.EclDestination` returned by
+    :func:`~erre_sandbox.cognition.embodiment.resolve_destination` — the candidate
+    selection trail (``centroid`` / ``provenance`` memory ids / ``jitter`` /
+    ``pre_clamp`` / ``post_clamp`` / ``resolved_from``) behind the emitted MoveMsg
+    target. Surfaced here so the I4 construction harness assembles Plane 1 at the
+    ``agent_tick`` axis from the logged transform inputs — never an absolute-target
+    replay — so the continuity gate's causal ablation actually bites (design §論点3/
+    §論点4). Provenance only; it never drives control."""
 
 
 class CognitionError(RuntimeError):
@@ -406,6 +436,7 @@ class CognitionCycle:
         erre_sampling_deltas: Mapping[ERREModeName, SamplingDelta] | None = None,
         bias_sink: Callable[[BiasFiredEvent], None] | None = None,
         individual_layer: IndividualLayerConfig | None = None,
+        ecl_mode: EclRecordMode | None = None,
     ) -> None:
         self._retriever = retriever
         self._store = store
@@ -465,6 +496,15 @@ class CognitionCycle:
         # and inject its bounded top-K into the USER prompt (DA-M10B-5). Follows
         # the same optional-collaborator idiom as ``erre_policy`` / ``reflector``.
         self._individual_layer = individual_layer
+        # ECL v0 record mode (Issue 003). ``None`` (default) keeps the cycle on the
+        # byte-identical live path: no history-dependent move resolution, ``uuid4`` /
+        # wall-clock memory formation, wall-clock envelope ``sent_at``, and the
+        # reflection LLM enabled. Only when a construction driver injects an
+        # :class:`~erre_sandbox.cognition.embodiment.EclRecordMode` does ``step`` pin
+        # Plane 1 and route the MoveMsg target through ``resolve_destination`` (design
+        # §論点1/§論点3). Same optional-collaborator idiom as ``erre_policy`` /
+        # ``individual_layer``.
+        self._ecl_mode = ecl_mode
 
     async def step(  # noqa: PLR0915 — central cognition orchestrator; +1 stmt for the saturation snapshot capture (ADR section 2.1)
         self,
@@ -497,10 +537,15 @@ class CognitionCycle:
         """
         _ = tick_seconds  # reserved for T13, intentionally unused here
 
-        # Step 1: write observations as Episodic memories.
+        # Step 1: write observations as Episodic memories. ``agent_tick`` / ``here``
+        # are consumed only on an ECL record-mode tick (deterministic id + tick-derived
+        # ``created_at`` + a formation ``location`` at the agent's current place, Codex
+        # HIGH-2); the flag-off path ignores them and stays byte-identical.
         new_memory_ids = await self._write_observations(
             observations,
             agent_id=agent_state.agent_id,
+            agent_tick=agent_state.tick,
+            here=agent_state.position,
         )
 
         # Step 2: update Physical (pure, CSDG half-step).
@@ -809,12 +854,18 @@ class CognitionCycle:
                 ),
             },
         )
+        # ECL v0 (Issue 003): resolve the LLM-selected ``destination_zone`` to a
+        # history-dependent coordinate before the MoveMsg is built (``None`` flag-off /
+        # non-moving tick — ``_build_envelopes`` then takes the byte-identical zone-only
+        # path). Delegated so ``step`` stays at its pre-ECL branch count.
+        ecl_destination = await self._resolve_ecl_move(new_state, plan)
         envelopes = self._build_envelopes(
             new_state,
             plan,
             persona=persona,
             observations=observations,
             memories=memories,
+            ecl_destination=ecl_destination,
         )
 
         # Steps 9.5 (M11-A diagnostic arc/coherence) + 10 (reflection) are
@@ -835,7 +886,16 @@ class CognitionCycle:
             importance_sum=importance_sum,
             envelopes=envelopes,
             flag_on=flag_on,
+            reflection_disabled=(
+                self._ecl_mode is not None and self._ecl_mode.reflection_disabled
+            ),
         )
+
+        # ECL v0 (Issue 003): pin every emitted envelope's ``sent_at`` to the record
+        # mode's fixed clock so Plane 1 is deterministic (design §論点3).
+        # Applied after ``_diagnose_and_reflect`` — which appends no envelope in record
+        # mode (reflection is disabled) — so the whole list is stamped uniformly.
+        envelopes = self._pin_envelope_clock(envelopes)
 
         # Step 9.6 (M11-B): advance the development stage from this tick's
         # LLM-independent evidence (or carry the prior state forward).
@@ -862,6 +922,7 @@ class CognitionCycle:
             world_model_evidence=world_model_evidence,
             world_model_saturation=world_model_saturation,
             world_model_hint_engagement=world_model_hint_engagement,
+            ecl_destination=ecl_destination,
         )
 
     # ------------------------------------------------------------------
@@ -873,9 +934,12 @@ class CognitionCycle:
         observations: Sequence[Observation],
         *,
         agent_id: str,
+        agent_tick: int,
+        here: Position,
     ) -> list[str]:
         new_ids: list[str] = []
-        for obs in observations:
+        ecl_mode = self._ecl_mode
+        for i, obs in enumerate(observations):
             content = _observation_content_for_embed(obs)
             try:
                 vec = await self._embedding.embed_document(content)
@@ -887,14 +951,39 @@ class CognitionCycle:
                     exc,
                 )
                 vec = None
+            if ecl_mode is not None:
+                # ECL v0 record mode (design §論点3): deterministic id + tick-derived
+                # ``created_at``, plus — crucially (Codex HIGH-2) — a formation
+                # ``location`` at the agent's current place so the resolver's centroid
+                # carries a real spatial signal (pre-ECL rows left ``location=None``,
+                # starving the "path" the resolver reads). The bare ``memory_id``
+                # matches the frozen ``ecl-{agent_id}-{tick:04d}`` format for the common
+                # one-observation tick; a rare multi-observation tick suffixes index > 0
+                # to avoid an id collision (the frozen factory takes no ordinal).
+                base_id = ecl_mode.memory_id(agent_id, agent_tick)
+                mid_id = base_id if i == 0 else f"{base_id}-{i:02d}"
+                created_at = ecl_mode.memory_created_at(agent_tick)
+                location: SpatialContext | None = SpatialContext(
+                    zone=here.zone,
+                    x=here.x,
+                    y=here.y,
+                    z=here.z,
+                )
+            else:
+                # Flag-off / live path: byte-identical to pre-ECL (``location`` defaults
+                # to ``None``, so passing it explicitly is equivalent).
+                mid_id = str(uuid.uuid4())
+                created_at = datetime.now(tz=UTC)
+                location = None
             entry = MemoryEntry(
-                id=str(uuid.uuid4()),
+                id=mid_id,
                 agent_id=agent_id,
                 kind=MemoryKind.EPISODIC,
                 content=content,
                 importance=estimate_importance(obs),
-                created_at=datetime.now(tz=UTC),
+                created_at=created_at,
                 source_observation_id=None,
+                location=location,
             )
             mid = await self._store.add(entry, vec)
             new_ids.append(mid)
@@ -1089,6 +1178,7 @@ class CognitionCycle:
         importance_sum: float,
         envelopes: list[ControlEnvelope],
         flag_on: bool,
+        reflection_disabled: bool = False,
     ) -> tuple[ReflectionEvent | None, NarrativeArc | None, bool]:
         """Steps 9.5 + 10: distil the diagnostic arc, then run reflection.
 
@@ -1101,6 +1191,13 @@ class CognitionCycle:
 
         The reflector never raises: outages resolve to ``reflection_event=None``
         (the caller's ``reflection_triggered`` flag still records the trigger).
+
+        ``reflection_disabled`` (ECL v0 record mode, design §論点3 / Codex HIGH-1): the
+        reflection LLM is the second non-determinism source, so a record-mode tick
+        skips :meth:`Reflector.maybe_reflect` entirely — returning ``reflection_event=
+        None`` and appending no ``ReflectionEventMsg`` — leaving the action LLM call the
+        only entry in Plane 2. The M11-A arc (embedding-only, flag-on) is orthogonal and
+        left untouched; ECL v0 does not enable the individual layer, so it is inert.
         """
         arc, low_coherence = (
             await self._synthesize_diagnostic_arc(
@@ -1112,6 +1209,8 @@ class CognitionCycle:
             if flag_on
             else (None, False)
         )
+        if reflection_disabled:
+            return None, arc, low_coherence
         # M7γ D1: surface up to three recent peer-persona turns so the
         # distillation can react to what *others* just said — a pure read against
         # the dialog-turn log the bootstrap turn-sink chain already populates.
@@ -1267,6 +1366,57 @@ class CognitionCycle:
             world_model_hint_engagement=world_model_hint_engagement,
         )
 
+    async def _resolve_ecl_move(
+        self,
+        new_state: AgentState,
+        plan: LLMPlan,
+    ) -> EclDestination | None:
+        """Resolve the ECL history-dependent MoveMsg target (Issue 003, record mode).
+
+        Returns ``None`` flag-off (``ecl_mode is None``) or when the plan does not move
+        (``destination_zone is None``) — the caller then builds the byte-identical
+        zone-only MoveMsg. When active, reads the agent's own top-K memories
+        (``k_world=0`` / ``mark_recalled=False``, frozen in the resolver) via
+        ``self._retriever`` and folds their strength-weighted centroid + jitter into the
+        target (policy grammar freeze, design §論点2). The resolved provenance is pushed
+        to the record mode's optional move-decision sink and also surfaced on
+        ``CycleResult`` so the I4 harness assembles Plane 1 from the logged candidate
+        selection (centroid / memory ids / jitter / clamp), never an absolute-target
+        replay (design §論点3/§論点4).
+        """
+        ecl_mode = self._ecl_mode
+        if ecl_mode is None or plan.destination_zone is None:
+            return None
+        ecl_destination = await resolve_destination(
+            self._retriever,
+            agent_id=new_state.agent_id,
+            query=_ECL_FORAGE_QUERY,
+            here=new_state.position,
+            destination_zone=plan.destination_zone,
+            micro_rng=ecl_mode.substream(new_state.agent_id, "micro"),
+            k_ecl=ecl_mode.k_ecl,
+        )
+        if ecl_mode.move_decision_sink is not None:
+            ecl_mode.move_decision_sink(ecl_destination)
+        return ecl_destination
+
+    def _pin_envelope_clock(
+        self,
+        envelopes: list[ControlEnvelope],
+    ) -> list[ControlEnvelope]:
+        """Pin every envelope's ``sent_at`` to the record-mode clock (Issue 003).
+
+        Flag-off (``ecl_mode is None``) returns ``envelopes`` unchanged, so the live
+        path keeps the wall-clock default factory and stays byte-invariant. In record
+        mode each envelope is re-stamped to the fixed ``retrieval_now`` so Plane 1 is
+        deterministic (design §論点3).
+        """
+        ecl_mode = self._ecl_mode
+        if ecl_mode is None:
+            return envelopes
+        pinned = ecl_mode.retrieval_now
+        return [env.model_copy(update={"sent_at": pinned}) for env in envelopes]
+
     def _build_envelopes(
         self,
         new_state: AgentState,
@@ -1275,6 +1425,7 @@ class CognitionCycle:
         persona: PersonaSpec,
         observations: Sequence[Observation] = (),
         memories: Sequence[RankedMemory] = (),
+        ecl_destination: EclDestination | None = None,
     ) -> list[ControlEnvelope]:
         envelopes: list[ControlEnvelope] = [
             AgentUpdateMsg(tick=new_state.tick, agent_state=new_state),
@@ -1289,12 +1440,21 @@ class CognitionCycle:
                 ),
             )
         if plan.destination_zone is not None:
-            # Coordinates are carried over verbatim; the Godot side (T17)
-            # performs spatial interpolation via Tween based on the Zone
-            # boundary, so we only hand over the semantic destination.
-            target = new_state.position.model_copy(
-                update={"zone": plan.destination_zone},
-            )
+            if ecl_destination is not None:
+                # ECL v0 (Issue 003): the LLM chose *which* zone; history chose *where*
+                # in it. ``resolve_destination`` already produced a concrete,
+                # ``locate_zone``-consistent coordinate, so the world layer's
+                # zone-only → spawn resolution (``tick.py`` ``default_spawn`` branch)
+                # never fires and the agent transits continuously (design §論点1).
+                target = ecl_destination.target
+            else:
+                # Flag-off / live path (byte-identical to pre-ECL): coordinates are
+                # carried over verbatim; the Godot side (T17) performs spatial
+                # interpolation via Tween based on the Zone boundary, so we only hand
+                # over the semantic destination.
+                target = new_state.position.model_copy(
+                    update={"zone": plan.destination_zone},
+                )
             envelopes.append(
                 MoveMsg(
                     tick=new_state.tick,
