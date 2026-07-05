@@ -124,7 +124,9 @@ DETERMINISM_CHECKLIST: Final[tuple[str, ...]] = (
     "ERRE_ZONE_BIAS_P pinned via env_pins (bias non-firing but pinned to close "
     "an un-pinned non-determinism source)",
     "authoritative reproducibility digest = ecl_trace_checksum over EclTraceRow "
-    "(design §論点3); NOT a metric/floor/verdict",
+    "(design §論点3); NOT a metric/floor/verdict. It uses a distinct sort_keys-only "
+    "canonicalisation (finite floats only) — separate from these compact JSONL "
+    "rules; a non-finite trace is a Stop condition, not a silently-hashed value",
     "cross-platform libm float drift is a Stop condition (superseding ADR), not "
     "silently tolerated",
 )
@@ -453,8 +455,16 @@ def build_envelope_stream(result: EclRunResult) -> list[dict[str, Any]]:
     ``order_slot`` / ``agent_tick`` / within-tick ``seq``. The list is sorted by
     ``(order_slot, agent_tick, seq)`` so replay order is deterministic and
     forward-compatible with multi-agent runs (single agent → ``order_slot`` 0).
+
+    ``order_slot`` is the frozen ``sorted(agent_id)`` index of each envelope's own
+    ``agent_id`` (design §論点6), derived per-envelope from a slot map over the
+    run's agents — not the first row's slot — so a future multi-agent run
+    interleaves correctly (Codex TASK-POST LOW). Empty runs yield an empty stream.
     """
-    order_slot = result.rows[0].order_slot if result.rows else 0
+    slot_by_agent = {
+        agent_id: slot
+        for slot, agent_id in enumerate(sorted({r.agent_id for r in result.rows}))
+    }
     entries: list[dict[str, Any]] = []
     for decision in result.decisions:
         seq = 0
@@ -467,7 +477,7 @@ def build_envelope_stream(result: EclRunResult) -> list[dict[str, Any]]:
             envelope = _CONTROL_ENVELOPE_ADAPTER.validate_python(raw)
             entries.append(
                 {
-                    "order_slot": order_slot,
+                    "order_slot": slot_by_agent.get(raw.get("agent_id", ""), 0),
                     "agent_tick": decision.agent_tick,
                     "seq": seq,
                     "envelope": _CONTROL_ENVELOPE_ADAPTER.dump_python(
@@ -522,13 +532,33 @@ def capture_env_pins() -> dict[str, Any]:
         f".{sys.version_info.micro}",
         "packages": packages,
         "godot": "4.6 (consumer; not required to generate)",
-        "ERRE_ZONE_BIAS_P": os.environ.get("ERRE_ZONE_BIAS_P", "0.1"),
+        # Fallback mirrors ``CognitionCycle.__init__``'s
+        # ``os.environ.get("ERRE_ZONE_BIAS_P", "0.2")`` default so an unset env
+        # records the value the run actually used (Codex TASK-POST MEDIUM-2).
+        "ERRE_ZONE_BIAS_P": os.environ.get("ERRE_ZONE_BIAS_P", "0.2"),
+    }
+
+
+def golden_run_config() -> dict[str, Any]:
+    """The golden run's input config for the manifest ``run`` block.
+
+    Explicit so :func:`build_manifest` records the *actual* run inputs rather
+    than reading module globals — a non-golden caller passes its own config and
+    gets honest provenance (Codex TASK-POST MEDIUM-2).
+    """
+    return {
+        "seed": GOLDEN_SEED,
+        "physics_ticks_per_cognition": GOLDEN_PHYSICS_TICKS_PER_COGNITION,
+        "k_ecl": K_ECL,
+        "base_ts": GOLDEN_TS.isoformat(),
+        "retrieval_now": GOLDEN_TS.isoformat(),
     }
 
 
 def build_manifest(
     result: EclRunResult,
     *,
+    run_config: dict[str, Any],
     trace_jsonl: str,
     decisions_jsonl: str,
     envelope_jsonl: str,
@@ -536,9 +566,12 @@ def build_manifest(
 ) -> dict[str, Any]:
     """Assemble the ``manifest.json`` dict — the AC1 pin surface (design §論点5).
 
-    ``result`` supplies the run metadata + the authoritative ``replay_checksum``
-    (``ecl_trace_checksum``); the three ``*_jsonl`` strings supply the per-artifact
-    SHA-256 integrity hashes. All convention/checklist pins are module constants
+    ``result`` supplies the derived run metadata (agent_ids / tick counts) + the
+    authoritative ``replay_checksum`` (``ecl_trace_checksum``); ``run_config``
+    supplies the run *inputs* (seed / physics_ticks_per_cognition / k_ecl /
+    clocks) so the provenance reflects the actual run, not module globals (Codex
+    TASK-POST MEDIUM-2). The three ``*_jsonl`` strings supply the per-artifact
+    SHA-256 integrity hashes; all convention/checklist pins are module constants
     so they are stable across bakes; ``env_pins`` defaults to a fresh snapshot.
     """
     agent_ids = sorted({r.agent_id for r in result.rows})
@@ -549,14 +582,14 @@ def build_manifest(
         "schema_version": SCHEMA_VERSION,
         "run": {
             "run_id": result.run_id,
-            "seed": GOLDEN_SEED,
+            "seed": run_config["seed"],
             "agent_ids": agent_ids,
             "world_tick_count": world_tick_count,
             "cognition_ticks": cognition_ticks,
-            "physics_ticks_per_cognition": GOLDEN_PHYSICS_TICKS_PER_COGNITION,
-            "k_ecl": K_ECL,
-            "base_ts": GOLDEN_TS.isoformat(),
-            "retrieval_now": GOLDEN_TS.isoformat(),
+            "physics_ticks_per_cognition": run_config["physics_ticks_per_cognition"],
+            "k_ecl": run_config["k_ecl"],
+            "base_ts": run_config["base_ts"],
+            "retrieval_now": run_config["retrieval_now"],
         },
         "coordinate_convention": COORDINATE_CONVENTION,
         "tick_mapping": TICK_MAPPING,
@@ -588,18 +621,23 @@ GOLDEN_FILENAMES: Final[tuple[str, ...]] = (
 
 
 def render_golden(
-    result: EclRunResult, *, env_pins: dict[str, Any] | None = None
+    result: EclRunResult,
+    *,
+    run_config: dict[str, Any] | None = None,
+    env_pins: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Render the four handoff artifacts as ``{filename: text}`` (pure).
 
-    Deterministic given ``result`` (and ``env_pins`` for ``manifest.json``): the
-    caller writes the strings, or diffs them against the committed golden.
+    Deterministic given ``result`` (and ``run_config`` / ``env_pins`` for
+    ``manifest.json``): the caller writes the strings, or diffs them against the
+    committed golden. ``run_config`` defaults to :func:`golden_run_config`.
     """
     trace_jsonl = trace_rows_to_jsonl(result.rows)
     decisions_jsonl = decisions_to_jsonl(result.decisions)
     envelope_jsonl = envelope_stream_to_jsonl(build_envelope_stream(result))
     manifest = build_manifest(
         result,
+        run_config=run_config if run_config is not None else golden_run_config(),
         trace_jsonl=trace_jsonl,
         decisions_jsonl=decisions_jsonl,
         envelope_jsonl=envelope_jsonl,
@@ -617,11 +655,13 @@ def write_golden(
     result: EclRunResult,
     out_dir: Path,
     *,
+    run_config: dict[str, Any] | None = None,
     env_pins: dict[str, Any] | None = None,
 ) -> None:
     """Write the four handoff artifacts into ``out_dir`` (the only side-effect)."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    for filename, text in render_golden(result, env_pins=env_pins).items():
+    rendered = render_golden(result, run_config=run_config, env_pins=env_pins)
+    for filename, text in rendered.items():
         (out_dir / filename).write_text(text, encoding="utf-8", newline="\n")
 
 
@@ -654,6 +694,7 @@ __all__ = [
     "golden_agent_state",
     "golden_persona",
     "golden_recorded_calls",
+    "golden_run_config",
     "recorded_calls_from_jsonl",
     "render_golden",
     "trace_row_from_dict",

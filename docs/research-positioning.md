@@ -435,7 +435,21 @@
   完全 pin)、continuity gate を exact-oracle causal wiring test 化 (measurement 非再入)、handoff schema + Godot
   bounded scope。Codex Verdict=Revise → HIGH3/MEDIUM3/LOW1 全反映後 freeze。次工程 = 本 ADR を binding 前提に
   ECL v0 実コード実装 (別タスク、Loop Engineering 適用判断、measurement-line 再入は costed superseding ADR +
-  R-budget 経由のみ)。
+  R-budget 経由のみ)。**この実装-design ADR を binding 前提に ECL v0 実コード実装 (I1-I5) が完了した
+(2026-07-05、feat/ecl-v0)** = contracts/geometry SSOT 昇格 (I1) / cognition/embodiment 履歴依存目的地幾何 +
+continuity gate exact-oracle (I2) / live seam foundation (cycle+world seam、flag-off byte-invariant、
+reflection record-mode disable、I3) / integration determinism harness + replay checksum (record/replay LLM
+adapter、two-plane determinism、I4) / cross-machine handoff converter+manifest+committed golden + Godot
+dev-only replay player (I5)。**得られたもの = 単一 live LLM 認知ループが連続 physics + 履歴依存 memory 幾何の
+上を走り、決定的に record/replay され、G-GEAR→MacBook を跨ぐ handoff golden (1 agent × 8 tick、replay checksum
+安定、history 依存は centroid が担保 = 8 distinct move target) として焼かれた construction apparatus** (統計/
+floor/landscape/verdict を出さない measurement 非再入を ast guard で機械的に保証、flag-off byte-invariant で
+既存 live 経路無影響)。**measurement は依然 holding**。TASK-POST 二者レビュー (code-reviewer(Opus) + Codex
+(gpt-5.5)) が v0 apparatus では非発火の determinism-hardening 候補 (RNG substream の tick-across 消費 idiom /
+LLM fallback replay-safety / retrieval tie-break の truncation 前適用 / checksum canonicalization 統一) を検出、
+これらは frozen I2/I3/I4 改変を要するため **単一 superseding ADR (「ECL v0 determinism hardening」) 候補として
+pre-register** (v0 の construction claim・determinism・再現性は不変)。次方向 = sealed record/replay run か
+Milestone 2 (N 体化) かの決定 ADR (別タスク、高難度ゆえ Plan mode + reimagine + Codex)。
 
 ## 9. スコープ / 非スコープ
 
@@ -449,7 +463,9 @@
     two-plane determinism で将来の測定可能性を保全、measurement-line 再入は holding)。**技術契約 (HOW) は実装-design
     ADR (FROZEN 2026-07-05) で pre-register 済** = resolution を cognition へ引き上げ既存 live loop を単一ループの
     まま器官化 / policy grammar freeze / 全 LLM call 記録 + Plane 1 完全 pin / continuity gate = exact-oracle
-    causal wiring test (measurement 非再入) / handoff schema + Godot dev-only bounded player。実コード実装は別タスク。
+    causal wiring test (measurement 非再入) / handoff schema + Godot dev-only bounded player。**実コード実装
+    (I1-I5) は完了 (2026-07-05、feat/ecl-v0)** = 単一 live ループ器官化 + committed handoff golden、measurement
+    非再入は ast guard で機械保証、determinism-hardening 候補は superseding ADR に pre-register。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
