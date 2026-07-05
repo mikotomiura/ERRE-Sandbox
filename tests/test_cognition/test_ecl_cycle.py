@@ -36,6 +36,8 @@ from erre_sandbox.schemas import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import pytest
+
     from erre_sandbox.inference.ollama_adapter import OllamaChatClient
     from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
     from erre_sandbox.memory.retrieval import RankedMemory
@@ -43,6 +45,23 @@ if TYPE_CHECKING:
 
 _FIXED_NOW = datetime(2026, 1, 1, tzinfo=UTC)
 """Fixed record-mode clock (retrieval + envelope ``sent_at`` pin)."""
+
+
+class _FrozenClock(datetime):
+    """A ``datetime`` whose ``now`` is pinned to :data:`_FIXED_NOW`.
+
+    ``schemas._utc_now`` resolves ``datetime`` from its module globals at call
+    time, so monkeypatching ``erre_sandbox.schemas.datetime`` with this class
+    freezes every ``default_factory=_utc_now`` field (envelope ``sent_at``,
+    ``ReasoningTrace.created_at``, …). Used to make the flag-off/flag-on
+    byte-invariant comparison deterministic — two back-to-back
+    ``_build_envelopes`` calls would otherwise capture wall-clocks that differ by
+    microseconds on a slow runner (the failing field was ``created_at``)."""
+
+    @classmethod
+    def now(cls, tz: Any = None) -> datetime:  # noqa: ARG003 - signature match
+        return _FIXED_NOW
+
 
 _BASE_TS = datetime(2026, 1, 1, tzinfo=UTC)
 """Deterministic base for tick-derived memory ``created_at``."""
@@ -145,7 +164,12 @@ async def test_ecl_flag_off_byte_invariant(
     make_embedding_client: Callable[[], EmbeddingClient],
     cognition_store: MemoryStore,
     cognition_retriever: Retriever,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Pin the wall clock so the two back-to-back ``_build_envelopes`` calls capture
+    # identical ``sent_at`` / ``created_at`` — the byte-invariance the test asserts is
+    # about the ECL seam, not the wall clock (deterministic on any runner).
+    monkeypatch.setattr("erre_sandbox.schemas.datetime", _FrozenClock)
     persona = make_persona_spec()
     # ``_build_envelopes`` consumes the post-tick state; a plain factory state is
     # sufficient (it does no I/O).
