@@ -27,4 +27,6 @@ task: **ecl-v0-hardening** (M13 ECL v0 determinism hardening Phase 1)
 - [x] 統合フル CI 緑 (pre-push src tests 4 段、3369 passed / 66 skipped / golden verify OK)
 - [x] TASK-POST /cross-review (二者 HIGH なし = Mergeable。CR-M1/M2/L2 + Codex-L1 反映 = review-fixes faf47a9、3370 passed)
 - [x] 最終 pre-push ゲート (a0cdce5、ALL CHECKS PASSED、3370 passed / 66 skipped)
-- [x] **PR #55 作成** (feat/ecl-v0-hardening→main、https://github.com/mikotomiura/ERRE-Sandbox/pull/55) — merge は user 判断
+- [x] **PR #55 作成** (feat/ecl-v0-hardening→main、https://github.com/mikotomiura/ERRE-Sandbox/pull/55)
+- [!] **CI fail (1回目)**: cross-platform libm float drift (Windows bake vs Linux CI、cos/sin 1-ULP) で golden checksum 不一致。**timeout でない**
+- [x] **cross-platform fix (ec26619)**: emitted float を 6桁量子化 (envelope_provenance embedded JSON float 含む)。WSL Linux bake と Windows bake が全4 artifact byte 一致を実測、新 checksum 01b4189。CI 再実行中 → 緑確認後 merge は user 判断
