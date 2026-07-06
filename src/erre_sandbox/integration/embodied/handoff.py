@@ -76,7 +76,7 @@ if TYPE_CHECKING:
 # Handoff spec version + frozen convention constants (manifest AC1 pins)
 # --------------------------------------------------------------------------- #
 
-MANIFEST_SCHEMA_VERSION: Final[str] = "ecl-v0-handoff-1"
+MANIFEST_SCHEMA_VERSION: Final[str] = "ecl-v0-handoff-2"
 """Handoff artifact schema version — bumped only by a superseding ADR.
 
 Distinct from ``schemas.SCHEMA_VERSION`` (the wire-envelope version): this
@@ -124,9 +124,11 @@ DETERMINISM_CHECKLIST: Final[tuple[str, ...]] = (
     "ERRE_ZONE_BIAS_P pinned via env_pins (bias non-firing but pinned to close "
     "an un-pinned non-determinism source)",
     "authoritative reproducibility digest = ecl_trace_checksum over EclTraceRow "
-    "(design §論点3); NOT a metric/floor/verdict. It uses a distinct sort_keys-only "
-    "canonicalisation (finite floats only) — separate from these compact JSONL "
-    "rules; a non-finite trace is a Stop condition, not a silently-hashed value",
+    "(design §論点3); NOT a metric/floor/verdict. It canonicalises under the same "
+    "rules as CANONICAL_JSON_RULES (sort_keys + compact separators + "
+    "ensure_ascii=False + allow_nan=False), so a consumer recomputing the digest "
+    "under the advertised rules gets identical bytes; a non-finite trace raises "
+    "(allow_nan=False) — a Stop condition, not a silently-hashed value",
     "cross-platform libm float drift is a Stop condition (superseding ADR), not "
     "silently tolerated",
 )
@@ -617,6 +619,13 @@ def build_manifest(
             "envelope_stream.jsonl": {"sha256": _sha256(envelope_jsonl)},
         },
         "replay_checksum": result.checksum,
+        "replay_checksum_algorithm": "sha256",
+        "replay_checksum_json_rules": {
+            "sort_keys": True,
+            "separators": [",", ":"],
+            "ensure_ascii": False,
+            "allow_nan": False,
+        },
         "expected_envelope_ordering": "sort ascending by (order_slot, agent_tick, seq)",
         "envelope_stream_kinds": list(ENVELOPE_STREAM_KINDS),
         "godot_headless_command": GODOT_HEADLESS_COMMAND,

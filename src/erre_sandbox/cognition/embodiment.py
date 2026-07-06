@@ -56,7 +56,7 @@ pre- and post-clamp), never an absolute-target replay key, so the causal ablatio
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import TYPE_CHECKING, Final, Literal, Protocol
 
@@ -125,11 +125,13 @@ class EclDestination:
 
 @dataclass(frozen=True, slots=True)
 class EclRecordMode:
-    """Lightweight determinism config for the ECL record/replay driver.
+    """A record-mode runtime object holding the ECL driver's deterministic handles.
 
-    Carries **only** the deterministic handles the live seam (Issue 003) and the
-    integration harness (Issue 004) need to pin Plane 1 (design-final.md §論点3,
-    grill G-2 / G-7): a fixed retrieval clock, a deterministic memory
+    Not a pure config value: it owns per-``(agent_id, stream)`` RNG handles whose
+    draw sequences advance across the run (the ``_rng_cache`` memoize below), so
+    the record/replay driver (Issue 003) and integration harness (Issue 004) can
+    pin Plane 1 (design-final.md §論点3, grill G-2 / G-7). Carries **only** the
+    deterministic handles: a fixed retrieval clock, a deterministic memory
     ``created_at`` base, named RNG substream + id factories, ``k_ecl``, the
     reflection-disable flag, and an optional move-decision callback.
 
@@ -145,16 +147,35 @@ class EclRecordMode:
     k_ecl: int = K_ECL
     reflection_disabled: bool = True
     move_decision_sink: Callable[[EclDestination], None] | None = None
+    _rng_cache: dict[tuple[str, str], random.Random] = field(
+        default_factory=dict, compare=False, repr=False
+    )
 
     def substream(
         self, agent_id: str, stream: Literal["micro", "tie"]
     ) -> random.Random:
         """Named RNG substream ``ecl-{run_id}-{agent_id}-{stream}`` (grill G-7).
 
-        Never the global RNG: a re-run with the same ``run_id`` reproduces a
-        byte-identical draw sequence (frozen ``running/policy.py`` §2.4 idiom).
+        Never the global RNG. Memoized per ``(agent_id, stream)``: the **first**
+        call seeds ``random.Random(f"ecl-{run_id}-{agent_id}-{stream}")`` and every
+        later call with the same key returns that *same* handle, so its draws form
+        a single run-sequence (frozen ``running/policy.py`` §2.4 idiom: one RNG
+        made once per run, its sequence then consumed) rather than restarting from
+        the seed each tick. A re-run with the same ``run_id`` reproduces a
+        byte-identical draw sequence. Mutating this frozen dataclass's cache dict
+        in place is legal (the dict *identity* never changes); ``_rng_cache`` is
+        ``compare=False`` / ``repr=False`` so it stays out of equality and repr.
+
+        Uses get-then-assign, not ``dict.setdefault``: ``setdefault`` would
+        evaluate a fresh ``random.Random(...)`` on every call, defeating the
+        memoize.
         """
-        return random.Random(f"ecl-{self.run_id}-{agent_id}-{stream}")  # noqa: S311
+        key = (agent_id, stream)
+        rng = self._rng_cache.get(key)
+        if rng is None:
+            rng = random.Random(f"ecl-{self.run_id}-{agent_id}-{stream}")  # noqa: S311
+            self._rng_cache[key] = rng
+        return rng
 
     def memory_id(self, agent_id: str, agent_tick: int) -> str:
         """Deterministic memory id ``ecl-{agent_id}-{agent_tick:04d}`` (§論点3)."""

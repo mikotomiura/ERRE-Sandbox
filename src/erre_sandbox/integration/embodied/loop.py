@@ -350,9 +350,17 @@ def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
     """SHA-256 over the canonical-serialised trace — the replay checksum (§論点3).
 
     Design-copied from ``evidence.d0_substrate.stub.trace_checksum`` (copied, not
-    imported): a stable JSON projection with ``sort_keys=True`` so a byte-identical
-    re-run yields a byte-identical digest. This proves *reproducibility*; it is not
-    a metric, floor, or verdict (measurement-line non-re-entry, design §論点4).
+    imported): a stable JSON projection so a byte-identical re-run yields a
+    byte-identical digest. This proves *reproducibility*; it is not a metric,
+    floor, or verdict (measurement-line non-re-entry, design §論点4).
+
+    The ``json.dumps`` canonicalisation matches ``handoff.CANONICAL_JSON_RULES``
+    exactly (``sort_keys=True`` + compact ``separators`` + ``ensure_ascii=False`` +
+    ``allow_nan=False``) so a consumer recomputing the digest under the advertised
+    rules gets the same bytes (Codex MEDIUM-1). ``handoff.canonical_dumps`` is not
+    imported: ``handoff`` imports ``loop``, so the rules are inlined to avoid the
+    cycle. A non-finite float raises (``allow_nan=False``) — a Stop condition, not
+    a silently-hashed value (design §論点3).
     """
     canonical = [
         {
@@ -379,7 +387,13 @@ def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
         }
         for r in rows
     ]
-    blob = json.dumps(canonical, sort_keys=True).encode("utf-8")
+    blob = json.dumps(
+        canonical,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
 
 

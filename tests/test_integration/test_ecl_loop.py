@@ -30,12 +30,14 @@ runs in ``:memory:``.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
+import pytest
 
 from erre_sandbox.cognition.reflection import Reflector
 from erre_sandbox.inference.ollama_adapter import (
@@ -43,8 +45,10 @@ from erre_sandbox.inference.ollama_adapter import (
     OllamaChatClient,
     OllamaUnavailableError,
 )
+from erre_sandbox.integration.embodied import handoff
 from erre_sandbox.integration.embodied import loop as ecl_loop
 from erre_sandbox.integration.embodied.loop import (
+    EclTraceRow,
     RecordedLlmCall,
     RecordReplayChatClient,
     ecl_trace_checksum,
@@ -478,6 +482,94 @@ async def test_ecl_loop_success_then_raised_replay_matches(
     assert replay_client.inner_invocations == 0
     assert replayed.checksum == recorded.checksum
     assert [d.llm_status for d in replayed.decisions] == ["ok", "raised", "ok"]
+
+
+# --------------------------------------------------------------------------- #
+# γ-G2 (C/B-4) — checksum canonicalisation is CANONICAL_JSON_RULES (drift-pin)
+# --------------------------------------------------------------------------- #
+
+
+def _trace_row(**overrides: Any) -> EclTraceRow:
+    """A fully-populated ``EclTraceRow`` for the checksum canonicalisation pin."""
+    fields: dict[str, Any] = {
+        "run_id": "rün-canon",  # non-ASCII ⇒ ensure_ascii=False is observable
+        "agent_id": "a0",
+        "physics_tick_index": 3,
+        "agent_tick": 1,
+        "order_slot": 0,
+        "x": 1.5,
+        "y": 0.0,
+        "z": -2.25,
+        "yaw": 0.1,
+        "pitch": 0.0,
+        "zone": Zone.PERIPATOS,
+        "resolved_from": "memory_centroid",
+        "move_centroid": (1.0, 2.0),
+        "move_provenance": ("m1", "m2"),
+        "move_jitter": (0.1, 0.2),
+        "move_pre_clamp": (1.1, 2.2),
+        "move_post_clamp": (1.1, 2.2),
+        "move_clamp_fired": False,
+    }
+    fields.update(overrides)
+    return EclTraceRow(**fields)
+
+
+def test_ecl_trace_checksum_canonical_rules() -> None:
+    """``ecl_trace_checksum`` canonicalises identically to CANONICAL_JSON_RULES.
+
+    C (B-4): the checksum's ``json.dumps`` must apply the same
+    ``sort_keys`` + compact ``separators`` + ``ensure_ascii=False`` +
+    ``allow_nan=False`` rules the manifest advertises, so a consumer recomputing
+    the digest under the published rules gets identical bytes. A non-finite float
+    raises rather than being silently hashed (Stop condition, design §論点3).
+    """
+    row = _trace_row()
+
+    # Behavioural drift-pin: the digest equals sha256 over the *same* canonical
+    # projection serialised with handoff.canonical_dumps (the CANONICAL_JSON_RULES
+    # serialiser). The non-ASCII ``run_id`` pins ensure_ascii=False; the compact
+    # separators / sort_keys are pinned because json's defaults would differ.
+    expected_projection = [
+        {
+            "run_id": row.run_id,
+            "agent_id": row.agent_id,
+            "physics_tick_index": row.physics_tick_index,
+            "agent_tick": row.agent_tick,
+            "order_slot": row.order_slot,
+            "x": row.x,
+            "y": row.y,
+            "z": row.z,
+            "yaw": row.yaw,
+            "pitch": row.pitch,
+            "zone": row.zone.value,
+            "resolved_from": row.resolved_from,
+            "move_centroid": [1.0, 2.0],
+            "move_provenance": ["m1", "m2"],
+            "move_jitter": [0.1, 0.2],
+            "move_pre_clamp": [1.1, 2.2],
+            "move_post_clamp": [1.1, 2.2],
+            "move_clamp_fired": False,
+        }
+    ]
+    expected_digest = hashlib.sha256(
+        handoff.canonical_dumps(expected_projection).encode("utf-8")
+    ).hexdigest()
+    assert ecl_trace_checksum([row]) == expected_digest
+
+    # allow_nan=False: a non-finite float in the trace raises (not silently hashed).
+    with pytest.raises(ValueError, match=r"[Nn]a[Nn]|[Ii]nf|not.*JSON"):
+        ecl_trace_checksum([_trace_row(x=float("inf"))])
+    with pytest.raises(ValueError, match=r"[Nn]a[Nn]|[Ii]nf|not.*JSON"):
+        ecl_trace_checksum([_trace_row(y=float("nan"))])
+
+    # Advertised-rules pin: the manifest rules the consumer reads match the four
+    # levers the checksum inlines (drift between the two is the failure this guards).
+    rules = handoff.CANONICAL_JSON_RULES
+    assert rules["sort_keys"] is True
+    assert rules["ensure_ascii"] is False
+    assert rules["separators"] == [",", ":"]
+    assert rules["allow_nan"] is False
 
 
 # --------------------------------------------------------------------------- #
