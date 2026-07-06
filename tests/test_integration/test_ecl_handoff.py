@@ -195,6 +195,45 @@ async def test_ecl_v0_handoff_golden_sample_matches() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Backward-compat — legacy decisions.jsonl (pre-outcome tag) still parses
+# --------------------------------------------------------------------------- #
+
+
+def test_recorded_call_from_legacy_jsonl_without_outcome() -> None:
+    """A legacy ``decisions.jsonl`` call (baked before the B-2 outcome tag)
+    parses and falls back to ``outcome == "ok"`` (Codex-L1).
+
+    Directly pins the backward-compat contract ``data.get("outcome", "ok")`` in
+    ``_recorded_call_from_dict``: a committed golden baked before the
+    outcome-tagged union carries no ``outcome`` key, and must still replay. The
+    hand-written legacy line has ``response`` present and no ``outcome`` key.
+    """
+    legacy_line = json.dumps(
+        {
+            "system_prompt": "[legacy] system",
+            "user_prompt": "[legacy] cognition tick 0",
+            "sampling": {"temperature": 0.7, "top_p": 0.9, "repeat_penalty": 1.1},
+            "response": {
+                "content": "[legacy] recorded content",
+                "model": "qwen3:8b",
+                "eval_count": 0,
+                "total_duration_ms": 0.0,
+            },
+            # NOTE: no "outcome" key — the pre-B-2 committed shape.
+        }
+    )
+    data = json.loads(legacy_line)
+    assert "outcome" not in data  # the legacy shape under test
+
+    call = handoff._recorded_call_from_dict(data)
+
+    assert call.outcome == "ok"  # data.get("outcome", "ok") fallback
+    assert call.response is not None  # response faithfully restored
+    assert call.response.content == "[legacy] recorded content"
+    assert call.response.model == "qwen3:8b"
+
+
+# --------------------------------------------------------------------------- #
 # γ-G3 (version) — manifest version bump + replay-checksum rule fields
 # --------------------------------------------------------------------------- #
 

@@ -274,6 +274,14 @@ def canonical_dumps(obj: Any) -> str:
     ``sort_keys`` + ``allow_nan=False`` make a byte-identical re-serialisation a
     reproducibility witness; ``ensure_ascii=False`` keeps UTF-8 utterances
     readable. Non-finite floats raise (the manifest's NaN policy).
+
+    Shares its exact canonicalisation (``sort_keys`` + compact ``separators`` +
+    ``ensure_ascii=False`` + ``allow_nan=False``) with
+    ``loop.ecl_trace_checksum``. The rule set is inlined in both places rather
+    than shared through one helper because ``handoff`` imports ``loop`` (a shared
+    canonicaliser would create an import cycle);
+    ``test_ecl_trace_checksum_canonical_rules`` pins that the two produce
+    identical digests so the duplication cannot drift (CR-M2).
     """
     return json.dumps(
         obj,
@@ -620,11 +628,15 @@ def build_manifest(
         },
         "replay_checksum": result.checksum,
         "replay_checksum_algorithm": "sha256",
+        # Derived from CANONICAL_JSON_RULES rather than a hardcoded literal so the
+        # advertised checksum canonicalisation can never drift from the rules the
+        # module actually applies (CR-M1). The checksum canonicalisation is exactly
+        # these four keys (sort_keys + compact separators + ensure_ascii=False +
+        # allow_nan=False); float_repr / newline are JSONL-shape rules, not part of
+        # the checksum contract, so they stay out.
         "replay_checksum_json_rules": {
-            "sort_keys": True,
-            "separators": [",", ":"],
-            "ensure_ascii": False,
-            "allow_nan": False,
+            k: CANONICAL_JSON_RULES[k]
+            for k in ("sort_keys", "separators", "ensure_ascii", "allow_nan")
         },
         "expected_envelope_ordering": "sort ascending by (order_slot, agent_tick, seq)",
         "envelope_stream_kinds": list(ENVELOPE_STREAM_KINDS),

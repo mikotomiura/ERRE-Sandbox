@@ -129,6 +129,14 @@ class RecordedLlmCall:
     sampling: ResolvedSampling
     response: ChatResponse | None = None
     outcome: Literal["ok", "unparseable", "raised"] = "ok"
+    """The recorded call's outcome tag.
+
+    ``unparseable`` is a forward-extension value: the current record path
+    (:meth:`RecordReplayChatClient.chat`) only ever sets ``ok`` (content
+    returned) or ``raised`` (``OllamaUnavailableError``). An unparseable plan is
+    *not* tagged here — it is recorded as ``ok`` (content present) and the
+    unparseable determination is made downstream in ``_build_decision`` via
+    ``llm_status``, which re-parses the same content on replay (CR-L2)."""
 
     @property
     def raw_response(self) -> str:
@@ -357,10 +365,13 @@ def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
     The ``json.dumps`` canonicalisation matches ``handoff.CANONICAL_JSON_RULES``
     exactly (``sort_keys=True`` + compact ``separators`` + ``ensure_ascii=False`` +
     ``allow_nan=False``) so a consumer recomputing the digest under the advertised
-    rules gets the same bytes (Codex MEDIUM-1). ``handoff.canonical_dumps`` is not
-    imported: ``handoff`` imports ``loop``, so the rules are inlined to avoid the
-    cycle. A non-finite float raises (``allow_nan=False``) — a Stop condition, not
-    a silently-hashed value (design §論点3).
+    rules gets the same bytes (Codex MEDIUM-1). This is the same canonicalisation
+    ``handoff.canonical_dumps`` applies; ``handoff.canonical_dumps`` is not
+    imported: ``handoff`` imports ``loop``, so the rules are inlined here to avoid
+    the cycle, and ``test_ecl_trace_checksum_canonical_rules`` pins that the two
+    inlined copies produce identical digests so they cannot drift (CR-M2). A
+    non-finite float raises (``allow_nan=False``) — a Stop condition, not a
+    silently-hashed value (design §論点3).
     """
     canonical = [
         {
