@@ -83,6 +83,7 @@ memory 幾何の上で実行する統合器官 (実装-design ADR FROZEN 2026-07
 | continuity gate | continuity gate | memory→geometry→movement 接続を positive/negative control の座標決定的等価/相異のみで断定する construction 検査。exact oracle `target == reflect_clamp(centroid + fixed_jitter, Z)`。**floor 測定でない** (統計/landscape 不使用、verdict token なし) | design §論点4、DA-ECLIMPL-3 |
 | ECL trace sink | ecl_trace_sink | `world/tick.py` に注入する `Callable\|None=None` の trace 出力口。live 時 None で no-op (byte 不変)、construction driver 時のみ physics-tick 後の trace 行を出す。既存 individual_trace_sink 写経 | design §論点1、world←注入 依存矢印 |
 | cross-machine handoff | cross-machine handoff | G-GEAR (生成) → MacBook Godot (消費) の 2 拠点非同期を跨ぐ再生契約。manifest.json + ecl_trace.jsonl + decisions.jsonl + envelope_stream.jsonl + committed golden。主検証は G-GEAR 側 wire-schema conformance | design §論点5、EclReplayPlayer.gd (dev-only) |
+| top-K over candidate pool | top-K over candidate pool | retrieval の tie-break 全順序 `(-strength, created_at, id)` は候補集合内の total order。候補集合は `_rank_scope` が **kind (episodic/semantic) × scope (agent/world) ごと**に `limit_candidates`(既定 50) 件 fetch した和集合であり、その pool 外の同 strength 古い memory は拾わない、という pinned 境界。silent cap 禁止で明記する契約 | determinism hardening ADR §3.4、Codex MEDIUM-3 + TASK-PRE LOW-1、`_rank_scope` |
 
 ## 略語
 

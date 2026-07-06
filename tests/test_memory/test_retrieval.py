@@ -206,3 +206,196 @@ async def test_retrieve_limits_respected(
     retriever = Retriever(store, _FakeEmbeddingClient(_doc_vec(0)))
     ranked = await retriever.retrieve("kant", "q", k_agent=2, k_world=0)
     assert len(ranked) == 2
+
+
+# ---------------------------------------------------------------------------
+# B-3: total order established BEFORE truncation (determinism hardening)
+# ---------------------------------------------------------------------------
+#
+# The tie construction: a *fixed* ``now`` in the past plus ``created_at`` values
+# that are all in the *future* means ``_age_days`` clamps every age to ``0.0``
+# (``max(delta_s, 0)``), so the decay factor is exactly ``1.0`` for every entry.
+# With a uniform embedding (cosine_sim identical) and equal importance /
+# recall_count, every entry's ``strength`` is therefore bit-identical — a true
+# equal-strength tie whose only differentiators are ``created_at`` and ``id``.
+
+_FIXED_NOW = datetime(2020, 1, 1, tzinfo=UTC)
+_UNIFORM_VEC = [0.1] * 768
+
+
+def _tied_entry(
+    make_entry: Callable[..., MemoryEntry],
+    *,
+    entry_id: str,
+    agent_id: str,
+    kind: MemoryKind,
+    created_at: datetime,
+) -> MemoryEntry:
+    """A memory whose strength ties with every other ``_tied_entry``.
+
+    ``created_at`` is in the future relative to ``_FIXED_NOW`` so the age clamps
+    to 0 (equal decay); ``importance`` / ``recall_count`` are held constant.
+    """
+    e = make_entry(
+        agent_id=agent_id,
+        kind=kind,
+        content=entry_id,
+        importance=0.5,
+        recall_count=0,
+        created_at=created_at,
+    )
+    return e.model_copy(update={"id": entry_id})
+
+
+async def test_rank_scope_total_order_before_truncation(
+    store: MemoryStore,
+    make_entry: Callable[..., MemoryEntry],
+) -> None:
+    """β-G1: equal-strength ties are ordered ``(-strength, created_at, id)``
+    across the whole candidate pool *before* ``[:k_agent]`` truncation, and the
+    result is deterministic (identical across two runs).
+    """
+    # 10 tied agent memories. ``created_at`` is duplicated in pairs (i // 2) so
+    # BOTH sort keys are exercised: distinct created_at orders across pairs, and
+    # within a pair the ``id`` breaks the tie. ``id`` runs opposite to insertion
+    # order so a naive stable/insertion-order sort would give a different result.
+    n = 10
+    entries: list[MemoryEntry] = []
+    for i in range(n):
+        e = _tied_entry(
+            make_entry,
+            entry_id=f"mem-{n - 1 - i:02d}",  # id order opposite to insertion
+            agent_id="kant",
+            kind=MemoryKind.EPISODIC,
+            created_at=_FIXED_NOW + timedelta(seconds=i // 2),
+        )
+        entries.append(e)
+        await store.add(e, embedding=list(_UNIFORM_VEC))
+
+    retriever = Retriever(
+        store,
+        _FakeEmbeddingClient(list(_UNIFORM_VEC)),
+        now_factory=_FIXED_NOW,
+    )
+
+    # The full pool ordering (no truncation) must be the total order.
+    q_vec = list(_UNIFORM_VEC)
+    full = await retriever._rank_scope(  # pinning the internal ordering contract
+        q_vec=q_vec,
+        now=_FIXED_NOW,
+        kinds=(MemoryKind.EPISODIC,),
+        agent_id="kant",
+        world=False,
+    )
+    # All strengths are exactly equal (a real tie), so ordering is by
+    # (created_at, id). created_at is strictly increasing in insertion order.
+    strengths = {r.strength for r in full}
+    assert len(strengths) == 1, "test setup must produce a genuine strength tie"
+    expected_order = sorted(
+        entries,
+        key=lambda e: (e.created_at, e.id),
+    )
+    assert [r.entry.id for r in full] == [e.id for e in expected_order]
+
+    # k_agent (3) < candidates (10): the tie spans the truncation boundary.
+    # The returned top-k must be the deterministic prefix of the total order.
+    run1 = await retriever.retrieve(
+        "kant", "q", k_agent=3, k_world=0, mark_recalled=False
+    )
+    run2 = await retriever.retrieve(
+        "kant", "q", k_agent=3, k_world=0, mark_recalled=False
+    )
+    ids1 = [r.entry.id for r in run1]
+    ids2 = [r.entry.id for r in run2]
+    assert ids1 == [e.id for e in expected_order[:3]]
+    assert ids1 == ids2  # byte-identical across two runs (deterministic)
+
+
+async def test_rank_scope_candidate_pool_boundary(
+    store: MemoryStore,
+    make_entry: Callable[..., MemoryEntry],
+) -> None:
+    """β-G2: with ``candidates > limit_candidates`` the total order applies only
+    within the candidate pool, and the pool is *per (kind, scope)* (not a flat
+    cap) — pool-external equal-strength older memories are not surfaced.
+    """
+    limit = 3
+    # --- per (kind, scope) pool: 5 episodic + 5 semantic for the agent, plus
+    # 5 episodic for a *world* peer. Each (kind, scope) fetch caps at ``limit``.
+    ep_agent: list[MemoryEntry] = []
+    for i in range(5):
+        e = _tied_entry(
+            make_entry,
+            entry_id=f"ep-agent-{i:02d}",
+            agent_id="kant",
+            kind=MemoryKind.EPISODIC,
+            created_at=_FIXED_NOW + timedelta(seconds=i),
+        )
+        ep_agent.append(e)
+        await store.add(e, embedding=list(_UNIFORM_VEC))
+
+    sem_agent: list[MemoryEntry] = []
+    for i in range(5):
+        e = _tied_entry(
+            make_entry,
+            entry_id=f"sem-agent-{i:02d}",
+            agent_id="kant",
+            kind=MemoryKind.SEMANTIC,
+            created_at=_FIXED_NOW + timedelta(seconds=i),
+        )
+        sem_agent.append(e)
+        await store.add(e, embedding=list(_UNIFORM_VEC))
+
+    ep_world: list[MemoryEntry] = []
+    for i in range(5):
+        e = _tied_entry(
+            make_entry,
+            entry_id=f"ep-world-{i:02d}",
+            agent_id="nietzsche",
+            kind=MemoryKind.EPISODIC,
+            created_at=_FIXED_NOW + timedelta(seconds=i),
+        )
+        ep_world.append(e)
+        await store.add(e, embedding=list(_UNIFORM_VEC))
+
+    retriever = Retriever(
+        store,
+        _FakeEmbeddingClient(list(_UNIFORM_VEC)),
+        limit_candidates=limit,
+        now_factory=_FIXED_NOW,
+    )
+
+    # The store fetches the most-recent ``limit`` per (kind, scope): the newest
+    # 3 by created_at. Within each pool the total order is created_at ASC, so
+    # the retrieved rows are the *oldest of the newest-3* — and the globally
+    # oldest (index 0,1) are outside every pool (silent cap made explicit).
+    agent_pool_ids = {e.id for e in ep_agent[2:]}  # newest 3 episodic-agent
+    sem_pool_ids = {e.id for e in sem_agent[2:]}  # newest 3 semantic-agent
+    world_pool_ids = {e.id for e in ep_world[2:]}  # newest 3 episodic-world
+    pool_external = {e.id for e in (*ep_agent[:2], *sem_agent[:2], *ep_world[:2])}
+
+    ranked = await retriever.retrieve(
+        "kant", "q", k_agent=50, k_world=50, mark_recalled=False
+    )
+    got = {r.entry.id for r in ranked}
+
+    # per (kind, scope) cap: agent pool = 3 episodic + 3 semantic = 6, NOT a
+    # flat 3 across the whole agent scope.
+    agent_hits = {r.entry.id for r in ranked if r.entry.agent_id == "kant"}
+    assert agent_hits == agent_pool_ids | sem_pool_ids
+    assert len(agent_hits) == 2 * limit  # proves per-kind (not flat) cap
+
+    world_hits = {r.entry.id for r in ranked if r.entry.agent_id == "nietzsche"}
+    assert world_hits == world_pool_ids
+
+    # Pool-external older equal-strength memories are never surfaced.
+    assert got.isdisjoint(pool_external)
+
+    # Within the agent-episodic pool the ordering is the deterministic total
+    # order (created_at ASC == id ASC here), confirming order acts on the pool.
+    ep_agent_ranked = [
+        r.entry.id
+        for r in ranked
+        if r.entry.agent_id == "kant" and r.entry.id.startswith("ep-agent-")
+    ]
+    assert ep_agent_ranked == sorted(agent_pool_ids)

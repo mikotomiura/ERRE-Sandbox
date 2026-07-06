@@ -1,0 +1,3 @@
+{"issue":"001-alpha","event":"issue_done","commit":"4d25425","verify":"parse","note":"P2+W green, pre-push 3364 passed"}
+{"issue":"002-beta","event":"issue_done","commit":"aea74d8","verify":"recheck","note":"R total-order green, full regression 3366 passed, golden invariant"}
+{"issue":"003-gamma","event":"issue_done","commit":"26ab07e","verify":"recheck","note":"P1+C+re-bake v2 green, 2x-bake deterministic, checksum 11a4554, 3369 passed"}

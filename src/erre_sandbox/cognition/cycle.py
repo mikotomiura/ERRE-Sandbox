@@ -1353,6 +1353,13 @@ class CognitionCycle:
         envelopes: list[ControlEnvelope] = [
             AgentUpdateMsg(tick=new_state.tick, agent_state=new_state),
         ]
+        # ECL v0 (Issue 001-α, B-5): a record-mode fallback tick must pin its
+        # envelope clocks like the success path (line ~898) does, so the failure
+        # branch stays byte-deterministic across bakes. Flag-off is untouched
+        # (``_pin_envelope_clock`` returns the list unchanged when ``ecl_mode`` is
+        # ``None``), but guard explicitly so the flag-off path is provably a no-op.
+        if self._ecl_mode is not None:
+            envelopes = self._pin_envelope_clock(envelopes)
         return CycleResult(
             agent_state=new_state,
             envelopes=envelopes,
@@ -1404,18 +1411,55 @@ class CognitionCycle:
         self,
         envelopes: list[ControlEnvelope],
     ) -> list[ControlEnvelope]:
-        """Pin every envelope's ``sent_at`` to the record-mode clock (Issue 003).
+        """Pin every envelope's clock fields to the record-mode clock (Issue 003).
 
         Flag-off (``ecl_mode is None``) returns ``envelopes`` unchanged, so the live
         path keeps the wall-clock default factory and stays byte-invariant. In record
-        mode each envelope is re-stamped to the fixed ``retrieval_now`` so Plane 1 is
-        deterministic (design §論点3).
+        mode each envelope's ``sent_at`` is re-stamped to the fixed ``retrieval_now``
+        so Plane 1 is deterministic (design §論点3).
+
+        Nested ``_utc_now`` snapshot fields also leak wall-clock into the committed
+        ``decisions.jsonl`` artifact (via ``envelope_provenance``), making a re-bake
+        non-deterministic (Codex HIGH-1, B-5 / W). So in record mode this also pins
+        the two nested clocks to the same ``retrieval_now``:
+
+        * :class:`AgentUpdateMsg` — ``agent_state.wall_clock``;
+        * :class:`ReasoningTraceMsg` — ``trace.created_at``.
+
+        All other envelope kinds carry only the top-level ``sent_at`` and are pinned
+        as before.
         """
         ecl_mode = self._ecl_mode
         if ecl_mode is None:
             return envelopes
         pinned = ecl_mode.retrieval_now
-        return [env.model_copy(update={"sent_at": pinned}) for env in envelopes]
+        result: list[ControlEnvelope] = []
+        for env in envelopes:
+            if isinstance(env, AgentUpdateMsg):
+                result.append(
+                    env.model_copy(
+                        update={
+                            "sent_at": pinned,
+                            "agent_state": env.agent_state.model_copy(
+                                update={"wall_clock": pinned}
+                            ),
+                        }
+                    )
+                )
+            elif isinstance(env, ReasoningTraceMsg):
+                result.append(
+                    env.model_copy(
+                        update={
+                            "sent_at": pinned,
+                            "trace": env.trace.model_copy(
+                                update={"created_at": pinned}
+                            ),
+                        }
+                    )
+                )
+            else:
+                result.append(env.model_copy(update={"sent_at": pinned}))
+        return result
 
     def _build_envelopes(
         self,

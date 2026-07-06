@@ -586,6 +586,41 @@ class TestEclRecordMode:
         assert mode.memory_created_at(0) == _FIXED_NOW
         assert (mode.memory_created_at(5) - _FIXED_NOW).total_seconds() == 5.0
 
+    def test_ecl_record_mode_rng_is_run_sequenced(self) -> None:
+        """P1 (B-1): the memoized substream advances as one run-sequence.
+
+        Before the memoize, ``substream`` returned a *fresh* ``Random`` each call,
+        so every tick drew the seed's first value → constant jitter. Memoized, a
+        repeated ``(agent, stream)`` call returns the *same* handle whose draws
+        advance, and two ``EclRecordMode``s with the same ``run_id`` reproduce a
+        byte-identical draw sequence.
+        """
+        mode = self._mode()
+        # (1) memoize: repeated call returns the same object (identity, not equality).
+        rng_a = mode.substream("agent", "micro")
+        assert mode.substream("agent", "micro") is rng_a
+        # A distinct (agent, stream) key is a distinct handle.
+        assert mode.substream("agent", "tie") is not rng_a
+        assert mode.substream("other", "micro") is not rng_a
+
+        # (2) golden-equivalent run: per-tick jitter drawn from the *same* memoized
+        # handle is distinct across ticks (run-sequence, not a constant restart).
+        n_ticks = 8
+        jitters = [
+            geometry.disc_jitter(mode.substream("agent", "micro"))
+            for _ in range(n_ticks)
+        ]
+        assert len(jitters) == n_ticks
+        assert len(set(jitters)) > 1
+
+        # (3) two EclRecordMode with the same run_id ⇒ byte-identical draw sequence.
+        m1 = self._mode()
+        m2 = self._mode()
+        seq1 = [m1.substream("agent", "micro").random() for _ in range(8)]
+        seq2 = [m2.substream("agent", "micro").random() for _ in range(8)]
+        assert seq1 == seq2
+        assert len(set(seq1)) == 8  # a genuine advancing sequence, not a constant
+
 
 # --------------------------------------------------------------------------- #
 # AC5 — measurement-line non-re-entry (import / output guard, not a word ban)

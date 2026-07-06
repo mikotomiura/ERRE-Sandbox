@@ -30,17 +30,25 @@ runs in ``:memory:``.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
+import pytest
 
 from erre_sandbox.cognition.reflection import Reflector
-from erre_sandbox.inference.ollama_adapter import OllamaChatClient
+from erre_sandbox.inference.ollama_adapter import (
+    ChatResponse,
+    OllamaChatClient,
+    OllamaUnavailableError,
+)
+from erre_sandbox.integration.embodied import handoff
 from erre_sandbox.integration.embodied import loop as ecl_loop
 from erre_sandbox.integration.embodied.loop import (
+    EclTraceRow,
     RecordedLlmCall,
     RecordReplayChatClient,
     ecl_trace_checksum,
@@ -117,6 +125,33 @@ class _SpyReflector(Reflector):
 
     async def maybe_reflect(self, **kwargs: Any) -> None:  # type: ignore[override]  # noqa: ARG002
         self.calls += 1
+
+
+class _ScriptedInner:
+    """Duck-typed inner chat client that fails on chosen action-LLM ticks.
+
+    Returns ``content`` verbatim, except on the 0-based call indices in
+    ``raise_on`` where it raises ``OllamaUnavailableError`` — the record-side
+    outage the harness must record as a ``raised`` call and reproduce on replay
+    (α, B-2). Structurally matches the ``chat`` surface the harness calls.
+    """
+
+    def __init__(self, *, content: str, raise_on: frozenset[int] = frozenset()) -> None:
+        self._content = content
+        self._raise_on = raise_on
+        self.calls = 0
+
+    async def chat(self, messages, *, sampling, model=None, options=None, think=None):  # noqa: ARG002
+        idx = self.calls
+        self.calls += 1
+        if idx in self._raise_on:
+            raise OllamaUnavailableError("mock LLM outage (scripted)")
+        return ChatResponse(
+            content=self._content,
+            model="qwen3:8b",
+            eval_count=1,
+            total_duration_ms=0.0,
+        )
 
 
 async def _run(
@@ -335,6 +370,251 @@ async def test_record_replay_client_exhaustion_raises(
         assert raised, "exhausted replay stream did not raise EclReplayError"
     finally:
         assert client.inner_invocations == 0
+
+
+# --------------------------------------------------------------------------- #
+# α (B-2) — outcome-tagged Plane 2: raised / unparseable are recorded + replayed
+# --------------------------------------------------------------------------- #
+
+
+async def test_ecl_loop_raised_call_does_not_crash(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """An LLM outage on tick 3 does not crash the run (no positional IndexError)."""
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({3}))
+    client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        client, make_agent_state(), make_persona_spec(), n_cognition_ticks=6
+    )
+
+    # The run completed all 6 ticks and ``used`` stayed tick-aligned (len==ticks).
+    assert len(recorded.decisions) == 6
+    assert len(client.used) == 6
+
+    # The raised tick recorded the outage as its own outcome (no parse attempted).
+    raised = recorded.decisions[3]
+    assert raised.call.outcome == "raised"
+    assert raised.call.response is None
+    assert raised.llm_status == "raised"
+    assert raised.plan is None
+    assert raised.llm_fell_back is True
+
+    # The other ticks parsed normally.
+    for i, decision in enumerate(recorded.decisions):
+        if i == 3:
+            continue
+        assert decision.call.outcome == "ok"
+        assert decision.llm_status == "ok"
+        assert decision.plan is not None
+
+
+async def test_ecl_loop_raised_replay_checksum_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """A record run with a raised tick replays (decisions alone) to the same sum."""
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({2}))
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=5
+    )
+    assert recorded.decisions[2].llm_status == "raised"
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=5
+    )
+
+    # Replay re-raised the recorded outage (no live LLM) and reproduced the fallback.
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert replayed.decisions[2].llm_status == "raised"
+    assert replayed.decisions[2].plan is None
+
+
+async def test_ecl_loop_unparseable_replay_checksum_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Unparseable content → fallback on record and replay → identical checksum."""
+    inner = _ScriptedInner(content="this is not a plan")
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=4
+    )
+    # Content is recorded as ``ok`` (a successful call); the fallback is derived by
+    # re-parsing to ``None`` — so the replay reproduces it without a flag.
+    assert all(d.call.outcome == "ok" for d in recorded.decisions)
+    assert all(d.llm_status == "unparseable" for d in recorded.decisions)
+    assert all(d.plan is None for d in recorded.decisions)
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=4
+    )
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert all(d.llm_status == "unparseable" for d in replayed.decisions)
+
+
+async def test_ecl_loop_success_then_raised_replay_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """ok → raised → ok replays to a byte-identical checksum (Codex LOW/H-13).
+
+    The raised tick's fallback advances position from the prior tick's in-flight
+    ``Kinematics.destination``, so the whole sequence is deterministic only if the
+    replay re-raises at exactly the recorded tick.
+    """
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({1}))
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=3
+    )
+    assert [d.llm_status for d in recorded.decisions] == ["ok", "raised", "ok"]
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=3
+    )
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert [d.llm_status for d in replayed.decisions] == ["ok", "raised", "ok"]
+
+
+# --------------------------------------------------------------------------- #
+# γ-G2 (C/B-4) — checksum canonicalisation is CANONICAL_JSON_RULES (drift-pin)
+# --------------------------------------------------------------------------- #
+
+
+def _trace_row(**overrides: Any) -> EclTraceRow:
+    """A fully-populated ``EclTraceRow`` for the checksum canonicalisation pin."""
+    fields: dict[str, Any] = {
+        "run_id": "rün-canon",  # non-ASCII ⇒ ensure_ascii=False is observable
+        "agent_id": "a0",
+        "physics_tick_index": 3,
+        "agent_tick": 1,
+        "order_slot": 0,
+        "x": 1.5,
+        "y": 0.0,
+        "z": -2.25,
+        "yaw": 0.1,
+        "pitch": 0.0,
+        "zone": Zone.PERIPATOS,
+        "resolved_from": "memory_centroid",
+        "move_centroid": (1.0, 2.0),
+        "move_provenance": ("m1", "m2"),
+        "move_jitter": (0.1, 0.2),
+        "move_pre_clamp": (1.1, 2.2),
+        "move_post_clamp": (1.1, 2.2),
+        "move_clamp_fired": False,
+    }
+    fields.update(overrides)
+    return EclTraceRow(**fields)
+
+
+def test_ecl_trace_checksum_canonical_rules() -> None:
+    """``ecl_trace_checksum`` canonicalises identically to CANONICAL_JSON_RULES.
+
+    C (B-4): the checksum's ``json.dumps`` must apply the same
+    ``sort_keys`` + compact ``separators`` + ``ensure_ascii=False`` +
+    ``allow_nan=False`` rules the manifest advertises, so a consumer recomputing
+    the digest under the published rules gets identical bytes. A non-finite float
+    raises rather than being silently hashed (Stop condition, design §論点3).
+    """
+    row = _trace_row()
+
+    # Behavioural drift-pin: the digest equals sha256 over the *same* canonical
+    # projection serialised with handoff.canonical_dumps (the CANONICAL_JSON_RULES
+    # serialiser). The non-ASCII ``run_id`` pins ensure_ascii=False; the compact
+    # separators / sort_keys are pinned because json's defaults would differ.
+    expected_projection = [
+        {
+            "run_id": row.run_id,
+            "agent_id": row.agent_id,
+            "physics_tick_index": row.physics_tick_index,
+            "agent_tick": row.agent_tick,
+            "order_slot": row.order_slot,
+            "x": row.x,
+            "y": row.y,
+            "z": row.z,
+            "yaw": row.yaw,
+            "pitch": row.pitch,
+            "zone": row.zone.value,
+            "resolved_from": row.resolved_from,
+            "move_centroid": [1.0, 2.0],
+            "move_provenance": ["m1", "m2"],
+            "move_jitter": [0.1, 0.2],
+            "move_pre_clamp": [1.1, 2.2],
+            "move_post_clamp": [1.1, 2.2],
+            "move_clamp_fired": False,
+        }
+    ]
+    expected_digest = hashlib.sha256(
+        handoff.canonical_dumps(expected_projection).encode("utf-8")
+    ).hexdigest()
+    assert ecl_trace_checksum([row]) == expected_digest
+
+    # allow_nan=False: a non-finite float in the trace raises (not silently hashed).
+    with pytest.raises(ValueError, match=r"[Nn]a[Nn]|[Ii]nf|not.*JSON"):
+        ecl_trace_checksum([_trace_row(x=float("inf"))])
+    with pytest.raises(ValueError, match=r"[Nn]a[Nn]|[Ii]nf|not.*JSON"):
+        ecl_trace_checksum([_trace_row(y=float("nan"))])
+
+    # Advertised-rules pin: the manifest rules the consumer reads match the five
+    # levers the checksum inlines (drift between the two is the failure this guards).
+    rules = handoff.CANONICAL_JSON_RULES
+    assert rules["sort_keys"] is True
+    assert rules["ensure_ascii"] is False
+    assert rules["separators"] == [",", ":"]
+    assert rules["allow_nan"] is False
+    # float_quantize_decimals is now part of the checksum contract (cross-platform
+    # libm drift absorption); the inlined loop constant must match it.
+    assert rules["float_quantize_decimals"] == 6
+    assert ecl_loop._TRACE_FLOAT_DECIMALS == handoff.CANONICAL_FLOAT_DECIMALS == 6
+
+
+def test_ecl_trace_checksum_quantized_platform_robust() -> None:
+    """A 1e-15 float perturbation leaves the checksum (and canonical bytes) intact.
+
+    Direct pin of the cross-platform robustness the 6-decimal quantisation buys:
+    the frozen ``disc_jitter`` ``cos``/``sin`` differ by ~1 ULP (max abs 8.88e-16)
+    between Windows (UCRT) and Linux (glibc/CI), which before this fix diverged the
+    golden checksum. Perturbing every trace float by 1e-15 (well above the ULP,
+    well below half a 1e-6 quantum) must round away, so ``ecl_trace_checksum`` and
+    ``handoff.canonical_dumps`` produce byte-identical output.
+    """
+    eps = 1e-15
+    base = _trace_row()
+    perturbed = _trace_row(
+        x=base.x + eps,
+        y=base.y + eps,
+        z=base.z + eps,
+        yaw=base.yaw + eps,
+        pitch=base.pitch + eps,
+        move_centroid=(base.move_centroid[0] + eps, base.move_centroid[1] + eps),
+        move_jitter=(base.move_jitter[0] + eps, base.move_jitter[1] + eps),
+        move_pre_clamp=(base.move_pre_clamp[0] + eps, base.move_pre_clamp[1] + eps),
+        move_post_clamp=(base.move_post_clamp[0] + eps, base.move_post_clamp[1] + eps),
+    )
+    # The perturbation is a genuinely distinct IEEE-754 double (not a no-op).
+    assert perturbed.x != base.x
+    assert perturbed.yaw != base.yaw
+
+    # Quantisation absorbs the drift ⇒ identical checksum digest.
+    assert ecl_trace_checksum([perturbed]) == ecl_trace_checksum([base])
+
+    # canonical_dumps absorbs the same sub-quantum drift ⇒ identical bytes.
+    base_obj = {"a": 0.1, "b": [1.0, -2.25], "c": {"d": 0.333333}}
+    drift_obj = {
+        "a": 0.1 + eps,
+        "b": [1.0 + eps, -2.25 - eps],
+        "c": {"d": 0.333333 + eps},
+    }
+    assert drift_obj["a"] != base_obj["a"]  # genuinely distinct doubles
+    assert handoff.canonical_dumps(drift_obj) == handoff.canonical_dumps(base_obj)
 
 
 # --------------------------------------------------------------------------- #

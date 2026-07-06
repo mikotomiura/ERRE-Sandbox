@@ -171,19 +171,18 @@ async def test_ecl_v0_handoff_golden_sample_matches() -> None:
     reloaded_rows = handoff.trace_rows_from_jsonl(trace_text)
     assert ecl_trace_checksum(reloaded_rows) == manifest["replay_checksum"]
 
-    # Re-rendering the golden from the replayed result reproduces the trace and the
-    # envelope stream byte-for-byte (determinism, no drift). ``decisions.jsonl`` is
-    # NOT asserted byte-stable: its ``envelope_provenance`` embeds the AgentUpdate
-    # ``agent_state.wall_clock`` and the ReasoningTrace ``created_at`` — unpinned
-    # ``_utc_now`` snapshot fields in the frozen I3/I4 record path (not the
-    # sent_at-pinned wire clock). They never enter the reproducibility checksum and
-    # are filtered out of ``envelope_stream.jsonl`` (agent_update / reasoning_trace
-    # are not replayable kinds), so the authoritative contract (replay → checksum)
-    # and the Godot replay stream stay deterministic. The committed
-    # ``decisions.jsonl`` therefore carries a one-time bake-time provenance stamp.
+    # Re-rendering the golden from the replayed result reproduces all three data
+    # artifacts byte-for-byte (determinism, no drift). Since the α (W/B-5) fix pins
+    # the AgentUpdate ``agent_state.wall_clock`` and the ReasoningTrace
+    # ``created_at`` to the record-mode clock, ``decisions.jsonl`` — whose
+    # ``envelope_provenance`` embeds those fields — is now byte-stable too (D-γ1):
+    # no unpinned ``_utc_now`` snapshot leaks into the committed bake. The
+    # reproducibility contract remains the replay → checksum equality above; this
+    # asserts the full committed bundle re-renders identically.
     rendered = handoff.render_golden(result, env_pins=manifest["env_pins"])
     assert rendered["ecl_trace.jsonl"] == trace_text
     assert rendered["envelope_stream.jsonl"] == envelope_text
+    assert rendered["decisions.jsonl"] == decisions_text
 
     # Per-artifact SHA-256 integrity hashes match the committed files (the
     # committed manifest and committed artifacts agree).
@@ -193,6 +192,109 @@ async def test_ecl_v0_handoff_golden_sample_matches() -> None:
         _sha256(envelope_text)
         == manifest["artifacts"]["envelope_stream.jsonl"]["sha256"]
     )
+
+
+# --------------------------------------------------------------------------- #
+# Backward-compat — legacy decisions.jsonl (pre-outcome tag) still parses
+# --------------------------------------------------------------------------- #
+
+
+def test_recorded_call_from_legacy_jsonl_without_outcome() -> None:
+    """A legacy ``decisions.jsonl`` call (baked before the B-2 outcome tag)
+    parses and falls back to ``outcome == "ok"`` (Codex-L1).
+
+    Directly pins the backward-compat contract ``data.get("outcome", "ok")`` in
+    ``_recorded_call_from_dict``: a committed golden baked before the
+    outcome-tagged union carries no ``outcome`` key, and must still replay. The
+    hand-written legacy line has ``response`` present and no ``outcome`` key.
+    """
+    legacy_line = json.dumps(
+        {
+            "system_prompt": "[legacy] system",
+            "user_prompt": "[legacy] cognition tick 0",
+            "sampling": {"temperature": 0.7, "top_p": 0.9, "repeat_penalty": 1.1},
+            "response": {
+                "content": "[legacy] recorded content",
+                "model": "qwen3:8b",
+                "eval_count": 0,
+                "total_duration_ms": 0.0,
+            },
+            # NOTE: no "outcome" key — the pre-B-2 committed shape.
+        }
+    )
+    data = json.loads(legacy_line)
+    assert "outcome" not in data  # the legacy shape under test
+
+    call = handoff._recorded_call_from_dict(data)
+
+    assert call.outcome == "ok"  # data.get("outcome", "ok") fallback
+    assert call.response is not None  # response faithfully restored
+    assert call.response.content == "[legacy] recorded content"
+    assert call.response.model == "qwen3:8b"
+
+
+# --------------------------------------------------------------------------- #
+# γ-G3 (version) — manifest version bump + replay-checksum rule fields
+# --------------------------------------------------------------------------- #
+
+
+async def test_manifest_version_and_replay_checksum_fields() -> None:
+    """The handoff manifest is version-2 and self-describes its checksum rules.
+
+    version bump (``ecl-v0-handoff-1`` → ``-2``): the checksum canonicalisation
+    (C/B-4) is a reproduction-contract change, so the manifest version moves. The
+    added ``replay_checksum_algorithm`` / ``replay_checksum_json_rules`` fields
+    make the reproduction rules explicit rather than pushing all meaning into the
+    version string (Codex LOW).
+    """
+    assert handoff.MANIFEST_SCHEMA_VERSION == "ecl-v0-handoff-2"
+
+    result = await _run_golden(handoff.golden_recorded_calls())
+    manifest = json.loads(
+        handoff.render_golden(result, env_pins={"pinned": "for-test"})["manifest.json"]
+    )
+    assert manifest["manifest_version"] == "ecl-v0-handoff-2"
+    assert manifest["replay_checksum_algorithm"] == "sha256"
+    rules = manifest["replay_checksum_json_rules"]
+    assert rules["sort_keys"] is True
+    assert rules["separators"] == [",", ":"]
+    assert rules["ensure_ascii"] is False
+    assert rules["allow_nan"] is False
+
+    # The committed manifest carries the same version + fields (bake ≡ render).
+    committed = json.loads((_GOLDEN_DIR / "manifest.json").read_text(encoding="utf-8"))
+    assert committed["manifest_version"] == "ecl-v0-handoff-2"
+    assert committed["replay_checksum_algorithm"] == "sha256"
+    assert "replay_checksum_json_rules" in committed
+
+
+# --------------------------------------------------------------------------- #
+# α-G6 (B-5/W) — a fresh re-bake is byte-deterministic across all 4 artifacts
+# --------------------------------------------------------------------------- #
+
+
+async def test_ecl_v0_golden_rebake_is_deterministic() -> None:
+    """Two fresh golden runs render byte-identical artifacts (Codex M-3 / B-5).
+
+    Before the W fix, ``golden_agent_state().wall_clock`` and the
+    ``ReasoningTrace.created_at`` were captured from the wall clock at run time
+    and leaked into ``decisions.jsonl`` (and hence the manifest's decisions
+    SHA-256), so two bakes diverged. With record-mode clock pinning, a fresh
+    render (same ``env_pins`` to exclude env noise) reproduces every artifact —
+    the letter of the re-bake determinism gate.
+    """
+    fixed_env_pins = {"pinned": "for-rebake-determinism-test"}
+
+    result1 = await _run_golden(handoff.golden_recorded_calls())
+    artifacts1 = handoff.render_golden(result1, env_pins=fixed_env_pins)
+
+    result2 = await _run_golden(handoff.golden_recorded_calls())
+    artifacts2 = handoff.render_golden(result2, env_pins=fixed_env_pins)
+
+    # All four artifacts (manifest.json included) are byte-identical.
+    assert set(artifacts1) == set(handoff.GOLDEN_FILENAMES)
+    for name in handoff.GOLDEN_FILENAMES:
+        assert artifacts1[name] == artifacts2[name], name
 
 
 # --------------------------------------------------------------------------- #
