@@ -26,4 +26,5 @@ task: **ecl-v0-hardening** (M13 ECL v0 determinism hardening Phase 1)
 - [x] γ 実装 (re-bake v2、26ab07e)
 - [x] 統合フル CI 緑 (pre-push src tests 4 段、3369 passed / 66 skipped / golden verify OK)
 - [x] TASK-POST /cross-review (二者 HIGH なし = Mergeable。CR-M1/M2/L2 + Codex-L1 反映 = review-fixes faf47a9、3370 passed)
-- [ ] PR (feat/ecl-v0-hardening→main) — 最終 pre-push ゲート後
+- [x] 最終 pre-push ゲート (a0cdce5、ALL CHECKS PASSED、3370 passed / 66 skipped)
+- [x] **PR #55 作成** (feat/ecl-v0-hardening→main、https://github.com/mikotomiura/ERRE-Sandbox/pull/55) — merge は user 判断
