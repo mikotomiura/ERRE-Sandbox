@@ -8,9 +8,9 @@ task: **ecl-v0-hardening** (M13 ECL v0 determinism hardening Phase 1)
 
 | issue | slice | verify | 状態 | 最終 event |
 |---|---|---|---|---|
-| 001-alpha | P2(B-2)+W(B-5) record-mode Plane2/clock | parse | ⏳ queued | — |
-| 002-beta | R(B-3) retrieval 全順序化 | recheck | ⏳ queued | — |
-| 003-gamma | P1(B-1)+C(B-4)+re-bake+version | recheck | ⏳ queued (blocked on α+β) | — |
+| 001-alpha | P2(B-2)+W(B-5) record-mode Plane2/clock | parse | ✅ done | issue_done 4d25425 (3364 passed) |
+| 002-beta | R(B-3) retrieval 全順序化 | recheck | ✅ done | issue_done aea74d8 (3366 passed, golden 不変) |
+| 003-gamma | P1(B-1)+C(B-4)+re-bake+version | recheck | ✅ done | issue_done 26ab07e (3369 passed, 2x-bake 決定的, checksum 11a4554) |
 
 ## 実行方針 (ADR §5 FROZEN)
 - 開発: α ∥ β 並行可 (α=loop.py+cycle.py+handoff.py roundtrip / β=retrieval.py、非交差)。
@@ -20,10 +20,10 @@ task: **ecl-v0-hardening** (M13 ECL v0 determinism hardening Phase 1)
 ## ゲート
 - [x] grill (未解決分岐 0・glossary `top-K over candidate pool` 追加)
 - [x] issue-slicing (3 縦スライス)
-- [ ] TASK-PRE Codex (issue 独立性・γ last 順序・re-bake 二重計上の第二意見)
-- [ ] α 実装 → merge
-- [ ] β 実装 → merge
-- [ ] γ 実装 (re-bake) → merge
-- [ ] 統合フル CI 緑 (pre-push-check)
+- [x] TASK-PRE Codex (Adopt-with-changes、HIGH なし、findings 5 件反映)
+- [x] α 実装 (4d25425)
+- [x] β 実装 (aea74d8)
+- [x] γ 実装 (re-bake v2、26ab07e)
+- [x] 統合フル CI 緑 (pre-push src tests 4 段、3369 passed / 66 skipped / golden verify OK)
 - [ ] TASK-POST /cross-review
 - [ ] PR (feat/ecl-v0-hardening→main)
