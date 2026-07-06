@@ -102,11 +102,23 @@ TICK_MAPPING: Final[dict[str, str]] = {
 }
 """Explicit two-axis tick mapping (Codex MEDIUM-2, design §論点5)."""
 
+CANONICAL_FLOAT_DECIMALS: Final[int] = 6
+"""Decimals every emitted float is quantised to before serialisation/checksum.
+
+Absorbs sub-ULP cross-platform ``libm`` drift: the frozen ``disc_jitter``'s
+``math.cos``/``math.sin`` differ by ~1 ULP (max abs 8.88e-16, non-amplifying)
+between Windows (UCRT) and Linux (glibc), which would otherwise diverge the
+golden checksum between machines. ``round(x, 6)`` uses CPython's
+correctly-rounded dtoa (platform-independent), and the drift is far below half a
+quantum (5e-7), so both platforms round identically. Six decimals is micron
+precision on metre coordinates — semantically ample."""
+
 CANONICAL_JSON_RULES: Final[dict[str, Any]] = {
     "sort_keys": True,
     "ensure_ascii": False,
     "separators": [",", ":"],
     "allow_nan": False,
+    "float_quantize_decimals": CANONICAL_FLOAT_DECIMALS,
     "float_repr": "python repr (shortest round-trip IEEE-754 double)",
     "newline": "\\n (one JSON object per line, trailing newline)",
 }
@@ -126,11 +138,12 @@ DETERMINISM_CHECKLIST: Final[tuple[str, ...]] = (
     "authoritative reproducibility digest = ecl_trace_checksum over EclTraceRow "
     "(design §論点3); NOT a metric/floor/verdict. It canonicalises under the same "
     "rules as CANONICAL_JSON_RULES (sort_keys + compact separators + "
-    "ensure_ascii=False + allow_nan=False), so a consumer recomputing the digest "
-    "under the advertised rules gets identical bytes; a non-finite trace raises "
-    "(allow_nan=False) — a Stop condition, not a silently-hashed value",
-    "cross-platform libm float drift is a Stop condition (superseding ADR), not "
-    "silently tolerated",
+    "ensure_ascii=False + allow_nan=False + 6-decimal float quantisation), so a "
+    "consumer recomputing the digest under the advertised rules gets identical "
+    "bytes; a non-finite trace raises (allow_nan=False) — a Stop condition, not a "
+    "silently-hashed value",
+    "cross-platform libm float drift is absorbed by quantising every emitted float "
+    "to 6 decimals (round is platform-independent), not silently tolerated",
 )
 """Human-auditable determinism guarantees the golden was baked under."""
 
@@ -268,23 +281,48 @@ _CONTROL_ENVELOPE_ADAPTER: Final[TypeAdapter[ControlEnvelope]] = TypeAdapter(
 )
 
 
+def _quantize_floats(obj: Any, ndigits: int) -> Any:
+    """Recursively round every float in ``obj`` to ``ndigits`` decimals.
+
+    Walks dict values / list·tuple items; leaves ``bool`` / ``int`` / ``str`` /
+    ``None`` untouched (``bool`` is excluded explicitly even though it is not a
+    ``float``). ``round`` uses CPython's correctly-rounded dtoa, so the same input
+    rounds identically on every platform — this is what absorbs the sub-ULP
+    cross-platform ``libm`` drift (``math.cos``/``math.sin`` in the frozen
+    ``contracts.geometry.disc_jitter``) that would otherwise diverge the golden
+    checksum between Windows (UCRT) and Linux (glibc).
+    """
+    if isinstance(obj, bool):
+        return obj
+    if isinstance(obj, float):
+        return round(obj, ndigits)
+    if isinstance(obj, dict):
+        return {k: _quantize_floats(v, ndigits) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_quantize_floats(v, ndigits) for v in obj]
+    return obj
+
+
 def canonical_dumps(obj: Any) -> str:
     """Serialise ``obj`` under :data:`CANONICAL_JSON_RULES` (single line).
 
     ``sort_keys`` + ``allow_nan=False`` make a byte-identical re-serialisation a
     reproducibility witness; ``ensure_ascii=False`` keeps UTF-8 utterances
-    readable. Non-finite floats raise (the manifest's NaN policy).
+    readable. Non-finite floats raise (the manifest's NaN policy). Before
+    serialising, every float is quantised to :data:`CANONICAL_FLOAT_DECIMALS`
+    decimals (:func:`_quantize_floats`) so cross-platform ``libm`` drift below
+    half a quantum is absorbed and every machine emits identical bytes.
 
     Shares its exact canonicalisation (``sort_keys`` + compact ``separators`` +
-    ``ensure_ascii=False`` + ``allow_nan=False``) with
-    ``loop.ecl_trace_checksum``. The rule set is inlined in both places rather
-    than shared through one helper because ``handoff`` imports ``loop`` (a shared
-    canonicaliser would create an import cycle);
+    ``ensure_ascii=False`` + ``allow_nan=False`` + 6-decimal float quantisation)
+    with ``loop.ecl_trace_checksum``. The rule set is inlined in both places
+    rather than shared through one helper because ``handoff`` imports ``loop`` (a
+    shared canonicaliser would create an import cycle);
     ``test_ecl_trace_checksum_canonical_rules`` pins that the two produce
     identical digests so the duplication cannot drift (CR-M2).
     """
     return json.dumps(
-        obj,
+        _quantize_floats(obj, CANONICAL_FLOAT_DECIMALS),
         sort_keys=True,
         ensure_ascii=False,
         separators=(",", ":"),
@@ -413,6 +451,28 @@ def _recorded_call_from_dict(data: dict[str, Any]) -> RecordedLlmCall:
     )
 
 
+def _quantize_embedded_json(serialised: str) -> str:
+    """Re-serialise a ``model_dump_json`` string with its floats quantised.
+
+    ``envelope_provenance`` stores each envelope as a *pre-serialised* JSON string
+    (``ControlEnvelope.model_dump_json``), so the floats inside are text, invisible
+    to :func:`_quantize_floats` when the surrounding decision dict is canonicalised.
+    Those embedded floats include the drift-prone kinematic position (same
+    ``contracts.geometry.disc_jitter`` ``cos``/``sin`` origin as the trace), so
+    unless they are quantised here ``decisions.jsonl`` diverges cross-platform even
+    though ``ecl_trace.jsonl`` does not (empirically: Windows/UCRT vs Linux/glibc).
+    Parse → quantise → re-dump under the same compact / UTF-8 options
+    ``model_dump_json`` uses, preserving insertion order (NOT sorted) so the sole
+    change is float precision.
+    """
+    return json.dumps(
+        _quantize_floats(json.loads(serialised), CANONICAL_FLOAT_DECIMALS),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+
 def decision_to_dict(decision: EclDecisionRecord) -> dict[str, Any]:
     """Serialise one cognition tick's Plane 2 record (design §論点3, closed set)."""
     move = decision.move_decision
@@ -444,7 +504,9 @@ def decision_to_dict(decision: EclDecisionRecord) -> dict[str, Any]:
             if move is not None
             else None
         ),
-        "envelope_provenance": list(decision.envelope_provenance),
+        "envelope_provenance": [
+            _quantize_embedded_json(env) for env in decision.envelope_provenance
+        ],
     }
 
 
@@ -631,12 +693,19 @@ def build_manifest(
         # Derived from CANONICAL_JSON_RULES rather than a hardcoded literal so the
         # advertised checksum canonicalisation can never drift from the rules the
         # module actually applies (CR-M1). The checksum canonicalisation is exactly
-        # these four keys (sort_keys + compact separators + ensure_ascii=False +
-        # allow_nan=False); float_repr / newline are JSONL-shape rules, not part of
-        # the checksum contract, so they stay out.
+        # these five keys (sort_keys + compact separators + ensure_ascii=False +
+        # allow_nan=False + float_quantize_decimals, the last absorbing
+        # cross-platform libm drift); float_repr / newline are JSONL-shape rules,
+        # not part of the checksum contract, so they stay out.
         "replay_checksum_json_rules": {
             k: CANONICAL_JSON_RULES[k]
-            for k in ("sort_keys", "separators", "ensure_ascii", "allow_nan")
+            for k in (
+                "sort_keys",
+                "separators",
+                "ensure_ascii",
+                "allow_nan",
+                "float_quantize_decimals",
+            )
         },
         "expected_envelope_ordering": "sort ascending by (order_slot, agent_tick, seq)",
         "envelope_stream_kinds": list(ENVELOPE_STREAM_KINDS),
@@ -706,6 +775,7 @@ def _nonempty(text: str) -> list[str]:
 
 
 __all__ = [
+    "CANONICAL_FLOAT_DECIMALS",
     "CANONICAL_JSON_RULES",
     "COORDINATE_CONVENTION",
     "DETERMINISM_CHECKLIST",

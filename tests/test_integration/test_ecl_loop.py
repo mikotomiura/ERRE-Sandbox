@@ -563,13 +563,58 @@ def test_ecl_trace_checksum_canonical_rules() -> None:
     with pytest.raises(ValueError, match=r"[Nn]a[Nn]|[Ii]nf|not.*JSON"):
         ecl_trace_checksum([_trace_row(y=float("nan"))])
 
-    # Advertised-rules pin: the manifest rules the consumer reads match the four
+    # Advertised-rules pin: the manifest rules the consumer reads match the five
     # levers the checksum inlines (drift between the two is the failure this guards).
     rules = handoff.CANONICAL_JSON_RULES
     assert rules["sort_keys"] is True
     assert rules["ensure_ascii"] is False
     assert rules["separators"] == [",", ":"]
     assert rules["allow_nan"] is False
+    # float_quantize_decimals is now part of the checksum contract (cross-platform
+    # libm drift absorption); the inlined loop constant must match it.
+    assert rules["float_quantize_decimals"] == 6
+    assert ecl_loop._TRACE_FLOAT_DECIMALS == handoff.CANONICAL_FLOAT_DECIMALS == 6
+
+
+def test_ecl_trace_checksum_quantized_platform_robust() -> None:
+    """A 1e-15 float perturbation leaves the checksum (and canonical bytes) intact.
+
+    Direct pin of the cross-platform robustness the 6-decimal quantisation buys:
+    the frozen ``disc_jitter`` ``cos``/``sin`` differ by ~1 ULP (max abs 8.88e-16)
+    between Windows (UCRT) and Linux (glibc/CI), which before this fix diverged the
+    golden checksum. Perturbing every trace float by 1e-15 (well above the ULP,
+    well below half a 1e-6 quantum) must round away, so ``ecl_trace_checksum`` and
+    ``handoff.canonical_dumps`` produce byte-identical output.
+    """
+    eps = 1e-15
+    base = _trace_row()
+    perturbed = _trace_row(
+        x=base.x + eps,
+        y=base.y + eps,
+        z=base.z + eps,
+        yaw=base.yaw + eps,
+        pitch=base.pitch + eps,
+        move_centroid=(base.move_centroid[0] + eps, base.move_centroid[1] + eps),
+        move_jitter=(base.move_jitter[0] + eps, base.move_jitter[1] + eps),
+        move_pre_clamp=(base.move_pre_clamp[0] + eps, base.move_pre_clamp[1] + eps),
+        move_post_clamp=(base.move_post_clamp[0] + eps, base.move_post_clamp[1] + eps),
+    )
+    # The perturbation is a genuinely distinct IEEE-754 double (not a no-op).
+    assert perturbed.x != base.x
+    assert perturbed.yaw != base.yaw
+
+    # Quantisation absorbs the drift ⇒ identical checksum digest.
+    assert ecl_trace_checksum([perturbed]) == ecl_trace_checksum([base])
+
+    # canonical_dumps absorbs the same sub-quantum drift ⇒ identical bytes.
+    base_obj = {"a": 0.1, "b": [1.0, -2.25], "c": {"d": 0.333333}}
+    drift_obj = {
+        "a": 0.1 + eps,
+        "b": [1.0 + eps, -2.25 - eps],
+        "c": {"d": 0.333333 + eps},
+    }
+    assert drift_obj["a"] != base_obj["a"]  # genuinely distinct doubles
+    assert handoff.canonical_dumps(drift_obj) == handoff.canonical_dumps(base_obj)
 
 
 # --------------------------------------------------------------------------- #

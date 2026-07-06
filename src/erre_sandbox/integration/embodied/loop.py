@@ -350,8 +350,20 @@ class EclTraceRow:
     move_clamp_fired: bool | None
 
 
+# The 6-decimal float quantisation ``handoff.CANONICAL_FLOAT_DECIMALS`` advertises.
+# Inlined (not imported) because ``handoff`` imports ``loop`` — sharing a helper
+# would create an import cycle; ``test_ecl_trace_checksum_canonical_rules`` pins
+# that this value matches ``handoff.CANONICAL_JSON_RULES`` so it cannot drift.
+_TRACE_FLOAT_DECIMALS: Final[int] = 6
+
+
+def _q(value: float) -> float:
+    """Quantise one float to :data:`_TRACE_FLOAT_DECIMALS` decimals (platform-safe)."""
+    return round(value, _TRACE_FLOAT_DECIMALS)
+
+
 def _pair_or_none(value: tuple[float, float] | None) -> list[float] | None:
-    return [value[0], value[1]] if value is not None else None
+    return [_q(value[0]), _q(value[1])] if value is not None else None
 
 
 def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
@@ -364,12 +376,16 @@ def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
 
     The ``json.dumps`` canonicalisation matches ``handoff.CANONICAL_JSON_RULES``
     exactly (``sort_keys=True`` + compact ``separators`` + ``ensure_ascii=False`` +
-    ``allow_nan=False``) so a consumer recomputing the digest under the advertised
-    rules gets the same bytes (Codex MEDIUM-1). This is the same canonicalisation
-    ``handoff.canonical_dumps`` applies; ``handoff.canonical_dumps`` is not
-    imported: ``handoff`` imports ``loop``, so the rules are inlined here to avoid
-    the cycle, and ``test_ecl_trace_checksum_canonical_rules`` pins that the two
-    inlined copies produce identical digests so they cannot drift (CR-M2). A
+    ``allow_nan=False`` + 6-decimal float quantisation) so a consumer recomputing
+    the digest under the advertised rules gets the same bytes (Codex MEDIUM-1).
+    Every float in the projection is rounded to 6 decimals (``_q``) — the same
+    quantisation ``handoff.canonical_dumps`` applies via ``_quantize_floats`` —
+    which absorbs the sub-ULP cross-platform ``libm`` drift (frozen ``disc_jitter``
+    ``cos``/``sin``, max abs 8.88e-16) that would otherwise diverge the golden
+    checksum between Windows (UCRT) and Linux (glibc/CI). ``handoff.canonical_dumps``
+    is not imported: ``handoff`` imports ``loop``, so the rules are inlined here to
+    avoid the cycle, and ``test_ecl_trace_checksum_canonical_rules`` pins that the
+    two inlined copies produce identical digests so they cannot drift (CR-M2). A
     non-finite float raises (``allow_nan=False``) — a Stop condition, not a
     silently-hashed value (design §論点3).
     """
@@ -380,11 +396,11 @@ def ecl_trace_checksum(rows: Sequence[EclTraceRow]) -> str:
             "physics_tick_index": r.physics_tick_index,
             "agent_tick": r.agent_tick,
             "order_slot": r.order_slot,
-            "x": r.x,
-            "y": r.y,
-            "z": r.z,
-            "yaw": r.yaw,
-            "pitch": r.pitch,
+            "x": _q(r.x),
+            "y": _q(r.y),
+            "z": _q(r.z),
+            "yaw": _q(r.yaw),
+            "pitch": _q(r.pitch),
             "zone": r.zone.value,
             "resolved_from": r.resolved_from,
             "move_centroid": _pair_or_none(r.move_centroid),
