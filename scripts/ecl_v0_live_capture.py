@@ -26,13 +26,20 @@ is the companion **Ollama-free** replay-verify apparatus: it reproduces a
 committed artifact bundle's ``ecl_trace_checksum`` from ``decisions.jsonl``
 alone (:func:`verify`'s O3a step, ``inner_invocations == 0``) and re-renders
 the full artifact set from the same raw Plane 2 to check every per-artifact
-SHA-256 (O3b). Design-copied from ``scripts/ecl_v0_golden.py``'s ``verify``
-(D-7: copied, not imported, so that script stays untouched). Critically, the
-re-render step reuses the **committed manifest's** ``env_pins`` and ``run``
-block rather than a fresh :func:`~erre_sandbox.integration.embodied.handoff.build_manifest`
-capture (Codex TASK-PRE MEDIUM-2): a fresh capture snapshots the *current*
-machine's python/package versions and drifts the manifest bytes across
-runners, which is not what a reproduction check should assert.
+SHA-256 (O3b), **including manifest.json itself** (Codex TASK-POST HIGH-1): the
+per-artifact SHA-256 checks alone never touch the committed manifest, so a
+drifted/stale manifest (env_pins / observables overlay / replay_checksum
+fields) would otherwise vacuously pass; :func:`verify` re-renders the manifest
+through the same ``render_golden`` + ``attach_live_observables`` +
+``canonical_dumps`` pipeline :func:`capture` used and asserts byte-identity
+against the committed ``manifest.json``. Design-copied from
+``scripts/ecl_v0_golden.py``'s ``verify`` (D-7: copied, not imported, so that
+script stays untouched). Critically, the re-render step reuses the
+**committed manifest's** ``env_pins`` and ``run`` block rather than a fresh
+:func:`~erre_sandbox.integration.embodied.handoff.build_manifest` capture
+(Codex TASK-PRE MEDIUM-2): a fresh capture snapshots the *current* machine's
+python/package versions and drifts the manifest bytes across runners, which is
+not what a reproduction check should assert.
 
 Scope guard (design-final.md §論点4, binding, mirrors ``scripts/ecl_v0_golden.py``
 / ``live.py``). This is a *construction* apparatus, **NOT a measurement line**.
@@ -55,6 +62,7 @@ import httpx
 
 from erre_sandbox.integration.embodied import handoff
 from erre_sandbox.integration.embodied.live import (
+    LIVE_MODEL,
     LIVE_N_COGNITION_TICKS,
     attach_live_observables,
     build_live_env_pins,
@@ -127,7 +135,7 @@ async def capture(
     from erre_sandbox.inference.ollama_adapter import OllamaChatClient
 
     now = datetime.now(UTC)
-    inner = OllamaChatClient()
+    inner = OllamaChatClient(model=LIVE_MODEL)
     embedding = _mock_embedding()
     store = MemoryStore(db_path=":memory:")
     store.create_schema()
@@ -187,11 +195,16 @@ async def verify(artifact_dir: Path) -> bool:
        (``inner_invocations == 0``) reproduces the committed manifest's
        ``replay_checksum`` byte-for-byte.
     2. **O3b** — re-rendering the full artifact set from the same replayed
-       result reproduces every per-artifact SHA-256. The re-render reuses the
-       **committed manifest's** ``env_pins``/``run`` block (Codex TASK-PRE
-       MEDIUM-2), never a fresh ``handoff.build_manifest(env_pins=None)``
-       capture (which would snapshot the *current* machine and drift the
-       manifest bytes across runners).
+       result reproduces every per-artifact SHA-256, **and** re-rendering
+       ``manifest.json`` itself through the same pipeline :func:`capture` used
+       (``render_golden`` + ``attach_live_observables`` + ``canonical_dumps``)
+       reproduces the committed manifest byte-for-byte (Codex TASK-POST
+       HIGH-1 — the per-artifact SHA-256 checks alone never exercise the
+       manifest, so a drifted/stale committed manifest would otherwise
+       vacuously pass). The re-render reuses the **committed manifest's**
+       ``env_pins``/``run`` block (Codex TASK-PRE MEDIUM-2), never a fresh
+       ``handoff.build_manifest(env_pins=None)`` capture (which would snapshot
+       the *current* machine and drift the manifest bytes across runners).
 
     Ollama-free: the LLM is the recorded Plane 2 (replay only) and the
     embedding is the constant-vector mock, exactly as ``capture`` uses when
@@ -199,7 +212,8 @@ async def verify(artifact_dir: Path) -> bool:
     floor / landscape / verdict / divergence statistic (measurement-line
     non-re-entry, design §論点4) — it is a byte-equality reproduction check.
     """
-    manifest = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest_text = (artifact_dir / "manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads(manifest_text)
     decisions_text = (artifact_dir / "decisions.jsonl").read_text(encoding="utf-8")
     trace_text = (artifact_dir / "ecl_trace.jsonl").read_text(encoding="utf-8")
     envelope_text = (artifact_dir / "envelope_stream.jsonl").read_text(encoding="utf-8")
@@ -262,6 +276,25 @@ async def verify(artifact_dir: Path) -> bool:
         elif rendered[name] != committed_text:  # pragma: no cover - defensive
             ok = False
             print(f"[verify] FAIL {name} byte mismatch despite matching sha256")
+
+    # O3b (manifest.json itself, Codex TASK-POST HIGH-1): the three per-artifact
+    # SHA-256 checks above never touch manifest.json — a drifted/stale committed
+    # manifest (env_pins / observables overlay / replay_checksum / artifact SHA
+    # fields) would vacuously pass. Re-render the manifest through the exact same
+    # pipeline ``capture()`` used (``render_golden`` + ``attach_live_observables``
+    # + ``canonical_dumps``), reusing the committed ``env_pins``/``run`` block
+    # (never a fresh ``handoff.build_manifest`` capture, same Codex TASK-PRE
+    # MEDIUM-2 rationale as the O3b artifact re-render above), and assert it is
+    # byte-identical to the committed manifest.json.
+    rerendered_manifest = (
+        handoff.canonical_dumps(attach_live_observables(json.loads(rendered["manifest.json"])))
+        + "\n"
+    )
+    if rerendered_manifest != manifest_text:
+        ok = False
+        print("[verify] FAIL manifest.json byte mismatch on re-render")
+    else:
+        print("[verify] OK manifest.json byte-identical re-render")
 
     envelopes = handoff.validate_envelope_stream(envelope_text)
     print(f"[verify] OK {len(envelopes)} envelopes schema-conformant")

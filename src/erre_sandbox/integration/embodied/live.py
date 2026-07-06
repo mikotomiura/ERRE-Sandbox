@@ -91,6 +91,17 @@ family as ``scripts.ecl_v0_golden._offline_embedding``), never real
 ``nomic-embed-text``. Only the action-LLM chat call is live (minimal reality
 surface, ADR §DA-FWD-2)."""
 
+LIVE_MODEL: Final[str] = "qwen3:8b"
+"""Pinned model tag for the sealed live run (Codex TASK-POST MEDIUM-1).
+
+``OllamaChatClient()`` without an explicit ``model=`` falls back to its own
+``DEFAULT_MODEL`` class attribute, which the live-capture apparatus does not
+control — a future default change would silently swap the model under a
+committed artifact with no record of the drift. ``scripts/ecl_v0_live_capture.py``
+passes ``model=LIVE_MODEL`` explicitly to ``OllamaChatClient`` and
+:func:`build_live_env_pins` records it in ``env_pins["model"]`` so the
+committed manifest states which model tag actually produced the run."""
+
 LIVE_O5_MIN_TICKS: Final[int] = 1
 """Minimum tick count for the O5 parsed-history-dependent-action annotation
 (D-5): ``llm_status=="ok"`` and ``plan is not None`` and the MoveMsg
@@ -216,22 +227,27 @@ def build_live_env_pins(
     vram_gb: float,
     uv_lock_sha256: str,
     resolved_sampling: ResolvedSampling,
+    model: str = LIVE_MODEL,
     base_env_pins: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Merge the live-capture env pins onto ``handoff.capture_env_pins()``.
 
     Adds the fields the sealed live run must pin beyond the synthetic golden's
-    ``env_pins`` (python/packages/godot/ERRE_ZONE_BIAS_P): the qwen3 model
-    digest actually pulled, the Ollama server version, available VRAM, the
-    ``uv.lock`` hash (reproducibility-discipline), the forced ``think=False``
-    flag (D-5/Codex HIGH-1), and the cycle's live-resolved sampling verbatim
-    (D-3: sampling is captured, never manually overridden). ``base_env_pins``
-    defaults to a fresh :func:`~...handoff.capture_env_pins` snapshot so a
-    caller can also pass a frozen snapshot for reproducible tests.
+    ``env_pins`` (python/packages/godot/ERRE_ZONE_BIAS_P): the pinned model tag
+    (Codex TASK-POST MEDIUM-1, :data:`LIVE_MODEL` by default — never an
+    ``OllamaChatClient`` default the apparatus does not control), the qwen3
+    model digest actually pulled, the Ollama server version, available VRAM,
+    the ``uv.lock`` hash (reproducibility-discipline), the forced
+    ``think=False`` flag (D-5/Codex HIGH-1), and the cycle's live-resolved
+    sampling verbatim (D-3: sampling is captured, never manually overridden).
+    ``base_env_pins`` defaults to a fresh :func:`~...handoff.capture_env_pins`
+    snapshot so a caller can also pass a frozen snapshot for reproducible
+    tests.
     """
     pins: dict[str, Any] = dict(
         base_env_pins if base_env_pins is not None else handoff.capture_env_pins()
     )
+    pins["model"] = model
     pins["qwen3_model_digest"] = qwen3_model_digest
     pins["ollama_version"] = ollama_version
     pins["vram_gb"] = vram_gb
@@ -303,6 +319,7 @@ def attach_live_observables(manifest: dict[str, Any]) -> dict[str, Any]:
 __all__ = [
     "LIVE_DONE_FORMULA",
     "LIVE_EMBEDDING_MODE",
+    "LIVE_MODEL",
     "LIVE_N_COGNITION_TICKS",
     "LIVE_O5_MIN_TICKS",
     "LIVE_OBSERVABLES",

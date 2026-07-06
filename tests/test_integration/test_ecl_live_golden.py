@@ -11,14 +11,14 @@ SHA-256 (O3b). O5 (D-5 refinement) is an **annotation** count, never a hard
 green gate (Codex TASK-PRE HIGH-2 — an autonomous O5 gate would tune-to-pass
 the loop toward it).
 
-Issue 003's committed live artifact (``experiments/20260706-ecl-v0-live-capture/
-artifacts/``) does not exist yet, so this module runs against the existing
-synthetic golden (``tests/fixtures/ecl_v0_golden/``) as a template — the
-fixture path is the single module constant :data:`_GOLDEN_DIR`; Issue 004
-swaps it to the live artifact directory in one line, and every test below is
+This module replay-verifies Issue 003's committed live artifact bundle
+(``experiments/20260706-ecl-v0-live-capture/artifacts/``, Issue 004 landed the
+switch from the earlier synthetic-golden template). The artifact directory is
+the single module constant :data:`_GOLDEN_DIR`, and every test below is
 written against the *committed manifest's* run config (never module-level
 golden constants) so it generalises unchanged to a run with a different tick
-count / seed / clock (D-1: the live run is 32 ticks, not the golden's 8).
+count / seed / clock (D-1: the live run is 32 ticks, not the synthetic
+golden's 8).
 
 Scope guard (design-final.md §論点4, binding, mirrors ``test_ecl_handoff.py``).
 This is a *construction* apparatus, **NOT a measurement line**. It imports no
@@ -40,7 +40,10 @@ from typing import TYPE_CHECKING
 import httpx
 
 from erre_sandbox.integration.embodied import handoff
-from erre_sandbox.integration.embodied.live import LIVE_O5_MIN_TICKS
+from erre_sandbox.integration.embodied.live import (
+    LIVE_O5_MIN_TICKS,
+    attach_live_observables,
+)
 from erre_sandbox.integration.embodied.loop import RecordReplayChatClient, run_ecl_loop
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
 
@@ -49,9 +52,10 @@ if TYPE_CHECKING:
 
     from erre_sandbox.integration.embodied.loop import EclRunResult, RecordedLlmCall
 
-# The single fixture-path switch (Issue 004 repoints this at
-# ``experiments/20260706-ecl-v0-live-capture/artifacts`` once the sealed live
-# run is committed).
+# The committed sealed live-capture artifact bundle (Issue 004 repointed this
+# at ``experiments/20260706-ecl-v0-live-capture/artifacts`` once the sealed
+# live run was committed; the name is kept for git-blame continuity with the
+# earlier synthetic-golden template).
 _GOLDEN_DIR = (
     Path(__file__).resolve().parents[2]
     / "experiments"
@@ -128,6 +132,11 @@ def _read_committed() -> tuple[dict[str, object], str, str, str]:
     return manifest, decisions_text, trace_text, envelope_text
 
 
+def _read_manifest_text() -> str:
+    """Read the committed ``manifest.json`` as raw text (byte-comparison base)."""
+    return (_GOLDEN_DIR / "manifest.json").read_text(encoding="utf-8")
+
+
 # --------------------------------------------------------------------------- #
 # I4-G1 / O3a — committed decisions alone replay to a byte-identical checksum
 # --------------------------------------------------------------------------- #
@@ -183,6 +192,23 @@ async def test_live_golden_artifact_rerender_sha() -> None:
         # Byte-identical, not merely hash-identical (a stronger reproduction
         # witness than SHA-256 equality alone).
         assert rendered[name] == committed_text, f"{name} byte mismatch"
+
+    # manifest.json itself (Codex TASK-POST HIGH-1): the three per-artifact
+    # SHA-256 checks above never touch the committed manifest — a
+    # drifted/stale manifest (env_pins / observables overlay / replay_checksum
+    # / artifact SHA fields) would otherwise vacuously pass this test. Re-render
+    # the manifest through the exact same pipeline
+    # ``scripts/ecl_v0_live_capture.py``'s ``capture()`` used (``render_golden``
+    # + ``attach_live_observables`` + ``canonical_dumps``), reusing the
+    # committed ``env_pins``/``run`` block (same MEDIUM-2 rationale as above),
+    # and assert byte-identity against the committed ``manifest.json``.
+    rerendered_manifest = (
+        handoff.canonical_dumps(
+            attach_live_observables(json.loads(rendered["manifest.json"]))
+        )
+        + "\n"
+    )
+    assert rerendered_manifest == _read_manifest_text(), "manifest.json byte mismatch"
 
 
 # --------------------------------------------------------------------------- #
