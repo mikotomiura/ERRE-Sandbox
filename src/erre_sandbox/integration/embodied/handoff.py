@@ -375,16 +375,31 @@ def _recorded_call_to_dict(call: RecordedLlmCall) -> dict[str, Any]:
         "system_prompt": call.system_prompt,
         "user_prompt": call.user_prompt,
         "sampling": call.sampling.model_dump(mode="json"),
-        "response": call.response.model_dump(mode="json"),
+        # ``response`` is ``None`` for a ``raised`` (response-less) call; emit
+        # explicit ``null`` so the roundtrip is total (Codex M-1).
+        "response": (
+            call.response.model_dump(mode="json") if call.response is not None else None
+        ),
+        "outcome": call.outcome,
     }
 
 
 def _recorded_call_from_dict(data: dict[str, Any]) -> RecordedLlmCall:
+    # Backward compatible with committed golden ``decisions.jsonl`` baked before
+    # the outcome-tagged union (Codex M-1): a missing ``outcome`` defaults to
+    # ``ok`` and a missing/``null`` ``response`` stays ``None``. This must not
+    # break the committed golden's replay.
+    response_data = data.get("response")
     return RecordedLlmCall(
         system_prompt=data["system_prompt"],
         user_prompt=data["user_prompt"],
         sampling=ResolvedSampling.model_validate(data["sampling"]),
-        response=ChatResponse.model_validate(data["response"]),
+        response=(
+            ChatResponse.model_validate(response_data)
+            if response_data is not None
+            else None
+        ),
+        outcome=data.get("outcome", "ok"),
     )
 
 

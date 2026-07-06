@@ -42,7 +42,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final, Literal, cast
 
 from erre_sandbox.cognition import (
     BiasFiredEvent,
@@ -55,6 +55,7 @@ from erre_sandbox.cognition.embodiment import (
     EclDestination,
     EclRecordMode,
 )
+from erre_sandbox.inference import OllamaUnavailableError
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
 from erre_sandbox.schemas import (
     SCHEMA_VERSION,
@@ -107,17 +108,37 @@ class RecordedLlmCall:
     ``content`` is re-injected verbatim on replay (the cycle re-parses it and
     re-applies its deterministic RNG, so the post-processed plan is reconstructed
     rather than stored as the replay key).
+
+    ``outcome`` tags the call as an **outcome-tagged union** so the harness
+    reproduces LLM *failures* deterministically, not just successes (Codex HIGH-2,
+    B-2):
+
+    * ``ok`` — the inner LLM returned content (``response`` present). Replay
+      re-injects ``response.content``; the cycle re-parses it (a well-formed plan
+      → move, an unparseable one → the same fallback the record run took).
+    * ``unparseable`` — a valid downstream state (the cycle's ``parse_llm_plan``
+      returned ``None``); recorded like ``ok`` (content present) because replay
+      reproduces the fallback by re-parsing the same content, not by a flag.
+    * ``raised`` — the inner LLM raised ``OllamaUnavailableError``. ``response`` is
+      ``None`` (response-less); replay **re-raises** the same exception so the
+      cognition fallback fires exactly as it did on record.
     """
 
     system_prompt: str
     user_prompt: str
     sampling: ResolvedSampling
-    response: ChatResponse
+    response: ChatResponse | None = None
+    outcome: Literal["ok", "unparseable", "raised"] = "ok"
 
     @property
     def raw_response(self) -> str:
-        """The raw assistant text — the exact string re-injected on replay."""
-        return self.response.content
+        """The raw assistant text — the exact string re-injected on replay.
+
+        ``""`` for a ``raised`` call (response-less); the driver processes
+        ``raised`` before ever parsing this, so the empty string is never fed to
+        ``parse_llm_plan``.
+        """
+        return self.response.content if self.response is not None else ""
 
 
 class EclReplayError(RuntimeError):
@@ -192,25 +213,60 @@ class RecordReplayChatClient:
                 )
                 raise EclReplayError(msg)
             call = self._replay[self._replay_index]
+            # Advance the stream (index + ``_used``) BEFORE any re-raise so a
+            # ``raised`` call still leaves the replay stream tick-aligned for the
+            # next tick (Codex M-2): the driver correlates a tick with the calls
+            # served in [before, after), so the raised call must be recorded as
+            # served even though it re-raises.
             self._replay_index += 1
             self._used.append(call)
+            if call.outcome == "raised":
+                raise OllamaUnavailableError(
+                    "ECL replay: re-raising the recorded OllamaUnavailableError "
+                    "so the cognition fallback fires as it did on record"
+                )
+            # ``ok`` / ``unparseable``: re-inject the recorded content; the cycle
+            # re-parses it and reconstructs the same decision (move or fallback).
+            if call.response is None:  # pragma: no cover — schema invariant
+                msg = (
+                    "ECL replay: non-raised recorded call has no response — "
+                    "the recorded Plane 2 is malformed"
+                )
+                raise EclReplayError(msg)
             return call.response
         if self._inner is None:
             msg = "record-mode RecordReplayChatClient needs an inner chat client"
             raise EclReplayError(msg)
         self._inner_invocations += 1
-        response = await self._inner.chat(
-            messages,
-            sampling=sampling,
-            model=model,
-            options=options,
-            think=think,
-        )
+        try:
+            response = await self._inner.chat(
+                messages,
+                sampling=sampling,
+                model=model,
+                options=options,
+                think=think,
+            )
+        except OllamaUnavailableError:
+            # Record the failure as a ``raised`` (response-less) call and keep
+            # ``_used`` tick-aligned, THEN re-raise so the cognition cycle takes
+            # its fallback branch (design §3.2 / Codex HIGH-1). Replaying this
+            # call re-raises the same exception and reproduces the fallback.
+            self._used.append(
+                RecordedLlmCall(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    sampling=sampling,
+                    response=None,
+                    outcome="raised",
+                )
+            )
+            raise
         call = RecordedLlmCall(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             sampling=sampling,
             response=response,
+            outcome="ok",
         )
         self._used.append(call)
         return response
@@ -517,13 +573,27 @@ async def run_ecl_loop(
         bias_slot.clear()
         for obs in obs_factory(agent_tick):
             world.inject_observation(agent_id, obs)
+        # Correlate this cognition tick with the LLM call(s) it served by the
+        # before/after ``used`` count, never a positional ``used[agent_tick]``
+        # (Codex M-2): a ``raised`` call is appended before it re-raises, so the
+        # stream stays tick-aligned but is no longer 1:1 with a positional index.
+        # Reflection is disabled in record mode, so each cognition tick issues
+        # exactly one action-LLM call (ok / unparseable / raised).
+        used_before = len(llm.used)
         result = await world._step_one(rt)  # noqa: SLF001 — I3 seam driver
         world._consume_result(rt, result)  # noqa: SLF001 — wires MoveMsg → kinematics
         ctx.move = result.ecl_destination
+        served = llm.used[used_before:]
+        if len(served) != 1:
+            msg = (
+                f"ECL cognition tick {agent_tick} served {len(served)} action-LLM "
+                "calls; expected exactly 1 (reflection disabled in record mode)"
+            )
+            raise EclReplayError(msg)
         decisions.append(
             _build_decision(
                 agent_tick=agent_tick,
-                call=llm.used[agent_tick],
+                call=served[0],
                 result=result,
                 bias_fired=bias_slot[0] if bias_slot else None,
             )
@@ -548,10 +618,17 @@ def _build_decision(
     bias_fired: BiasFiredEvent | None,
 ) -> EclDecisionRecord:
     """Assemble one tick's Plane 2 record from the served call + CycleResult."""
-    plan = parse_llm_plan(call.raw_response)
-    llm_status = "ok" if not result.llm_fell_back else "fell_back"
-    if plan is None:
-        llm_status = "unparseable"
+    if call.outcome == "raised":
+        # A raised (OllamaUnavailableError) call is response-less: skip parsing
+        # entirely (``raw_response`` is ``""``) and record it as the ``raised``
+        # fallback branch (Codex HIGH-2). ``result.llm_fell_back`` is already True.
+        plan = None
+        llm_status = "raised"
+    else:
+        plan = parse_llm_plan(call.raw_response)
+        llm_status = "ok" if not result.llm_fell_back else "fell_back"
+        if plan is None:
+            llm_status = "unparseable"
     envelope_provenance = tuple(env.model_dump_json() for env in result.envelopes)
     return EclDecisionRecord(
         agent_tick=agent_tick,

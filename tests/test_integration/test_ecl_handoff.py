@@ -196,6 +196,35 @@ async def test_ecl_v0_handoff_golden_sample_matches() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# α-G6 (B-5/W) — a fresh re-bake is byte-deterministic across all 4 artifacts
+# --------------------------------------------------------------------------- #
+
+
+async def test_ecl_v0_golden_rebake_is_deterministic() -> None:
+    """Two fresh golden runs render byte-identical artifacts (Codex M-3 / B-5).
+
+    Before the W fix, ``golden_agent_state().wall_clock`` and the
+    ``ReasoningTrace.created_at`` were captured from the wall clock at run time
+    and leaked into ``decisions.jsonl`` (and hence the manifest's decisions
+    SHA-256), so two bakes diverged. With record-mode clock pinning, a fresh
+    render (same ``env_pins`` to exclude env noise) reproduces every artifact —
+    the letter of the re-bake determinism gate.
+    """
+    fixed_env_pins = {"pinned": "for-rebake-determinism-test"}
+
+    result1 = await _run_golden(handoff.golden_recorded_calls())
+    artifacts1 = handoff.render_golden(result1, env_pins=fixed_env_pins)
+
+    result2 = await _run_golden(handoff.golden_recorded_calls())
+    artifacts2 = handoff.render_golden(result2, env_pins=fixed_env_pins)
+
+    # All four artifacts (manifest.json included) are byte-identical.
+    assert set(artifacts1) == set(handoff.GOLDEN_FILENAMES)
+    for name in handoff.GOLDEN_FILENAMES:
+        assert artifacts1[name] == artifacts2[name], name
+
+
+# --------------------------------------------------------------------------- #
 # AC3 — converter output is ControlEnvelope-conformant + deterministically ordered
 # --------------------------------------------------------------------------- #
 

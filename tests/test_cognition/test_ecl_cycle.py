@@ -27,6 +27,7 @@ from erre_sandbox.cognition.embodiment import K_ECL, EclDestination, EclRecordMo
 from erre_sandbox.cognition.parse import LLMPlan
 from erre_sandbox.schemas import (
     AgentState,
+    AgentUpdateMsg,
     MoveMsg,
     Position,
     SpatialContext,
@@ -345,3 +346,70 @@ async def test_ecl_reflection_skipped(
         await embedding2.close()
         await llm2.close()
     assert len(spy_off.calls) == 1
+
+
+# --------------------------------------------------------------------------- #
+# α-G4 (B-5/W) — the record-mode FALLBACK tick also pins the envelope clock
+# --------------------------------------------------------------------------- #
+
+
+async def test_ecl_loop_fallback_envelope_clock_pinned(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+    make_chat_client: Callable[..., OllamaChatClient],
+    make_embedding_client: Callable[[], EmbeddingClient],
+    cognition_store: MemoryStore,
+    cognition_retriever: Retriever,
+    perception_event: PerceptionEvent,
+) -> None:
+    """A record-mode fallback tick pins ``sent_at`` + nested ``wall_clock`` (B-5).
+
+    Unparseable content forces the ``_fallback`` branch, which formerly bypassed
+    ``_pin_envelope_clock`` and left the ``AgentUpdateMsg`` clocks on the
+    wall-clock default factory. Record mode now pins both; flag-off keeps the
+    default factory (byte-invariance contract).
+    """
+    persona = make_persona_spec()
+
+    # Record mode: the fallback tick's AgentUpdateMsg clocks are pinned.
+    embedding = make_embedding_client()
+    llm = make_chat_client("not a plan")  # unparseable → fallback
+    try:
+        cycle = _build_cycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding,
+            llm=llm,
+            ecl_mode=_record_mode(),
+        )
+        result = await cycle.step(make_agent_state(), persona, [perception_event])
+    finally:
+        await embedding.close()
+        await llm.close()
+    assert result.llm_fell_back is True
+    au = next(e for e in result.envelopes if isinstance(e, AgentUpdateMsg))
+    assert au.sent_at == _FIXED_NOW
+    assert au.agent_state.wall_clock == _FIXED_NOW
+
+    # Flag-off (ecl_mode=None): the fallback tick keeps the default-factory clocks
+    # (un-pinned) — the ECL seam changes nothing on the live path.
+    embedding2 = make_embedding_client()
+    llm2 = make_chat_client("not a plan")
+    try:
+        cycle_off = _build_cycle(
+            retriever=cognition_retriever,
+            store=cognition_store,
+            embedding=embedding2,
+            llm=llm2,
+            ecl_mode=None,
+        )
+        result_off = await cycle_off.step(
+            make_agent_state(), persona, [perception_event]
+        )
+    finally:
+        await embedding2.close()
+        await llm2.close()
+    assert result_off.llm_fell_back is True
+    au_off = next(e for e in result_off.envelopes if isinstance(e, AgentUpdateMsg))
+    assert au_off.sent_at != _FIXED_NOW
+    assert au_off.agent_state.wall_clock != _FIXED_NOW

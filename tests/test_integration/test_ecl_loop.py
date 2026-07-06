@@ -38,7 +38,11 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from erre_sandbox.cognition.reflection import Reflector
-from erre_sandbox.inference.ollama_adapter import OllamaChatClient
+from erre_sandbox.inference.ollama_adapter import (
+    ChatResponse,
+    OllamaChatClient,
+    OllamaUnavailableError,
+)
 from erre_sandbox.integration.embodied import loop as ecl_loop
 from erre_sandbox.integration.embodied.loop import (
     RecordedLlmCall,
@@ -117,6 +121,33 @@ class _SpyReflector(Reflector):
 
     async def maybe_reflect(self, **kwargs: Any) -> None:  # type: ignore[override]  # noqa: ARG002
         self.calls += 1
+
+
+class _ScriptedInner:
+    """Duck-typed inner chat client that fails on chosen action-LLM ticks.
+
+    Returns ``content`` verbatim, except on the 0-based call indices in
+    ``raise_on`` where it raises ``OllamaUnavailableError`` — the record-side
+    outage the harness must record as a ``raised`` call and reproduce on replay
+    (α, B-2). Structurally matches the ``chat`` surface the harness calls.
+    """
+
+    def __init__(self, *, content: str, raise_on: frozenset[int] = frozenset()) -> None:
+        self._content = content
+        self._raise_on = raise_on
+        self.calls = 0
+
+    async def chat(self, messages, *, sampling, model=None, options=None, think=None):  # noqa: ARG002
+        idx = self.calls
+        self.calls += 1
+        if idx in self._raise_on:
+            raise OllamaUnavailableError("mock LLM outage (scripted)")
+        return ChatResponse(
+            content=self._content,
+            model="qwen3:8b",
+            eval_count=1,
+            total_duration_ms=0.0,
+        )
 
 
 async def _run(
@@ -335,6 +366,118 @@ async def test_record_replay_client_exhaustion_raises(
         assert raised, "exhausted replay stream did not raise EclReplayError"
     finally:
         assert client.inner_invocations == 0
+
+
+# --------------------------------------------------------------------------- #
+# α (B-2) — outcome-tagged Plane 2: raised / unparseable are recorded + replayed
+# --------------------------------------------------------------------------- #
+
+
+async def test_ecl_loop_raised_call_does_not_crash(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """An LLM outage on tick 3 does not crash the run (no positional IndexError)."""
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({3}))
+    client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        client, make_agent_state(), make_persona_spec(), n_cognition_ticks=6
+    )
+
+    # The run completed all 6 ticks and ``used`` stayed tick-aligned (len==ticks).
+    assert len(recorded.decisions) == 6
+    assert len(client.used) == 6
+
+    # The raised tick recorded the outage as its own outcome (no parse attempted).
+    raised = recorded.decisions[3]
+    assert raised.call.outcome == "raised"
+    assert raised.call.response is None
+    assert raised.llm_status == "raised"
+    assert raised.plan is None
+    assert raised.llm_fell_back is True
+
+    # The other ticks parsed normally.
+    for i, decision in enumerate(recorded.decisions):
+        if i == 3:
+            continue
+        assert decision.call.outcome == "ok"
+        assert decision.llm_status == "ok"
+        assert decision.plan is not None
+
+
+async def test_ecl_loop_raised_replay_checksum_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """A record run with a raised tick replays (decisions alone) to the same sum."""
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({2}))
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=5
+    )
+    assert recorded.decisions[2].llm_status == "raised"
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=5
+    )
+
+    # Replay re-raised the recorded outage (no live LLM) and reproduced the fallback.
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert replayed.decisions[2].llm_status == "raised"
+    assert replayed.decisions[2].plan is None
+
+
+async def test_ecl_loop_unparseable_replay_checksum_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Unparseable content → fallback on record and replay → identical checksum."""
+    inner = _ScriptedInner(content="this is not a plan")
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=4
+    )
+    # Content is recorded as ``ok`` (a successful call); the fallback is derived by
+    # re-parsing to ``None`` — so the replay reproduces it without a flag.
+    assert all(d.call.outcome == "ok" for d in recorded.decisions)
+    assert all(d.llm_status == "unparseable" for d in recorded.decisions)
+    assert all(d.plan is None for d in recorded.decisions)
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=4
+    )
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert all(d.llm_status == "unparseable" for d in replayed.decisions)
+
+
+async def test_ecl_loop_success_then_raised_replay_matches(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """ok → raised → ok replays to a byte-identical checksum (Codex LOW/H-13).
+
+    The raised tick's fallback advances position from the prior tick's in-flight
+    ``Kinematics.destination``, so the whole sequence is deterministic only if the
+    replay re-raises at exactly the recorded tick.
+    """
+    inner = _ScriptedInner(content=_PLAN_JSON, raise_on=frozenset({1}))
+    record_client = RecordReplayChatClient(inner=inner)
+    recorded = await _run(
+        record_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=3
+    )
+    assert [d.llm_status for d in recorded.decisions] == ["ok", "raised", "ok"]
+
+    replay_client = replay_client_from(recorded)
+    replayed = await _run(
+        replay_client, make_agent_state(), make_persona_spec(), n_cognition_ticks=3
+    )
+    assert replay_client.inner_invocations == 0
+    assert replayed.checksum == recorded.checksum
+    assert [d.llm_status for d in replayed.decisions] == ["ok", "raised", "ok"]
 
 
 # --------------------------------------------------------------------------- #
