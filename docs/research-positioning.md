@@ -466,6 +466,26 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   = Loop Engineering で sealed live run 実装 (I1 harness+ThinkOffChatClient / I2 protocol+env pin / I3 sealed run+
   committed artifact / I4 Ollama-free replay-verify)。sealed run の結果 (GO / Stop→superseding / construction
   妥当性 branch) が次 primary を条件付き駆動。
+- **sealed live run = first-contact GO (PR #57、2026-07-06)**。organ を real qwen3:8b で N=32 封印実走 →
+  **Done=O1∧O2∧O3a∧O3b HOLDS** (cross-platform WSL byte 一致) + O5=32/32 + O4 非縮退。決定的発見 = `think=False`
+  (`ThinkOffChatClient`) が load-bearing (全 tick parseable)。construction validation であって measurement
+  verdict でない (holding 保全、R-budget 未消費)。
+- **次 primary = ECL v1 ADR (移動経路→sampling チャネルのライブ活性化) を FROZEN (2026-07-07、doc-only)**。決定的
+  観察 = **first-contact GO 済 organ は ES-3 locomotion→sampling チャネルを配線済だが未活性** (`AgentState.
+  locomotion=None`)。ゆえ物語 (§1/§7、Oppezzo [1]/DMN [11]) の中心「移動経路による発散」を、器官が自らの zone
+  移動決定 (EMA λ) で sampling を変調する閉ループとして **機構的に instantiate** する construction 拡張 (単一
+  agent)。**scope = ES-3 活性化 first** (C=measurement 直行は holding 保全で却下 — 過去の記憶チャネル near-uniform
+  低検出力を器官で実信号確認する前に希少 R-budget を焼くのは VoI 最劣、B=N体化は後置)。HOW = 既存 `agent_state`
+  引数経由で seeded `LocomotionState(lam=0.0)` を渡すだけ (**organ src 改変ゼロ**、decision-level move_t = frozen
+  ES-3 意味論)。determinism は replay が sampling 無視・checksum が幾何のみゆえ **新非決定源ゼロ** (λ/sampling は
+  実 loop の Ollama-free replay を sampling-spy で観測、offline 再構成でなく)。事前登録 = **Done=V1∧V2∧V3a∧V3b**
+  (reproducibility) + V4a (λ distinct>1) / V4b (seeded/None spied replay の sampling 相異) / V5 (parsed-action) =
+  channel-active annotation (boolean/counting・統計禁止・side file)、**verdict なし** (construction validation、
+  floor/landscape/verdict/conformance/D_loco 非出力、evidence 非 import、holding 不可侵)。reimagine α/β 8 軸独立
+  収束 + hybrid + Codex Verdict=Adopt-with-changes (事実誤認 HIGH なし、HIGH2/MEDIUM3/LOW2 全反映、うち HIGH-1 =
+  V4b は sampling-spy 必須 [replay は recorded call を記録し recomposed sampling を捨てる])。次工程 (別タスク、
+  Phase 1) = Loop Engineering で実装 (I1 live_v1 harness+λ0 pin+spy / I2 protocol+V1-V5+強化 guard / I3 sealed run
+  人手 gate+WSL byte 一致 / I4 replay-verify+V4 on/off annotation)。
 
 ## 9. スコープ / 非スコープ
 
