@@ -51,7 +51,17 @@ feedback_golden_crossplatform_float_drift (WSL byte 一致)、feedback_log_tail_
 - **Issue 001 (apparatus) + Issue 002 (verify test) 緑後**。**人手実行** (autonomous loop 外)。Issue 004 の前提。
 
 ## Status
-QUEUED (manual gate)
+DONE (2026-07-06、sealed run 完了、verdict=GO)
 
 ## Execution Result
-(sealed run 後に記入 — O1-O5 実測値 + branch 判定)
+**軸5 verdict = GO (construction validated)**。G-GEAR で qwen3:8b (think=False)、N=32 封印実走。
+- **O1 完走** ✅ (640 physics row、exit 0)。
+- **O2 replay 再現** ✅ (checksum `a528d547…` byte 一致 + inner_invocations==0)。
+- **O3a/O3b cross-platform** ✅ (**WSL Linux glibc replay = Windows UCRT checksum** byte 一致、libm drift を
+  6桁量子化が吸収、`uv pip install .` した WSL venv で実測)。
+- **Done=O1∧O2∧O3a∧O3b HOLDS**。
+- O5 = **32/32** (annotation) — 全 tick `llm_status==ok`∧`plan≠None`∧`resolved_from==memory_centroid`
+  (first-contact 存在証明、think=False が load-bearing = 全 tick parseable)。
+- O4 非縮退 (annotation) — destination_zone 2 distinct、move target 32 distinct。
+committed: `experiments/20260706-ecl-v0-live-capture/{artifacts/*, run.sh, env.md, ollama.log}`。詳細 = env.md。
+**construction validation であって measurement verdict でない** (holding 不可侵)。
