@@ -12,12 +12,25 @@
 
 | # | issue | verify_level | mode | dep | status |
 |---|---|---|---|---|---|
-| 001 | live-capture apparatus (ThinkOffChatClient+harness+protocol/env) | recheck | autonomous /loop-issue | — | QUEUED |
-| 002 | Ollama-free replay-verify apparatus (O3a/O3b/O5、synthetic テンプレ) | recheck | autonomous /loop-issue | 001 | QUEUED |
-| 003 | sealed live run + committed artifact (G-GEAR live qwen3:8b) | manual | **人手 sealed gate** | 001+002 | QUEUED |
-| 004 | live-golden finalize + cross-platform confirm | recheck | autonomous /loop-issue | 003 | QUEUED |
+| 001 | live-capture apparatus (ThinkOffChatClient+harness+protocol/env) | recheck | subagent (fresh) | — | **DONE** db4d276 |
+| 002 | Ollama-free replay-verify apparatus (O3a/O3b/O5) | recheck | subagent (fresh) | 001 | **DONE** 93a68b4 |
+| 003 | sealed live run + committed artifact (G-GEAR live qwen3:8b) | manual | **人手 sealed gate** | 001+002 | **DONE** ce598fb (GO) |
+| 004 | live-golden finalize + cross-platform confirm | recheck | in-session | 003 | **DONE** 5d0ca1a |
 
-依存 = 001→002→003→004 (概ね直列、003 は live Ollama 一発ゆえ loop 外)。
+依存 = 001→002→003→004 (直列、003 は live Ollama 一発ゆえ loop 外)。全 subagent は fresh context + 独立 recheck。
+
+## verdict = GO (construction validated、first-contact 成功)
+sealed run (003): O1 完走 / O2 replay 再現 / O3a-b cross-platform WSL byte 一致 (`a528d547…`) → **Done=
+O1∧O2∧O3a∧O3b HOLDS** / O5=**32/32** (全 tick parsed-history-dependent、think=False load-bearing) / O4 非縮退
+(zone 2・target 32)。ECL v0 organ が real qwen3:8b で substrate を end-to-end 駆動。measurement 非再入 holding 維持。
+
+## TASK-PRE / TASK-POST Codex
+- TASK-PRE (b24e5b4): Adopt-with-changes (HIGH2/MEDIUM3/LOW1、全反映)。
+- TASK-POST (6d6ac0d): code-reviewer(Opus)=Mergeable(HIGH 0) ∥ Codex=Adopt-with-changes (HIGH-1 manifest
+  再検証 + MEDIUM-1 LIVE_MODEL pin、反映、manifest byte-identical 実測)。
+
+## 次アクション
+統合 CI 緑 → PR (feat/ecl-v0-live-run→main)。次 primary = 候補 B (N体化) or C (measurement gate) 別 ADR。
 
 ## 掛け合わせる条件分岐 (6 軸)
 1. grill 被覆: **No** (fork なし) → issue 直行 (Yes なら Stop→superseding ADR)。
