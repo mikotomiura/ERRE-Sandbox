@@ -1,0 +1,14 @@
+{
+  "task": "20260706-ecl-v0-live-run",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests"
+  },
+  "ci_command": "bash scripts/dev/pre-push-check.sh",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 2 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260706-ecl-v0-live-run/_loop-events.jsonl",
+  "notes": "003 は MANUAL sealed gate (live Ollama、autonomous loop 対象外)。依存 001→002→003→004。verify_level: 001/002/004=recheck, 003=manual。measurement 非再入 holding 不可侵。FROZEN ADR 逸脱は Stop→superseding ADR。"
+}
