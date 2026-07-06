@@ -244,6 +244,27 @@ class Retriever:
         world: bool,
         current_location: SpatialContext | Position | None = None,
     ) -> list[RankedMemory]:
+        """Rank one scope's candidate pool, fully ordered before truncation.
+
+        The returned list is **totally ordered** by
+        ``(-strength, created_at, id)`` — the strength-tie break by
+        ``created_at`` then ``id`` is applied *here*, before the caller
+        (:meth:`retrieve`) slices ``[:k_agent]`` / ``[:k_world]``. This makes
+        the top-K selection reproducible for equal-strength ties (e.g. equal
+        importance / recall_count / cosine_sim) instead of depending on the
+        store's fetch order (B-3 determinism hardening).
+
+        **Candidate-pool bound — not a silent cap (Codex MEDIUM-3 / TASK-PRE
+        L-1).** The ordering is a *top-K over the candidate pool*, not over all
+        matching memories. The pool is the **union of one ``limit_candidates``
+        (default 50) fetch per ``kind`` (episodic/semantic) × per scope
+        (agent/world)** — i.e. the cap is *per (kind, scope)*, not a flat 50
+        across the whole retrieve. The store returns the most-recent
+        ``limit_candidates`` rows per kind (``ORDER BY created_at DESC``), so an
+        equal-strength but older memory that falls past that per-(kind, scope)
+        fetch limit is **not** surfaced even though it would sort ahead by
+        ``created_at``. Raise ``limit_candidates`` to widen the pool.
+        """
         candidates: list[MemoryEntry] = []
         for kind in kinds:
             batch = (
@@ -288,7 +309,11 @@ class Retriever:
                 proximity=prox,
             )
             scored.append(RankedMemory(entry=entry, strength=strength, cosine_sim=sim))
-        scored.sort(key=lambda r: r.strength, reverse=True)
+        # Full total order over the candidate pool BEFORE the caller truncates
+        # to ``[:k]`` (B-3): descending strength, then ``created_at`` then ``id``
+        # to break equal-strength ties deterministically. See the docstring for
+        # the per-(kind, scope) candidate-pool bound.
+        scored.sort(key=lambda r: (-r.strength, r.entry.created_at, r.entry.id))
         return scored
 
 
