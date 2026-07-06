@@ -105,7 +105,7 @@
 | I4-G2 | `test_live_golden_artifact_rerender_sha` — 同一 raw Plane2 → full artifact re-render SHA が committed と一致 (**O3b**、6桁量子化が float drift 吸収) | re-render 非決定 |
 | I4-G3 | `test_live_golden_parsed_action_path` — committed decisions に **O5** (≥1 tick で llm_status==ok∧plan≠None∧MoveMsg resolved_from==memory_centroid) が成立 (first-contact 存在証明、D-5) | unparseable-only を見逃す (空洞 claim) |
 | I4-G4 | `test_live_golden_measurement_guard` — I4 test が floor/landscape/verdict を計算・出力しない (O4/O5 は boolean/counting annotation のみ、holding) | measurement 再入 |
-| I4-G5 | `python experiments/20260706-ecl-v0-live-capture/repro.sh` exit 0 (1 コマンド Ollama-free 再現) | repro 契約破れ |
+| I4-G5 | `bash experiments/20260706-ecl-v0-live-capture/repro.sh` exit 0 (1 コマンド Ollama-free 再現、Codex TASK-PRE LOW-1: bash に統一) | repro 契約破れ |
 
 - **Stop**: replay-verify が committed artifact に一致しない (I3 の非決定) → Stop→superseding hardening (軸5)。
 - **Out**: measurement 再入; live re-capture の cross-platform byte 一致要求 (Codex HIGH-2: 非要求)。

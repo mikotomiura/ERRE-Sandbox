@@ -23,6 +23,9 @@ FROZEN ADR (`.steering/20260706-m13-forward-primary/design-final.md`) binding a-
   - protocol 定数: `LIVE_N_COGNITION_TICKS=32` / `LIVE_PERSONA_ID="kant"` / embedding=mock / `LIVE_O5_MIN_TICKS=1`。
   - live manifest env-pin helper (qwen3 digest / Ollama version / VRAM / uv.lock hash / `think:false` /
     resolved sampling を run_config へ、`handoff.build_manifest` 無改変呼出)。
+  - **manifest overlay (Codex TASK-PRE HIGH-1 反映)**: `handoff.build_manifest` は任意 observables field を持たない
+    ため、`live.py` が manifest dict に **`observables` overlay block** (`O1..O5` 定義 + `done_formula=
+    "O1∧O2∧O3a∧O3b"` + `o5_min_ticks=1`) を sealed run 前定数として付与 (handoff.py 無改変、overlay は live 側)。
 - 新規 `scripts/ecl_v0_live_capture.py` — thin CLI (`--capture`) が real `OllamaChatClient` を構築し
   `run_live_capture` 呼出 + `handoff.write_golden` 相当で artifact 書出 (実走は Issue 003 で使用)。
 - 新規 `tests/test_integration/test_ecl_live_capture.py`。
@@ -45,6 +48,8 @@ FROZEN ADR (`.steering/20260706-m13-forward-primary/design-final.md`) binding a-
 - I2-G1: `test_live_capture_protocol_constants` — N==32/persona=="kant"/embedding=mock/O5_min==1 固定
 - I2-G2: `test_live_manifest_pins_env` — manifest に qwen3 digest/Ollama version/VRAM/uv.lock/think:false/
   resolved sampling
+- **I2-G3 (Codex HIGH-1 反映)**: `test_live_manifest_observables_preregistered` — manifest overlay に O1-O5 定義 +
+  `done_formula=="O1∧O2∧O3a∧O3b"` + `o5_min_ticks==1` が sealed run 前定数として存在 (tune-to-pass 封鎖)
 - I2-G4: `test_live_capture_measurement_guard` — evidence/spdm/runningness 非 import + floor/landscape/verdict
   非出力
 - I1-G5: 既存 `test_ecl_flag_off_byte_invariant` + ECL test 群 緑維持

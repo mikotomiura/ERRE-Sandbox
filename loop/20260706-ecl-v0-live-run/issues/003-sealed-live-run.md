@@ -30,12 +30,16 @@ feedback_golden_crossplatform_float_drift (WSL byte 一致)、feedback_log_tail_
 ## Acceptance Criteria
 - I3-G1 (O1): live 実走が例外なく完走 (N=32、α hardening の raised fallback で堅牢)
 - I3-G2: artifact committed (6桁量子化、envelope_provenance embedded JSON float も量子化)
-- I3-G3 (O2): committed decisions のみ replay → checksum byte 一致 + inner_invocations==0 (Issue 002 test 緑)
+- I3-G3 (O2): committed decisions のみ replay → checksum byte 一致 + inner_invocations==0。**verify は CI fixture
+  path 切替 (004) に依存しない standalone 手順** (Codex TASK-PRE MEDIUM-1): `python scripts/ecl_v0_live_capture.py
+  --verify experiments/20260706-ecl-v0-live-capture/artifacts` または `bash experiments/.../repro.sh` で committed
+  artifact を直接 verify
 - I3-G4 (O3a/O3b): WSL Linux vs Windows で committed artifact byte 一致 (手動実測、env.md 記録)
 - I3-G5 (annotation): O5 成功 tick 数 (≥1) + O4 非縮退 (distinct zone>1 or move target>1) を env.md へ honest 記録
 
 ## Test Plan
-Issue 002/004 の `test_ecl_live_golden.py` が committed artifact で緑 + `repro.sh` exit 0 + WSL byte 一致目視。
+`bash experiments/20260706-ecl-v0-live-capture/repro.sh` (standalone、CI fixture path 非依存) exit 0 + WSL byte
+一致目視。004 は CI fixture path の最終切替に限定 (MEDIUM-1)。
 
 ## Stop Conditions / Branch (軸5)
 - **Stop**: replay 非決定/crash (I3-G3 fail) → superseding hardening ADR (Plan+Codex、cross-platform 量子化同型漏れ)。

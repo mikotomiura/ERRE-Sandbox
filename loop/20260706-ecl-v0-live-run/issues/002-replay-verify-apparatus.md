@@ -33,9 +33,12 @@ FROZEN ADR O2/O3a/O3b/O5、Codex HIGH-2 (O3 を O3a/O3b 分割、live 再 captur
 ## Acceptance Criteria (AC↔test)
 - I4-G1: `test_live_golden_replay_checksum_matches` — committed decisions のみ replay → manifest checksum 一致 +
   inner_invocations==0 (O3a、テンプレは synthetic golden で green)
-- I4-G2: `test_live_golden_artifact_rerender_sha` — 同一 raw Plane2 → full artifact re-render SHA 一致 (O3b)
-- I4-G3: `test_live_golden_parsed_action_path` — decisions に O5 (≥1 tick llm_status==ok∧plan≠None∧
-  resolved_from==memory_centroid) 成立を boolean assert
+- I4-G2: `test_live_golden_artifact_rerender_sha` — 同一 raw Plane2 → **committed manifest の `env_pins`/`run` を
+  再利用**して trace/decisions/envelope re-render → SHA 一致 (O3b、Codex TASK-PRE MEDIUM-2: `build_manifest`
+  `env_pins=None` の fresh capture で drift させない)
+- I4-G3: `test_live_golden_parsed_history_dependent_action` — O5 (D-5 refinement) 成立 tick を **count 記録**
+  (`llm_status==ok`∧`plan≠None`∧`resolved_from==memory_centroid`)。**annotation** ゆえ hard green にせず記録を
+  assert (HIGH-2、O5==0 は branch outcome)
 - I4-G4: `test_live_golden_measurement_guard` — verify が floor/landscape/verdict を計算・出力しない
 - I4-G5: `bash experiments/20260706-ecl-v0-live-capture/repro.sh` exit 0 (テンプレ artifact で)
 - CI parity: `bash scripts/dev/pre-push-check.sh` 4 段 `ALL CHECKS PASSED`
