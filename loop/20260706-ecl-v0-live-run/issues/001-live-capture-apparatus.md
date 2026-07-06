@@ -68,7 +68,13 @@ ThinkOffChatClient は mock inner (request 記録) で think=False を pin、har
 - なし (autonomous /loop-issue の起点)。Issue 002/003 の前提。
 
 ## Status
-QUEUED
+DONE (2026-07-06、feat/ecl-v0-live-run)
 
 ## Execution Result
-(完了時に記入)
+subagent (Sonnet、fresh context) 実装 → **loop-watchdog 相当の独立 recheck 済** (verify_level=recheck):
+新規 `src/erre_sandbox/integration/embodied/live.py` (ThinkOffChatClient + run_live_capture + protocol 定数 +
+build_live_env_pins + LIVE_OBSERVABLES/build_live_manifest_overlay/attach_live_observables) + `scripts/
+ecl_v0_live_capture.py` (thin CLI、OllamaChatClient lazy import) + `tests/test_integration/test_ecl_live_capture.py`
+(8 test)。8 test 全緑 (独立再実行 0.15s)。pre-push 4 段 ALL CHECKS PASSED (3379 passed/66 skipped)。無改変制約
+(loop.py/cycle.py/world/handoff.py/ecl_v0_golden.py) = git diff empty で確認。measurement guard 緑 + banned
+identifier は docstring 否定文のみ (既存 merged loop.py と同様)。Stop 非該当。
