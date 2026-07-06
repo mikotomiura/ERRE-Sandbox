@@ -52,7 +52,12 @@ if TYPE_CHECKING:
 # The single fixture-path switch (Issue 004 repoints this at
 # ``experiments/20260706-ecl-v0-live-capture/artifacts`` once the sealed live
 # run is committed).
-_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "ecl_v0_golden"
+_GOLDEN_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "experiments"
+    / "20260706-ecl-v0-live-capture"
+    / "artifacts"
+)
 
 
 def _mock_embedding() -> EmbeddingClient:
