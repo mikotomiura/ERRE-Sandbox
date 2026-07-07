@@ -70,7 +70,26 @@ provenance 出力 prompt を M pass で byte 比較。
 - I1（fixture/provenance）、I2（bank driver）、I3（`_bank_spend_guard` helper 再利用）。
 
 ## Status
-TODO
+DONE（2026-07-08、feat/m13-b-bank）。
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+- 新規: `tests/test_integration/test_ecl_bank_continuity.py`（7 test）/
+  `experiments/20260708-m13-b-bank/t3_materiality_desk_audit.md`。
+- AC↔test: I6-G1=`test_bank_import_allowlist` PASS / I6-G2=`test_bank_mloop_retrieve_count_zero`
+  PASS（retrieve_call_count=0 ∧ store_read_count=0、bake-out 構造的）/
+  I6-G3=`test_bank_provenance_retrieve_count_one` PASS（provenance pass の retrieve-count は
+  per-context 固定・非ゼロで K に厳密比例することを実測 spy で確認、M-loop の 0 とは別監査）/
+  I6-G4=`test_bank_arity_one_divergence_free` PASS（`BankLlmCallRecord` の context 識別
+  フィールドは `frozen_ctx_id` のみ=arity 1、bank.py/bank_fixtures.py に KL/JS/paired-distribution
+  系識別子なし）/ I6-G5=`test_bank_frozen_string` PASS / I6-G6=`test_bank_t3_desk_audit_present`
+  PASS（desk-audit doc の invariant (i)-(v) + criterion 1-4 + honest teeth + sign-off 欄存在確認）。
+- pytest 件数: `tests/test_integration/` 349 passed。フル回帰（pre-push 4段内）3487 passed, 66
+  skipped。
+- pre-push 4 段: `ruff format --check src tests` PASS / `ruff check src tests` PASS /
+  `mypy src` PASS（237 files）/ `pytest -q`（non-godot）PASS（3487 passed, 66 skipped, 374.62s）。
+  `ALL CHECKS PASSED`。
+- `git diff --stat`（tracked）空 — organ / bank.py / bank_fixtures.py / `_bank_spend_guard.py` /
+  committed golden / power_worksheet.md / I5 artifacts 無改変確認済み。
+- Stop 該当: なし。desk-audit の criterion 4（stimulus 判定）は sign-off 欄を未記入のまま残し、
+  統合時 `/cross-review` で人間判定を埋める設計どおり（honest teeth 自体は doc に明記、本 issue
+  では stimulus 判定を下していない）。
