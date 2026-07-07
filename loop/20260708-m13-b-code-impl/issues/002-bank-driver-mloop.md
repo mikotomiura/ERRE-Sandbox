@@ -68,7 +68,18 @@ mock chat client（決定的 raw response）で live 非依存。record→replay
 - I1（`FrozenContext` / provenance pass の出力を消費）。
 
 ## Status
-TODO
+DONE (2026-07-08、feat/m13-b-bank、commit 99851a1)
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+subagent (Sonnet、fresh context) 実装 → **loop-watchdog 相当の独立監査済**（agent の最終報告が不備だったため
+main が exit-code 基準で独立検証: 9 passed exit 0 + 契約要点 grep 監査）。
+新規 `bank.py`（`BankLlmCallRecord`[§I5 8-field 閉集合、`EclDecisionRecord` 非流用] / `run_bank_mloop`[bake-out
+= 凍結 prompt 直 chat、`parse_llm_plan(raw).destination_zone` の pre-bias 直 parse、`ZONE_BIAS_ENV_VAR`="0"
+try/finally pin + 例外時復元] / `BankRecordReplayClient`[RRCC を bank 軸 wrapper 拡張、mc-index、全順序 tie-break
+`(order_slot, frozen_ctx_id, condition, mc_index, seq)`] / `BANK_M_GOLDEN`/`BANK_K_GOLDEN` literal /
+`BANK_SCHEMA_VERSION`="ecl-bank-1" overlay / `BankAnnotationRow` 型のみ）+ `test_ecl_bank_driver.py`（9 test）。
+- I2-G1..G6 全緑（9 passed、+ frozen-string/overlay/annotation-type 先行 test）。独立監査で pre-bias readout /
+  8-field schema / zone bias pin (Codex HIGH-1) / no-zone-aggregation を確認。
+- ECL byte 不変回帰 23 passed、mypy/ruff/format clean。organ + I1 fixtures 無改変（tracked diff 空）。
+- construction≠measurement（`math.log`/`Counter`/`set`-over-zones/`numpy` 非在、H/count/diversity 非計算）。
+- **注**: agent の最終メッセージは正常な完了報告でなかったが、実出力は健全。exit-code 独立検証で Done 確定。
