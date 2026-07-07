@@ -59,7 +59,18 @@ banned identifier 言及は substring-scan 対象外（既存 `_measurement_guar
 - I2（scan 対象 `bank.py` が存在必要）、I1（`bank_fixtures.py`）。
 
 ## Status
-TODO
+DONE (2026-07-08、feat/m13-b-bank、commit 67f4d9a)
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+subagent (Sonnet、fresh context) 実装 → 独立再実行済 (verify_level=recheck) + main が capture-script coverage
+拡張。新規 `_bank_spend_guard.py`（`_measurement_guard` 3-hole guard を superset 拡張 = `assert_no_aggregation_
+surface`[math.log/Counter/groupby/numpy/pandas/scipy/statistics 禁止 + **精密 set-over-zones 判定**: zone
+attribute への set/Counter/len(set) 集計のみ ban、prompt-set dedup は許容] / import-allowlist[閉列挙主 +
+SPDM 系 denylist 補、prefix-safe] / `assert_llm_call_cap`[2·M·K 境界 fail-fast] / no-adaptive-topup[while 非在
++ M/K 凍結 literal]）+ `test_ecl_bank_spend_guard.py`（48 test = 正例/負例両面 fixture）。
+- I3-G1..G5 全緑（48 passed）。独立再実行 exit 0、mypy/ruff clean、tracked 無改変。
+- **main 拡張**: scan 対象に `scripts/ecl_bank_capture.py`（I5 の annotation writer、§I4/D-6 の bank-module
+  scan set）を追加 = 集計/measurement/annotation-opaque を capture CLI にも適用（import-allowlist は core
+  module 限定 = CLI は argparse/json/handoff を正当 import）。capture script は全 guard を通過（docstring 言及は
+  identifier/key/filename でないため誤検出なし）。
+- guard 自体が construction≠measurement の履行（H/floor/verdict 非計算）。
