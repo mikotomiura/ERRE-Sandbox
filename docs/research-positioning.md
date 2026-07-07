@@ -547,6 +547,33 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   MEDIUM2 [B teeth 強化 / 「原理的不能」を no-spend 条件下に scope 限定] + LOW1 [Δtemp 数値固定] 全反映**
   (中核 REFUSE + 第1/第2リンク分離 honest を repo 実読で支持、V4a/V4b から AUTHORIZE を導く経路なし)。詳細 =
   `.steering/20260707-m13-c-design/design-final.md`。次工程 = B (N体化) ADR (別セッション、REFUSE→B fallback を消費)。
+- **B (substrate-enrichment) scoping ADR = 反復 frozen-context bank 主軸を FROZEN (2026-07-07、doc-only、user 裁定)**。
+  C-design の REFUSE→B fallback を消費する construction 方向決定 (WHAT/WHY)。**決定的発見 = reimagine v1 (society 起点)
+  と v2 (futility 起点) が逆方向から「N体化は teeth に最適でない」に独立収束**: N体化は (ii) repeated frozen-context
+  bank と直交 (live society は各 context を trajectory 依存で unique 化) / (i) 相互観測はむしろ条件付き zone entropy を
+  下げ confound を増やす / determinism surface を最大化 (scheduler interleaving・pair separation・dialog RNG・
+  async gather の 4 新非決定源、A→B 後置の理由そのもの)。**採用 enrichment 形 = 反復 frozen-context bank を
+  futility-critical PRIMARY 骨格** (C-design が名指した唯一の非循環 clean estimand [単一 frozen context × M 回 MC] の
+  apparatus、estimability 死点 [C2-a の 1-sample/context] を殺す唯一の候補、determinism surface 拡大は MC-index
+  substream 追加のみで最小・単一 agent 埋込を触らず N=1 byte 不変維持) + 有界 entropy lever SECONDARY (memory-geometry
+  narrow か凍結社会シーン、実選択 defer)。**N体化 full society は北極星 (Autonomous 3D Society) として保持し Milestone
+  2+ に defer** (measurability を単一 agent 上で決着してから scale する A→B 後置規律の継続)。**teeth T1 の honest 判定 =
+  skeleton 固定 (具体値 M_min/K/H_min/ρ/δ_min は impl-design まで未確定、「達成済み」でない)**: (ii) 反復 bank・
+  (iii) MDE power apparatus は構造として達成可能だが、**(i) 条件付き zone entropy 下限は B 単独では doc-only 保証不能**
+  (think=False の empirical collapse risk = コードが保証するのは think=False 強制 + 単一 JSON enum destination_zone +
+  parse 後単一 zone まで、条件付き分布 H(zone|ctx) は empirical にしか判明しない) → 反復 bank が生成する construction
+  副産物 annotation を次 C-design が読んで empirical に判明、**H_min 未達なら line-close → SPDM-landscape [SPENT] と
+  両 family exhaust → arc-close 自動執行** (§C4.3 T4、REFUSE→B は arc-close を遠ざけない)。**T3 same-candidate ban 締結
+  (Codex HIGH-4) = 反復 bank それ自体は apparatus/annotation であって再入 candidate でない** (「sampling 密度で
+  materially different」を再入資格の根拠にしない)、再 C-design eligibility には (i) を攻める基質改変が必須。**claim 境界 =
+  enrichment 形の scoping であって measurement を実行した/floor を測った/(i) を保証した/H4 を肯定否定したでない**
+  (construction、budget 未消費、B は divergence 非計算、firing⇔detectability 混同禁止継承)。process = /reimagine
+  (v1 society 起点 / v2 futility 起点 盲目並列 → 逆方向から N体化≠teeth 最適に独立収束 → hybrid = v2 spine + v1 graft) +
+  Codex **Verdict=Adopt-with-changes → 事実誤認 HIGH なし、HIGH-4 [T3 letter 締結] + MEDIUM2 [(i) 文言弱化 / spend
+  境界 binding 禁止] + LOW2 [B4 文言 / relabel guard] + 補足 [T1 skeleton] 全反映**。詳細 =
+  `.steering/20260707-m13-b-nbody-scoping/design-final.md`。次工程 = B impl-design ADR (HOW、別タスク) → 実コード実装
+  (Loop Engineering 判断)。基質改変を経て (i) named 閾値を annotation 上満たせば materially 異なる live-channel-
+  conformance candidate の再 C-design 可 (family budget=1 消費)、未達なら計測ライン close → 両 family exhaust → arc-close。
 
 ## 9. スコープ / 非スコープ
 
