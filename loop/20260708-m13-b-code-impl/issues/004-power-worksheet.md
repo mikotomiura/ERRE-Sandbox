@@ -68,7 +68,19 @@ worksheet 存在、閾値 ratify は統合ゲート）。
 - なし（doc-only、I1-I3 と並行可）。ただし annotation raw-row 型の参照が要る場合は I2 の型定義を read-only 参照。
 
 ## Status
-TODO
+DONE (2026-07-08、feat/m13-b-bank、commit 2efe407)。**閾値 ratify (DA-BIMPL-6) は統合ゲート持ち越し**。
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+subagent (Sonnet、fresh context) 実装 → 独立再実行済 (verify_level=recheck)。
+新規 `bank_power.py`（`categorical_multinomial_power` = a-priori 5-way multinomial power。**MC-calibrated null
+critical value ゆえ scipy 不要** = pure numpy+stdlib、extras 3 点セット回避。assumed base distribution のみで
+MDE/power 計算、real bank data 非依存・bank driver 非 import・annotation 非読取）+ `power_worksheet.md`（検定法 /
+worst-case(degenerate)+代表(near-uniform) dist / K-pooling 仮定 / named 閾値導出 / (i) H_min/ρ empirical gate
+honest section / construction≠measurement scope guard / seed+1 コマンド repro）+ `test_ecl_bank_power.py`（5 test）。
+- I4-G1..G4 全緑（5 passed）。I4-G3 collapse test = δ_tv=0.01（δ_min の 1/10）で power≈0.18<0.8 = (i) 従属を機械
+  的に示す。honest 副観測（literally-degenerate base 単独では rare cell の比例感度で power を殺さない nuance）を
+  worksheet に隠さず記録。
+- named 閾値 = §I6 proposal と**乖離ゼロ**（M_min=300/K=8/δ_min=0.10/power≥0.8/H_min=0.5bit/ρ=0.5、a-priori
+  計算が proposal を validate、tune-to-pass 不要）。ratify は統合 /cross-review + user 裁定へ。
+- 独立再実行 exit 0（5 passed）。tracked 無改変。pre-push 4 段 ALL PASS（3418 passed）。Stop 非該当。
+  construction≠measurement（floor/landscape/verdict/divergence 非計算、a-priori 装置 buildability のみ）。
