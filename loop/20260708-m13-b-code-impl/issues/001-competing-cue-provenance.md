@@ -73,7 +73,17 @@ canonical-inputs-only / literal-pin を機械保証。
 - なし（起点）。I2/I5/I6 の前提。
 
 ## Status
-TODO
+DONE (2026-07-08、feat/m13-b-bank、commit 8e4b3e7)
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+subagent (Sonnet、fresh context) 実装 → loop-watchdog 相当の独立再実行済 (verify_level=recheck)。
+新規 `bank_fixtures.py`（`BANK_Z_COMP=(STUDY,GARDEN)`/`BANK_NEUTRAL_ZONE=AGORA`/`BANK_LAMBDA_CTX` literal pin、
+`build_competing_cue_substrate`[canonical inputs のみ model_validate 編集、manual prompt string 非手書き]、
+`run_provenance_pass`[canonical builder 1 pass render、`ERRE_ZONE_BIAS_P=0` pin + `bias_fired is None` assert]、
+`FrozenContext`、`_preload_mirror_memories`[store public API で mirror memory load → canonical `format_memories`
+経由で凍結 prompt に対称 render]）+ `test_ecl_bank_fixtures.py`（8 test）。
+- I1-G1..G7 全緑（8 passed）。追加修正 I1-G7 = lever 4 次元中 (d) content 鏡映 memory を凍結 prompt へ実 render
+  （初回実装は空 store で未反映を honest flag → 忠実履行のため forking-paths seal 内で修正）。
+- 独立再実行 exit 0（8 passed 0.15s）。organ 無改変 = `git diff --stat` 空。pre-push 4 段 ALL PASS
+  （3413 passed / 66 skipped）。Stop 非該当。construction≠measurement（H/count/diversity 非計算、boolean
+  symmetry 判定のみ）。
