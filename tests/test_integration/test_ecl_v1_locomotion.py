@@ -52,6 +52,9 @@ from erre_sandbox.integration.embodied.loop import (
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
 from erre_sandbox.schemas import LocomotionState, SamplingBase, SamplingDelta
+from tests.test_integration._measurement_guard import (
+    assert_no_measurement_surface_v1,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -306,115 +309,12 @@ def test_v1_env_pins_structure() -> None:
 
 # --------------------------------------------------------------------------- #
 # I2 — enhanced measurement-line non-re-entry guard (Codex HIGH-2, §G)
+#
+# The guard itself lives in the shared ``_measurement_guard`` helper (mirrors the
+# ``_ws_helpers`` convention) so the safety-critical 3-hole logic is defined in
+# exactly one place and both v1 test modules exercise the same code (code-reviewer
+# MEDIUM-1). The v0 guard in ``test_ecl_live_golden.py`` stays untouched (§H).
 # --------------------------------------------------------------------------- #
-
-_BANNED_IMPORT_PREFIX = ("erre_sandbox.evidence",)
-_BANNED_IMPORT_SUB = ("spdm", "runningness")
-_BANNED_IDENTIFIER_SUB = (
-    "floor",
-    "landscape",
-    "verdict",
-    "jaccard",
-    "divergence",
-    "r_min",
-)
-# Exact ES-3 measurement output names (§G, Codex LOW-2: exact, not substring, so a
-# legit "schema_conformance" key or a bare "verdict": None marker does not collide).
-_BANNED_MEASUREMENT_KEY_EXACT = frozenset(
-    {
-        "d_loco",
-        "evaluate_verdict",
-        "es3verdict",
-        "amplitude",
-        "headroom",
-        "floor",
-        "landscape",
-        "divergence",
-    }
-)
-
-
-def _guard_imports(node: ast.AST) -> None:
-    """Hole 1 + classic import guard (every v1 file)."""
-    if isinstance(node, ast.ImportFrom) and node.module is not None:
-        assert not node.module.startswith(_BANNED_IMPORT_PREFIX), node.module
-        assert not any(s in node.module for s in _BANNED_IMPORT_SUB), node.module
-        if node.module == "erre_sandbox":  # hole 1: from erre_sandbox import evidence
-            for alias in node.names:
-                assert not alias.name.startswith("evidence"), alias.name
-    if isinstance(node, ast.Import):
-        for alias in node.names:
-            assert not alias.name.startswith(_BANNED_IMPORT_PREFIX), alias.name
-            assert not any(s in alias.name for s in _BANNED_IMPORT_SUB), alias.name
-
-
-def _guard_identifiers(node: ast.AST) -> None:
-    """Banned-identifier guard (every v1 file), mirrors the v0 guard."""
-    names: list[str] = []
-    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-        names.append(node.id)
-    elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-        names.append(node.target.id)
-    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        names.append(node.name)
-    elif isinstance(node, ast.arg):
-        names.append(node.arg)
-    for name in names:
-        low = name.lower()
-        assert not any(tok in low for tok in _BANNED_IDENTIFIER_SUB), name
-
-
-def _guard_dynamic_import(node: ast.AST) -> None:
-    """Hole 2: a dynamic ``importlib.import_module``/``__import__`` string constant."""
-    if not isinstance(node, ast.Call):
-        return
-    func = node.func
-    is_dynamic_import = (
-        isinstance(func, ast.Attribute) and func.attr == "import_module"
-    ) or (isinstance(func, ast.Name) and func.id == "__import__")
-    if not is_dynamic_import:
-        return
-    for arg in node.args:
-        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
-            low = arg.value.lower()
-            assert not low.startswith(_BANNED_IMPORT_PREFIX), arg.value
-            assert not any(s in low for s in _BANNED_IMPORT_SUB), arg.value
-
-
-def _guard_keys_and_filenames(node: ast.AST) -> None:
-    """Hole 3: a measurement name as a dict **key** (exact) or a ``.json`` filename."""
-    if isinstance(node, ast.Dict):
-        for key in node.keys:
-            if isinstance(key, ast.Constant) and isinstance(key.value, str):
-                assert key.value.lower() not in _BANNED_MEASUREMENT_KEY_EXACT, key.value
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        low = node.value.lower()
-        if low.endswith((".json", ".jsonl")):
-            stem = low.rsplit(".", 1)[0]
-            assert stem not in _BANNED_MEASUREMENT_KEY_EXACT, node.value
-            assert not any(tok in stem for tok in _BANNED_IDENTIFIER_SUB), node.value
-
-
-def _assert_no_measurement_surface_v1(tree: ast.Module, *, scan_strings: bool) -> None:
-    """The enhanced 3-hole guard (Codex HIGH-2), superset of the v0 guard.
-
-    Always (every v1 file): banned imports (incl. hole 1 —
-    ``from erre_sandbox import evidence``) and banned identifiers.
-
-    ``scan_strings`` (apparatus files only, never the test module which legitimately
-    defines the banned lists): hole 2 — a dynamic
-    ``importlib.import_module("erre_sandbox.evidence…")`` string constant; hole 3 —
-    a measurement name used as a dict **key** (exact) or a ``.json``/``.jsonl``
-    **filename** carrying a banned token. Free-text docstrings are never
-    substring-scanned, so a scope-guard note that merely *mentions* ``evidence`` /
-    ``spdm`` / ``divergence`` does not self-trip.
-    """
-    for node in ast.walk(tree):
-        _guard_imports(node)
-        _guard_identifiers(node)
-        if scan_strings:
-            _guard_dynamic_import(node)
-            _guard_keys_and_filenames(node)
 
 
 def test_v1_measurement_guard() -> None:
@@ -425,14 +325,14 @@ def test_v1_measurement_guard() -> None:
         (_THIS_FILE, False),
     ):
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        _assert_no_measurement_surface_v1(tree, scan_strings=scan_strings)
+        assert_no_measurement_surface_v1(tree, scan_strings=scan_strings)
 
 
 def test_v1_guard_catches_from_import() -> None:
     """AC3: hole 1 — ``from erre_sandbox import evidence`` is caught."""
     tree = ast.parse("from erre_sandbox import evidence\n")
     with pytest.raises(AssertionError):
-        _assert_no_measurement_surface_v1(tree, scan_strings=False)
+        assert_no_measurement_surface_v1(tree, scan_strings=False)
 
 
 def test_v1_guard_catches_importlib() -> None:
@@ -443,17 +343,17 @@ def test_v1_guard_catches_importlib() -> None:
     )
     tree = ast.parse(src)
     with pytest.raises(AssertionError):
-        _assert_no_measurement_surface_v1(tree, scan_strings=True)
+        assert_no_measurement_surface_v1(tree, scan_strings=True)
 
 
 def test_v1_guard_catches_banned_key() -> None:
     """AC5: hole 3 — a banned measurement name used as a dict key / filename."""
     key_tree = ast.parse('annotation = {"d_loco": 1.0}\n')
     with pytest.raises(AssertionError):
-        _assert_no_measurement_surface_v1(key_tree, scan_strings=True)
+        assert_no_measurement_surface_v1(key_tree, scan_strings=True)
     file_tree = ast.parse('path = "landscape.jsonl"\n')
     with pytest.raises(AssertionError):
-        _assert_no_measurement_surface_v1(file_tree, scan_strings=True)
+        assert_no_measurement_surface_v1(file_tree, scan_strings=True)
 
 
 def test_v1_guard_allows_legit_keys() -> None:
@@ -463,7 +363,7 @@ def test_v1_guard_allows_legit_keys() -> None:
         'path = "envelope_stream.jsonl"\n'
     )
     tree = ast.parse(src)
-    _assert_no_measurement_surface_v1(tree, scan_strings=True)  # must not raise
+    assert_no_measurement_surface_v1(tree, scan_strings=True)  # must not raise
 
 
 # --------------------------------------------------------------------------- #

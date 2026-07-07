@@ -1,2 +1,0 @@
-# artifacts は I3 (sealed live run、人手 gate、別セッション) で充填される。
-# 本 placeholder は Phase 1 (I1/I2/I4) 時点で dir を git 追跡するため。
