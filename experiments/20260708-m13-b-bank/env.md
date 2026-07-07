@@ -32,9 +32,22 @@
 はずだが、本 golden は幾何 float を含まない — sampling の 3 float（temperature/top_p/
 repeat_penalty）のみが量子化対象で、zone-pick は categorical（Zone enum）ゆえ float 非感応）。
 
-- **WSL Linux (glibc) 実測**: 未実施（main 統合時に手動実測、このセクションに追記）。
-  手順: WSL2 上で `bash experiments/20260708-m13-b-bank/repro.sh` を実行し、
-  `[verify] BANK GOLDEN OK` + 上記 `bank_checksum` と byte 一致することを確認。
+- **WSL Linux (glibc) 実測**: **本機 (G-GEAR) では未実施** — インストール済み WSL は Ubuntu-22.04 だが
+  **WSL1** かつ `/root/erre-sandbox` に synced repo/venv が無く、feat/m13-b-bank の checkout + 依存構築が
+  未整備のため、本統合セッションでは empirical な WSL 実測を行えなかった（honest 記録）。
+- **cross-platform 一致の analytical 論拠（float drift risk ≈ 0）**: 本 golden の committed artifact は
+  **libm 由来の幾何 float を一切含まない** — bank_records の float は sampling の 3 値
+  （temperature/top_p/repeat_penalty）のみで、これらは persona default sampling の**固定定数**（cos/sin 等の
+  platform 依存 libm 演算を経ない）。zone-pick は categorical（Zone enum → 文字列）ゆえ float 非感応。∴
+  Windows(UCRT) と Linux(glibc) の bake は byte-identical になるはず（`feedback_golden_crossplatform_float_
+  drift` が対象とする sub-ULP drift の発生源が本 golden に存在しない）。
+- **effective Linux 検証（CI）**: `test_bank_golden_replay_checksum` / `test_bank_golden_categorical_byte_
+  stable` は CI（Linux glibc）で走り、committed golden の replay checksum 一致を Linux 上で確認する（committed
+  bytes の Linux 上での読取・checksum 一致 = replay 決定性の cross-platform 確認）。ただし Linux 上での
+  **再 bake** byte 一致は本 test では検証しない（replay-only）。
+- **残タスク（I5-G6 の empirical closure）**: 上記 analytical 論拠で risk はほぼゼロだが、empirical に閉じるには
+  (a) WSL2 or Linux 実機で `bash experiments/20260708-m13-b-bank/repro.sh` を実行し `bank_checksum` byte 一致を
+  確認するか、(b) golden 再 bake test を Linux CI に追加する、のいずれか。**TASK-POST /cross-review + user 裁定**へ。
 - **Windows (UCRT) 実測**: 済（本 env.md 生成時、上記 `bank_checksum` が実測値）。
 
 ## 決定論
