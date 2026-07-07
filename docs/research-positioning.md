@@ -522,6 +522,31 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   divergence を示したでない** (V4a/V4b は construction annotation、R-budget は C-design AUTHORIZE まで未消費)。
   詳細 = `.steering/20260707-m13-forward-primary-post-v1/design-final.md`。次工程 = C-design ADR (別セッション、
   Plan+reimagine+Codex、doc-only)。
+- **C-design ADR = `REFUSE_MEASUREMENT_LINE` → B principled fallback を FROZEN (2026-07-07、doc-only)**。
+  forward-primary-post-v1 決定 1 (C-design) の履行 = arc §4.2 が必須化した **hard futility 前段を doc-only で撃つ**
+  superseding ADR の前半。live-locomotion channel (λ が sampling を変調する閉ループ) が下流離散決定 (zone 選択列) を
+  非循環に偏らせるかの estimand を desk-audit。**決定的な実コード確証 = λ→zone の因果は 2 リンクに分かれる**:
+  第1リンク (λ→sampling 変調、`compose_sampling` 第3項) は ES-3 GO / v1 の V4a distinct=29 / V4b modulated=28 が
+  測る **firing 済**信号だが、第2リンク (sampling→zone 選択 bias) は **未測定** — 離散 zone 決定 = LLM の
+  `LLMPlan.destination_zone` (memory_centroid は zone 内座標のみ決定、zone は LLM が選ぶ) で、λ→zone は
+  「sampling が LLM トークン分布を変える確率的間接経路」のみ (決定論的 λ→zone 項は非在)。**verdict = REFUSE**:
+  第2リンクの detectability を **doc-only・no-spend 条件下で立証できない** (唯一の firing 資産 V4a/V4b は第1リンクのみ、
+  v1 sealed run は各 context 1 サンプルゆえ P(zone|ctx,T_on/off) 推定不能) + architecture が微小効果を予測
+  (think=False 低エントロピー zone naming / memory-anchored 座標 / context 支配 [v1 zone study 6・peripatos 26 は
+  温度でなく context 駆動] / Δtemp observed 最大 +0.149 / λ 非依存 persona confound) → **hard futility gate を honest に
+  PASS できない** = 「測れるかをまず測る」arc 規律の適用であって effect-absent verdict でも defeatism でもない。
+  **disposition = B principled fallback (user ratify)**: REFUSE (doc-only・budget 未消費) は §D0.2(b) の exhaust
+  (valid FAIL / bounded-close = budget 消費を伴う) に当たらず **live-channel-conformance family を exhaust しない**
+  ゆえ arc-close 非発火・R-budget=1 保全。B (N体化) で substrate を enrich し **具体閾値 (条件付き zone entropy 下限 /
+  repeated frozen-context bank / MDE power apparatus) を named で pre-register**、未達なら計測ライン close (無限 B ループ
+  禁止 teeth) → 両 family exhaust なら arc-close 自動執行。**claim 境界 = 計測設計の可否判定であって floor を測った/
+  zone bias を否定した/H4 を否定したでない** (REFUSE は測っていない、V4a/V4b は construction annotation で第1リンク、
+  第1リンク GO は第2リンク detectability を含意しない)。process = /reimagine (α [asset-continuity 起点、AUTHORIZE 傾き]
+  破棄 → 独立 β [family invariant + futility 目的から演繹] が支配収束 → hybrid、firing⇔detectability 混同の棄却が核) +
+  Codex **Verdict=Adopt-with-changes → 事実誤認 HIGH なし、HIGH1 [§D0.3 futility-gate-fail→close との衝突処理明文化] +
+  MEDIUM2 [B teeth 強化 / 「原理的不能」を no-spend 条件下に scope 限定] + LOW1 [Δtemp 数値固定] 全反映**
+  (中核 REFUSE + 第1/第2リンク分離 honest を repo 実読で支持、V4a/V4b から AUTHORIZE を導く経路なし)。詳細 =
+  `.steering/20260707-m13-c-design/design-final.md`。次工程 = B (N体化) ADR (別セッション、REFUSE→B fallback を消費)。
 
 ## 9. スコープ / 非スコープ
 
