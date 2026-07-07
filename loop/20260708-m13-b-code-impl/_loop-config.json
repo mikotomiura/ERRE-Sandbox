@@ -1,0 +1,14 @@
+{
+  "task": "20260708-m13-b-code-impl",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests"
+  },
+  "ci_command": "bash scripts/dev/pre-push-check.sh",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 2 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260708-m13-b-code-impl/_loop-events.jsonl",
+  "notes": "M13 B 反復 frozen-context bank 実コード実装。FROZEN ADR .steering/20260707-m13-b-impl-design/design-final.md §I0-§I11 (PR #63, main=ec3979f) を binding 前提に契約履行。construction であって measurement でない (H/MDE/divergence/floor/verdict 非計算、R-budget 未消費、holding 不可侵)。mock-only 裁定 (D-10、live shakedown OUT)。実行 = subagent-per-issue。依存: I1→I2→(I3,I5,I6)、I4 独立。全 verify_level=recheck。organ 無改変が binding、逸脱は Stop→superseding ADR。"
+}
