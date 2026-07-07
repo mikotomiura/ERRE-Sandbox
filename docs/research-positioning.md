@@ -574,6 +574,32 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   `.steering/20260707-m13-b-nbody-scoping/design-final.md`。次工程 = B impl-design ADR (HOW、別タスク) → 実コード実装
   (Loop Engineering 判断)。基質改変を経て (i) named 閾値を annotation 上満たせば materially 異なる live-channel-
   conformance candidate の再 C-design 可 (family budget=1 消費)、未達なら計測ライン close → 両 family exhaust → arc-close。
+- **B impl-design ADR = 反復 frozen-context bank 技術契約を FROZEN (2026-07-08、doc-only、user 裁定)**。B scoping
+  §B5.4 が送った HOW を実コード前に凍結する impl-design (ECL v0 impl-design と同型 = tune-to-pass 穴・measurement
+  誘惑漂流・T3 抵触を実装前に閉塞)。**決定的発見 = reimagine の v1 (memory-geometry narrow enrichment) は
+  category error として破棄**: prompting.py 実読で `format_memories` は memory content のみ描画し location/zone を
+  LLM 不可視、`resolve_destination`/centroid は zone 内座標のみ決め zone-pick を動かさない → memory 幾何を enrich
+  しても H(zone|ctx) は 1 bit も動かない。独立再生成 v2 (prompt-level 競合-destination cue、zone-pick は resolver
+  上流の prompt cue で起きると演繹) が correctness/continuity-gate/relabel の 3 軸で支配。**採用 = v2 spine +
+  substrate-provenance graft** = lever は器官が LLM に見せる cue (affordance/observation/persona.preferred_zones/
+  memory content) を複数 zone が near-equal に licensed になるよう対称構築、凍結 context は enriched substrate から
+  live 器官が 1 pass 生成した実 prompt を凍結 (T3 materiality + live-channel-conformance を provenance で担保)、
+  M-sampling は凍結 (prompt, T_on/T_off sampling) を chat() へ M 回 bake-out (retrieve-count=0 の最強
+  continuity-gate)。**continuity-gate = 4 機械 test** (allowlist import-ban / M-loop retrieve-count=0 / arity=1
+  divergence-free readout / frozen-string) で SPDM-landscape channel (arity=2 retrieval-landscape divergence)
+  への relabel を型不変量で構造封鎖。**Codex Verdict=Revise → 事実誤認 HIGH 2 + HIGH 2 + MEDIUM 3 + LOW 3 全反映**:
+  (1) `_bias_target_zone` (default ERRE_ZONE_BIAS_P=0.2) が post-LLM で zone を persona preferred_zones へ差し替え
+  得る交絡 (lever の対称 preferred_zones と交絡) → zone bias off + pre-bias parsed zone readout、(2) bake-out 直
+  chat() record は full-cycle EclDecisionRecord と別 schema → bank 専用 BankLlmCallRecord、(3) T3 materiality の
+  provenance graft 単独は tie→same-family を超えない → materiality criterion 4 点 (canonical inputs のみ編集 /
+  bank-density 非根拠 / source-organic bounded mutation / **stimulus 判定なら T3 fail→line-close の honest teeth**、
+  user ratify)、(4) raw-row の暗黙集計穴 → AST guard に Counter/set/groupby/numpy/scipy/statistics 追加 +
+  annotation opaque。**claim 境界 = HOW 契約の pre-register であって (i) を保証した/measurement を実行した/floor を
+  測ったでない** (construction、budget 未消費、(i) 条件付き zone entropy 下限は B 単独 doc-only 保証不能を維持 =
+  think=False collapse risk は empirical property、全 fixture collapse なら honest 報告 → line-close → 両 family
+  exhaust → arc-close 自動執行、detectability は本 candidate class 内限定で organic 一般化禁止)。詳細 =
+  `.steering/20260707-m13-b-impl-design/design-final.md`。次工程 = 反復 bank 実コード実装 (別タスク、Loop
+  Engineering、I1-I6 縦スライス)。実 spend の powered bank sampling run は C-proper AUTHORIZE 後のみ。
 
 ## 9. スコープ / 非スコープ
 
