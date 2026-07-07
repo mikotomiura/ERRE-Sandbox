@@ -1,0 +1,7 @@
+{
+  "v4a_distinct_sampling_count": 29,
+  "v4b_modulated_tick_count": 28,
+  "checksums_match": true,
+  "hard_gate": false,
+  "note": "channel-active annotation (non-gate, §F): sampling-spy on the recomposed per-tick sampling of two Ollama-free replays (seeded vs locomotion-null); pure distinct/modulated counts, no measurement statistic and no Done contribution"
+}
