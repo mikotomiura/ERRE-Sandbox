@@ -486,6 +486,42 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   V4b は sampling-spy 必須 [replay は recorded call を記録し recomposed sampling を捨てる])。次工程 (別タスク、
   Phase 1) = Loop Engineering で実装 (I1 live_v1 harness+λ0 pin+spy / I2 protocol+V1-V5+強化 guard / I3 sealed run
   人手 gate+WSL byte 一致 / I4 replay-verify+V4 on/off annotation)。
+- **ECL v1 Phase 1 実装 + sealed run = GO (PR #59 MERGED、2026-07-07、main=b3ab1c7)**。ADR (PR #58) を binding 前提に
+  Loop Engineering で I1..I3 を実装。**I3 sealed live run = GO (construction validated、閉ループ発火)**: organ を
+  real qwen3:8b で N=32 封印実走 → **Done=V1∧V2∧V3a∧V3b HOLDS** (cross-platform WSL Linux glibc / Windows UCRT で
+  replay_checksum byte 一致 + 全 artifact SHA 一致、6桁量子化が libm drift 吸収) + channel-active annotation
+  **V4a distinct=29 / V4b modulated=28 / V5=32/32** (= 移動が実際に sampling を変調する live 器官を建設、歩行→発散の
+  計測でない)。organ src 改変ゼロ (seeded `LocomotionState(lam=0.0)` を `agent_state` 経由)。measurement 非再入
+  (floor/landscape/verdict/D_loco/divergence 非出力、evidence 非 import、**R-budget 未消費**、holding 不可侵)。
+  λ0/persona/N の実走後 tuning ゼロ。**過去 5 度の計測失敗が一度も持たなかった "live で発火する channel 信号" を
+  arc が初めて取得**。
+- **hardening 後→v1 GO を受けた forward-primary-post-v1 ADR (FROZEN 2026-07-07、doc-only) = R-budget の 2-named-family
+  再設計 + 次 primary = C-design**。決めるべきは 2 つの coupled 決定 = **決定 0 (escalation ratchet / R-budget の
+  再設計、user 問題提起「1-and-done は厳しすぎる、増やしてよいのでは」)** × **決定 1 (次 primary = C 計測再入 /
+  B N体化 / その他)**。**決定 0 = arc-close 再検討 ADR §4.3 (R-budget = arc-wide 最大 1 回、任意 estimand class の
+  valid FAIL→arc-close 自動執行) を superseding** — user 懸念を満たしつつ paradox (反射的に増やせるなら実質 ∞ =
+  規律ゼロ) を殺さない緩和として、single arc-wide budget を **有限・凍結・列挙された 2 つの named measurement family
+  (SPDM-landscape structural-floor family = SPENT / live-channel-conformance family = v1 GO が生んだ第2 family)、
+  各独立 1-and-done** へ置換。**valid FAIL はその family の計測ラインを bounded-close (arc 全体でなく)、両 family
+  exhaust で arc-close 自動執行**。列挙数 2 は「arc が現在 GO/asset precedent を持つ distinct measurement family の
+  数」で原理化 (恣意的 novel-class 許容でなく、general per-class rule 無し、第3 family 化は from-scratch・非反射の
+  独立 ADR を要す)。family を **名前でなく structural invariant で定義** (estimand family / data-generating channel /
+  回避する 5 壁 / banned same-family variants / tie→same-family) し serial-relabeling を封鎖。本 ADR は spend 認可を
+  grant せず (C-design が eligibility 審査)、非反射条項で FAIL 後増額を禁止 (arc-close §1.4 D3 整合)、下限
+  (無限計測禁止・futility・over-read guard・5 機序分離・未知 failure も valid FAIL 受容) を継承。**決定 1 = C-design**
+  (doc-only 計測設計 ADR、C の前段) = arc-close §4.2 が必須化した hard futility 前段を doc-only で撃つ superseding
+  ADR の前半。**budget 未消費・floor 非計算・holding 保全・REFUSE 可能**。live-locomotion channel が 5 壁 (特に
+  壁1&4 near-uniform 低検出力・壁2 semantic 循環) を構造的に回避しうるかを desk-audit + estimand pre-register し、
+  候補ごとに **`AUTHORIZE_C_PROPER` か `REFUSE_MEASUREMENT_LINE` を 1 回だけ出す** (同一 candidate 再起票禁止、
+  REFUSE→計測ライン close か B fallback)。C-proper (今 budget を焼く) は futility 前段を飛ばす letter 違反ゆえ却下、
+  B (N体化) は measurement 可否確認前の substrate 肥大ゆえ後置 (C-design REFUSE 時の principled fallback として保全)。
+  process = /reimagine (α [asset-continuity 起点、per-class budget] 破棄 → 独立 β [deontological 起点、R-budget の
+  目的から演繹] が 8 軸で支配収束 → hybrid) + Codex **Verdict=Revise → 事実誤認 HIGH なし、HIGH3 [N_novel 原理化 /
+  invariant 定義 / C-design 再起票封鎖] + MEDIUM3 + LOW2 全反映後 freeze** (緩和を open な per-class 許容から
+  列挙 named 2-family へ硬化)。**claim 境界 = measurement 規律の再設計 + 計測設計への着手であって floor を測った/
+  divergence を示したでない** (V4a/V4b は construction annotation、R-budget は C-design AUTHORIZE まで未消費)。
+  詳細 = `.steering/20260707-m13-forward-primary-post-v1/design-final.md`。次工程 = C-design ADR (別セッション、
+  Plan+reimagine+Codex、doc-only)。
 
 ## 9. スコープ / 非スコープ
 
