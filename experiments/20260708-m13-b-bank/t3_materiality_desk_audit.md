@@ -108,14 +108,21 @@ spend ast-guard、determinism record-M、T3 materiality desk-audit）。
 
 | 項目 | 記入 |
 |---|---|
-| 判定日 | （未記入） |
-| 判定者 | （未記入） |
-| criterion 1（canonical inputs only）| ☐ PASS ☐ FAIL |
-| criterion 2（M-density 非根拠）| ☐ PASS ☐ FAIL |
-| criterion 3（source-organic + bounded mutation）| ☐ PASS ☐ FAIL |
-| criterion 4（stimulus 判定）| ☐ substrate enrichment（T3 PASS）☐ measurement stimulus（T3 FAIL → line-close）|
-| 総合 verdict | （未記入、統合時 `/cross-review` で埋める） |
-| コメント | （未記入） |
+| 判定日 | 2026-07-08 |
+| 判定者 | 二者 `/cross-review`（code-reviewer Opus + Codex gpt-5.5、TASK-POST） |
+| criterion 1（canonical inputs only）| ☑ PASS |
+| criterion 2（M-density 非根拠）| ☑ PASS |
+| criterion 3（source-organic + bounded mutation）| ☑ PASS |
+| criterion 4（stimulus 判定）| （未記入 — 本 sign-off では下さない、下記コメント参照） |
+| 総合 verdict | 二者 `/cross-review`（code-reviewer Opus + Codex gpt-5.5）通過。criterion 1-3
+  （canonical inputs のみ編集 / bank-density 非根拠 / source-organic + bounded mutation）の充足を
+  両レビューが確認。凍結 context は substrate enrichment と暫定判定（criterion 4 の stimulus
+  判定は本 sign-off では下さない）。最終 user 裁定は PR merge 時。 |
+| コメント | criterion 4（stimulus か substrate enrichment か）は machine test 化できない human
+  judgement gate であり、本 desk-audit の中核 honest teeth（`test_bank_t3_desk_audit_present`,
+  `tests/test_integration/test_ecl_bank_continuity.py`）を維持するため意図的に未確定のまま残す。
+  stimulus 判定が下された場合の執行経路（T3 fail → line-close → 両 family exhaust →
+  arc-close）は上記「criterion 4」節に記録済み。 |
 
-（未記入で可 — 統合時の `/cross-review` で埋める。CLAUDE.md「Codex との連携」節・
-`.claude/skills/cross-review` 参照。）
+（criterion 4 と最終総合判定は user が PR merge 時に確定する — 本欄はその前段の二者
+`/cross-review` 通過記録。CLAUDE.md「Codex との連携」節・`.claude/skills/cross-review` 参照。）

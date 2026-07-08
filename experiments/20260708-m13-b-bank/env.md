@@ -23,7 +23,11 @@
 - **日時 / platform**: 2026-07-08、Windows 11 native（G-GEAR）。
 - **python**: 3.11.15 / **packages**: httpx 0.28.1 / pydantic 2.13.2（`manifest.json` の
   `env_pins` に pin 済み、`--verify` は committed `env_pins` を再利用し再スナップショットしない）。
-- **bank_checksum**: `ae6f67b0bc45424295185f3ba63e9fcc4f2886f3512345a516865c4f76c928ec`。
+- **bank_checksum**: `d3689afc71a523cdc0e23fdadfb5f875fe531447be29cddb5ec756336419ea07`
+  （TASK-POST /cross-review HIGH/H4 の created_at pin 反映で再 bake、旧 checksum
+  `ae6f67b0bc45424295185f3ba63e9fcc4f2886f3512345a516865c4f76c928ec` から変化 —
+  下記「訂正」節参照。`scripts/ecl_bank_capture.py --capture --out-dir
+  experiments/20260708-m13-b-bank/artifacts` で再現、`--verify` で byte 一致確認済み）。
 - **call_cap**: actual=16 / cap=16（`2·M·K` = `2*4*2`、§I4 fail-fast 境界に一致、超過なし）。
 
 ## cross-platform byte 一致（I5-G6、手動実測記録欄 — 本 subagent 実行対象外）
@@ -31,6 +35,28 @@
 `feedback_golden_crossplatform_float_drift` 同手順（6 桁量子化が libm cos/sin drift を吸収する
 はずだが、本 golden は幾何 float を含まない — sampling の 3 float（temperature/top_p/
 repeat_penalty）のみが量子化対象で、zone-pick は categorical（Zone enum）ゆえ float 非感応）。
+
+**訂正（TASK-POST /cross-review HIGH/H4、Codex）**: 上記「libm float 非在→risk≈0」の analytical
+論拠は **動的 timestamp channel を見落としていた**。`bank_fixtures.py` の mirror memory
+（`MemoryEntry`）は修正前 `created_at` を `schemas._utc_now` の `default_factory`（実行時刻）に
+落としており、`retrieval.py` の `(-strength, created_at, id)` タイブレークで 2 mirror memory の
+`created_at` が同一マイクロ秒でタイすると `id` 順、タイしなければ `created_at` 順に**フリップ**
+する — clock 分解能依存の platform 差（libm float drift とは別系統のチャネル）。修正 = mirror
+memory の `created_at` を `BANK_MEMORY_CREATED_AT`（固定 literal 定数、zone ごとに構築順
+index でマイクロ秒オフセット）へ pin し、この動的 timestamp channel を閉じた
+（`bank_fixtures.py::BANK_MEMORY_CREATED_AT` docstring 参照、
+`tests/test_integration/test_ecl_bank_fixtures.py::test_bank_mirror_memory_created_at_pinned` /
+`::test_bank_provenance_pass_bake_deterministic_across_rebuilds` で決定性を検証）。
+
+**empirical 確証（再 bake で実証）**: 修正前の committed golden（`bank_checksum`
+`ae6f67b0...`）を修正後コードで再 bake すると、`bank_records.jsonl` の
+`user_prompt`（memory bullet 順）が実際に変化した ——旧 golden は
+`garden` 先 / `study` 後（`created_at` 実行時刻タイ → `id` 順フォールバック、
+`"bank-mem-garden" < "bank-mem-study"` の辞書順）、新 golden は `study` 先 /
+`garden` 後（構築順 = `BANK_Z_COMP=(STUDY, GARDEN)` 順）。これは Codex の懸念が
+「理論上のリスク」でなく本 golden で**実際に発火していた**ことの直接証拠 ——
+G-GEAR の python 実行時刻分解能では 2 回の `MemoryEntry.model_validate` 呼出が
+同一マイクロ秒でタイし、`id` フォールバックが発動していた。
 
 - **WSL Linux (glibc) 実測**: **本機 (G-GEAR) では未実施** — インストール済み WSL は Ubuntu-22.04 だが
   **WSL1** かつ `/root/erre-sandbox` に synced repo/venv が無く、feat/m13-b-bank の checkout + 依存構築が

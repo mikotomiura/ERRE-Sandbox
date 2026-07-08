@@ -29,6 +29,7 @@ from erre_sandbox.inference.ollama_adapter import ChatResponse
 from erre_sandbox.integration.embodied import bank_fixtures
 from erre_sandbox.integration.embodied.bank_fixtures import (
     BANK_LAMBDA_CTX,
+    BANK_MEMORY_CREATED_AT,
     BANK_NEUTRAL_ZONE,
     BANK_Z_COMP,
     ZONE_BIAS_ENV_VAR,
@@ -455,3 +456,53 @@ async def test_bank_frozen_prompt_contains_symmetric_mirror_memory() -> None:
             "mirror memory contents are not structurally isomorphic across "
             "Z_comp (they differ by more than the zone token)"
         )
+
+
+# --------------------------------------------------------------------------- #
+# H4 — mirror memory created_at pin + cross-platform bake determinism
+# (TASK-POST /cross-review HIGH/H4, Codex)
+# --------------------------------------------------------------------------- #
+
+
+def test_bank_mirror_memory_created_at_pinned() -> None:
+    """Every mirror memory's ``created_at`` is the :data:`BANK_MEMORY_CREATED_AT`
+    literal pin (offset per zone by construction-order index), never the
+    unpinned ``schemas._utc_now`` wall-clock ``default_factory`` — closing the
+    dynamic timestamp channel that could flip ``retrieval.py``'s
+    ``(-strength, created_at, id)`` tie-break across clock resolutions."""
+    substrate = build_competing_cue_substrate()
+    assert len(substrate.memories) == len(BANK_Z_COMP)
+
+    created_ats = [m.entry.created_at for m in substrate.memories]
+    assert len(set(created_ats)) == len(created_ats), (
+        "mirror memory created_at values must be distinct (no tie-break "
+        "fallthrough to id order)"
+    )
+    # Strictly increasing in construction order (index 0 = BANK_Z_COMP[0], ...)
+    # so the retrieval tie-break's ascending-created_at order matches
+    # construction order deterministically, on every platform.
+    assert created_ats == sorted(created_ats)
+    assert created_ats[0] >= BANK_MEMORY_CREATED_AT
+    for created_at in created_ats:
+        assert created_at.tzinfo is not None, "created_at must stay tz-aware"
+
+
+async def test_bank_provenance_pass_bake_deterministic_across_rebuilds() -> None:
+    """Re-baking the frozen context from a *fresh* substrate build (a new
+    ``build_competing_cue_substrate()`` call, mirroring a re-run of
+    ``scripts/ecl_bank_capture.py --capture``) reproduces a byte-identical
+    ``(system_prompt, user_prompt)`` — the H4 fix's own determinism witness:
+    before the pin, two fresh builds' mirror-memory ``created_at`` values were
+    independent wall-clock reads that could tie or not tie depending on clock
+    resolution, silently flipping the rendered memory-bullet order."""
+    embedding_a = _mock_embedding()
+    embedding_b = _mock_embedding()
+    try:
+        frozen_a = await _run_pass(embedding=embedding_a)
+        frozen_b = await _run_pass(embedding=embedding_b)
+    finally:
+        await embedding_a.close()
+        await embedding_b.close()
+
+    assert frozen_a.system_prompt == frozen_b.system_prompt
+    assert frozen_a.user_prompt == frozen_b.user_prompt

@@ -330,6 +330,27 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _row_keys(
+    items: Sequence[BankLlmCallRecord] | Sequence[BankAnnotationRow],
+) -> list[tuple[str, BankCondition, int]]:
+    return [(item.frozen_ctx_id, item.condition, item.mc_index) for item in items]
+
+
+def _bank_rows_aligned(
+    records: Sequence[BankLlmCallRecord], annotation: Sequence[BankAnnotationRow]
+) -> bool:
+    """Row-by-row ``(frozen_ctx_id, condition, mc_index)`` alignment (Codex M1).
+
+    A per-file sha256 match alone cannot catch a row-shuffle *between* the two
+    committed side-files (each file's own bytes can still hash-match its own
+    manifest entry while the rows across the two files no longer correspond
+    1:1). This is a **key-identity** confirmation only — never a count/
+    diversity/aggregate over the annotation content (§I4 opaque raw-row-only
+    boundary stays intact).
+    """
+    return _row_keys(records) == _row_keys(annotation)
+
+
 def _frozen_contexts_from_records(
     records: Sequence[BankLlmCallRecord],
 ) -> tuple[FrozenContext, ...]:
@@ -567,6 +588,17 @@ async def verify(artifact_dir: Path) -> bool:
         print(
             f"[verify] FAIL replay touched a live LLM "
             f"({replay_client.inner_invocations} calls)"
+        )
+    if not _bank_rows_aligned(committed_records, committed_annotation):
+        ok = False
+        print(
+            "[verify] FAIL bank_records.jsonl / bank_annotation.jsonl row-by-row "
+            "(frozen_ctx_id, condition, mc_index) misalignment"
+        )
+    else:
+        print(
+            "[verify] OK bank_records.jsonl / bank_annotation.jsonl "
+            "row-by-row key alignment"
         )
     replayed_jsonl = _records_to_jsonl(replayed)
     if replayed_jsonl != records_text:

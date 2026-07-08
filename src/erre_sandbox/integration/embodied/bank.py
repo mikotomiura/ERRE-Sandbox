@@ -235,30 +235,45 @@ async def run_bank_mloop(
 ) -> tuple[BankLlmCallRecord, ...]:
     """Drive the bake-out M-sampling loop over ``frozen_contexts`` (§I1.4).
 
-    For each ``frozen_ctx`` (in :func:`bank_order_slots` rank order) and each
-    condition in ``("on", "off")``, calls ``llm.chat([system, user],
-    sampling=<frozen sampling>)`` exactly ``m_draws`` times — the frozen
-    ``(system_prompt, user_prompt)`` pair is byte-identical across every draw
-    of a ``(ctx, condition)`` pair (§I2.4 frozen-string invariant; the sampling
-    seed is the only thing that can vary a real backend's output). ``llm`` is
-    any duck-typed chat client (a plain mock, or a
-    :class:`BankRecordReplayClient`) — this function never inspects its type
-    and never touches ``memory.Retriever`` / ``memory.MemoryStore`` (retrieve-
-    count=0 is therefore structural, not observed, §I2.2).
+    Iterates ``frozen_contexts`` **sorted by** ``frozen_ctx_id`` (never the
+    caller-supplied order — TASK-POST /cross-review HIGH/H2, both reviewers:
+    an unsorted input previously desynced the actual ``chat()`` call order
+    from the :func:`bank_sort_key` order :func:`bank_records_to_recorded_calls`
+    assumes, so a subsequent replay silently paired one context's raw
+    response with another context's record). This makes the bake-out call
+    order equal to :func:`bank_order_slots` rank order *unconditionally*, not
+    merely "by construction when the caller happens to pass sorted input".
+
+    For each ``frozen_ctx`` (in that sorted order) and each condition in
+    ``("on", "off")``, calls ``llm.chat([system, user], sampling=<frozen
+    sampling>, think=False)`` exactly ``m_draws`` times — ``think=False`` is
+    forced explicitly (TASK-POST /cross-review HIGH/H3, code-reviewer): the
+    provenance pass (``bank_fixtures.run_provenance_pass`` via
+    ``live.ThinkOffChatClient``) already forces ``think=False``, and without a
+    matching forward here a real backend's default-thinking-on sampling
+    regime would silently diverge from the frozen context's provenance regime
+    (``reference_qwen3_ollama_gotchas`` / ECL v0: ``think=False`` is
+    load-bearing). The frozen ``(system_prompt, user_prompt)`` pair is
+    byte-identical across every draw of a ``(ctx, condition)`` pair (§I2.4
+    frozen-string invariant; the sampling seed is the only thing that can vary
+    a real backend's output). ``llm`` is any duck-typed chat client (a plain
+    mock, or a :class:`BankRecordReplayClient`) — this function never inspects
+    its type and never touches ``memory.Retriever`` / ``memory.MemoryStore``
+    (retrieve-count=0 is therefore structural, not observed, §I2.2).
 
     Pins :data:`~erre_sandbox.integration.embodied.bank_fixtures.ZONE_BIAS_ENV_VAR`
     to ``"0"`` for the whole drive and restores the prior value afterward
     (I2-G5). Returns the records already sorted by :func:`bank_sort_key`
     (I2-G3) — the bake-out iteration order and the sorted order coincide by
     construction (T_on before T_off, ascending ``mc_index``, contexts visited
-    in rank order), so the sort is a determinism-proving no-op rather than a
-    reordering.
+    in sorted rank order), so the sort is a determinism-proving no-op rather
+    than a reordering.
     """
     order_slots = bank_order_slots(frozen_contexts)
     prior = _pin_zone_bias_off()
     try:
         records: list[BankLlmCallRecord] = []
-        for ctx in frozen_contexts:
+        for ctx in sorted(frozen_contexts, key=lambda c: c.frozen_ctx_id):
             messages = (
                 ChatMessage(role="system", content=ctx.system_prompt),
                 ChatMessage(role="user", content=ctx.user_prompt),
@@ -266,7 +281,7 @@ async def run_bank_mloop(
             for condition in _CONDITIONS:
                 sampling = ctx.sampling_on if condition == "on" else ctx.sampling_off
                 for mc_index in range(m_draws):
-                    response = await llm.chat(messages, sampling=sampling)
+                    response = await llm.chat(messages, sampling=sampling, think=False)
                     plan = parse_llm_plan(response.content)
                     records.append(
                         BankLlmCallRecord(

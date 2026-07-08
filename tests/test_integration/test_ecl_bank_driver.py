@@ -256,6 +256,65 @@ async def test_bank_replay_roundtrip() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# H2 — replay determinism independent of frozen_contexts input order
+# (TASK-POST /cross-review HIGH/H2, both reviewers)
+# --------------------------------------------------------------------------- #
+
+
+async def test_bank_mloop_replay_order_matches_input_order() -> None:
+    """Record over an *unsorted* ``(ctx-b, ctx-a)`` input, then replay with the
+    same unsorted input: byte-identical records + ``inner_invocations == 0``.
+
+    Pre-fix, ``run_bank_mloop`` iterated ``frozen_contexts`` in caller-supplied
+    order while :func:`bank.bank_records_to_recorded_calls` assumes the
+    recorded call order equals :func:`bank_sort_key` order (the order the
+    function's *return value* is sorted into) — so an unsorted input silently
+    desynced the actual ``chat()`` request order from the replay stream's
+    stored order, pairing one context's raw response with another context's
+    record. Distinct per-call content (an ``utterance`` counter) makes any
+    such cross-context pairing visible as a record mismatch."""
+    ctx_a = _frozen_ctx("ctx-a")
+    ctx_b = _frozen_ctx("ctx-b")
+    contents = tuple(
+        _plan_json("study").replace('"test"', f'"draw-{i}"') for i in range(8)
+    )
+    record_client = BankRecordReplayClient.for_record(_CyclingChat(contents=contents))
+
+    recorded = await run_bank_mloop(
+        llm=record_client, frozen_contexts=(ctx_b, ctx_a), m_draws=2
+    )
+    assert len(recorded) == 8
+
+    replay_client = BankRecordReplayClient.for_replay(recorded)
+    replayed = await run_bank_mloop(
+        llm=replay_client, frozen_contexts=(ctx_b, ctx_a), m_draws=2
+    )
+
+    assert replay_client.inner_invocations == 0
+    assert replayed == recorded
+
+
+# --------------------------------------------------------------------------- #
+# H3 — M-loop forces think=False (TASK-POST /cross-review HIGH/H3, code-reviewer)
+# --------------------------------------------------------------------------- #
+
+
+async def test_bank_mloop_forces_think_false() -> None:
+    """Every M-loop ``chat()`` call is issued with ``think=False`` — symmetric
+    with the provenance pass's ``live.ThinkOffChatClient`` forcing (real qwen3
+    C-proper: an unforced M-loop would default to thinking-on, diverging its
+    sampling regime from the frozen context's provenance regime,
+    ``reference_qwen3_ollama_gotchas``)."""
+    chat = _CyclingChat(contents=(_plan_json("study"),))
+    ctx = _frozen_ctx("bank-ctx-0")
+
+    await run_bank_mloop(llm=chat, frozen_contexts=(ctx,), m_draws=2)
+
+    assert len(chat.calls) == 4  # 2 draws x 2 conditions
+    assert all(call["think"] is False for call in chat.calls)
+
+
+# --------------------------------------------------------------------------- #
 # I2-G5 — ERRE_ZONE_BIAS_P pinned to "0" for the drive, restored after
 # --------------------------------------------------------------------------- #
 

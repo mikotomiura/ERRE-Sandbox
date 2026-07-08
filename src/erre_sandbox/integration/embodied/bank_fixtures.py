@@ -60,6 +60,7 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
 from erre_sandbox.integration.embodied import live
@@ -79,7 +80,6 @@ from erre_sandbox.schemas import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
-    from datetime import datetime
 
     from erre_sandbox.inference.sampling import ResolvedSampling
     from erre_sandbox.integration.embodied.loop import EclRunResult
@@ -135,6 +135,29 @@ _BANK_MEMORY_COSINE: Final[float] = 0.9
 one :class:`~erre_sandbox.memory.RankedMemory` built directly (kind/strength/
 content assigned, no retriever call, §I1.3), identical on every axis except
 the zone-mirrored ``content`` string."""
+
+BANK_MEMORY_CREATED_AT: Final[datetime] = datetime(2026, 7, 8, 0, 0, 0, tzinfo=UTC)
+"""Fixed pin for every mirror memory's ``MemoryEntry.created_at`` (TASK-POST
+/cross-review HIGH/H4, Codex).
+
+Unpinned, ``MemoryEntry.created_at`` falls to ``schemas._utc_now``'s
+``default_factory`` — a *dynamic* wall-clock read at fixture-construction
+time, never a ``libm`` float (``feedback_golden_crossplatform_float_drift``'s
+sub-ULP drift channel does not apply here). ``retrieval.py``'s
+``_rank_scope`` totally orders same-scope candidates by ``(-strength,
+created_at, id)`` (retrieval.py:250, untouched); every :data:`BANK_Z_COMP`
+mirror memory shares the same ``strength``/``cosine_sim`` (§I1.3), so
+``created_at`` is the live tie-break axis feeding ``retriever.retrieve`` →
+``cognition.prompting.format_memories`` (which itself only stable-sorts by
+``strength``, so a ``created_at``-order flip propagates straight into the
+frozen prompt's memory-bullet order). Two mirror memories built microseconds
+apart from an unpinned wall clock could tie (falling through to the ``id``
+tie-break) on a coarse-resolution clock but *not* tie (true construction-order
+wins) on a fine-resolution one — a clock-resolution-dependent cross-platform
+flip the ``env.md`` "libm float 非在" analysis did not cover. Pinning to this
+literal constant (offset per zone by :func:`build_competing_cue_substrate`'s
+enumeration index) makes the tie-break axis itself a frozen, platform-
+independent literal."""
 
 ZONE_BIAS_ENV_VAR: Final[str] = "ERRE_ZONE_BIAS_P"
 """The env var ``cognition.cycle.CognitionCycle`` reads at construction for
@@ -211,7 +234,7 @@ def build_competing_cue_substrate(
     )
     observations: list[Observation] = []
     memories: list[RankedMemory] = []
-    for zone in BANK_Z_COMP:
+    for index, zone in enumerate(BANK_Z_COMP):
         observations.append(
             AffordanceEvent.model_validate(
                 {
@@ -244,6 +267,10 @@ def build_competing_cue_substrate(
                     f"a vivid recollection formed while lingering near {zone.value}"
                 ),
                 "importance": _BANK_MEMORY_IMPORTANCE,
+                # H4 pin (see BANK_MEMORY_CREATED_AT docstring): a per-zone
+                # microsecond offset by construction-order index, never the
+                # unpinned wall-clock default_factory.
+                "created_at": BANK_MEMORY_CREATED_AT + timedelta(microseconds=index),
             }
         )
         memories.append(
@@ -488,6 +515,7 @@ async def run_provenance_pass(
 __all__ = [
     "BANK_AGENT_ID",
     "BANK_LAMBDA_CTX",
+    "BANK_MEMORY_CREATED_AT",
     "BANK_NEUTRAL_ZONE",
     "BANK_PERSONA_ID",
     "BANK_Z_COMP",

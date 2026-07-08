@@ -22,14 +22,20 @@ from pathlib import Path
 
 from scripts.ecl_bank_capture import (
     BANK_GOLDEN_MANIFEST_VERSION,
+    _annotation_from_jsonl,
+    _bank_rows_aligned,
+    _records_from_jsonl,
     capture,
     verify,
 )
 
+from erre_sandbox.inference.sampling import ResolvedSampling
 from erre_sandbox.integration.embodied.bank import (
     BANK_ANNOTATION_SCHEMA_VERSION,
     BANK_K_GOLDEN,
     BANK_M_GOLDEN,
+    BankAnnotationRow,
+    BankLlmCallRecord,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -167,6 +173,57 @@ async def test_bank_construction_run_mock() -> None:
 # --------------------------------------------------------------------------- #
 # I5-G5 — repro.sh exits 0 (subprocess, one-command Ollama-free reproduction)
 # --------------------------------------------------------------------------- #
+
+
+# --------------------------------------------------------------------------- #
+# M1 — row-by-row (frozen_ctx_id, condition, mc_index) alignment (Codex MEDIUM)
+# --------------------------------------------------------------------------- #
+
+
+def test_bank_rows_aligned_row_by_row() -> None:
+    """``_bank_rows_aligned`` confirms/refutes the two committed side-files'
+    row key sequences positionally — a per-file sha256 match alone cannot
+    catch a row-shuffle *between* ``bank_records.jsonl`` and
+    ``bank_annotation.jsonl`` (each file's own bytes can still hash-match its
+    own manifest entry while the rows no longer correspond 1:1 across files)."""
+    sampling = ResolvedSampling(temperature=0.7, top_p=0.9, repeat_penalty=1.1)
+    records = tuple(
+        BankLlmCallRecord(
+            frozen_ctx_id="ctx-a",
+            condition="on",
+            mc_index=i,
+            system_prompt="s",
+            user_prompt="u",
+            sampling=sampling,
+            raw_response="r",
+            pre_bias_destination_zone=None,
+        )
+        for i in range(2)
+    )
+    aligned_annotation = tuple(
+        BankAnnotationRow(
+            frozen_ctx_id="ctx-a",
+            condition="on",
+            mc_index=i,
+            pre_bias_destination_zone=None,
+            resolved_from="pre_bias_direct_parse",
+        )
+        for i in range(2)
+    )
+    misaligned_annotation = tuple(reversed(aligned_annotation))
+
+    assert _bank_rows_aligned(records, aligned_annotation) is True
+    assert _bank_rows_aligned(records, misaligned_annotation) is False
+
+
+def test_bank_golden_committed_rows_aligned() -> None:
+    """The committed golden bundle's records/annotation rows are aligned
+    row-by-row (the same key-identity check :func:`scripts.ecl_bank_capture.verify`
+    runs internally, asserted here directly against the committed bytes)."""
+    _manifest, records_text, annotation_text = _read_committed()
+    records = _records_from_jsonl(records_text)
+    annotation = _annotation_from_jsonl(annotation_text)
+    assert _bank_rows_aligned(records, annotation) is True
 
 
 def test_bank_golden_repro_script_exits_zero() -> None:

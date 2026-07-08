@@ -52,7 +52,16 @@ _BANK_FILES = (_BANK_SRC, _BANK_FIXTURES_SRC)
 # under the strict bank-module import-allowlist: a thin CLI legitimately imports
 # ``argparse`` / ``sys`` / ``json`` / ``handoff`` that the core modules do not.
 _BANK_CAPTURE_SRC = _REPO_ROOT / "scripts" / "ecl_bank_capture.py"
-_BANK_AGG_FILES = (*_BANK_FILES, _BANK_CAPTURE_SRC)
+# TASK-POST /cross-review HIGH/H1(d) (Codex): ``test_ecl_bank_golden.py`` reads
+# and asserts on the annotation side-file too — it belongs in the aggregation/
+# measurement/opaque scan set alongside the writer, even though (like this
+# module's own import-allowlist scope) it stays outside the *closed import
+# allowlist* check (a test module legitimately imports ``pytest``/``json``/
+# ``subprocess`` the core-module allowlist does not admit).
+_BANK_GOLDEN_TEST_SRC = (
+    _REPO_ROOT / "tests" / "test_integration" / "test_ecl_bank_golden.py"
+)
+_BANK_AGG_FILES = (*_BANK_FILES, _BANK_CAPTURE_SRC, _BANK_GOLDEN_TEST_SRC)
 
 
 def _parse(path: Path) -> ast.Module:
@@ -92,6 +101,15 @@ def test_bank_no_measurement_computation() -> None:
         "zones = {r.pre_bias_destination_zone for r in records}\n",
         "distinct = len(set(r.destination_zone for r in records))\n",
         "zs = {a.zone, b.zone}\n",
+        # TASK-POST /cross-review HIGH/H1(a) (Codex): aliased-import attribute
+        # access must not bypass the ban.
+        "import collections as c\nx = c.Counter()\n",
+        "import math as m\nx = m.log(2)\n",
+        "import itertools as it\ng = it.groupby([])\n",
+        # H1(b) (Codex): dict-subscript zone-key aggregation.
+        'zones = {row["pre_bias_destination_zone"] for row in rows}\n',
+        'distinct = len(set(r["destination_zone"] for r in records))\n',
+        'zs = {row["zone"], other["zone"]}\n',
     ],
 )
 def test_bank_aggregation_guard_catches_banned_patterns(src: str) -> None:
@@ -110,6 +128,12 @@ def test_bank_aggregation_guard_catches_banned_patterns(src: str) -> None:
         "import itertools\nc = itertools.chain([], [])\n",
         "import collections\nq = collections.abc.Sequence\n",
         "from collections.abc import Sequence\n",
+        # H1(a) negative-of-negative: a harmless alias / harmless attribute
+        # access on an aliased module must never false-trip.
+        "import collections.abc\n",
+        "import collections as c\nq = c.abc.Sequence\n",
+        # H1(b) negative-of-negative: a non-zone subscript key stays legal.
+        'prompts = {row["system_prompt"] for row in rows}\n',
     ],
 )
 def test_bank_aggregation_guard_allows_legitimate_patterns(src: str) -> None:
@@ -174,6 +198,46 @@ def test_bank_no_adaptive_topup_catches_nonliteral_default() -> None:
     tree = ast.parse(src)
     with pytest.raises(AssertionError):
         assert_no_adaptive_topup(tree)
+
+
+def test_bank_no_adaptive_topup_catches_nonliteral_kwonly_default() -> None:
+    """H1(c) (TASK-POST /cross-review, Codex): a keyword-only ``m_draws``
+    default was previously invisible to the posonly/args-only scan — the real
+    ``run_bank_mloop(*, ..., m_draws: int = BANK_M_GOLDEN)`` API is
+    keyword-only, so this negative fixture is the precise shape the original
+    guard missed."""
+    src = (
+        "def compute() -> int:\n"
+        "    return 4\n"
+        "\n"
+        "def f(*, m_draws: int = compute()) -> None:\n"
+        "    pass\n"
+    )
+    tree = ast.parse(src)
+    with pytest.raises(AssertionError):
+        assert_no_adaptive_topup(tree)
+
+
+def test_bank_no_adaptive_topup_allows_frozen_kwonly_default() -> None:
+    """Positive fixture mirroring the real API shape: a keyword-only
+    ``m_draws`` default that resolves to a module-level frozen int constant
+    must not false-trip."""
+    src = (
+        "M_GOLDEN: int = 4\n"
+        "\n\n"
+        "def f(*, llm, frozen_contexts, m_draws: int = M_GOLDEN) -> None:\n"
+        "    pass\n"
+    )
+    tree = ast.parse(src)
+    assert_no_adaptive_topup(tree)  # must not raise
+
+
+def test_bank_no_adaptive_topup_allows_required_kwonly_no_default() -> None:
+    """A required keyword-only ``m_draws`` (no default at all) must not
+    false-trip — ``kw_defaults`` carries a ``None`` placeholder for it."""
+    src = "def f(*, m_draws: int) -> None:\n    pass\n"
+    tree = ast.parse(src)
+    assert_no_adaptive_topup(tree)  # must not raise
 
 
 def test_bank_no_adaptive_topup_allows_frozen_constant_default() -> None:
