@@ -1,0 +1,16 @@
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-0","mc_index":0,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-0","mc_index":1,"pre_bias_destination_zone":"garden","resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-0","mc_index":2,"pre_bias_destination_zone":null,"resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-0","mc_index":3,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-0","mc_index":0,"pre_bias_destination_zone":"garden","resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-0","mc_index":1,"pre_bias_destination_zone":null,"resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-0","mc_index":2,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-0","mc_index":3,"pre_bias_destination_zone":"garden","resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-1","mc_index":0,"pre_bias_destination_zone":null,"resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-1","mc_index":1,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-1","mc_index":2,"pre_bias_destination_zone":"garden","resolved_from":"pre_bias_direct_parse"}
+{"condition":"on","frozen_ctx_id":"bank-golden-ctx-1","mc_index":3,"pre_bias_destination_zone":null,"resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-1","mc_index":0,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-1","mc_index":1,"pre_bias_destination_zone":"garden","resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-1","mc_index":2,"pre_bias_destination_zone":null,"resolved_from":"pre_bias_direct_parse"}
+{"condition":"off","frozen_ctx_id":"bank-golden-ctx-1","mc_index":3,"pre_bias_destination_zone":"study","resolved_from":"pre_bias_direct_parse"}
