@@ -78,15 +78,45 @@ def test_capture_verify_roundtrip_and_verdict(tmp_path: Path) -> None:
     assert ok is True
 
     verdict = json.loads((tmp_path / "verdict.json").read_text(encoding="utf-8"))
-    # tiny M/K → not a real spend; scorer must still emit a well-formed verdict.
     assert verdict["scorer_schema_version"] == "ecl-cproper-scorer-1"
-    assert verdict["verdict"] in {
-        "INCONCLUSIVE",
-        "NO_CHANNEL_CONFORMANCE",
-        "INCONCLUSIVE_UNDERPOWERED",
-        "CHANNEL_CONFORMANCE_DETECTED",
-    }
+    # tiny M/K (4·2) is sub-powered → the sealed verify path (require_powered_scale
+    # =True) must refuse to emit a spend verdict (Codex HIGH-2).
+    assert verdict["verdict"] == "INCONCLUSIVE"
+    assert "below-powered-scale" in verdict["reason"][0]
     assert "seed" in verdict["thresholds"]
+
+
+def test_tampered_annotation_is_not_scored(tmp_path: Path) -> None:
+    # Codex HIGH-1: a post-run tamper of the annotation (zone changed, row key kept)
+    # must be caught by the manifest sha256 before the scorer ever runs.
+    rendered = asyncio.run(
+        cap.capture(
+            seed=0,
+            m_draws=4,
+            k_contexts=2,
+            qwen3_model_digest="d",
+            ollama_version="v",
+            vram_gb=16.0,
+            uv_lock_sha256="u",
+            inner_chat=_MloopMockChat(),
+        )
+    )
+    cap._write(tmp_path, rendered)
+    annotation_path = tmp_path / "bank_annotation.jsonl"
+    lines = annotation_path.read_text(encoding="utf-8").splitlines()
+    row = json.loads(lines[0])
+    # flip the zone to a different value while keeping the row key identical, so
+    # replay + key-alignment still pass and only the manifest sha256 catches it.
+    row["pre_bias_destination_zone"] = (
+        "garden" if row["pre_bias_destination_zone"] != "garden" else "study"
+    )
+    lines[0] = json.dumps(row, separators=(",", ":"), sort_keys=True)
+    annotation_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+    ok = asyncio.run(cap.verify(tmp_path))
+    assert ok is False
+    # integrity failed → the scorer never ran → no verdict was written.
+    assert not (tmp_path / "verdict.json").exists()
 
 
 def test_verify_is_ollama_free_and_byte_identical(tmp_path: Path) -> None:

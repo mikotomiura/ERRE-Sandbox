@@ -56,7 +56,12 @@ from erre_sandbox.integration.embodied.bank_fixtures import (
     build_competing_cue_substrate,
     run_provenance_pass,
 )
-from erre_sandbox.integration.embodied.bank_power import K_MIN, M_MIN
+from erre_sandbox.integration.embodied.bank_power import (
+    K_MIN,
+    M_MIN,
+    N_REPLICATES_DEFAULT,
+    POWER_SEED_DEFAULT,
+)
 from erre_sandbox.integration.embodied.bank_scorer import (
     score_bank_annotation,
     verdict_to_dict,
@@ -479,8 +484,35 @@ async def verify(artifact_dir: Path) -> bool:
     frozen_contexts = _frozen_contexts_from_records(committed_records)
     run_config = manifest["run"]
     m_draws = int(run_config["m_draws"])
+    annotation_dicts = _annotation_dicts_from_jsonl(annotation_text)
 
     ok = True
+
+    # -- integrity gate (Codex HIGH-1): the scorer must only ever run on a bundle
+    # whose bytes match the committed manifest. A post-run tamper of the
+    # annotation zones (keeping row keys, so replay + key-alignment still pass)
+    # is caught here by the manifest sha256; on ANY mismatch we do NOT score and
+    # do NOT write verdict.json.
+    for name, text in (
+        ("bank_records.jsonl", records_text),
+        ("bank_annotation.jsonl", annotation_text),
+    ):
+        expected = manifest["artifacts"][name]["sha256"]
+        actual = _sha256(text)
+        if actual != expected:
+            ok = False
+            print(f"[verify] FAIL {name} sha256 {actual} != manifest {expected}")
+        else:
+            print(f"[verify] OK {name} sha256 matches manifest")
+    committed_bank_checksum = _bank_checksum(committed_records)
+    if committed_bank_checksum != manifest.get("bank_checksum"):
+        ok = False
+        print(
+            f"[verify] FAIL bank_checksum {committed_bank_checksum} != "
+            f"manifest {manifest.get('bank_checksum')}"
+        )
+
+    # replay determinism (Ollama-free, byte-identical re-render).
     replay_client = BankRecordReplayClient.for_replay(committed_records)
     replayed = await run_bank_mloop(
         llm=replay_client, frozen_contexts=frozen_contexts, m_draws=m_draws
@@ -490,14 +522,12 @@ async def verify(artifact_dir: Path) -> bool:
         print(
             f"[verify] FAIL replay touched a live LLM ({replay_client.inner_invocations})"
         )
-    replayed_jsonl = _records_to_jsonl(replayed)
-    if replayed_jsonl != records_text:
+    if _records_to_jsonl(replayed) != records_text:
         ok = False
         print("[verify] FAIL bank_records.jsonl byte mismatch on replay")
     else:
-        print(f"[verify] OK bank_checksum {_bank_checksum(replayed)}")
+        print(f"[verify] OK replay byte-identical, bank_checksum {committed_bank_checksum}")
 
-    annotation_dicts = _annotation_dicts_from_jsonl(annotation_text)
     # row-by-row key alignment between records and annotation (never an aggregate)
     committed_annotation_keys = [
         (str(d["frozen_ctx_id"]), str(d["condition"]), int(d["mc_index"]))
@@ -509,8 +539,21 @@ async def verify(artifact_dir: Path) -> bool:
     else:
         print("[verify] OK records / annotation row-by-row key alignment")
 
+    if not ok:
+        # No verdict on an unverified bundle — a tampered/incoherent bundle must
+        # never be scored (forking-paths / integrity seal).
+        print("[verify] CPROPER MISMATCH — integrity failed, scorer NOT run")
+        return False
+
     # frozen scorer application (§CB4.4 verdict) — one-shot, forking-paths seal.
-    verdict = score_bank_annotation(annotation_rows=annotation_dicts, manifest=manifest)
+    # Sealed path pins the Monte-Carlo constants and requires powered scale.
+    verdict = score_bank_annotation(
+        annotation_rows=annotation_dicts,
+        manifest=manifest,
+        n_replicates=N_REPLICATES_DEFAULT,
+        seed=POWER_SEED_DEFAULT,
+        require_powered_scale=True,
+    )
     verdict_dict = verdict_to_dict(verdict)
     verdict_text = handoff.canonical_dumps(verdict_dict) + "\n"
     (artifact_dir / "verdict.json").write_text(
@@ -518,9 +561,8 @@ async def verify(artifact_dir: Path) -> bool:
     )
     print(f"[verify] VERDICT {verdict.verdict}")
     print(f"[verify] reason: {'; '.join(verdict.reason)}")
-
-    print("[verify] CPROPER OK" if ok else "[verify] CPROPER MISMATCH")
-    return ok
+    print("[verify] CPROPER OK")
+    return True
 
 
 # --------------------------------------------------------------------------- #
@@ -539,9 +581,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--out-dir", type=Path, default=_DEFAULT_OUT_DIR)
     parser.add_argument("--artifact-dir", type=Path, default=_DEFAULT_OUT_DIR)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--m-draws", type=int, default=M_MIN)
-    parser.add_argument("--k-contexts", type=int, default=K_MIN)
     parser.add_argument("--qwen3-model-digest", default="unknown")
     parser.add_argument("--ollama-version", default="unknown")
     parser.add_argument("--vram-gb", type=float, default=0.0)
@@ -552,11 +591,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         ok = asyncio.run(verify(args.artifact_dir))
         return 0 if ok else 1
 
+    # The live sealed run is ALWAYS powered (Codex HIGH-2): M/K/seed are pinned to
+    # the pre-registered constants — there is no CLI knob to make a sub-powered
+    # "sealed" bundle. Small dry-runs go through capture()/the test suite, never
+    # through this CLI path.
     rendered = asyncio.run(
         capture(
-            seed=args.seed,
-            m_draws=args.m_draws,
-            k_contexts=args.k_contexts,
+            seed=POWER_SEED_DEFAULT,
+            m_draws=M_MIN,
+            k_contexts=K_MIN,
             qwen3_model_digest=args.qwen3_model_digest,
             ollama_version=args.ollama_version,
             vram_gb=args.vram_gb,

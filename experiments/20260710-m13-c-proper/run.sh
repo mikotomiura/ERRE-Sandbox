@@ -8,10 +8,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# M/K/seed are pinned to the pre-registered powered constants (M_MIN=300, K_MIN=8,
+# seed=20260708) inside the CLI — there is no flag to make a sub-powered sealed run.
 python scripts/ecl_bank_cproper_capture.py --capture \
   --out-dir experiments/20260710-m13-c-proper/artifacts \
-  --m-draws "${BANK_M:-300}" \
-  --k-contexts "${BANK_K:-8}" \
   --qwen3-model-digest "${QWEN3_DIGEST:-unknown}" \
   --ollama-version "${OLLAMA_VERSION:-unknown}" \
   --vram-gb "${VRAM_GB:-0}" \

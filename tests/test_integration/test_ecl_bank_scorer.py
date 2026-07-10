@@ -7,7 +7,10 @@ only through the seeded power gate and the seeded within-context permutation tes
 (``seed=POWER_SEED_DEFAULT``), whose determinism is asserted directly.
 
 These tests freeze the instrument *before* the powered sealed run
-(``.steering/20260710-m13-c-proper/design-final.md`` §S8 seal).
+(``.steering/20260710-m13-c-proper/design-final.md`` §S8 seal). The statistical
+branches run with ``require_powered_scale=False`` (small K keeps them fast and lets
+the underpowered branch be reachable); the powered-scale precondition itself (Codex
+HIGH-2) has its own tests with the default ``True``.
 """
 
 from __future__ import annotations
@@ -22,6 +25,8 @@ from erre_sandbox.integration.embodied.bank_power import (
     ALPHA_SIGNIFICANCE,
     DELTA_TV_MIN,
     H_MIN_BITS,
+    K_MIN,
+    M_MIN,
     POWER_MIN,
     POWER_SEED_DEFAULT,
     RHO_MIN,
@@ -37,7 +42,8 @@ def _rows(
     ctx: str, cond: str, counts: dict[str | None, int], *, start: int = 0
 ) -> list[dict[str, Any]]:
     """Exact-count annotation rows: ``counts`` maps a zone value (or ``None``) to
-    the number of draws with that ``pre_bias_destination_zone``."""
+    the number of draws with that ``pre_bias_destination_zone``. ``mc_index`` runs
+    0..(total-1) within the cell (satisfies the exact-index gate)."""
     rows: list[dict[str, Any]] = []
     mc = start
     for zone_value, n in counts.items():
@@ -62,6 +68,16 @@ def _manifest(
         "run": {"m_draws": m_draws, "k_contexts": k_contexts},
         "env_pins": {"think": think},
     }
+
+
+def _score(rows: list[dict[str, Any]], manifest: dict[str, Any]) -> s.CProperVerdict:
+    """Score a statistical-branch fixture (small scale allowed, fast replicates)."""
+    return s.score_bank_annotation(
+        annotation_rows=rows,
+        manifest=manifest,
+        n_replicates=_NREP,
+        require_powered_scale=False,
+    )
 
 
 def _uniform(m: int) -> dict[str | None, int]:
@@ -89,22 +105,14 @@ def _skew(hi_zone: str, m: int, hi_frac: float) -> dict[str | None, int]:
 
 def test_think_regime_mismatch_is_inconclusive() -> None:
     rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=1, think=True),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=1, think=True))
     assert v.verdict == "INCONCLUSIVE"
     assert "think-regime-mismatch" in v.reason[0]
 
 
 def test_incomplete_draws_is_inconclusive() -> None:
     rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(295))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=1))
     assert v.verdict == "INCONCLUSIVE"
     assert "incomplete-draws" in v.reason[0]
 
@@ -113,11 +121,7 @@ def test_excessive_none_is_inconclusive() -> None:
     # 60% None in the off cell (> NONE_RATE_MAX=0.5) → degenerate estimator.
     on = _rows("c0", "on", _uniform(300))
     off = _rows("c0", "off", {None: 180, **dict.fromkeys(_ZONES[:4], 30)})
-    v = s.score_bank_annotation(
-        annotation_rows=on + off,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(on + off, _manifest(m_draws=300, k_contexts=1))
     assert v.verdict == "INCONCLUSIVE"
     assert "excessive-none" in v.reason[0]
 
@@ -133,11 +137,7 @@ def test_collapse_below_rho_is_no_conformance() -> None:
     rows += _rows("c0", "on", _uniform(10)) + _rows("c0", "off", _uniform(10))
     for ctx in ("c1", "c2", "c3"):
         rows += _rows(ctx, "on", {_ZONES[0]: 10}) + _rows(ctx, "off", {_ZONES[0]: 10})
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=10, k_contexts=4),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=10, k_contexts=4))
     assert v.verdict == "NO_CHANNEL_CONFORMANCE"
     assert v.effective_k == 1
     assert v.rho_hat == pytest.approx(0.25)
@@ -151,14 +151,9 @@ def test_collapse_below_rho_is_no_conformance() -> None:
 
 def test_underpowered_is_non_spend() -> None:
     # m=10, K'=1 → power≈0.1 « 0.8; H high (uniform) so (i) PASS.
-    rows = _rows("c0", "on", _uniform(10)) + _rows(
-        "c0", "off", _skew(_ZONES[0], 10, 0.6)
-    )
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=10, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    on = _rows("c0", "on", _uniform(10))
+    off = _rows("c0", "off", _skew(_ZONES[0], 10, 0.6))
+    v = _score(on + off, _manifest(m_draws=10, k_contexts=1))
     assert v.verdict == "INCONCLUSIVE_UNDERPOWERED"
     assert v.power is not None
     assert v.power < POWER_MIN
@@ -174,11 +169,7 @@ def test_clear_shift_is_detected() -> None:
     for ctx in ("c0", "c1"):
         rows += _rows(ctx, "on", _skew(_ZONES[0], 300, 0.5))
         rows += _rows(ctx, "off", _skew(_ZONES[4], 300, 0.5))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=2),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=2))
     assert v.verdict == "CHANNEL_CONFORMANCE_DETECTED"
     assert v.tv_bar is not None
     assert v.tv_bar >= DELTA_TV_MIN
@@ -198,11 +189,7 @@ def test_no_shift_is_no_conformance() -> None:
     for ctx in ("c0", "c1"):
         rows += _rows(ctx, "on", _uniform(300))
         rows += _rows(ctx, "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=2),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=2))
     assert v.verdict == "NO_CHANNEL_CONFORMANCE"
     assert v.tv_bar == pytest.approx(0.0, abs=1e-9)
     assert v.permutation_reject is False
@@ -221,11 +208,7 @@ def test_opposite_direction_shifts_survive_stratification() -> None:
     rows += _rows("c0", "off", _skew(_ZONES[4], 300, 0.5))
     rows += _rows("c1", "on", _skew(_ZONES[4], 300, 0.5))
     rows += _rows("c1", "off", _skew(_ZONES[0], 300, 0.5))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=2),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=2))
     assert v.verdict == "CHANNEL_CONFORMANCE_DETECTED"
     assert v.tv_bar is not None
     assert v.tv_bar >= DELTA_TV_MIN
@@ -236,17 +219,82 @@ def test_opposite_direction_shifts_survive_stratification() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Known values — entropy, TV, seed determinism, threshold echo
+# Codex HIGH-2 — powered-scale precondition (default require_powered_scale=True)
+# --------------------------------------------------------------------------- #
+
+
+def test_below_powered_scale_is_inconclusive() -> None:
+    # A sub-powered bundle can never yield a spend verdict, even with a clear shift.
+    rows: list[dict[str, Any]] = []
+    for ctx in ("c0", "c1"):
+        rows += _rows(ctx, "on", _skew(_ZONES[0], 300, 0.5))
+        rows += _rows(ctx, "off", _skew(_ZONES[4], 300, 0.5))
+    v = s.score_bank_annotation(
+        annotation_rows=rows,
+        manifest=_manifest(m_draws=300, k_contexts=2),  # K=2 < K_MIN=8
+        n_replicates=_NREP,
+    )
+    assert v.verdict == "INCONCLUSIVE"
+    assert "below-powered-scale" in v.reason[0]
+
+
+def test_missing_m_k_is_inconclusive() -> None:
+    rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(300))
+    v = s.score_bank_annotation(
+        annotation_rows=rows, manifest={"run": {}, "env_pins": {"think": False}}
+    )
+    assert v.verdict == "INCONCLUSIVE"
+    assert "schema-invalid" in v.reason[0]
+
+
+# --------------------------------------------------------------------------- #
+# Codex MEDIUM-1/2 — malformed rows and mc_index integrity
+# --------------------------------------------------------------------------- #
+
+
+def test_malformed_row_is_inconclusive_not_crash() -> None:
+    rows = _rows("c0", "on", _uniform(10))
+    rows.append(
+        {  # unknown zone value → _tally raises → schema-invalid INCONCLUSIVE
+            "frozen_ctx_id": "c0",
+            "condition": "off",
+            "mc_index": 0,
+            "pre_bias_destination_zone": "not_a_zone",
+            "resolved_from": "pre_bias_direct_parse",
+        }
+    )
+    v = _score(rows, _manifest(m_draws=10, k_contexts=1))
+    assert v.verdict == "INCONCLUSIVE"
+    assert "schema-invalid" in v.reason[0]
+
+
+def test_duplicate_mc_index_is_inconclusive() -> None:
+    # right total count, but a duplicated mc_index (0 twice, 9 missing).
+    on = _rows("c0", "on", _uniform(10))
+    off = _rows("c0", "off", _uniform(10))
+    off[-1]["mc_index"] = 0  # collide with the first row's index
+    v = _score(on + off, _manifest(m_draws=10, k_contexts=1))
+    assert v.verdict == "INCONCLUSIVE"
+    assert "mc-index-set-invalid" in v.reason[0]
+
+
+def test_context_id_mismatch_is_inconclusive() -> None:
+    rows = _rows("c0", "on", _uniform(10)) + _rows("c0", "off", _uniform(10))
+    manifest = _manifest(m_draws=10, k_contexts=1)
+    manifest["run"]["context_ids"] = ["a-different-ctx"]
+    v = _score(rows, manifest)
+    assert v.verdict == "INCONCLUSIVE"
+    assert "context-id-mismatch" in v.reason[0]
+
+
+# --------------------------------------------------------------------------- #
+# Known values — entropy, TV, seed determinism, threshold echo, conservative p
 # --------------------------------------------------------------------------- #
 
 
 def test_entropy_of_uniform_is_log2_five() -> None:
     rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=1))
     assert v.per_context_h["c0"] == pytest.approx(math.log2(5), abs=1e-6)
 
 
@@ -254,12 +302,20 @@ def test_tv_known_value() -> None:
     # on: 60% zone0 / 10% each other; off: uniform 20%. TV = 0.5*Σ|Δ| = 0.4.
     on = _rows("c0", "on", {_ZONES[0]: 180, **dict.fromkeys(_ZONES[1:], 30)})
     off = _rows("c0", "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=on + off,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(on + off, _manifest(m_draws=300, k_contexts=1))
     assert v.tv_per_context["c0"] == pytest.approx(0.4, abs=1e-9)
+
+
+def test_conservative_p_value_is_never_zero() -> None:
+    # (ge+1)/(n+1) floor: even a maximal shift keeps p >= 1/(n+1) > 0 (Codex HIGH-3).
+    rows: list[dict[str, Any]] = []
+    for ctx in ("c0", "c1"):
+        rows += _rows(ctx, "on", _skew(_ZONES[0], 300, 0.9))
+        rows += _rows(ctx, "off", _skew(_ZONES[4], 300, 0.9))
+    v = _score(rows, _manifest(m_draws=300, k_contexts=2))
+    assert v.permutation_p_value is not None
+    assert v.permutation_p_value >= 1.0 / (_NREP + 1)
+    assert v.permutation_p_value == pytest.approx(1.0 / (_NREP + 1))
 
 
 def test_seed_determinism() -> None:
@@ -267,16 +323,8 @@ def test_seed_determinism() -> None:
     for ctx in ("c0", "c1"):
         rows += _rows(ctx, "on", _skew(_ZONES[0], 300, 0.35))
         rows += _rows(ctx, "off", _skew(_ZONES[4], 300, 0.35))
-    a = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=2),
-        n_replicates=_NREP,
-    )
-    b = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=2),
-        n_replicates=_NREP,
-    )
+    a = _score(rows, _manifest(m_draws=300, k_contexts=2))
+    b = _score(rows, _manifest(m_draws=300, k_contexts=2))
     assert a.permutation_p_value == b.permutation_p_value
     assert a.power == b.power
     assert a.verdict == b.verdict
@@ -284,27 +332,21 @@ def test_seed_determinism() -> None:
 
 def test_thresholds_echo_bank_power_constants() -> None:
     rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=1))
     t = v.thresholds
     assert t["delta_tv_min"] == DELTA_TV_MIN
     assert t["power_min"] == POWER_MIN
     assert t["h_min_bits"] == H_MIN_BITS
     assert t["rho_min"] == RHO_MIN
     assert t["alpha"] == ALPHA_SIGNIFICANCE
+    assert t["m_min"] == float(M_MIN)
+    assert t["k_min"] == float(K_MIN)
     assert t["seed"] == float(POWER_SEED_DEFAULT)
 
 
 def test_verdict_to_dict_quantises_floats() -> None:
     rows = _rows("c0", "on", _uniform(300)) + _rows("c0", "off", _uniform(300))
-    v = s.score_bank_annotation(
-        annotation_rows=rows,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(rows, _manifest(m_draws=300, k_contexts=1))
     d = s.verdict_to_dict(v)
     # every emitted float carries at most 6 decimals
     for value in d["per_context_h"].values():
@@ -316,10 +358,6 @@ def test_none_draws_excluded_but_within_rate_ok() -> None:
     # 30% None in each cell (< 0.5): excluded from the 5-way but not degenerate.
     on = _rows("c0", "on", {None: 90, **_skew(_ZONES[0], 210, 0.5)})
     off = _rows("c0", "off", {None: 90, **_skew(_ZONES[4], 210, 0.5)})
-    v = s.score_bank_annotation(
-        annotation_rows=on + off,
-        manifest=_manifest(m_draws=300, k_contexts=1),
-        n_replicates=_NREP,
-    )
+    v = _score(on + off, _manifest(m_draws=300, k_contexts=1))
     assert v.verdict != "INCONCLUSIVE"
     assert v.none_rate_max_observed == pytest.approx(0.3, abs=1e-9)
