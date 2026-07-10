@@ -644,6 +644,34 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   measure し、budget 規律が計測ラインを閉じる designed-honest な終端** (§CB5.2 item 5)。詳細 =
   `.steering/20260710-m13-c-proper/design-final.md` + `experiments/20260710-m13-c-proper/`
   (env.md + sealed artifacts、bank_checksum `5e991dd6…`)。
+- **post-C-proper forward disposition = (B) 計測 line CLOSE 維持 + 建設 pivot、reasoning-trace door 保全のみ
+  (FROZEN 2026-07-11、doc-only・非 spend、user ratify)**。C-proper 後の方向を **doc-only の (1) 原因診断 +
+  (2) 計測再入 desk-audit** で確定 (実 spend ゼロ、新規実走なし)。**原因診断 (over-read guard §CB6 付き)**: 確定 =
+  第2リンク (sampling→zone bias) は registered floor で detectable でない / C-proper bank apparatus 上の categorical
+  substrate は健全 (rho=1.0、H(zone|ctx)=0.63–0.75 bit・mean≈0.68、organic scene 非一般化)。効果が弱いのは spread
+  不在でなく「その spread が λ で動かない」から。**並置仮説 (分離せず = C-proper は原因分離 design でない)** =
+  (a) think トレードオフ 〔think=False が plan 保証と引換に sampling→zone 感度を殺す、C-proper 封印 apparatus/
+  think=False bank 内で反証不能、中核テーゼと響く〕/ (b) λ→温度ゲイン微小 (+0.12) / (c) zone 上流決定。
+  **計測再入 desk-audit (re-entry bar 適用)**: 決定的 letter = **§D0.2(D0-e) 非反射条項** — 本タスク = post-C-proper
+  (直前 FAIL への反応) 文脈ゆえ、ここで新 measurement family を起票することは名指しで禁じられた反射経路。加えて
+  measurement family = ちょうど 2 が両 exhaust (残 budget=0、general per-class rule 無し)。**reasoning-trace 候補
+  (推論トレースの発散を測る) の 2 点セット crux** = (a) `<think>` 二相マネジメント (plan 抑制 / trace 捕捉) は Ollama+
+  qwen3 で plausible だが**必要条件**、(b) 非循環 trace-divergence estimand/scorer が**致命欠落** (embedding-novelty は
+  壁2 = ES-4 embedding rarity 自己 anchor 循環 = INVALID_SCORER の再来) → (b) 未達なら死点が「zone 不動」から
+  「trace 発散が循環 scorer で測れない」へ**移動するだけ**。family 分類 = tie→既存 spent family (SPDM-landscape 側
+  or live-channel-conformance 側、どちらも SPENT) or 3rd-family (本文脈で D0-e 禁止)、re-entry item 2 (futility gate)
+  desk-audit FAIL。∴ **本文脈で measurement 再入不能**。**door 保全 (sketch なし、user 裁定 door 粒度)** の発動条件
+  3 点 (すべて必須) = (1) 本 FAIL 文脈から分離した from-scratch・非反射の独立 forward ADR / (2) wall-2 非循環
+  trace-scorer の先行解決 / (3) `<think>` 二相捕捉 enabler。door は「開く」でなく「保全」、実 spend は別タスク +
+  user spend ratify を要す。**process (正典)** = reimagine (v1 機序起点 意図破棄 → v2 seal-letter 起点 独立再生成、
+  両案が「(b) 致命欠落」「本文脈再入不能・door 将来保全」に独立収束) + Codex independent review (**Verdict=
+  Adopt-with-changes、HIGH なし**、MEDIUM 2 [反証不能 scope 限定 / tie 先拡張] + LOW 3 全反映)。**claim 境界
+  (over-read guard §5.1/§CB6、不可侵)** = ✗「効果不在を確定 / reasoning-trace は無価値と裁定 (door 保全) /
+  substrate・中核命題・H4 否定 / 二度と計測しない (door は正規経路で保全) / 原因を特定 (並置仮説) / 新 spend を
+  authorize (doc-only)」。**閉じたのは measurement ライン**であって substrate 建設大方針でも reasoning-trace door
+  でもない。pivot 先候補 (別 scoping タスク) = M2 N体 embodied society (Project Sid [4]) / M3 long-horizon
+  endurance / M4 Godot 可視化。詳細 = `.steering/20260711-m13-post-cproper-disposition/design-final.md`
+  (+ design-v1/v2/comparison / codex-review.md verbatim / decisions.md)。
 
 ## 9. スコープ / 非スコープ
 
