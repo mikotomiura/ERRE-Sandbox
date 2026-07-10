@@ -600,6 +600,27 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   exhaust → arc-close 自動執行、detectability は本 candidate class 内限定で organic 一般化禁止)。詳細 =
   `.steering/20260707-m13-b-impl-design/design-final.md`。次工程 = 反復 bank 実コード実装 (別タスク、Loop
   Engineering、I1-I6 縦スライス)。実 spend の powered bank sampling run は C-proper AUTHORIZE 後のみ。
+- **C-design #2 ADR = bank candidate に `AUTHORIZE_C_PROPER` を FROZEN (2026-07-10、doc-only、user 裁定 + T3
+  criterion 4=substrate enrichment)**。B 反復 bank 実コード完了 (PR #64 MERGED、main=474346c、I1-I6 + cross-review
+  全反映) を受け、materially-different bank candidate (M-sample estimability + competing-cue substrate) が
+  live-channel-conformance family invariant に適合し 5 壁を回避しうるかを desk-audit し hard futility gate を通した
+  C-design #2 (#1 の同 family REFUSE を覆せるか)。**決定的発見 = #1 REFUSE の根は estimability の死点 (v1 は各
+  context 1-sample で P(zone|ctx,T) 推定不能) であり、B の M-sample bank がこれを直接解消**。power worksheet
+  (`bank_power.py`、M=300/K=8/δ=0.10/H_min=0.5/ρ=0.5、proposal 乖離ゼロ) が **壁1&4 を再定位**: near-uniform
+  `[0.2]×5` は power=1.0 (「near-uniform=低検出力」は誤り)、真の死点は **achievable delta_tv→0 (think=False
+  collapse)** = empirical measurement target (collapse demo power≈0.18)。**Codex Verdict=Revise → 事実誤認 1 +
+  HIGH 2 + MEDIUM 3 全反映が決定的に honest 化**: [FACT] ES-4 Phase 0 は validity+power のみでなく
+  `NO_GO_EFFECT_ABSENT` (pilot upper-CI < floor) の effect-absence 分岐を持つ (`verdict_report.py:205`) → bank は
+  validity+power を PASS するが **effect-absence 分岐は pre-spend pilot=spend ゆえ C-proper verdict schema へ
+  relocate (意識的 deviation) = effect-absence risk を R-budget=1 の spend が全面負担**、[HIGH-2] 「(i) doc-only
+  必須なら矛盾」は撤回 → §D1.2 は REFUSE を letter 上許可、AUTHORIZE は design-intent consistency に基づく推奨で
+  **letter 強制でなく user 裁定が決した**。**claim 境界 = bank は #1 REFUSE の根を解消し hard futility gate の
+  validity+power を PASS したであって、live channel が zone を偏らせた/H4 肯定/R-budget を焼いた/効果が存在すると
+  示したでない** (未測定、budget 未消費、firing⇔detectability 混同禁止、AUTHORIZE は effect-present verdict でない)。
+  詳細 = `.steering/20260708-m13-c-design-bank/design-final.md`。次工程 = powered sealed run (別タスク、実 spend
+  live-channel-conformance R-budget=1 消費、think=False 強制・powered M/K・WSL byte 一致・tune-to-pass 封鎖) →
+  verdict schema で evaluation → collapse なら valid FAIL → 両 family exhaust (SPDM-landscape は SPENT) →
+  arc-close 自動執行。
 
 ## 9. スコープ / 非スコープ
 
