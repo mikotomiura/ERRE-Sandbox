@@ -621,6 +621,29 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   live-channel-conformance R-budget=1 消費、think=False 強制・powered M/K・WSL byte 一致・tune-to-pass 封鎖) →
   verdict schema で evaluation → collapse なら valid FAIL → 両 family exhaust (SPDM-landscape は SPENT) →
   arc-close 自動執行。
+- **C-proper powered sealed run = verdict `NO_CHANNEL_CONFORMANCE` (valid FAIL) → arc measurement-line CLOSE
+  (2026-07-10、実 spend、user ratify)**。C-design #2 の `AUTHORIZE_C_PROPER` (PR #65 MERGED) を binding 前提に、
+  凍結 C-proper scorer (Codex Verdict=Revise の HIGH 3 + MEDIUM 3 を実走前に全反映 = integrity seal / powered-scale
+  強制 / permutation p の Phipson–Smyth 保守補正 / schema robustness) を建て、**real qwen3:8b で M=300·K=8
+  (4800 draws)・think=False の powered sealed run** を one-shot 実走し、§CB4.4 verdict schema を実計算した。
+  **結果 = `NO_CHANNEL_CONFORMANCE` (valid FAIL、§CB4.4 branch (b) effect-absent)**: rho_hat=1.0 (8/8 context が
+  H(zone|ctx)=0.63–0.75 bit で (i) PASS) / power=1.0 (effective K'=8、fully powered) / **tv_bar=0.0381 < δ_min=0.10
+  (floor 未達)・permutation p=0.058 > α=0.05 (非有意)**。**決定的発見 = 第2リンク (sampling→zone 選択 bias) は
+  powered な計測下で pre-register 済 floor に detectable でない**。かつ **壁1&4 の「near-uniform=低検出力」は empirical
+  に反証** (near-uniform 基質で power=1.0、rho=1.0)、死点は C-design #2 §CB2.3 の予言どおり **achievable delta_tv→0
+  (think=False regime で T_on≈T_off の zone 分布)** に宿った。**disposition = valid FAIL → live-channel-conformance
+  family bounded-close (R-budget=1 消費) → SPDM-landscape [SPENT] と両 family exhaust → arc §4.3 ratchet で
+  arc measurement-line の CLOSE を自動執行**。**claim 境界 (over-read guard §CB6、不可侵)**: これは
+  **effect-absent measurement** であって ✗「live channel が zone を偏らせない/substrate 否定/H4 否定/中核命題 否定/
+  divergence 否定」ではない — (i) PASS (rho=1.0) が示すとおり substrate は ≥2 zone を license しており、否定されたのは
+  **第2リンクの detectability (本 candidate class 内、pre-register 済 floor)** のみ (firing⇔detectability 分離、
+  5 機序分離、organic scene 非一般化)。**arc-close の意味 (§5.1–5.2 letter)**: M13 situated-3D-substrate arc の
+  **measurement ライン**の bounded 終端 (両 named R-budget family が exhaust) であって、**substrate 建設の大方針
+  (ECL 器官・situated 3D embodiment) の close ではない** (scope 分離)。arc-close は「効果を否定した/floor を測った/
+  中核命題を裁定した」でなく、**valid+powered な計測が第2リンク detectability を registered floor で absent と
+  measure し、budget 規律が計測ラインを閉じる designed-honest な終端** (§CB5.2 item 5)。詳細 =
+  `.steering/20260710-m13-c-proper/design-final.md` + `experiments/20260710-m13-c-proper/`
+  (env.md + sealed artifacts、bank_checksum `5e991dd6…`)。
 
 ## 9. スコープ / 非スコープ
 
