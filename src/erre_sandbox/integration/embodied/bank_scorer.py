@@ -301,32 +301,19 @@ def _inconclusive(
     )
 
 
-def score_bank_annotation(
+def _validity_gate(
+    tallies: dict[str, dict[str, _CellTally]],
     *,
-    annotation_rows: Sequence[Mapping[str, Any]],
-    manifest: Mapping[str, Any],
-    n_replicates: int = N_REPLICATES_DEFAULT,
-    seed: int = POWER_SEED_DEFAULT,
-) -> CProperVerdict:
-    """Compute the §CB4.4 verdict from a bank annotation + its manifest (§S).
-
-    Ordered conjunctive gate (returns the first non-PASS branch reached, mirroring
-    ``es4_actuator.verdict_report.evaluate_phase0``): validity (§S2) → (i) H
-    filter (§S3) → power (§S4) → observed shift (§S5).
-    """
-    run_cfg = manifest.get("run", {})
-    env_pins = manifest.get("env_pins", {})
-
-    tallies = _tally(annotation_rows)
-
-    # -- §S2 validity gate -------------------------------------------------- #
+    env_pins: Mapping[str, Any],
+    m_expected: Any,
+    k_expected: Any,
+) -> CProperVerdict | None:
+    """§S2 validity gate — returns an ``INCONCLUSIVE`` verdict or ``None`` (pass)."""
     if env_pins.get("think") is not False:
         return _inconclusive(
             f"think-regime-mismatch: env_pins.think={env_pins.get('think')!r} != False",
             tallies,
         )
-    m_expected = run_cfg.get("m_draws")
-    k_expected = run_cfg.get("k_contexts")
     if not tallies:
         return _inconclusive("no annotation rows", tallies)
     if k_expected is not None and len(tallies) != int(k_expected):
@@ -348,6 +335,37 @@ def score_bank_annotation(
                     f"none_rate={cell.none_rate:.4f} > {NONE_RATE_MAX}",
                     tallies,
                 )
+    return None
+
+
+def score_bank_annotation(
+    *,
+    annotation_rows: Sequence[Mapping[str, Any]],
+    manifest: Mapping[str, Any],
+    n_replicates: int = N_REPLICATES_DEFAULT,
+    seed: int = POWER_SEED_DEFAULT,
+) -> CProperVerdict:
+    """Compute the §CB4.4 verdict from a bank annotation + its manifest (§S).
+
+    Ordered conjunctive gate (returns the first non-PASS branch reached, mirroring
+    ``es4_actuator.verdict_report.evaluate_phase0``): validity (§S2) → (i) H
+    filter (§S3) → power (§S4) → observed shift (§S5).
+    """
+    run_cfg = manifest.get("run", {})
+    env_pins = manifest.get("env_pins", {})
+    m_expected = run_cfg.get("m_draws")
+
+    tallies = _tally(annotation_rows)
+
+    # -- §S2 validity gate -------------------------------------------------- #
+    invalid = _validity_gate(
+        tallies,
+        env_pins=env_pins,
+        m_expected=m_expected,
+        k_expected=run_cfg.get("k_contexts"),
+    )
+    if invalid is not None:
+        return invalid
 
     none_max = max(
         cell.none_rate for cond in tallies.values() for cell in cond.values()
