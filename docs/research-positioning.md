@@ -672,6 +672,35 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   でもない。pivot 先候補 (別 scoping タスク) = M2 N体 embodied society (Project Sid [4]) / M3 long-horizon
   endurance / M4 Godot 可視化。詳細 = `.steering/20260711-m13-post-cproper-disposition/design-final.md`
   (+ design-v1/v2/comparison / codex-review.md verbatim / decisions.md)。
+- **construction milestone-2 scoping ADR (FROZEN 2026-07-11、doc-only・非 spend、user ratify)**: post-C-proper
+  disposition (B) の建設 pivot の第一歩 = 次に建てる construction milestone を M2/M3/M4 から 1 つ確定する
+  doc-only scoping (実 spend ゼロ、measurement 非再入、holding 不可侵)。**採用 = M2 (N体 embodied society)**。
+  reimagine α (M2-first) × β (M4-first) 独立生成 → **M2 spine + β graft + M3 post** (可視化は既存 live seam の
+  N体 primitive 拡張で焼き、full Blender skinned-humanoid 可視化は M4 残置。M3 endurance は post-M2 =
+  society 成立後、反復幅≠endurance-length)。**二層構造** (Codex HIGH-1 crux 一意化) = **Layer1 (N体 composition
+  + 並行 determinism、機序非依存) が milestone を定義する GATING** + **Layer2 (self-other/mirror functional
+  analog、user 着眼 2026-07-11) は bounded construction attempt** (難航しても M2 を invalidate しない、実装順序
+  Layer1→Layer2 binding)。self-other/mirror は守破離「守=模倣」・cognitive habits と直結し単一 agent では不成立で
+  N体でこそ意味を持つ、文献カード [affect-appraisal 統合サーヴェイ] desk-audit 済 construction 経路。**4 規律
+  (binding)** = (a) construction-mode only (SimToM prompt-level・causal wiring・floor/verdict/scorer なし) /
+  (b) functional analog 語彙 (✗ミラーニューロン実装/神経再現) / (c) 予算ゼロ SimToM prompt 先行 (SOO LoRA は
+  後段 defer) / (d) appraisal measurement (行動予測 H-B / 非同定性 H-C + AppraisalState measurement 部分) 非混入
+  = potential 第3 measurement family (closed-adjacent、非反射独立 ADR 前件、本 scoping 対象外)。**acceptance =
+  causal wiring / boolean のみ** (floor/landscape/verdict/scorer/D_* なし、ECL v0 continuity-gate 同型) =
+  Layer1 は versioned event/decision log 全体 checksum (geometry はその一部) / Layer2 は closed fixture の
+  `depends_on_other_observation ∈ {true,false}` boolean wiring のみ (magnitude/quality/prediction accuracy 禁止)。
+  **決定的な honest 論点 = N体化の非対称**: B-nbody-scoping は N体を *measurement* teeth 非最適で defer 裁定したが
+  本 ADR は *construction* primary — 矛盾でなく目的関数が違い、**measurement-line CLOSE (C-proper) が「N体を
+  defer させていた理由 (measurement 非最適)」を本 construction ADR の選定 non-governing 化した** (cherry-pick でなく
+  CLOSE という事実が前提を変えた、Codex MEDIUM-1 で "moot"→"non-governing/deferred" に弱化・risk は残存)。
+  **claim 境界 = construction milestone 確定 + high-level scope であって floor/divergence/measurement でない**
+  (N体 emergence は construction 現象で measured divergence でない、5 機序分離継承、reasoning-trace door 保全のまま)。
+  process = /reimagine (v1[α] 意図破棄 → 独立 v2[β] → M2 spine + β graft) + Codex **Verdict=Adopt-with-changes**
+  (「M2 選定は後付けでなく measurement-line CLOSE 後の目的関数変更として defensible」是認、HIGH 3 [Layer2 gating
+  一意化 / determinism 対象を event-log 全体へ / replay-log と causal-fixture 分離] + MEDIUM 4 + LOW 3 全反映)。
+  次工程 (別タスク) = 選定 M2 の impl-design ADR (HOW) → 実コード (Loop Engineering)。詳細 =
+  `.steering/20260711-m13-construction-m2-scoping/design-final.md` (+ design-v1/v2/comparison / codex-review.md
+  verbatim / decisions.md)。
 
 ## 9. スコープ / 非スコープ
 
@@ -688,6 +717,13 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
     causal wiring test (measurement 非再入) / handoff schema + Godot dev-only bounded player。**実コード実装
     (I1-I5) は完了 (2026-07-05、feat/ecl-v0)** = 単一 live ループ器官化 + committed handoff golden、measurement
     非再入は ast guard で機械保証、determinism-hardening 候補は superseding ADR に pre-register。
+  - **construction milestone-2 = M2 (N体 embodied society) の建設** — ECL v0/v1 の単一 embodied 器官を N 体へ
+    composition (Layer1 = 並行 determinism、milestone を定義する GATING) + self-other/mirror functional analog を
+    第一 cognitive 次元 (Layer2 = bounded construction attempt、4 規律付き = construction-mode only / functional
+    analog 語彙 / 予算ゼロ SimToM prompt / appraisal measurement 非混入)。可視化は既存 live seam の N体 primitive
+    拡張、full Blender 可視化は M4 残置、M3 endurance は post-M2 (construction scoping FROZEN 2026-07-11、
+    measurement でなく建設、acceptance は causal wiring/boolean のみ、holding 不可侵・R-budget 未消費)。**技術契約
+    (HOW) は impl-design ADR + 実コードで別タスク**。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
