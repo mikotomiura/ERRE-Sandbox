@@ -73,7 +73,23 @@ Godot headless = `resolve_godot()` → `--headless --path godot_project --script
 - I1（guard、最終統合で全新規ファイル走査）。golden fixtures（committed 済）。
 
 ## Status
-TODO
+done
 
 ## Execution Result
-（完了時に記入）
+- 新規 committed `tests/fixtures/m2_society_golden/expected_placement.jsonl`（56 行 = 40 placement + 16 envelope、
+  golden ecl_trace + envelope_stream から純 Python 導出、handoff `canonical_dumps` で serialize、trailing newline）。
+- 新規 `tests/test_integration/test_m4_society_replay.py`（Godot headless = `_godot_helpers.resolve_godot()`、
+  不在時 skip）。生成 helper `build_expected_placement` を test module 内に置き guard スキャン対象化（scripts/ 生成器は不作成）。
+- GODOT_BIN 有りで **実走**（skip でなく）:
+  - I6-G1 `test_headless_dump_matches_expected` PASSED（正規化 dump == committed expected byte 一致、N=2 order_slot 順・trace 通り、offline）。
+  - I6-G2 `test_dump_deterministic` PASSED（同一 golden 2 回 dump byte 一致 + committed 一致）。
+  - I6-G3 `test_scene_loads_five_zones` PASSED（SocietyReplayScene.tscn headless load、zone ノード数=5、Zazen 非含）。
+  - I6-G4 `test_expected_placement_idempotent` PASSED（golden から再生成→committed と byte 一致）。
+- I6-G5: `test_m4_viz_measurement_guard.py` + `test_m4_gpl_spdx_boundary.py` = 36 passed（新規 test module も guard glob で走査、measurement/GPL 表面なし）。
+- HIGH-3 遵守: witness = committed trace 値の pass-through echo、Python 側 `canonical_dumps`（6桁量子化 + sort_keys + compact）で
+  dump/expected 両方を正規化してから比較（Godot runtime float→str を byte witness にしない）。Godot は float 0.0/yaw を "0.0" で emit、
+  正規化後 byte 一致を実測確認。dump は expected と **byte 一致**（role split 誤り / order_slot 誤 assign / float 再フォーマット なし）。
+- `ruff format --check` / `ruff check` = clean、`mypy src` = Success（src 無改変）。
+- 無改変厳守: SocietyReplayViewer.gd / SocietyReplayScene.tscn / golden 他 4 artifact / handoff.py / EclReplayPlayer.gd（全 read-only 使用）。
+- Stop 抵触なし（HOW 越えなし、over-read なし = placement 比較は再現性 witness に留めた）。
+- WSL cross-platform byte 実測は統合 step（pre-push 4 段 + WSL）へ持ち越し（expected は既に量子化済 committed trace 由来ゆえ platform 非依存、構造的に決定的）。
