@@ -1148,9 +1148,23 @@ class WorldRuntime:
 
     # ----- Handlers -----
 
+    def _sorted_runtimes(self) -> list[AgentRuntime]:
+        """Return registered runtimes in deterministic ``sorted(agent_id)`` order.
+
+        Discovery guard (§M4.3 / DA-M2IMPL-4): every Plane1 iteration over
+        ``self._agents`` that can influence the record-mode event/decision log
+        checksum must consume this helper (or an equivalent inline
+        ``sorted(self._agents)`` walk) instead of a bare ``.values()``
+        iteration, so the checksum never depends on ``dict`` insertion order.
+        Live wall-clock cognition (``_on_cognition_tick``/``asyncio.gather``)
+        is out of scope — it is inherently non-deterministic and untouched
+        here (§M4.3 point 4, record-mode sequencing lands in society.py).
+        """
+        return [self._agents[agent_id] for agent_id in sorted(self._agents)]
+
     async def _on_physics_tick(self) -> None:
         dt = self._physics_dt
-        for rt in self._agents.values():
+        for rt in self._sorted_runtimes():
             # Capture the zone BEFORE model_copy overwrites it; otherwise the
             # emitted ZoneTransitionEvent's from_zone would equal to_zone.
             prev_zone = rt.state.position.zone
@@ -1246,7 +1260,7 @@ class WorldRuntime:
         Complexity is ``O(n*(n-1)/2)`` over registered agents — fine for
         the 3-agent MVP scale; revisit if MASTER-PLAN scales agent count.
         """
-        for rt_a, rt_b in combinations(self._agents.values(), 2):
+        for rt_a, rt_b in combinations(self._sorted_runtimes(), 2):
             radius = max(
                 rt_a.persona.behavior_profile.separation_radius_m,
                 rt_b.persona.behavior_profile.separation_radius_m,
@@ -1291,7 +1305,12 @@ class WorldRuntime:
         matches the observation stream's perspective-per-agent semantics
         (each agent gets its own view of what just happened to it).
         """
-        for rt_a, rt_b in combinations(self._agents.values(), 2):
+        for rt_a, rt_b in combinations(self._sorted_runtimes(), 2):
+            # combinations() over a list pre-sorted by agent_id yields every
+            # pair with rt_a.agent_id < rt_b.agent_id — this is the sorted-pair
+            # canonical form (§M4.3 Codex HIGH-3): pair orientation never
+            # leaks the registration/dict-insertion order into which agent's
+            # perspective is appended to ``pending`` first.
             dx = rt_a.state.position.x - rt_b.state.position.x
             dz = rt_a.state.position.z - rt_b.state.position.z
             distance = math.hypot(dx, dz)
@@ -1350,7 +1369,7 @@ class WorldRuntime:
         for zone, props in ZONE_PROPS.items():
             if not props:
                 continue
-            for rt in self._agents.values():
+            for rt in self._sorted_runtimes():
                 ax = rt.state.position.x
                 az = rt.state.position.z
                 for prop in props:
@@ -1398,7 +1417,7 @@ class WorldRuntime:
             return
         previous = self._current_period
         self._current_period = new_period
-        for rt in self._agents.values():
+        for rt in self._sorted_runtimes():
             rt.pending.append(
                 TemporalEvent(
                     tick=rt.state.tick,
@@ -1673,6 +1692,38 @@ class WorldRuntime:
             world_model_runtime=rt.world_model_runtime,
             development_state=rt.development_state,
         )
+
+    async def step_cognition_once(self, agent_id: str) -> CycleResult:
+        """Deterministically step exactly one agent's cognition (record-mode seam).
+
+        Public-ish seam (design-final.md §M4.1, DA-M2IMPL-3, Codex MEDIUM-6):
+        a record-mode sequential driver (``integration.embodied.society``)
+        needs a supported way to step one named agent's cognition without
+        going through the live phase-wheel's due-time / dwell gating and
+        ``asyncio.gather`` fan-out (:meth:`_on_cognition_tick`). This method
+        calls the same ``_step_one``/``_consume_result`` pair the phase-wheel
+        calls per due agent — unconditionally, with no dwell/due-time check —
+        so a record-mode caller that wants every agent to step every window
+        (mirroring ``run_ecl_loop``'s single-agent private direct-drive
+        precedent, ``loop.py`` L624-625) gets a public, non-underscore-prefixed
+        contract instead of reaching into ``_step_one``/``_consume_result``
+        directly. ``_on_cognition_tick`` (the live wall-clock phase-wheel) is
+        completely unchanged — this method is purely additive and does not
+        alter live behaviour or byte determinism of any existing flow.
+
+        Raises ``KeyError`` if ``agent_id`` is not registered (surfaced, not
+        swallowed — a caller bug should fail loudly, matching
+        :meth:`inject_observation`'s existing contract). Unlike the
+        phase-wheel's ``asyncio.gather(..., return_exceptions=True)``, a
+        raised cognition-cycle exception here propagates directly to the
+        caller (matching ``run_ecl_loop``'s un-caught precedent), since
+        record-mode drivers want failures to surface rather than be logged
+        and swallowed.
+        """
+        rt = self._agents[agent_id]
+        result = await self._step_one(rt)
+        self._consume_result(rt, result)
+        return result
 
     def _consume_result(
         self,

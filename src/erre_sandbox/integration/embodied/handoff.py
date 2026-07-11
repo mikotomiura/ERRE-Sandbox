@@ -56,6 +56,7 @@ from erre_sandbox.integration.embodied.loop import (
     EclRunResult,
     EclTraceRow,
     RecordedLlmCall,
+    ecl_trace_checksum,
 )
 from erre_sandbox.schemas import (
     SCHEMA_VERSION,
@@ -71,6 +72,39 @@ from erre_sandbox.schemas import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
+    from typing import Protocol
+
+    from erre_sandbox.integration.embodied.society import SocietyRunResult
+
+    class _GeometrySource(Protocol):
+        """Structural shape :func:`build_manifest`/:func:`render_golden` need.
+
+        Both :class:`~erre_sandbox.integration.embodied.loop.EclRunResult`
+        (legacy, single-agent) and
+        :class:`~erre_sandbox.integration.embodied.society.SocietyRunResult`
+        (M2, N-agent) satisfy this structurally (Codex HIGH-2 M2-path adapter,
+        design-final.md §M7) — no import of ``society`` is needed here, keeping
+        this module's dependency surface unchanged. Declared via read-only
+        ``@property`` (not plain attributes) so both frozen-dataclass results'
+        ``tuple``-typed fields structurally satisfy the covariant ``Sequence``
+        here (a plain-attribute Protocol member is invariant and would reject a
+        ``tuple`` where a mutable ``Sequence`` is nominally expected).
+        """
+
+        @property
+        def run_id(self) -> str: ...
+        @property
+        def rows(self) -> Sequence[EclTraceRow]: ...
+        @property
+        def checksum(self) -> str: ...
+
+    class _EnvelopeSource(Protocol):
+        """Shape :func:`build_envelope_stream` needs (read-only property, see above)."""
+
+        @property
+        def rows(self) -> Sequence[EclTraceRow]: ...
+        @property
+        def decisions(self) -> Sequence[EclDecisionRecord]: ...
 
 # --------------------------------------------------------------------------- #
 # Handoff spec version + frozen convention constants (manifest AC1 pins)
@@ -80,7 +114,25 @@ MANIFEST_SCHEMA_VERSION: Final[str] = "ecl-v0-handoff-2"
 """Handoff artifact schema version — bumped only by a superseding ADR.
 
 Distinct from ``schemas.SCHEMA_VERSION`` (the wire-envelope version): this
-versions the *manifest/golden* shape, not the ControlEnvelope contract."""
+versions the *manifest/golden* shape, not the ControlEnvelope contract.
+
+**Frozen for the legacy (single-agent) path** (Codex HIGH-2, design-final.md
+§M7): ``run_ecl_loop`` + the committed ``tests/fixtures/ecl_v0_golden/`` bundle
+must stay byte-unchanged, so this constant is never mutated in place — the M2
+(N-agent) schema is a *separate*, additive constant
+(:data:`M2_MANIFEST_SCHEMA_VERSION`), not an overwrite of this one."""
+
+M2_MANIFEST_SCHEMA_VERSION: Final[str] = "m2-society-1"
+"""M2 (N-agent society) handoff manifest schema version (Issue 005, §M7).
+
+Versioned-additive sibling of :data:`MANIFEST_SCHEMA_VERSION`: a society-driver
+run's manifest carries this value instead (via :func:`build_manifest`'s
+``manifest_version`` override), while every legacy caller — which never passes
+that argument — keeps emitting :data:`MANIFEST_SCHEMA_VERSION` byte-for-byte
+unchanged. A raw-byte comparison between an ``m2-society-1`` manifest and an
+``ecl-v0-handoff-2`` one is not expected to match (different schema versions,
+DA-M2IMPL-7); the M2 path's acceptance is canonical-projection/adapter
+*semantic* equivalence (Codex HIGH-2), not raw-byte identity."""
 
 COORDINATE_CONVENTION: Final[dict[str, str]] = {
     "up_axis": "Y",
@@ -146,6 +198,21 @@ DETERMINISM_CHECKLIST: Final[tuple[str, ...]] = (
     "to 6 decimals (round is platform-independent), not silently tolerated",
 )
 """Human-auditable determinism guarantees the golden was baked under."""
+
+M2_NBODY_DETERMINISM_CHECKLIST: Final[tuple[str, ...]] = (
+    "agent_id set is frozen for the whole run; order_slot = "
+    "sorted(agent_ids).index(agent_id), stable across every cognition window "
+    "(§M2/§M4.1) — never dict-insertion/registration order",
+    "N-agent cognition steps strictly sequentially in sorted(agent_id) order per "
+    "cognition window (no asyncio.gather fan-out, §M4.1)",
+    "pair-order is canonicalised as sorted_pair=(min(agent_id), max(agent_id)) "
+    "keyed by a collision-free canonical-JSON-array pair_key (§M4.2, Codex "
+    "MEDIUM-7) — never a naive string-join",
+)
+"""Additive M2 (N-agent) determinism pins (Issue 005, §M7), appended to
+:data:`DETERMINISM_CHECKLIST` only in an M2-schema manifest
+(:func:`build_manifest`'s ``extra_determinism_checklist``) — the legacy
+single-agent manifest's checklist is unaffected."""
 
 ENVELOPE_STREAM_KINDS: Final[tuple[str, ...]] = ("speech", "move", "animation")
 """ControlEnvelope kinds the converter emits into the replay stream (design
@@ -532,7 +599,7 @@ def recorded_calls_from_jsonl(text: str) -> list[RecordedLlmCall]:
 # --------------------------------------------------------------------------- #
 
 
-def build_envelope_stream(result: EclRunResult) -> list[dict[str, Any]]:
+def build_envelope_stream(result: _EnvelopeSource) -> list[dict[str, Any]]:
     """Convert the run's recorded envelopes into an ordered replay stream (AC3).
 
     For each cognition tick's :class:`EclDecisionRecord`, the recorded envelope
@@ -596,6 +663,112 @@ def validate_envelope_stream(text: str) -> list[ControlEnvelope]:
 
 
 # --------------------------------------------------------------------------- #
+# M2 path (Issue 005, §M7) — N-agent society handoff, additive, legacy-untouched
+# --------------------------------------------------------------------------- #
+
+
+def project_society_agent_to_ecl_result(
+    result: SocietyRunResult, agent_id: str
+) -> EclRunResult:
+    """Canonical N=1 projection/adapter (Codex HIGH-2 M2 path, §M7).
+
+    Projects one agent's slice of a :class:`SocietyRunResult` into the exact
+    shape :func:`render_golden`/:func:`build_manifest` already understand
+    (:class:`EclRunResult`), so a genuine N=1 society run can be checked for
+    *semantic* equivalence against the pre-existing single-agent
+    ``run_ecl_loop`` path using the unmodified legacy rendering functions —
+    this is the "canonical projection or adapter" the ADR requires instead of
+    raw-byte identity across schema versions (DA-M2IMPL-7). Raises if
+    ``agent_id`` produced no rows (a construction precondition; a silent empty
+    projection would be a false-equivalence witness).
+    """
+    agent_rows = tuple(r for r in result.rows if r.agent_id == agent_id)
+    if not agent_rows:
+        msg = f"no rows for agent_id {agent_id!r} in society run {result.run_id!r}"
+        raise ValueError(msg)
+    if agent_id not in result.decisions:
+        msg = f"no decisions for agent_id {agent_id!r} in society run {result.run_id!r}"
+        raise ValueError(msg)
+    return EclRunResult(
+        run_id=result.run_id,
+        rows=agent_rows,
+        decisions=tuple(result.decisions[agent_id]),
+        checksum=ecl_trace_checksum(agent_rows),
+    )
+
+
+@dataclasses.dataclass(slots=True)
+class _FlatSocietyView:
+    """Adapter: an N-agent result flattened to the shape build_envelope_stream needs.
+
+    Read-only view for :func:`build_envelope_stream` (§M7, Codex HIGH-2 M2
+    path). Not a new schema — reuses :func:`build_envelope_stream` **unmodified**
+    (its own ``order_slot`` derivation already reads each envelope's own embedded
+    ``agent_id``, so flattening ``decisions`` in any stable order is safe).
+    """
+
+    rows: tuple[EclTraceRow, ...]
+    decisions: tuple[EclDecisionRecord, ...]
+
+
+def _flatten_society_decisions(
+    result: SocietyRunResult,
+) -> tuple[EclDecisionRecord, ...]:
+    """Every agent's decisions, concatenated in ``sorted(agent_id)`` order."""
+    flat: list[EclDecisionRecord] = []
+    for agent_id in sorted(result.decisions):
+        flat.extend(result.decisions[agent_id])
+    return tuple(flat)
+
+
+def build_society_envelope_stream(result: SocietyRunResult) -> list[dict[str, Any]]:
+    """N-agent envelope stream (§M7) — reuses :func:`build_envelope_stream` as-is.
+
+    The legacy function's own ``(order_slot, agent_tick, seq)`` sort and
+    per-envelope ``agent_id``-derived ``order_slot`` lookup are already N-agent
+    forward-compatible (handoff.py L553/576/664 lineage); this only supplies the
+    flattened view its signature expects.
+    """
+    view = _FlatSocietyView(
+        rows=tuple(result.rows), decisions=_flatten_society_decisions(result)
+    )
+    return build_envelope_stream(view)
+
+
+def build_society_decisions_stream(result: SocietyRunResult) -> list[dict[str, Any]]:
+    """N-agent ``decisions.jsonl`` stream (§M7, additive M2 schema).
+
+    The legacy ``decisions.jsonl``/:func:`decision_to_dict` shape carries no
+    agent identity (a single-agent-only contract, left **unmodified** — Codex
+    HIGH-2 legacy path); an N-agent handoff needs one, so each per-agent,
+    per-tick decision is wrapped with its ``order_slot`` (frozen
+    ``sorted(agent_ids).index(agent_id)``, §M2) and ``agent_id``, reusing
+    :func:`decision_to_dict` unmodified for the inner payload. Ordered by
+    ``(order_slot, agent_tick)`` — the same convention the envelope stream uses
+    — so the interleave is deterministic regardless of Python dict-iteration
+    order.
+    """
+    agent_ids = sorted(result.decisions)
+    order_slot_map = {agent_id: slot for slot, agent_id in enumerate(agent_ids)}
+    entries: list[dict[str, Any]] = [
+        {
+            "order_slot": order_slot_map[agent_id],
+            "agent_id": agent_id,
+            "decision": decision_to_dict(d),
+        }
+        for agent_id in agent_ids
+        for d in result.decisions[agent_id]
+    ]
+    entries.sort(key=lambda e: (e["order_slot"], e["decision"]["agent_tick"]))
+    return entries
+
+
+def society_decisions_to_jsonl(result: SocietyRunResult) -> str:
+    """Serialise :func:`build_society_decisions_stream` as canonical JSONL."""
+    return _jsonl(build_society_decisions_stream(result))
+
+
+# --------------------------------------------------------------------------- #
 # manifest.json
 # --------------------------------------------------------------------------- #
 
@@ -643,13 +816,15 @@ def golden_run_config() -> dict[str, Any]:
 
 
 def build_manifest(
-    result: EclRunResult,
+    result: _GeometrySource,
     *,
     run_config: dict[str, Any],
     trace_jsonl: str,
     decisions_jsonl: str,
     envelope_jsonl: str,
     env_pins: dict[str, Any] | None = None,
+    manifest_version: str | None = None,
+    extra_determinism_checklist: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Assemble the ``manifest.json`` dict — the AC1 pin surface (design §論点5).
 
@@ -660,12 +835,25 @@ def build_manifest(
     TASK-POST MEDIUM-2). The three ``*_jsonl`` strings supply the per-artifact
     SHA-256 integrity hashes; all convention/checklist pins are module constants
     so they are stable across bakes; ``env_pins`` defaults to a fresh snapshot.
+
+    ``manifest_version`` / ``extra_determinism_checklist`` are additive M2-path
+    overrides (Issue 005, §M7, Codex HIGH-2): every existing (legacy) caller
+    omits both, so ``manifest_version`` stays :data:`MANIFEST_SCHEMA_VERSION`
+    and ``determinism_checklist`` stays exactly :data:`DETERMINISM_CHECKLIST` —
+    byte-for-byte unchanged. A society caller passes
+    ``manifest_version=M2_MANIFEST_SCHEMA_VERSION`` and
+    ``extra_determinism_checklist=M2_NBODY_DETERMINISM_CHECKLIST`` to get the
+    N-agent pins appended.
     """
     agent_ids = sorted({r.agent_id for r in result.rows})
     world_tick_count = max((r.physics_tick_index for r in result.rows), default=-1) + 1
     cognition_ticks = len({r.agent_tick for r in result.rows})
     return {
-        "manifest_version": MANIFEST_SCHEMA_VERSION,
+        "manifest_version": (
+            manifest_version
+            if manifest_version is not None
+            else MANIFEST_SCHEMA_VERSION
+        ),
         "schema_version": SCHEMA_VERSION,
         "run": {
             "run_id": result.run_id,
@@ -680,7 +868,10 @@ def build_manifest(
         },
         "coordinate_convention": COORDINATE_CONVENTION,
         "tick_mapping": TICK_MAPPING,
-        "determinism_checklist": list(DETERMINISM_CHECKLIST),
+        "determinism_checklist": [
+            *DETERMINISM_CHECKLIST,
+            *extra_determinism_checklist,
+        ],
         "canonical_json_rules": CANONICAL_JSON_RULES,
         "env_pins": env_pins if env_pins is not None else capture_env_pins(),
         "artifacts": {
@@ -730,12 +921,24 @@ def render_golden(
     *,
     run_config: dict[str, Any] | None = None,
     env_pins: dict[str, Any] | None = None,
+    manifest_version: str | None = None,
+    extra_determinism_checklist: Sequence[str] = (),
 ) -> dict[str, str]:
     """Render the four handoff artifacts as ``{filename: text}`` (pure).
 
     Deterministic given ``result`` (and ``run_config`` / ``env_pins`` for
     ``manifest.json``): the caller writes the strings, or diffs them against the
     committed golden. ``run_config`` defaults to :func:`golden_run_config`.
+
+    ``manifest_version`` / ``extra_determinism_checklist`` are additive M2-path
+    passthroughs to :func:`build_manifest` (Issue 005, §M7, Codex HIGH-2): every
+    existing (legacy) caller omits both, so this function's byte output is
+    unchanged. A caller checking the M2 path's "canonical projection/adapter"
+    equivalence (e.g. an N=1 society run projected via
+    :func:`project_society_agent_to_ecl_result`) can still reuse this exact
+    legacy-shaped renderer for ``ecl_trace.jsonl``/``decisions.jsonl``/
+    ``envelope_stream.jsonl`` while tagging ``manifest.json`` with the M2
+    schema version instead.
     """
     trace_jsonl = trace_rows_to_jsonl(result.rows)
     decisions_jsonl = decisions_to_jsonl(result.decisions)
@@ -747,6 +950,8 @@ def render_golden(
         decisions_jsonl=decisions_jsonl,
         envelope_jsonl=envelope_jsonl,
         env_pins=env_pins,
+        manifest_version=manifest_version,
+        extra_determinism_checklist=extra_determinism_checklist,
     )
     return {
         "manifest.json": canonical_dumps(manifest) + "\n",
@@ -770,6 +975,54 @@ def write_golden(
         (out_dir / filename).write_text(text, encoding="utf-8", newline="\n")
 
 
+def render_society_golden(
+    result: SocietyRunResult,
+    *,
+    run_config: dict[str, Any],
+    env_pins: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """Render the M2 (N-agent) handoff artifact bundle (Issue 005, §M7).
+
+    Same four-filename shape as :func:`render_golden` (``manifest.json`` /
+    ``ecl_trace.jsonl`` / ``decisions.jsonl`` / ``envelope_stream.jsonl``), but:
+
+    * ``ecl_trace.jsonl`` reuses :func:`trace_rows_to_jsonl` **unmodified**
+      (already N-agent forward-compatible — every row already carries its own
+      ``agent_id``/``order_slot``).
+    * ``decisions.jsonl`` is :func:`society_decisions_to_jsonl` (order_slot +
+      agent_id-tagged wrapper around the unmodified ``decision_to_dict``) since
+      the legacy shape carries no agent identity.
+    * ``envelope_stream.jsonl`` is :func:`build_society_envelope_stream` (a thin
+      flattening adapter that calls the unmodified :func:`build_envelope_stream`).
+    * ``manifest.json`` is tagged :data:`M2_MANIFEST_SCHEMA_VERSION` and its
+      determinism checklist gains :data:`M2_NBODY_DETERMINISM_CHECKLIST`.
+
+    ``run_config`` has no society-specific default (unlike :func:`render_golden`,
+    which defaults to the fixed single-agent :func:`golden_run_config`) — the
+    caller always supplies the actual society run's inputs, since there is no
+    single canonical N-agent config to default to.
+    """
+    trace_jsonl = trace_rows_to_jsonl(result.rows)
+    decisions_jsonl = society_decisions_to_jsonl(result)
+    envelope_jsonl = envelope_stream_to_jsonl(build_society_envelope_stream(result))
+    manifest = build_manifest(
+        result,
+        run_config=run_config,
+        trace_jsonl=trace_jsonl,
+        decisions_jsonl=decisions_jsonl,
+        envelope_jsonl=envelope_jsonl,
+        env_pins=env_pins,
+        manifest_version=M2_MANIFEST_SCHEMA_VERSION,
+        extra_determinism_checklist=M2_NBODY_DETERMINISM_CHECKLIST,
+    )
+    return {
+        "manifest.json": canonical_dumps(manifest) + "\n",
+        "ecl_trace.jsonl": trace_jsonl,
+        "decisions.jsonl": decisions_jsonl,
+        "envelope_stream.jsonl": envelope_jsonl,
+    }
+
+
 def _nonempty(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip()]
 
@@ -789,10 +1042,14 @@ __all__ = [
     "GOLDEN_RUN_ID",
     "GOLDEN_SEED",
     "GOLDEN_TS",
+    "M2_MANIFEST_SCHEMA_VERSION",
+    "M2_NBODY_DETERMINISM_CHECKLIST",
     "MANIFEST_SCHEMA_VERSION",
     "TICK_MAPPING",
     "build_envelope_stream",
     "build_manifest",
+    "build_society_decisions_stream",
+    "build_society_envelope_stream",
     "canonical_dumps",
     "capture_env_pins",
     "decision_to_dict",
@@ -801,8 +1058,11 @@ __all__ = [
     "golden_persona",
     "golden_recorded_calls",
     "golden_run_config",
+    "project_society_agent_to_ecl_result",
     "recorded_calls_from_jsonl",
     "render_golden",
+    "render_society_golden",
+    "society_decisions_to_jsonl",
     "trace_row_from_dict",
     "trace_row_to_dict",
     "trace_rows_from_jsonl",

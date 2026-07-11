@@ -124,12 +124,21 @@ class InMemoryDialogScheduler:
         *,
         envelope_sink: Callable[[ControlEnvelope], None],
         rng: Random | None = None,
+        rng_for_pair: Callable[[str, str], Random] | None = None,
         turn_sink: Callable[[DialogTurnMsg], None] | None = None,
         golden_baseline_mode: bool = False,
         eval_natural_mode: bool = False,
     ) -> None:
         self._sink = envelope_sink
         self._rng = rng if rng is not None else Random()  # noqa: S311 — non-crypto
+        # M2 §M4.2 (I4): when a record-mode driver injects a per-pair named
+        # RNG substream factory, ``tick()``'s auto-fire draw below is keyed
+        # by the co-located pair rather than drawn from one shared sequence
+        # — the draw *site* and *comparison* are unchanged, only which
+        # ``Random`` instance the draw comes from. ``None`` (the default,
+        # every existing live/eval caller) keeps the pre-existing single
+        # shared-``_rng`` behaviour byte-for-byte.
+        self._rng_for_pair = rng_for_pair
         # M8 L6-D1: optional per-turn sink. When bootstrap wires it to a
         # ``MemoryStore.add_dialog_turn_sync`` closure (with agent_id →
         # persona_id resolution baked in), every recorded turn lands in
@@ -231,7 +240,7 @@ class InMemoryDialogScheduler:
             # 60-120 min wall budget under the empirical 120 s/tick rate.
             return None
 
-        dialog_id = _allocate_dialog_id()
+        dialog_id = self._allocate_dialog_id(initiator_id, target_id)
         self._open[dialog_id] = _OpenDialog(
             dialog_id=dialog_id,
             initiator=initiator_id,
@@ -362,7 +371,12 @@ class InMemoryDialogScheduler:
                 and world_tick - last_close < self._effective_cooldown()
             ):
                 continue
-            if self._rng.random() > self.AUTO_FIRE_PROB_PER_TICK:
+            draw_rng = (
+                self._rng_for_pair(a.agent_id, b.agent_id)
+                if self._rng_for_pair is not None
+                else self._rng
+            )
+            if draw_rng.random() > self.AUTO_FIRE_PROB_PER_TICK:
                 continue
             self.schedule_initiate(a.agent_id, b.agent_id, a.zone, world_tick)
 
@@ -423,6 +437,24 @@ class InMemoryDialogScheduler:
         ]
         for did in expired:
             self.close_dialog(did, reason="timeout", tick=world_tick)
+
+    def _allocate_dialog_id(self, initiator_id: str, target_id: str) -> str:
+        """Allocate a dialog id for a newly-admitted ``(initiator_id, target_id)`` pair.
+
+        M2 §M4.2 (I4): when a per-pair named RNG substream factory is
+        injected, the id is drawn deterministically from that same pair's
+        substream (the one ``tick()``'s auto-fire draw above also consumes)
+        instead of :func:`_allocate_dialog_id`'s module-level ``uuid.uuid4()``
+        — a record-mode driver that folds ``dialog_id`` into a reproducibility
+        checksum (:func:`~erre_sandbox.integration.embodied.society.event_log_checksum`)
+        cannot tolerate an unseeded id. ``None`` (the default, every existing
+        live/eval caller) keeps the pre-existing ``uuid4``-based allocation
+        byte-for-byte.
+        """
+        if self._rng_for_pair is not None:
+            draw_rng = self._rng_for_pair(initiator_id, target_id)
+            return f"d_{draw_rng.getrandbits(32):08x}"
+        return _allocate_dialog_id()
 
     def _emit(self, envelope: ControlEnvelope) -> None:
         try:
