@@ -81,7 +81,19 @@ MainScene.tscn 無改変確認。
 - I1（guard が .gd を対象に含む）。
 
 ## Status
-TODO
+done
 
 ## Execution Result
-（完了時に記入）
+実装ファイル（Allowed Files のみ）:
+- `godot_project/scripts/dev/SocietyReplayViewer.gd`（新規、dev-only、`extends SceneTree`、role split 実装）
+- `godot_project/scenes/dev/SocietyReplayScene.tscn`（新規、dev-only 全景 wrapper、5 zone + BaseTerrain + 2 avatar 合成）
+- `godot_project/scripts/dev/README.md`（新 viewer の boot path 追記）
+
+AC 検証（GODOT_BIN = Godot 4.6.2 headless）:
+- **I5-G1** headless dump smoke: exit 0、dump 生成。40 placement 行（physics_tick_index 昇順 → order_slot 昇順）+ 16 envelope 行（speech 8 + animation 8、move 8 は除外、order_slot→agent_tick→seq 昇順）。role split（motion=trace pass-through echo / speech·anim=envelope、move 非位置、join なし）実装。
+- **I5-G2** scene load smoke: `SocietyReplayScene.tscn` を headless で `--quit-after 2` load、exit 0、parse エラー無し。
+- **I5-G3** EclReplayPlayer.gd / MainScene.tscn: `git diff` 空（byte 無改変）。
+- **I5-G4** `pytest -q tests/test_integration/test_m4_viz_measurement_guard.py` = 34 passed（新規 .gd が denylist text scan 通過）。
+- 追加: 同一 golden 2 回 dump = byte 一致（決定性、I6 の本検証は別 issue）。
+
+HOW 越え / Stop 抵触: 無し。EclReplayPlayer.gd / MainScene.tscn / 既存 zone .tscn / AgentAvatar.tscn / BaseTerrain.tscn は全て read-only 参照（無改変）。measurement 面ゼロ。

@@ -1,0 +1,51 @@
+; SocietyReplayScene — M4 situated-3D dev-only whole-view wrapper.
+;
+; Developer-only scene that composes the committed N-body society substrate for
+; interactive observation (M4 impl-design ADR §3.2, design-final-ref.md). It
+; instances the 5 existing zone scenes (read-only reference — each carries its
+; own root transform = ZONE_CENTERS[zone]) plus the shared BaseTerrain ground
+; plane and 2 primitive avatars (order_slot 0/1). Zazen is an ERRE mode, not a
+; Zone, so it is intentionally NOT included (§7).
+;
+; This is a SEPARATE boot path from production ``scenes/MainScene.tscn``
+; (dev/README.md rule 2): no WebSocket / gateway wiring is instantiated here.
+; Motion is driven offline by ``SocietyReplayViewer.gd`` from the committed
+; ``ecl_trace.jsonl`` (never the live WS graph).
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/zones/BaseTerrain.tscn" id="1_terrain"]
+[ext_resource type="PackedScene" path="res://scenes/zones/Study.tscn" id="2_study"]
+[ext_resource type="PackedScene" path="res://scenes/zones/Peripatos.tscn" id="3_peripatos"]
+[ext_resource type="PackedScene" path="res://scenes/zones/Chashitsu.tscn" id="4_chashitsu"]
+[ext_resource type="PackedScene" path="res://scenes/zones/Agora.tscn" id="5_agora"]
+[ext_resource type="PackedScene" path="res://scenes/zones/Garden.tscn" id="6_garden"]
+[ext_resource type="PackedScene" path="res://scenes/agents/AgentAvatar.tscn" id="7_avatar"]
+
+[node name="SocietyReplayScene" type="Node3D"]
+
+[node name="BaseTerrain" parent="." instance=ExtResource("1_terrain")]
+
+[node name="Study" parent="." instance=ExtResource("2_study")]
+
+[node name="Peripatos" parent="." instance=ExtResource("3_peripatos")]
+
+[node name="Chashitsu" parent="." instance=ExtResource("4_chashitsu")]
+
+[node name="Agora" parent="." instance=ExtResource("5_agora")]
+
+[node name="Garden" parent="." instance=ExtResource("6_garden")]
+
+; order_slot 0 avatar (a_alpha) — initial pose near the peripatos origin; the
+; live pose is driven offline by SocietyReplayViewer.gd from ecl_trace.jsonl.
+[node name="Avatar0" parent="." instance=ExtResource("7_avatar")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0, 0, 0)
+
+; order_slot 1 avatar (a_bravo).
+[node name="Avatar1" parent="." instance=ExtResource("7_avatar")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 2, 0, 0)
+
+[node name="DevLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.3, 0.5, 0, 0.86, 0.5, -0.6, -0.4, 0.7, 0, 20, 0)
+
+[node name="DevCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.86, 0.5, 0, -0.5, 0.86, 0, 30, 55)
