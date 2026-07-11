@@ -81,6 +81,10 @@ var/
 _ad_hoc/
 .tmp/
 
+# Blender staging exports (the committed .glb lives under
+# godot_project/assets/environment/; the package-local staging copy is regenerable)
+erre-sandbox-blender/exports/
+
 # LoRA adapter checkpoints (regenerable binaries; manifest/metadata committed)
 checkpoints/
 data/lora/**/adapter_model.safetensors

@@ -78,7 +78,28 @@ worktree で 1 回実走して committed .glb + fingerprint を生成）。idemp
 - I1（SPDX/measurement guard が本 issue の export_peripatos.py を対象に含む）。
 
 ## Status
-TODO
+done
 
 ## Execution Result
-（完了時に記入）
+- **アプローチ**: seed-free 決定的 **geometry nodes**（bmesh 不使用）。ノードグラフ =
+  Branch1: `Mesh Grid`(8×40 歩行路) → `Set Material`(PeripatosPath) /
+  Branch2: `Mesh Line`(index 駆動 8 点、等間隔 offset) → `Instance on Points`(`Mesh Cube`) →
+  `Realize Instances` → `Set Material`(PeripatosMarker) → `Join Geometry` → Group Output。
+  禁止ノード（Distribute Points on Faces / Random Value / 時間依存）不使用。
+  Blender 5.1.2 API 差異 1 件: Principled BSDF はノード名 lookup 不可 → `bl_idname` で検索に修正。
+- **成果物**:
+  - `erre-sandbox-blender/scripts/export_peripatos.py`（GPL-3.0 SPDX header 付、geometry nodes exporter）
+  - `erre-sandbox-blender/scripts/run.sh`（Blender 5.1.2 pin + `--idempotency` 手順、SPDX 付）
+  - `godot_project/assets/environment/peripatos_v1.glb`（committed、7948 bytes、mesh_count=1・2 primitive・225 verts）
+  - `godot_project/assets/environment/peripatos_v1.fingerprint.json`（committed canonical、6桁量子化）
+  - `tests/test_integration/test_m4_zone_glb_fingerprint.py`（zone parametrize 骨格、I4 拡張前提）
+  - `.gitignore`（`erre-sandbox-blender/exports/` 追記）
+- **fingerprint.json（verbatim）**:
+  `{"bbox":{"max":[4,3,20],"min":[-4,0,-20]},"materials":["PeripatosMarker","PeripatosPath"],"mesh_count":1,"total_vertex_count":225}`
+- **AC**:
+  - I3-G1 `test_peripatos_fingerprint`: PASS（committed .glb 純パーサ再計算 → committed fingerprint と byte 一致）
+  - I3-G2 `test_peripatos_glb_not_fail_closed`: PASS（identity node / 無圧縮 / self-contained buffer 実証）
+  - I3-G3 idempotency: **byte-identical**（2 回 bake sha256 一致
+    `5a7366e61a699e72174be70859514d6483d809bfefed66cd7aeb365d73d14519`）
+  - I3-G4 SPDX: PASS（`test_m4_gpl_spdx_boundary.py` 緑）
+- 全 M4 test 44 passed、ruff format/check clean、mypy src Success。
