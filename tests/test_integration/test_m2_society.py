@@ -1,8 +1,8 @@
-"""M2 Layer1 society scheduler tests (Issue 002, design-final.md §M9.1 subset).
+"""M2 Layer1 society scheduler tests (Issues 002/003, design-final.md §M9.1 subset).
 
-Covers the I2-scoped acceptance criteria only (the full §M9.1 GATING suite —
-versioned event/decision log checksum, permutation/checklist discovery guard,
-pair determinism, handoff manifest pins — is deferred to later I-slices, §M11):
+Covers the I2/I3-scoped acceptance criteria only (the full §M9.1 GATING suite —
+permutation/checklist discovery guard, pair determinism, handoff manifest pins —
+is deferred to later I-slices, §M11):
 
 * **I2-G1** ``test_m2_society_n1_canonical_equivalent`` — society driver at
   N=1 is canonical-equivalent to ``run_ecl_loop`` (same underlying schema in
@@ -21,11 +21,25 @@ pair determinism, handoff manifest pins — is deferred to later I-slices, §M11
 * **I2-G5** — existing ECL v0/v1 legacy byte-invariant regression + I1 tick
   tests stay green is verified by the unmodified existing test suites, not
   duplicated here (``run_ecl_loop``/``loop.py`` are untouched by this issue).
+* **I3-G1** ``test_m2_society_event_log_checksum_stable`` — the versioned
+  event/decision-log-wide checksum (:func:`event_log_checksum`) is
+  byte-identical across two runs of the same (seed, recorded Plane 2).
+* **I3-G2** ``test_m2_log_carries_self_other_slot_forward_compat`` — the
+  ``self_other_observation_input`` slot is versioned additive
+  (``None | {schema_version, payload}``); Layer1's ``None`` is checksum-stable
+  and a well-formed non-``None`` envelope changes the digest without raising.
+* **I3-G3** ``test_m2_eventlog_covers_social_cognitive`` — the checksum is
+  sensitive to each of dialog/affinity/memory-mutation/pair-event/decision
+  category, not just geometry.
+* **I3-G4** ``test_m2_eventlog_6digit_quantized`` — event-log floats are
+  quantised to 6 decimals before hashing (cross-platform byte-identity
+  precondition, ``feedback_golden_crossplatform_float_drift``).
 
 NOT a structural-floor verdict; verdict は holding (design-final.md §M9,
 binding anti-over-read guard). This module and its tests compute no
 floor / verdict / scorer / divergence and perform no zone/bin/category
-aggregation — ``ecl_trace_checksum`` proves reproducibility, not a metric.
+aggregation — ``ecl_trace_checksum`` / ``event_log_checksum`` prove
+reproducibility, not a metric.
 
 LLM is mocked (recorded ``LLMPlan`` replay injection, no live Ollama);
 sqlite-vec runs in ``:memory:`` — gating is replay/mock only (§M8 LOW-9).
@@ -33,6 +47,7 @@ sqlite-vec runs in ``:memory:`` — gating is replay/mock only (§M8 LOW-9).
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 import json
 from datetime import UTC, datetime
@@ -42,15 +57,22 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 
+from erre_sandbox.cognition import parse_llm_plan
 from erre_sandbox.inference.ollama_adapter import ChatResponse, OllamaChatClient
 from erre_sandbox.integration.embodied import loop as ecl_loop
 from erre_sandbox.integration.embodied import society
 from erre_sandbox.integration.embodied.loop import (
+    RecordedLlmCall,
     RecordReplayChatClient,
     run_ecl_loop,
 )
 from erre_sandbox.integration.embodied.society import (
+    AffinityDeltaRecord,
+    DialogEventRecord,
+    MemoryMutationRecord,
+    PairEventRecord,
     SocietyRunResult,
+    event_log_checksum,
     run_society_loop,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
@@ -426,3 +448,359 @@ def test_m2_society_module_imports_no_measurement_machinery() -> None:
     forbidden = ("evidence.", "runningness", "landscape_divergence", "spdm")
     for token in forbidden:
         assert token not in text, f"society.py must not reference {token!r}"
+
+
+# --------------------------------------------------------------------------- #
+# I3-G1 — versioned event/decision-log-wide checksum is stable
+# --------------------------------------------------------------------------- #
+
+
+async def test_m2_society_event_log_checksum_stable(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Two runs of the same (seed, recorded Plane 2) yield the same event-log checksum.
+
+    NOT a structural-floor verdict; verdict は holding. This is a reproducibility
+    witness (design-final.md §M4.4), not a metric/floor/verdict — the checksum
+    covers geometry (via ``ecl_trace_checksum``, embedded as ``geometry_checksum``)
+    + pair events + memory mutations + the (always-``None`` in Layer1) self-other
+    slot + per-agent LLMPlan replay, not geometry alone.
+    """
+    agent_states = [
+        make_agent_state(agent_id="a_one", persona_id="kant"),
+        make_agent_state(agent_id="a_two", persona_id="kant"),
+        make_agent_state(agent_id="a_three", persona_id="kant"),
+    ]
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in agent_states}
+
+    run1, _clients1 = await _run_society(agent_states, personas, n_cognition_ticks=3)
+    run2, _clients2 = await _run_society(agent_states, personas, n_cognition_ticks=3)
+
+    assert run1.event_log_checksum == run2.event_log_checksum
+
+    # Recomputing directly from the result's own fields reproduces the stored
+    # digest — ties the public function to what the driver actually returns.
+    for run in (run1, run2):
+        recomputed = event_log_checksum(
+            rows=run.rows,
+            decisions=run.decisions,
+            pair_events=run.pair_events,
+            dialog_events=run.dialog_events,
+            affinity_deltas=run.affinity_deltas,
+            memory_mutations=run.memory_mutations,
+            self_other_observation_input=run.self_other_observation_input,
+        )
+        assert recomputed == run.event_log_checksum
+
+    # Layer1 always reserves the slot as None (§M5.1) and drives no dialog
+    # scheduler / affinity mutation (§M4.4 — those categories are versioned-
+    # additive slots, not yet produced by this driver).
+    assert run1.self_other_observation_input is None
+    assert run1.dialog_events == ()
+    assert run1.affinity_deltas == ()
+    # Reflection is disabled in record mode, but every injected perception is
+    # still committed as an episodic memory each cognition tick — a non-empty
+    # witness that the memory-mutation category is genuinely exercised here.
+    assert run1.memory_mutations, "expected at least one committed episodic row"
+
+    # geometry_checksum is part of the whole, not a stand-in for it: mutating
+    # only a geometry row (unrelated to any other category) changes
+    # event_log_checksum too.
+    mutated_first_row = dataclasses.replace(run1.rows[0], x=run1.rows[0].x + 1.0)
+    mutated_rows = (mutated_first_row, *run1.rows[1:])
+    assert (
+        event_log_checksum(
+            rows=mutated_rows,
+            decisions=run1.decisions,
+            pair_events=run1.pair_events,
+            memory_mutations=run1.memory_mutations,
+        )
+        != run1.event_log_checksum
+    )
+
+
+# --------------------------------------------------------------------------- #
+# I3-G2 — self_other_observation_input: versioned-additive Layer2 seam slot
+# --------------------------------------------------------------------------- #
+
+
+def test_m2_log_carries_self_other_slot_forward_compat() -> None:
+    """The slot is ``None | {schema_version, payload}``; Layer1's None is byte-stable.
+
+    NOT a structural-floor verdict; verdict は holding. Forward-compat means: a
+    well-formed Layer2 envelope changes the digest (it is real checksum input)
+    without raising / requiring a schema break; a malformed envelope is
+    rejected loudly (§M5.1 minimal wire envelope, frozen).
+    """
+    base_kwargs = {
+        "rows": (),
+        "decisions": {},
+        "pair_events": (),
+        "dialog_events": (),
+        "affinity_deltas": (),
+        "memory_mutations": (),
+    }
+
+    none_a = event_log_checksum(**base_kwargs, self_other_observation_input=None)
+    none_b = event_log_checksum(**base_kwargs, self_other_observation_input=None)
+    assert none_a == none_b, "Layer1 None slot must be byte-invariant"
+
+    populated = event_log_checksum(
+        **base_kwargs,
+        self_other_observation_input={
+            "schema_version": "mirror-sim-0",
+            "payload": {"observed_appraisal": "calm"},
+        },
+    )
+    assert populated != none_a, (
+        "a well-formed Layer2 envelope must change the digest (real input, "
+        "not a decorative field)"
+    )
+
+    # A second, differently-valued well-formed envelope also changes the
+    # digest relative to the first (payload content genuinely participates).
+    populated_2 = event_log_checksum(
+        **base_kwargs,
+        self_other_observation_input={
+            "schema_version": "mirror-sim-0",
+            "payload": {"observed_appraisal": "distressed"},
+        },
+    )
+    assert populated_2 != populated
+
+    # Malformed envelopes (missing/extra keys, wrong schema_version type) are
+    # rejected loudly rather than silently hashed.
+    with pytest.raises(ValueError, match="schema_version"):
+        event_log_checksum(
+            **base_kwargs,
+            self_other_observation_input={"payload": {}},
+        )
+    with pytest.raises(ValueError, match="schema_version"):
+        event_log_checksum(
+            **base_kwargs,
+            self_other_observation_input={
+                "schema_version": "mirror-sim-0",
+                "payload": {},
+                "extra": 1,
+            },
+        )
+    with pytest.raises(TypeError, match="schema_version"):
+        event_log_checksum(
+            **base_kwargs,
+            self_other_observation_input={"schema_version": 1, "payload": {}},
+        )
+
+
+# --------------------------------------------------------------------------- #
+# I3-G3 — checksum covers social/cognitive events, not geometry alone
+# --------------------------------------------------------------------------- #
+
+
+def test_m2_eventlog_covers_social_cognitive() -> None:
+    """Mutating any one event category (not just geometry) changes the checksum.
+
+    NOT a structural-floor verdict; verdict は holding. Demonstrates the §M4.4
+    sensitivity requirement directly against :func:`event_log_checksum` (a pure
+    function of its inputs), independent of whether this driver's current
+    wiring produces non-empty dialog/affinity data live.
+    """
+
+    def _decision(raw: str) -> society.EclDecisionRecord:
+        call = RecordedLlmCall(
+            system_prompt="s",
+            user_prompt="u",
+            sampling=None,  # type: ignore[arg-type]
+            response=ChatResponse(
+                content=raw, model="qwen3:8b", eval_count=1, total_duration_ms=0.0
+            ),
+            outcome="ok",
+        )
+        plan = parse_llm_plan(raw)
+        return society.EclDecisionRecord(
+            agent_tick=0,
+            call=call,
+            plan=plan,
+            plan_schema_version="v1",
+            llm_fell_back=False,
+            llm_status="ok",
+            bias_fired=None,
+            move_decision=None,
+            envelope_provenance=(),
+        )
+
+    base_decision = _decision(_PLAN_JSON)
+    other_plan_json = json.dumps(
+        {
+            "thought": "different",
+            "utterance": "違う",
+            "destination_zone": "agora",
+            "animation": "walk",
+        }
+    )
+    mutated_decision = _decision(other_plan_json)
+
+    base_pair = PairEventRecord(
+        tick=1,
+        sorted_pair=("a_one", "a_two"),
+        distance_prev=6.0,
+        distance_now=4.0,
+        crossing="enter",
+    )
+    mutated_pair = PairEventRecord(
+        tick=1,
+        sorted_pair=("a_one", "a_two"),
+        distance_prev=6.0,
+        distance_now=4.5,
+        crossing="enter",
+    )
+
+    base_dialog = DialogEventRecord(
+        dialog_id="d0",
+        tick=1,
+        turn_index=0,
+        speaker_agent_id="a_one",
+        addressee_agent_id="a_two",
+        utterance="ようこそ",
+    )
+    mutated_dialog = DialogEventRecord(
+        dialog_id="d0",
+        tick=1,
+        turn_index=0,
+        speaker_agent_id="a_one",
+        addressee_agent_id="a_two",
+        utterance="さようなら",
+    )
+
+    base_affinity = AffinityDeltaRecord(
+        tick=1,
+        agent_id="a_one",
+        other_agent_id="a_two",
+        delta=0.1,
+        resulting_affinity=0.1,
+    )
+    mutated_affinity = AffinityDeltaRecord(
+        tick=1,
+        agent_id="a_one",
+        other_agent_id="a_two",
+        delta=0.2,
+        resulting_affinity=0.2,
+    )
+
+    base_memory = MemoryMutationRecord(
+        memory_id="ecl-a_one-0000",
+        agent_id="a_one",
+        kind="episodic",
+        content="forage step 0",
+        importance=0.4,
+        created_at="2026-01-01T00:00:00+00:00",
+        tags=(),
+    )
+    mutated_memory = MemoryMutationRecord(
+        memory_id="ecl-a_one-0000",
+        agent_id="a_one",
+        kind="episodic",
+        content="forage step 0 MUTATED",
+        importance=0.4,
+        created_at="2026-01-01T00:00:00+00:00",
+        tags=(),
+    )
+
+    base = event_log_checksum(
+        rows=(),
+        decisions={"a_one": (base_decision,)},
+        pair_events=(base_pair,),
+        dialog_events=(base_dialog,),
+        affinity_deltas=(base_affinity,),
+        memory_mutations=(base_memory,),
+    )
+
+    variants = {
+        "decision": event_log_checksum(
+            rows=(),
+            decisions={"a_one": (mutated_decision,)},
+            pair_events=(base_pair,),
+            dialog_events=(base_dialog,),
+            affinity_deltas=(base_affinity,),
+            memory_mutations=(base_memory,),
+        ),
+        "pair_event": event_log_checksum(
+            rows=(),
+            decisions={"a_one": (base_decision,)},
+            pair_events=(mutated_pair,),
+            dialog_events=(base_dialog,),
+            affinity_deltas=(base_affinity,),
+            memory_mutations=(base_memory,),
+        ),
+        "dialog_event": event_log_checksum(
+            rows=(),
+            decisions={"a_one": (base_decision,)},
+            pair_events=(base_pair,),
+            dialog_events=(mutated_dialog,),
+            affinity_deltas=(base_affinity,),
+            memory_mutations=(base_memory,),
+        ),
+        "affinity_delta": event_log_checksum(
+            rows=(),
+            decisions={"a_one": (base_decision,)},
+            pair_events=(base_pair,),
+            dialog_events=(base_dialog,),
+            affinity_deltas=(mutated_affinity,),
+            memory_mutations=(base_memory,),
+        ),
+        "memory_mutation": event_log_checksum(
+            rows=(),
+            decisions={"a_one": (base_decision,)},
+            pair_events=(base_pair,),
+            dialog_events=(base_dialog,),
+            affinity_deltas=(base_affinity,),
+            memory_mutations=(mutated_memory,),
+        ),
+    }
+
+    for category, checksum in variants.items():
+        assert checksum != base, (
+            f"non-canonical {category!r} must change event_log_checksum "
+            "(social/cognitive event coverage, §M4.4)"
+        )
+    # And every variant differs from every other (no accidental collision
+    # masking one category's mutation with another's).
+    values = [base, *variants.values()]
+    assert len(set(values)) == len(values)
+
+
+# --------------------------------------------------------------------------- #
+# I3-G4 — event-log floats are 6-decimal quantised before hashing
+# --------------------------------------------------------------------------- #
+
+
+def test_m2_eventlog_6digit_quantized() -> None:
+    """Sub-6th-decimal float differences collapse; 6th-decimal differences don't.
+
+    Mirrors ``ecl_trace_checksum``'s cross-platform quantisation rule
+    (``feedback_golden_crossplatform_float_drift``) applied to the event-log
+    categories introduced in this issue (pair-event distances here).
+    """
+
+    def _pair(distance_now: float) -> PairEventRecord:
+        return PairEventRecord(
+            tick=0,
+            sorted_pair=("a_one", "a_two"),
+            distance_prev=5.0,
+            distance_now=distance_now,
+            crossing="enter",
+        )
+
+    kwargs = {"rows": (), "decisions": {}}
+
+    sub_ulp_a = event_log_checksum(pair_events=(_pair(4.1234561),), **kwargs)
+    sub_ulp_b = event_log_checksum(pair_events=(_pair(4.1234564),), **kwargs)
+    assert sub_ulp_a == sub_ulp_b, (
+        "differences beyond the 6th decimal must round away before hashing"
+    )
+
+    distinct_a = event_log_checksum(pair_events=(_pair(4.100001),), **kwargs)
+    distinct_b = event_log_checksum(pair_events=(_pair(4.100002),), **kwargs)
+    assert distinct_a != distinct_b, (
+        "a genuine 6th-decimal difference must still change the digest"
+    )

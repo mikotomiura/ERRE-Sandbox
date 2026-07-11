@@ -34,18 +34,22 @@ aggregation. ``ecl_trace_checksum`` proves reproducibility, not a metric.
 ``cognition_step_order`` is causal-wiring provenance (which agent stepped
 when), not an emergent-behaviour measurement.
 
-Out of scope for this issue (deferred to later I-slices, §M11): the
-versioned event/decision-log-wide checksum (I3, geometry checksum here is
-the whole of it), the ``self_other_observation_input`` slot (I3), per-pair
-named RNG substreams + pair-interaction determinism (I4), handoff N-agent
-schema bump (I5), spend AST guard (I6).
+Issue 003 (I3) additions: the **versioned event/decision-log-wide checksum**
+(:func:`event_log_checksum`, §M4.4 — geometry checksum, i.e.
+:func:`ecl_trace_checksum`, is composed as *part of* it, not replaced by it)
+and the ``self_other_observation_input`` Layer2 seam slot (§M5.1, always
+``None`` here). Out of scope for this issue (deferred to later I-slices,
+§M11): per-pair named RNG substreams + pair-interaction determinism (I4),
+handoff N-agent schema bump (I5), spend AST guard (I6).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import hashlib
+import json
+from dataclasses import asdict, dataclass, field
 from random import Random
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle, parse_llm_plan
 from erre_sandbox.cognition.embodiment import K_ECL, EclRecordMode
@@ -60,14 +64,14 @@ from erre_sandbox.integration.embodied.loop import (
     ecl_trace_checksum,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
-from erre_sandbox.schemas import SCHEMA_VERSION, PerceptionEvent, Zone
+from erre_sandbox.schemas import SCHEMA_VERSION, PerceptionEvent, ProximityEvent, Zone
 from erre_sandbox.world import ManualClock, WorldRuntime
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from datetime import datetime
 
-    from erre_sandbox.cognition import CycleResult
+    from erre_sandbox.cognition import CycleResult, LLMPlan
     from erre_sandbox.cognition.embodiment import EclDestination
     from erre_sandbox.cognition.reflection import Reflector
     from erre_sandbox.inference.ollama_adapter import ChatMessage, ChatResponse
@@ -208,6 +212,382 @@ def _build_society_decision(
 
 
 # --------------------------------------------------------------------------- #
+# Issue 003 (I3) — versioned event/decision-log-wide checksum + self-other seam
+# --------------------------------------------------------------------------- #
+
+M2_EVENTLOG_SCHEMA_VERSION: Final[str] = "m2-eventlog-1"
+"""Versioned-additive schema tag for :func:`event_log_checksum`'s canonical
+projection (§M4.4). Bump on any additive change to the categories folded into
+the checksum (a schema-version-only change is expected to change the digest —
+that is a *construction* schema pin, not a floor/verdict)."""
+
+_EVENTLOG_FLOAT_DECIMALS: Final[int] = 6
+"""6-decimal float quantisation, design-copied from
+``loop._TRACE_FLOAT_DECIMALS`` / ``ecl_trace_checksum`` (not imported — that
+name is module-private to ``loop.py``, mirroring this module's existing
+design-copy convention for ``_default_observation_factory``). Absorbs the same
+sub-ULP cross-platform ``libm`` drift ``ecl_trace_checksum`` documents, so the
+event-log-wide checksum stays byte-identical across platforms too
+(``feedback_golden_crossplatform_float_drift``)."""
+
+
+def _q(value: float) -> float:
+    """Quantise one float to :data:`_EVENTLOG_FLOAT_DECIMALS` decimals."""
+    return round(value, _EVENTLOG_FLOAT_DECIMALS)
+
+
+@dataclass(frozen=True, slots=True)
+class PairEventRecord:
+    """One canonical pair-interaction event (proximity crossing, §M4.4).
+
+    Harvested read-only from ``WorldRuntime``'s per-agent pending-observation
+    queue (:func:`_harvest_pair_events`) right after a cognition window's
+    physics-tick block, before the next window's ``step_cognition_once`` call
+    drains it (``world/tick.py`` ``_step_one``, unmodified). Only the
+    canonical ``agent_id < other_agent_id`` side of each crossing is kept —
+    ``_fire_proximity_events`` (already sorted-pair per §M4.3) appends the
+    same crossing to *both* agents' queues with the ids swapped, so keeping
+    one side avoids double-counting.
+
+    Separation nudges (``_apply_separation_force``) apply no discrete
+    ``Observation`` event — only a position mutation already reflected in the
+    ``EclTraceRow`` geometry rows folded into ``geometry_checksum`` — so "pair
+    events (proximity/separation)" (§M4.4) resolves to proximity-crossing
+    records here; separation's effect is witnessed through geometry, not a
+    second event stream.
+    """
+
+    tick: int
+    sorted_pair: tuple[str, str]
+    distance_prev: float
+    distance_now: float
+    crossing: str
+
+
+@dataclass(frozen=True, slots=True)
+class DialogEventRecord:
+    """Versioned-additive dialog-turn slot (§M4.4).
+
+    Not produced by this driver: ``run_society_loop`` never attaches a
+    ``DialogScheduler``/``DialogTurnGenerator`` (those wire into the live
+    phase-wheel's ``_on_cognition_tick``, which this record-mode driver never
+    calls — §M4.1). Every :func:`run_society_loop` result therefore carries an
+    empty ``dialog_events`` tuple; the type exists so the checksum schema is
+    forward-compatible once a record-mode dialog driver is wired (a later
+    issue), without a schema break.
+    """
+
+    dialog_id: str
+    tick: int
+    turn_index: int
+    speaker_agent_id: str
+    addressee_agent_id: str
+    utterance: str
+
+
+@dataclass(frozen=True, slots=True)
+class AffinityDeltaRecord:
+    """Versioned-additive affinity-delta slot (§M4.4).
+
+    Not produced by this driver: ``run_society_loop`` never calls
+    ``WorldRuntime.apply_affinity_delta`` (that is a bootstrap-driven mutation
+    in the current codebase). Every :func:`run_society_loop` result therefore
+    carries an empty ``affinity_deltas`` tuple; the type exists so the
+    checksum schema is forward-compatible once a record-mode driver applies
+    affinity mutations, without a schema break.
+    """
+
+    tick: int
+    agent_id: str
+    other_agent_id: str
+    delta: float
+    resulting_affinity: float
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryMutationRecord:
+    """One committed memory-store row (§M4.4), read-only after the run.
+
+    Harvested from ``episodic_memory`` only (:func:`_collect_memory_mutations`)
+    — reflection is disabled in this driver's ``EclRecordMode``
+    (``reflection_disabled=True``), so semantic/procedural/relational rows are
+    never written in Layer1 record mode.
+    """
+
+    memory_id: str
+    agent_id: str
+    kind: str
+    content: str
+    importance: float
+    created_at: str
+    tags: tuple[str, ...]
+
+
+SelfOtherObservationInput = dict[str, Any] | None
+"""Layer2 seam wire envelope (§M5.1, binding, versioned additive):
+``None | {"schema_version": str, "payload": object}``. Layer1
+(:func:`run_society_loop`) always passes ``None``. The concrete ``payload``
+field composition is Layer2 scope (deferred to the mirror-sim impl-design ADR,
+§M5.4) and is deliberately NOT modelled beyond this envelope shape here
+(引っ張り禁止 — pulling that design forward is out of scope for this issue)."""
+
+
+def _validate_self_other_slot(value: SelfOtherObservationInput) -> None:
+    """Enforce the frozen minimal wire envelope (§M5.1) before hashing.
+
+    ``None`` is always valid (the Layer1 case). A non-``None`` value must be
+    exactly ``{"schema_version": str, "payload": object}`` — no more, no
+    fewer keys — so a malformed envelope fails loudly here rather than being
+    silently hashed as if it were valid Layer2 seam data.
+    """
+    if value is None:
+        return
+    if set(value) != {"schema_version", "payload"}:
+        msg = (
+            "self_other_observation_input must be None or exactly "
+            f'{{"schema_version": str, "payload": object}}; got keys {sorted(value)}'
+        )
+        raise ValueError(msg)
+    if not isinstance(value["schema_version"], str):
+        msg = "self_other_observation_input['schema_version'] must be a str"
+        raise TypeError(msg)
+
+
+def _pair_event_projection(e: PairEventRecord) -> dict[str, Any]:
+    return {
+        "tick": e.tick,
+        "sorted_pair": list(e.sorted_pair),
+        "distance_prev": _q(e.distance_prev),
+        "distance_now": _q(e.distance_now),
+        "crossing": e.crossing,
+    }
+
+
+def _dialog_event_projection(e: DialogEventRecord) -> dict[str, Any]:
+    return {
+        "dialog_id": e.dialog_id,
+        "tick": e.tick,
+        "turn_index": e.turn_index,
+        "speaker_agent_id": e.speaker_agent_id,
+        "addressee_agent_id": e.addressee_agent_id,
+        "utterance": e.utterance,
+    }
+
+
+def _affinity_delta_projection(e: AffinityDeltaRecord) -> dict[str, Any]:
+    return {
+        "tick": e.tick,
+        "agent_id": e.agent_id,
+        "other_agent_id": e.other_agent_id,
+        "delta": _q(e.delta),
+        "resulting_affinity": _q(e.resulting_affinity),
+    }
+
+
+def _memory_mutation_projection(e: MemoryMutationRecord) -> dict[str, Any]:
+    return {
+        "memory_id": e.memory_id,
+        "agent_id": e.agent_id,
+        "kind": e.kind,
+        "content": e.content,
+        "importance": _q(e.importance),
+        "created_at": e.created_at,
+        "tags": list(e.tags),
+    }
+
+
+_PLAN_FLOAT_FIELDS: Final[tuple[str, ...]] = (
+    "valence_delta",
+    "arousal_delta",
+    "motivation_delta",
+    "importance_hint",
+)
+"""``LLMPlan``'s float fields (``cognition/parse.py``) — quantised the same
+way every other float in the projection is (§M4.4's blanket 6-decimal rule),
+even though these are parsed straight from decimal JSON text (deterministic,
+no libm involved) rather than a computed trig value: uniform treatment keeps
+the "every float in the projection is quantised" invariant simple to audit."""
+
+
+def _quantized_plan_dump(plan: LLMPlan) -> dict[str, Any]:
+    dumped = plan.model_dump(mode="json")
+    for key in _PLAN_FLOAT_FIELDS:
+        if key in dumped and dumped[key] is not None:
+            dumped[key] = _q(dumped[key])
+    return dumped
+
+
+def _decision_projection(d: EclDecisionRecord) -> dict[str, Any]:
+    """Canonical per-decision projection (per-agent LLMPlan replay, §M4.4).
+
+    Excludes ``move_decision`` (``EclDestination``): its resolved fields are
+    already the ``EclTraceRow.move_*`` columns folded into
+    ``geometry_checksum`` (§M4.4, "geometry checksum is part of it"), so
+    repeating it here would double-count the same provenance rather than add
+    a new witness.
+    """
+    return {
+        "agent_tick": d.agent_tick,
+        "call_outcome": d.call.outcome,
+        "raw_response": d.call.raw_response,
+        "plan": _quantized_plan_dump(d.plan) if d.plan is not None else None,
+        "plan_schema_version": d.plan_schema_version,
+        "llm_fell_back": d.llm_fell_back,
+        "llm_status": d.llm_status,
+        "bias_fired": (
+            {**asdict(d.bias_fired), "bias_p": _q(d.bias_fired.bias_p)}
+            if d.bias_fired is not None
+            else None
+        ),
+        "envelope_provenance": list(d.envelope_provenance),
+    }
+
+
+def event_log_checksum(
+    *,
+    rows: Sequence[EclTraceRow],
+    decisions: Mapping[str, Sequence[EclDecisionRecord]],
+    pair_events: Sequence[PairEventRecord] = (),
+    dialog_events: Sequence[DialogEventRecord] = (),
+    affinity_deltas: Sequence[AffinityDeltaRecord] = (),
+    memory_mutations: Sequence[MemoryMutationRecord] = (),
+    self_other_observation_input: SelfOtherObservationInput = None,
+) -> str:
+    """SHA-256 over the **versioned event/decision log as a whole** (§M4.4).
+
+    NOT a structural-floor verdict; verdict は holding (design-final.md §M9,
+    binding anti-over-read guard). This proves *reproducibility* across the
+    full construction event set — geometry (``EclTraceRow``, via
+    :func:`ecl_trace_checksum`, composed as part of the whole, not replaced by
+    it) + dialog events + affinity deltas + memory mutations + pair events +
+    the ``self_other_observation_input`` slot (§M5.1, always ``None`` in
+    Layer1) + per-agent ``LLMPlan`` replay (``EclDecisionRecord``) — not a
+    metric, floor, or verdict.
+
+    Every category is canonicalised the same way ``ecl_trace_checksum`` does:
+    a stable JSON projection (``sort_keys=True`` + compact ``separators`` +
+    ``ensure_ascii=False`` + ``allow_nan=False`` + 6-decimal float
+    quantisation, :data:`_EVENTLOG_FLOAT_DECIMALS`) over an explicit
+    full-order-key sort of each event list (§M4.1's
+    ``(world_tick, order_slot, agent_tick, seq)`` family — here ``tick``
+    (+ ``sorted_pair``/``dialog_id``/``agent_id`` tie-breaks) and
+    ``memory_id`` (already deterministic, ``ecl-{agent_id}-{tick:04d}``) — so
+    a byte-identical re-run under the same (seed, recorded Plane 2) yields a
+    byte-identical digest, independent of collection order.
+    """
+    _validate_self_other_slot(self_other_observation_input)
+    geometry_checksum = ecl_trace_checksum(rows)
+
+    sorted_pair_events = sorted(
+        pair_events,
+        key=lambda e: (e.tick, e.sorted_pair[0], e.sorted_pair[1], e.crossing),
+    )
+    sorted_dialog_events = sorted(
+        dialog_events,
+        key=lambda e: (e.tick, e.dialog_id, e.turn_index),
+    )
+    sorted_affinity_deltas = sorted(
+        affinity_deltas,
+        key=lambda e: (e.tick, e.agent_id, e.other_agent_id),
+    )
+    sorted_memory_mutations = sorted(memory_mutations, key=lambda e: e.memory_id)
+
+    canonical: dict[str, Any] = {
+        "schema_version": M2_EVENTLOG_SCHEMA_VERSION,
+        "geometry_checksum": geometry_checksum,
+        "pair_events": [_pair_event_projection(e) for e in sorted_pair_events],
+        "dialog_events": [_dialog_event_projection(e) for e in sorted_dialog_events],
+        "affinity_deltas": [
+            _affinity_delta_projection(e) for e in sorted_affinity_deltas
+        ],
+        "memory_mutations": [
+            _memory_mutation_projection(e) for e in sorted_memory_mutations
+        ],
+        "self_other_observation_input": self_other_observation_input,
+        "decisions": {
+            agent_id: [_decision_projection(d) for d in decs]
+            for agent_id, decs in decisions.items()
+        },
+    }
+    blob = json.dumps(
+        canonical,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _harvest_pair_events(
+    world: WorldRuntime,
+    agent_ids: Sequence[str],
+) -> list[PairEventRecord]:
+    """Peek (non-destructively) at pending ``ProximityEvent`` observations.
+
+    Called once per cognition window, right after the physics-tick block and
+    before the next window's ``inject_observation``/``step_cognition_once``
+    drains ``rt.pending`` (``world/tick.py`` ``_step_one``, unmodified). Only
+    reads (``for obs in ...pending``, no ``.clear()``/reassignment) so the
+    existing drain-on-next-step contract is untouched.
+    """
+    harvested: list[PairEventRecord] = []
+    for agent_id in agent_ids:
+        pending = world._agents[agent_id].pending  # noqa: SLF001 — read-only peek (record-mode driver, mirrors world._on_physics_tick() call pattern)
+        harvested.extend(
+            PairEventRecord(
+                tick=obs.tick,
+                sorted_pair=(agent_id, obs.other_agent_id),
+                distance_prev=obs.distance_prev,
+                distance_now=obs.distance_now,
+                crossing=obs.crossing,
+            )
+            for obs in pending
+            if isinstance(obs, ProximityEvent) and agent_id < obs.other_agent_id
+        )
+    return harvested
+
+
+def _collect_memory_mutations(
+    store: MemoryStore,
+    agent_ids: Sequence[str],
+) -> tuple[MemoryMutationRecord, ...]:
+    """Read committed ``episodic_memory`` rows for this run's agents (§M4.4).
+
+    Read-only, canonical-key-sorted (``ORDER BY id ASC`` — the discovery-guard
+    rule "DB/SQLite read は ORDER BY 必須", §M4.3, extended to this query). ECL
+    record mode's memory ids are deterministic
+    (``ecl-{agent_id}-{tick:04d}``, ``cognition/cycle.py``), so this ordering
+    reproduces byte-identically across identical (seed, Plane 2) runs.
+    Semantic/procedural/relational tables are not queried: reflection is
+    disabled in this driver's ``EclRecordMode`` (``reflection_disabled=True``),
+    so no rows are ever written there in Layer1 record mode.
+    """
+    if not agent_ids:
+        return ()
+    conn = store._ensure_conn()  # noqa: SLF001 — read-only, mirrors world._on_physics_tick() call pattern
+    # placeholders is a fixed run of "?" chars keyed only by len(agent_ids) — no
+    # external string is interpolated into the query; agent_ids' actual values
+    # are bound via the parameterised tuple passed to conn.execute below.
+    placeholders = ",".join("?" for _ in agent_ids)
+    query = "SELECT id, agent_id, content, importance, created_at, tags "
+    query += f"FROM episodic_memory WHERE agent_id IN ({placeholders}) ORDER BY id ASC"
+    rows = conn.execute(query, tuple(agent_ids)).fetchall()
+    return tuple(
+        MemoryMutationRecord(
+            memory_id=row["id"],
+            agent_id=row["agent_id"],
+            kind="episodic",
+            content=row["content"],
+            importance=row["importance"],
+            created_at=row["created_at"],
+            tags=tuple(json.loads(row["tags"])),
+        )
+        for row in rows
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Run result
 # --------------------------------------------------------------------------- #
 
@@ -223,12 +603,28 @@ class SocietyRunResult:
     rows: tuple[EclTraceRow, ...]
     decisions: Mapping[str, tuple[EclDecisionRecord, ...]]
     checksum: str
+    """Geometry-only checksum (:func:`ecl_trace_checksum`), unchanged from I2."""
     cognition_step_order: tuple[str, ...]
     """The exact agent_id sequence :meth:`~WorldRuntime.step_cognition_once` was
     called in, one entry per (window, agent) step — the causal-wiring witness
     for the record-mode sequential sorted(order_slot) scheduler (§M4.1, I2-G2).
     This is provenance of *when the driver stepped whom*, not a measurement of
     emergent behaviour (§M1 over-read guard)."""
+    pair_events: tuple[PairEventRecord, ...]
+    """Canonical proximity-crossing events harvested during the run (§M4.4)."""
+    memory_mutations: tuple[MemoryMutationRecord, ...]
+    """Committed episodic-memory rows harvested after the run (§M4.4)."""
+    dialog_events: tuple[DialogEventRecord, ...]
+    """Always empty in Layer1 (no dialog scheduler wired, §M4.4). Versioned-
+    additive slot for a later record-mode dialog driver."""
+    affinity_deltas: tuple[AffinityDeltaRecord, ...]
+    """Always empty in Layer1 (no affinity mutation wired, §M4.4). Versioned-
+    additive slot for a later record-mode affinity driver."""
+    self_other_observation_input: SelfOtherObservationInput
+    """Always ``None`` in Layer1 (§M5.1). Layer2 seam slot."""
+    event_log_checksum: str
+    """SHA-256 over the versioned event/decision log as a whole (§M4.4) —
+    :func:`event_log_checksum` applied to this result's own fields."""
 
     def replay_clients(self) -> dict[str, RecordReplayChatClient]:
         """Build one per-agent replay adapter from this run's recorded decisions."""
@@ -416,6 +812,7 @@ async def run_society_loop(
 
     decisions: dict[str, list[EclDecisionRecord]] = {a: [] for a in agent_ids}
     step_order: list[str] = []
+    pair_events: list[PairEventRecord] = []
     sorted_agent_ids = sorted(agent_ids)
 
     for cognition_tick in range(n_cognition_ticks):
@@ -443,18 +840,48 @@ async def run_society_loop(
             )
         for _ in range(physics_ticks_per_cognition):
             await world._on_physics_tick()  # noqa: SLF001 — record-mode driver (society, mirrors run_ecl_loop precedent)
+        # §M4.4: harvest this window's pair events before the NEXT window's
+        # step_cognition_once drains rt.pending (world/tick.py _step_one).
+        pair_events.extend(_harvest_pair_events(world, sorted_agent_ids))
 
     frozen_rows = tuple(rows)
+    frozen_decisions = {a: tuple(decs) for a, decs in decisions.items()}
+    frozen_pair_events = tuple(pair_events)
+    memory_mutations = _collect_memory_mutations(store, sorted_agent_ids)
+    # §M5.1: Layer1 always passes None — the Layer2 seam slot is reserved but
+    # never populated here (payload composition is Layer2 impl-design scope).
+    self_other_observation_input: SelfOtherObservationInput = None
     return SocietyRunResult(
         run_id=run_id,
         rows=frozen_rows,
-        decisions={a: tuple(decs) for a, decs in decisions.items()},
+        decisions=frozen_decisions,
         checksum=ecl_trace_checksum(frozen_rows),
         cognition_step_order=tuple(step_order),
+        pair_events=frozen_pair_events,
+        memory_mutations=memory_mutations,
+        dialog_events=(),
+        affinity_deltas=(),
+        self_other_observation_input=self_other_observation_input,
+        event_log_checksum=event_log_checksum(
+            rows=frozen_rows,
+            decisions=frozen_decisions,
+            pair_events=frozen_pair_events,
+            dialog_events=(),
+            affinity_deltas=(),
+            memory_mutations=memory_mutations,
+            self_other_observation_input=self_other_observation_input,
+        ),
     )
 
 
 __all__ = [
+    "M2_EVENTLOG_SCHEMA_VERSION",
+    "AffinityDeltaRecord",
+    "DialogEventRecord",
+    "MemoryMutationRecord",
+    "PairEventRecord",
+    "SelfOtherObservationInput",
     "SocietyRunResult",
+    "event_log_checksum",
     "run_society_loop",
 ]
