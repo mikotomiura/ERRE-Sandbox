@@ -781,6 +781,36 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   `.steering/20260711-m13-m4-3d-visualization-scoping/design-final.md` (+ design.md [reimagine 2 案] /
   codex-review.md verbatim / decisions.md)。
 
+- **M4 situated 3D 可視化 impl-design ADR (FROZEN 2026-07-11、G-GEAR、user 裁定 ratify・doc-only・非 spend・
+  R-budget=0 不変)**: 上記 scoping (PR #73) を binding 前提に **HOW (Blender/Godot 技術契約) を実コード
+  (Loop) の前に pre-register**。正典パターン scoping →【impl-design (本 ADR)】→ 実コード。**reimagine** =
+  初回案 v1 (geometry nodes を chashitsu export の素直な進化、AC1 を .glb raw byte 再走一致で担保、
+  EclReplayPlayer 拡張) を意図破棄 → v2 (acceptance 逆算で決定性契約を二分) 独立生成 → **ハイブリッド
+  (v2 spine + v1 の段階移行 graft)** を user ratify。**HOW 技術契約の核 = 決定性 witness を raw .glb byte
+  cross-machine 一致にしない**: (i) **AC1 = seed-free 決定的パラメトリック geometry** (Distribute
+  Points/未固定 Random 禁止、index 駆動格子) の **量子化構造フィンガープリント** (mesh/頂点数/bbox/material、
+  6 桁量子化 = handoff の landed 規律移植、glTF accessor min/max を純 GLB-JSON パーサで JSON header から取得、
+  binary decode 不要) + 同一機 byte idempotency (開発者側、Blender 必須) の二層 witness / (ii) **AC2/AC3 =
+  新規 `SocietyReplayViewer.gd`** (dev-only、`EclReplayPlayer.gd` 無改変) が **committed golden を headless
+  再生し placement/replay 列を dump → Python canonicalizer で byte 比較** (motion=`ecl_trace` 値の
+  pass-through echo、Godot runtime float→str を witness にしない) / (iii) **座標** = `contracts.geometry.
+  ZONE_CENTERS` から `zone_layout.json` 純生成 + `.tscn` root transform drift を 6 桁 exact で閉じる
+  (既存 `.tscn` 手書き `33.33` は authority `33.333…` と実 drift → 実装 Loop で是正) / **.glb 粒度** =
+  zone 単位・local content 原点中心 + 共有 BaseTerrain (既存 100m primitive) + Godot .tscn root で
+  ZONE_CENTERS 配置 / **AC5** = M2 spend ast-guard 踏襲 (.py executable-AST + .gd text scan、denylist 全幅、
+  identifier ban と path/import guard を分けて false positive 抑制) / **Zazen 非 zone** (ERRE mode、AC4
+  5 zone に非含) / **SPDX GPL header** 新規 Blender script 必須 + `export_chashitsu.py` 是正。process =
+  /reimagine + Codex **Verdict=Adopt-with-changes** (sandbox degrade を web 検索 [Khronos glTF 2.0 仕様裏取り]
+  で完走、HIGH-1 [accessor min/max は mesh-local bounds、node transform=identity binding + fail-closed] +
+  HIGH-2 [圧縮/外部 buffer geometry を禁止 fail-closed] + HIGH-3 [Godot runtime float→str を witness に
+  しない] を FROZEN 前反映、MEDIUM×4 [order_slot 非 join key/denylist 分割/.tscn 6桁 exact/非 GPL tool 配置] +
+  LOW×2 反映)。**claim 境界 = construction であって measurement でない** (fingerprint/placement checksum は
+  再現性 witness であって metric/floor/verdict/scorer/閾値/aggregate に接続しない、over-read 禁止、holding
+  不可侵・R-budget=0、reasoning-trace door 保全)。次工程 = M4 実コード (Loop、§9 issue 縦スライス → worktree
+  `/loop-issue` → cross-review)。Layer2 mirror-sim impl-design ADR は別トラック併存。詳細 =
+  `.steering/20260711-m13-m4-impl-design/design-final.md` (+ design.md/design-comparison.md [reimagine 2 案] /
+  codex-review.md verbatim / decisions.md)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
