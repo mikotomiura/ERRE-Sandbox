@@ -34,6 +34,20 @@ is deferred to later I-slices, §M11):
 * **I3-G4** ``test_m2_eventlog_6digit_quantized`` — event-log floats are
   quantised to 6 decimals before hashing (cross-platform byte-identity
   precondition, ``feedback_golden_crossplatform_float_drift``).
+* **I4-G1** ``test_m2_pair_interaction_deterministic`` — N=2, proximity/dialog
+  RNG keyed by a per-pair named substream (``pair_key`` = canonical JSON
+  array) is replay-stable through the real ``run_society_loop`` driver (not a
+  vacuous module-level RNG check — DG-6); pair events serialize
+  ``sorted_pair=(min_id,max_id)``.
+* **I4-G2** ``test_m2_society_determinism_permutation`` — N=3, registering the
+  same agent set in different orders yields the same ``event_log_checksum``.
+* **I4-G3** ``test_m2_society_determinism_checklist`` — discovery guard
+  (Codex MEDIUM-8): no wall-clock, checksum-path AST/text scan for bare
+  non-sorted ``.values()``/``set(...)`` iteration, DB read ``ORDER BY``,
+  canonical key sort, checksum input = final canonical projection only.
+* **I4-G4** ``test_m2_pair_key_collision_free`` — ``pair_key`` (canonical JSON
+  array) does not collide when an ``agent_id`` itself contains ``"-"``
+  (Codex MEDIUM-7; the naive ``"-".join(sorted(...))`` alternative would).
 
 NOT a structural-floor verdict; verdict は holding (design-final.md §M9,
 binding anti-over-read guard). This module and its tests compute no
@@ -49,7 +63,9 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import itertools
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -493,11 +509,15 @@ async def test_m2_society_event_log_checksum_stable(
         )
         assert recomputed == run.event_log_checksum
 
-    # Layer1 always reserves the slot as None (§M5.1) and drives no dialog
-    # scheduler / affinity mutation (§M4.4 — those categories are versioned-
-    # additive slots, not yet produced by this driver).
+    # Layer1 always reserves the slot as None (§M5.1). Affinity mutation is
+    # never produced by this driver (§M4.4 — the sole producer in the
+    # codebase is bootstrap.py application wiring, outside this issue).
+    # Dialog IS now wired (I4, DG-6): whether this scenario actually admits
+    # a dialog is co-location-dependent, but the two independent runs above
+    # already proved run1/run2 event-log-checksum equality — i.e. whatever
+    # dialog_events this scenario produces is itself replay-stable.
     assert run1.self_other_observation_input is None
-    assert run1.dialog_events == ()
+    assert run1.dialog_events == run2.dialog_events
     assert run1.affinity_deltas == ()
     # Reflection is disabled in record mode, but every injected perception is
     # still committed as an episodic memory each cognition tick — a non-empty
@@ -804,3 +824,215 @@ def test_m2_eventlog_6digit_quantized() -> None:
     assert distinct_a != distinct_b, (
         "a genuine 6th-decimal difference must still change the digest"
     )
+
+
+# --------------------------------------------------------------------------- #
+# I4-G1 — per-pair named RNG substream, real driver, pair-interaction determinism
+# --------------------------------------------------------------------------- #
+
+
+async def test_m2_pair_interaction_deterministic(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """N=2, co-located from tick 0: proximity + dialog RNG replay-stable.
+
+    NOT a structural-floor verdict; verdict は holding. Two co-located agents
+    are placed in a reflective zone (``peripatos``) from tick 0 so the
+    dialog scheduler's proximity auto-fire draw — keyed by this pair's own
+    named RNG substream (§M4.2, ``pair_key`` = canonical JSON array) — gets
+    a real chance to fire through the actual :func:`run_society_loop` driver
+    (DG-6: not a vacuous module-level RNG check). Two independent runs of the
+    same (seed, recorded Plane 2) must agree byte-for-byte, whatever the
+    scenario's dialog outcome turns out to be.
+    """
+    agent_states = [
+        make_agent_state(
+            agent_id="a_one",
+            position={"x": 0.0, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+        ),
+        make_agent_state(
+            agent_id="a_two",
+            position={"x": 0.1, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+        ),
+    ]
+    personas = {s.agent_id: make_persona_spec() for s in agent_states}
+
+    run1, _c1 = await _run_society(
+        agent_states, personas, run_id="i4-pair", n_cognition_ticks=8
+    )
+    run2, _c2 = await _run_society(
+        agent_states, personas, run_id="i4-pair", n_cognition_ticks=8
+    )
+
+    assert run1.event_log_checksum == run2.event_log_checksum
+    assert run1.dialog_events == run2.dialog_events
+    assert run1.pair_events == run2.pair_events
+
+    # The scenario is designed to actually exercise the dialog channel (DG-6)
+    # — an empty result here would mean the fixture failed to provoke the
+    # real driver path this test exists to pin, not a vacuous pass.
+    assert run1.dialog_events, (
+        "co-located N=2 scenario expected to admit at least one dialog turn "
+        "through the real driver (DG-6 — not a vacuous RNG-only check)"
+    )
+    for evt in run1.dialog_events:
+        assert {evt.speaker_agent_id, evt.addressee_agent_id} == {"a_one", "a_two"}
+
+    # Pair events (proximity) always serialize the canonical sorted_pair
+    # orientation (Codex HIGH-3), independent of registration order.
+    for pe in run1.pair_events:
+        assert pe.sorted_pair == tuple(sorted(pe.sorted_pair))
+
+    # A different run_id changes the named substream material
+    # (``ecl-{run_id}-{pair_key}-{stream}``) — the dialog channel is keyed by
+    # run identity, not a fixed global sequence.
+    run3, _c3 = await _run_society(
+        agent_states, personas, run_id="i4-pair-other", n_cognition_ticks=8
+    )
+    assert run3.event_log_checksum != run1.event_log_checksum
+
+
+# --------------------------------------------------------------------------- #
+# I4-G2 — registration-order permutation invariance (N=3)
+# --------------------------------------------------------------------------- #
+
+
+async def test_m2_society_determinism_permutation(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Same N=3 agent set, different registration orders, same checksum.
+
+    NOT a structural-floor verdict; verdict は holding. ``order_slot =
+    sorted(agent_id)`` (§M2) plus the §M4.3 sorted-combinations discovery
+    guard means dict-insertion/registration order must never leak into
+    ``event_log_checksum`` — this is the causal-wiring witness for that
+    claim (Codex MEDIUM-8's "既知集合限定 → 実装保証" permutation test).
+    """
+    ids = ["a_alpha", "a_bravo", "a_charlie"]
+    agent_states_by_id = {aid: make_agent_state(agent_id=aid) for aid in ids}
+    personas = {aid: make_persona_spec() for aid in ids}
+
+    checksums: set[str] = set()
+    for order in itertools.permutations(ids):
+        ordered_states = [agent_states_by_id[aid] for aid in order]
+        result, _clients = await _run_society(
+            ordered_states, personas, run_id="i4-perm", n_cognition_ticks=3
+        )
+        checksums.add(result.event_log_checksum)
+
+    assert len(checksums) == 1, (
+        "registering the same N=3 agent set in different orders must yield "
+        f"the same event_log_checksum; got {len(checksums)} distinct digests"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# I4-G3 — discovery guard: no bare non-sorted values()/set() in checksum path
+# --------------------------------------------------------------------------- #
+
+_CHECKSUM_PATH_FUNCS: tuple[str, ...] = (
+    "event_log_checksum",
+    "_pair_event_projection",
+    "_dialog_event_projection",
+    "_affinity_delta_projection",
+    "_memory_mutation_projection",
+    "_decision_projection",
+    "_quantized_plan_dump",
+    "_collect_memory_mutations",
+    "_harvest_pair_events",
+    "run_society_loop",
+)
+
+
+def test_m2_society_determinism_checklist() -> None:
+    """AST/grep discovery guard extending the checklist to N agents (§M4.3, MEDIUM-8).
+
+    NOT a structural-floor verdict; verdict は holding. Checks, against the
+    module's own source (construction-provenance inspection, not a runtime
+    measurement):
+
+    1. no wall-clock read anywhere in the module.
+    2. the checksum-path functions (:data:`_CHECKSUM_PATH_FUNCS`) contain no
+       bare non-sorted ``.values()`` iteration, and every bare ``set(...)``
+       call is immediately wrapped in ``sorted(...)`` (``sorted(set(...))``
+       is the only allowed shape — canonicalisation, §M8 HIGH-4).
+    3. DB/SQLite reads use ``ORDER BY``.
+    4. the versioned event-log's per-category lists are explicitly sorted
+       before projection (canonical key sort).
+    """
+    src_path = society.__file__
+    assert src_path is not None
+    full_source = Path(src_path).read_text(encoding="utf-8")
+
+    # 1. no wall-clock.
+    assert "time.time(" not in full_source
+    assert "datetime.now(" not in full_source
+    assert ".utcnow(" not in full_source
+
+    # 2. checksum-path bare non-sorted values()/set() scan.
+    combined = "\n".join(
+        inspect.getsource(getattr(society, name)) for name in _CHECKSUM_PATH_FUNCS
+    )
+    assert ".values()" not in combined, (
+        "checksum-path code must not iterate a bare (non-sorted) .values() "
+        "— §M4.3 discovery guard"
+    )
+    for match in re.finditer(r"\bset\(", combined):
+        preceding = combined[: match.start()].rstrip()
+        assert preceding.endswith("sorted("), (
+            "checksum-path code must not construct a bare set(...) — only "
+            f"sorted(set(...)) canonicalisation is allowed (§M8 HIGH-4); "
+            f"found unwrapped set( at offset {match.start()}"
+        )
+
+    # 3. DB read uses ORDER BY (the one SQL query on the checksum path,
+    # _collect_memory_mutations).
+    collect_source = inspect.getsource(society._collect_memory_mutations)
+    assert "ORDER BY" in collect_source
+    assert "SELECT" in collect_source
+
+    # 4. canonical key sort: event_log_checksum explicitly sorts every
+    # variable-order event category before projecting it (not just the
+    # already-deterministic geometry/decisions inputs).
+    checksum_source = inspect.getsource(society.event_log_checksum)
+    for sorted_call in (
+        "sorted(\n        pair_events,",
+        "sorted(\n        dialog_events,",
+        "sorted(\n        affinity_deltas,",
+        "sorted(memory_mutations,",
+    ):
+        assert sorted_call in checksum_source, (
+            "event_log_checksum must canonically sort before projecting: "
+            f"{sorted_call!r}"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# I4-G4 — pair_key collision-free (agent_id containing "-")
+# --------------------------------------------------------------------------- #
+
+
+def test_m2_pair_key_collision_free() -> None:
+    """``pair_key`` = canonical JSON array does not collide on ``"-"``-bearing ids.
+
+    Codex MEDIUM-7: ``"-".join(sorted([a_id, b_id]))`` collides — both
+    ``["a-b", "c"]`` and ``["a", "b-c"]`` join to the literal string
+    ``"a-b-c"``. The canonical-JSON-array construction must not.
+    """
+    key_1 = society._pair_key("a-b", "c")
+    key_2 = society._pair_key("a", "b-c")
+    assert key_1 != key_2, "pair_key must not collide when an agent_id contains '-'"
+
+    # Demonstrate the naive alternative *does* collide, so the regression this
+    # guards against is not a strawman.
+    naive_1 = "-".join(sorted(["a-b", "c"]))
+    naive_2 = "-".join(sorted(["a", "b-c"]))
+    assert naive_1 == naive_2 == "a-b-c"
+
+    # Order-agnostic (unordered pair identity) and a genuine canonical-JSON
+    # array shape (not just "any string that happens to differ").
+    assert society._pair_key("a-b", "c") == society._pair_key("c", "a-b")
+    assert key_1 == json.dumps(["a-b", "c"], separators=(",", ":"), ensure_ascii=True)
+    assert key_2 == json.dumps(["a", "b-c"], separators=(",", ":"), ensure_ascii=True)

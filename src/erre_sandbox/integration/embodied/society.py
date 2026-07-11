@@ -38,9 +38,27 @@ Issue 003 (I3) additions: the **versioned event/decision-log-wide checksum**
 (:func:`event_log_checksum`, §M4.4 — geometry checksum, i.e.
 :func:`ecl_trace_checksum`, is composed as *part of* it, not replaced by it)
 and the ``self_other_observation_input`` Layer2 seam slot (§M5.1, always
-``None`` here). Out of scope for this issue (deferred to later I-slices,
-§M11): per-pair named RNG substreams + pair-interaction determinism (I4),
-handoff N-agent schema bump (I5), spend AST guard (I6).
+``None`` here).
+
+Issue 004 (I4) additions: **per-pair named RNG substreams** (:class:`_PairRngCache`,
+§M4.2, ``pair_key`` = canonical JSON array, Codex MEDIUM-7 collision guard) and
+a **record-mode dialog channel** (:class:`_DeterministicDialogTurnGenerator`):
+this driver now attaches an
+:class:`~erre_sandbox.integration.dialog.InMemoryDialogScheduler` to the
+:class:`WorldRuntime` it constructs and, once per cognition window,
+calls the world's existing (unmodified) ``_run_dialog_tick``/``_drive_dialog_turns``
+hooks so that co-located agents can deterministically dialog — the auto-fire
+draw is keyed by the pair's own named RNG substream, not the shared instance
+``InMemoryDialogScheduler`` otherwise defaults to. Dialog turns are recorded
+into ``dialog_events`` from a non-LLM, deterministically-templated generator
+(construction provenance, not persona cognition — §M8 spend guard: no new LLM
+call). **Dialog and affinity are Layer1 social dynamics** (§M4.2/§M4.4), not
+Layer2 mirror-sim (§M5) — self-other simulation is a distinct, later concern.
+Affinity mutation (``WorldRuntime.apply_affinity_delta``) remains unwired here:
+its sole producer in the codebase is ``bootstrap.py`` application wiring
+(outside this issue's Allowed Files), so ``affinity_deltas`` stays honestly
+empty. Out of scope for this issue (deferred to later I-slices, §M11): handoff
+N-agent schema bump (I5), spend AST guard (I6).
 """
 
 from __future__ import annotations
@@ -53,6 +71,7 @@ from typing import TYPE_CHECKING, Any, Final, cast
 
 from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle, parse_llm_plan
 from erre_sandbox.cognition.embodiment import K_ECL, EclRecordMode
+from erre_sandbox.integration.dialog import InMemoryDialogScheduler
 from erre_sandbox.integration.embodied.loop import (
     DEFAULT_PHYSICS_TICKS_PER_COGNITION,
     GOLDEN_COGNITION_TICKS,
@@ -64,7 +83,13 @@ from erre_sandbox.integration.embodied.loop import (
     ecl_trace_checksum,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore, Retriever
-from erre_sandbox.schemas import SCHEMA_VERSION, PerceptionEvent, ProximityEvent, Zone
+from erre_sandbox.schemas import (
+    SCHEMA_VERSION,
+    DialogTurnMsg,
+    PerceptionEvent,
+    ProximityEvent,
+    Zone,
+)
 from erre_sandbox.world import ManualClock, WorldRuntime
 
 if TYPE_CHECKING:
@@ -77,6 +102,57 @@ if TYPE_CHECKING:
     from erre_sandbox.inference.ollama_adapter import ChatMessage, ChatResponse
     from erre_sandbox.inference.sampling import ResolvedSampling
     from erre_sandbox.schemas import AgentState, Observation, PersonaSpec
+
+
+# --------------------------------------------------------------------------- #
+# Per-pair named RNG substream (§M4.2, I4)
+# --------------------------------------------------------------------------- #
+
+
+def _pair_key(a_id: str, b_id: str) -> str:
+    """Canonical, collision-free pair identity (§M4.2, Codex MEDIUM-7).
+
+    ``"-".join(sorted([a_id, b_id]))`` collides when an ``agent_id`` itself
+    contains ``"-"`` (``["a-b", "c"]`` and ``["a", "b-c"]`` both join to the
+    string ``"a-b-c"``). A canonical JSON array of the two sorted ids has no
+    such collision: each element is individually quoted/escaped by
+    ``json.dumps``, so the array's structural comma-between-two-quoted-strings
+    delimiter cannot be produced by any character sequence *inside* either id.
+    ``sorted(...)`` first makes the key order-agnostic (``_pair_key(a, b) ==
+    _pair_key(b, a)``); ``ensure_ascii=True`` and compact ``separators`` keep
+    the material a single canonical, 7-bit-stable string per pair.
+    """
+    return json.dumps(sorted([a_id, b_id]), separators=(",", ":"), ensure_ascii=True)
+
+
+@dataclass(slots=True)
+class _PairRngCache:
+    """Per-pair named RNG substream: ``ecl-{run_id}-{pair_key}-{stream}`` (§M4.2).
+
+    Mirrors :meth:`~erre_sandbox.cognition.embodiment.EclRecordMode.substream`'s
+    memoize-on-first-call idiom one level up (per unordered *pair* instead of
+    per-agent): the first :meth:`get` for a given pair seeds
+    ``random.Random(f"ecl-{run_id}-{pair_key}-{stream}")`` (:func:`_pair_key`
+    makes this order-agnostic); every later call for the *same* pair returns
+    that same handle, so its draws form one run-sequence rather than
+    restarting from the seed each tick — a byte-identical re-run with the same
+    ``run_id`` reproduces a byte-identical draw sequence. **No new Python
+    non-determinism source** (§M4.2): this is a named-substream regularity
+    extension of the existing per-agent idiom, not a new randomness primitive.
+    """
+
+    run_id: str
+    stream: str
+    _cache: dict[str, Random] = field(default_factory=dict, init=False, repr=False)
+
+    def get(self, a_id: str, b_id: str) -> Random:
+        """Return (creating on first call) the named substream for ``{a_id, b_id}``."""
+        key = _pair_key(a_id, b_id)
+        rng = self._cache.get(key)
+        if rng is None:
+            rng = Random(f"ecl-{self.run_id}-{key}-{self.stream}")  # noqa: S311 — determinism seed, not cryptographic
+            self._cache[key] = rng
+        return rng
 
 
 # --------------------------------------------------------------------------- #
@@ -266,15 +342,21 @@ class PairEventRecord:
 
 @dataclass(frozen=True, slots=True)
 class DialogEventRecord:
-    """Versioned-additive dialog-turn slot (§M4.4).
+    """One recorded dialog turn (§M4.4) — Layer1 social dynamics, not Layer2 mirror-sim.
 
-    Not produced by this driver: ``run_society_loop`` never attaches a
-    ``DialogScheduler``/``DialogTurnGenerator`` (those wire into the live
-    phase-wheel's ``_on_cognition_tick``, which this record-mode driver never
-    calls — §M4.1). Every :func:`run_society_loop` result therefore carries an
-    empty ``dialog_events`` tuple; the type exists so the checksum schema is
-    forward-compatible once a record-mode dialog driver is wired (a later
-    issue), without a schema break.
+    Produced by this driver (I4): ``run_society_loop`` attaches an
+    :class:`~erre_sandbox.integration.dialog.InMemoryDialogScheduler` and a
+    non-LLM :class:`_DeterministicDialogTurnGenerator` to the
+    :class:`WorldRuntime` it constructs, and calls the world's existing
+    (unmodified) ``_run_dialog_tick``/``_drive_dialog_turns`` hooks once per
+    cognition window (§M4.1's live phase-wheel, ``_on_cognition_tick``, is
+    still never called — those two dialog-only hooks carry no due-time/dwell
+    gating and are reused directly). Whether any dialog actually fires in a
+    given run is scenario-dependent (co-location + the pair's own named RNG
+    substream draw, §M4.2); an empty ``dialog_events`` tuple is a legitimate
+    outcome, not a driver limitation. This is Layer1 pair-interaction
+    provenance — self-other *simulation* (Layer2, §M5) is a distinct, later
+    concern this record does not model.
     """
 
     dialog_id: str
@@ -285,16 +367,76 @@ class DialogEventRecord:
     utterance: str
 
 
+@dataclass(slots=True)
+class _DeterministicDialogTurnGenerator:
+    """Construction-only dialog-turn synthesis (I4, §M8 spend guard).
+
+    Implements the :class:`~erre_sandbox.schemas.DialogTurnGenerator` Protocol
+    duck-typed surface (``generate_turn``) with **no LLM call**: DG-6
+    (``.steering/20260711-m13-m2-society-layer1-code/decisions.md``) requires
+    this record-mode driver to close the I3 gap where dialog never fired,
+    without adding a new LLM call (§M8 spend non-drift) or touching the live
+    phase-wheel's LLM-backed dialog-turn generation (a distinct, later
+    concern — this is not persona-authored dialog, it is construction
+    provenance that a turn happened). The utterance is a fixed deterministic
+    template keyed only by ``(dialog_id, turn_index, speaker/addressee
+    agent_id)`` — no additional Python non-determinism source is introduced.
+    Every produced turn is also appended to ``dialog_events`` via ``on_turn``
+    so :func:`run_society_loop` can fold it into the versioned event log.
+    """
+
+    on_turn: Callable[[DialogEventRecord], None]
+
+    async def generate_turn(
+        self,
+        *,
+        dialog_id: str,
+        speaker_state: AgentState,
+        speaker_persona: PersonaSpec,
+        addressee_state: AgentState,
+        transcript: Sequence[DialogTurnMsg],
+        world_tick: int,
+    ) -> DialogTurnMsg | None:
+        del speaker_persona  # construction-only synthesis, not persona-authored (§M8)
+        turn_index = len(transcript)
+        utterance = (
+            f"m2-society-turn dialog={dialog_id} idx={turn_index} "
+            f"speaker={speaker_state.agent_id}"
+        )
+        self.on_turn(
+            DialogEventRecord(
+                dialog_id=dialog_id,
+                tick=world_tick,
+                turn_index=turn_index,
+                speaker_agent_id=speaker_state.agent_id,
+                addressee_agent_id=addressee_state.agent_id,
+                utterance=utterance,
+            )
+        )
+        return DialogTurnMsg(
+            tick=world_tick,
+            dialog_id=dialog_id,
+            speaker_id=speaker_state.agent_id,
+            addressee_id=addressee_state.agent_id,
+            utterance=utterance,
+            turn_index=turn_index,
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class AffinityDeltaRecord:
-    """Versioned-additive affinity-delta slot (§M4.4).
+    """Versioned-additive affinity-delta slot (§M4.4) — Layer1 social dynamics.
 
-    Not produced by this driver: ``run_society_loop`` never calls
-    ``WorldRuntime.apply_affinity_delta`` (that is a bootstrap-driven mutation
-    in the current codebase). Every :func:`run_society_loop` result therefore
-    carries an empty ``affinity_deltas`` tuple; the type exists so the
-    checksum schema is forward-compatible once a record-mode driver applies
-    affinity mutations, without a schema break.
+    Not produced by this driver (I4 checked, honest-empty per DG-6):
+    ``run_society_loop`` never calls ``WorldRuntime.apply_affinity_delta`` —
+    its sole producer in the codebase is ``bootstrap.py`` application wiring
+    (outside this module's Allowed Files), not something that flows
+    automatically out of a cognition step or the dialog channel this driver
+    now wires (I4). Every :func:`run_society_loop` result therefore carries an
+    empty ``affinity_deltas`` tuple; the type exists so the checksum schema is
+    forward-compatible once a record-mode driver applies affinity mutations,
+    without a schema break. Affinity is Layer1 relationship state, not Layer2
+    mirror-sim (§M5) self-other simulation.
     """
 
     tick: int
@@ -615,8 +757,13 @@ class SocietyRunResult:
     memory_mutations: tuple[MemoryMutationRecord, ...]
     """Committed episodic-memory rows harvested after the run (§M4.4)."""
     dialog_events: tuple[DialogEventRecord, ...]
-    """Always empty in Layer1 (no dialog scheduler wired, §M4.4). Versioned-
-    additive slot for a later record-mode dialog driver."""
+    """Dialog turns recorded during the run (§M4.4, wired in I4): a per-pair
+    named-substream-seeded
+    :class:`~erre_sandbox.integration.dialog.InMemoryDialogScheduler` plus a
+    non-LLM :class:`_DeterministicDialogTurnGenerator` are attached to the
+    driver's :class:`WorldRuntime`; whether this tuple is non-empty in a
+    given run is scenario-dependent (co-location + the pair's RNG draw), an
+    empty tuple is a legitimate scenario outcome, not a driver limitation."""
     affinity_deltas: tuple[AffinityDeltaRecord, ...]
     """Always empty in Layer1 (no affinity mutation wired, §M4.4). Versioned-
     additive slot for a later record-mode affinity driver."""
@@ -804,6 +951,23 @@ async def run_society_loop(
     for state in agent_states:
         world.register_agent(state, personas[state.agent_id])
 
+    # §M4.2/DG-6 (I4): record-mode dialog channel. The scheduler's proximity
+    # auto-fire draw is keyed by each co-located pair's own named RNG
+    # substream (never the shared default); the generator is a non-LLM,
+    # deterministic turn synthesiser (§M8 — no new LLM call). Both hooks
+    # called below (``_run_dialog_tick`` / ``_drive_dialog_turns``) are
+    # existing, unmodified ``WorldRuntime`` methods — no live phase-wheel
+    # (``_on_cognition_tick``) due-time/dwell gating applies to either.
+    dialog_events: list[DialogEventRecord] = []
+    dialog_rng = _PairRngCache(run_id=run_id, stream="dialog")
+    dialog_scheduler = InMemoryDialogScheduler(
+        envelope_sink=world.inject_envelope,
+        rng_for_pair=dialog_rng.get,
+    )
+    dialog_generator = _DeterministicDialogTurnGenerator(on_turn=dialog_events.append)
+    world.attach_dialog_scheduler(dialog_scheduler)
+    world.attach_dialog_generator(dialog_generator)
+
     obs_factories: dict[str, Callable[[int], Sequence[Observation]]] = dict(
         observation_factories
         if observation_factories is not None
@@ -843,10 +1007,20 @@ async def run_society_loop(
         # §M4.4: harvest this window's pair events before the NEXT window's
         # step_cognition_once drains rt.pending (world/tick.py _step_one).
         pair_events.extend(_harvest_pair_events(world, sorted_agent_ids))
+        # §M4.2/DG-6 (I4): evaluate the dialog scheduler/generator once per
+        # cognition window, after this window's post-physics zone state is
+        # settled — the same two (unmodified) hooks the live phase-wheel's
+        # ``_on_cognition_tick`` tail calls, invoked here sequentially by this
+        # record-mode driver instead.
+        world._run_dialog_tick()  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
+        await world._drive_dialog_turns(  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
+            world._current_world_tick()  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
+        )
 
     frozen_rows = tuple(rows)
     frozen_decisions = {a: tuple(decs) for a, decs in decisions.items()}
     frozen_pair_events = tuple(pair_events)
+    frozen_dialog_events = tuple(dialog_events)
     memory_mutations = _collect_memory_mutations(store, sorted_agent_ids)
     # §M5.1: Layer1 always passes None — the Layer2 seam slot is reserved but
     # never populated here (payload composition is Layer2 impl-design scope).
@@ -859,14 +1033,14 @@ async def run_society_loop(
         cognition_step_order=tuple(step_order),
         pair_events=frozen_pair_events,
         memory_mutations=memory_mutations,
-        dialog_events=(),
+        dialog_events=frozen_dialog_events,
         affinity_deltas=(),
         self_other_observation_input=self_other_observation_input,
         event_log_checksum=event_log_checksum(
             rows=frozen_rows,
             decisions=frozen_decisions,
             pair_events=frozen_pair_events,
-            dialog_events=(),
+            dialog_events=frozen_dialog_events,
             affinity_deltas=(),
             memory_mutations=memory_mutations,
             self_other_observation_input=self_other_observation_input,
