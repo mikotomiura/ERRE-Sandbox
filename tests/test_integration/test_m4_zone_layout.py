@@ -150,11 +150,13 @@ def _clean_gltf() -> dict[str, Any]:
                 "componentType": 5126,
                 "count": 3,
                 "type": "VEC3",
+                "bufferView": 0,
                 "min": [-1.0, 0.0, -1.0],
                 "max": [1.0, 2.0, 1.0],
             }
         ],
         "materials": [{"name": "zone_surface"}],
+        "bufferViews": [{"buffer": 0, "byteLength": 36, "byteOffset": 0}],
         "buffers": [{"byteLength": 36}],
     }
 
@@ -230,12 +232,72 @@ def test_m4_glb_json_parser_fail_closed() -> None:
         "componentType": 5126,
         "count": 3,
         "type": "VEC3",
+        "bufferView": 0,
         "min": [0.0, 0.0, 0.0],
         "max": [1.0, 1.0, 1.0],
         "sparse": {"count": 1},
     }
     with pytest.raises(GlbParseError):
         extract_fingerprint(_with(accessors=[sparse_accessor]))
+
+
+def _position_accessor(**overrides: Any) -> dict[str, Any]:
+    """A concrete, well-formed POSITION accessor, mutated per negative case."""
+    accessor: dict[str, Any] = {
+        "componentType": 5126,
+        "count": 3,
+        "type": "VEC3",
+        "bufferView": 0,
+        "min": [-1.0, 0.0, -1.0],
+        "max": [1.0, 2.0, 1.0],
+    }
+    accessor.update(overrides)
+    return accessor
+
+
+def test_m4_glb_json_parser_position_concrete_fail_closed() -> None:
+    """AC I2-G4 (design §1.3 HIGH-2 完全実装): a POSITION accessor that does not
+    resolve to a concrete plain bufferView is fail-closed.
+
+    Covers the sparse-only cases (missing ``bufferView`` / dangling
+    ``bufferView`` / dangling buffer) plus the malformed-structure cases
+    (non-``VEC3`` type / non-positive ``count`` / ``min`` not length-3), each of
+    which would make the mesh-local min/max the fingerprint hashes non-authoritative.
+    """
+    # bufferView missing entirely (sparse-only without a plain buffer).
+    no_view = _position_accessor()
+    del no_view["bufferView"]
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[no_view]))
+
+    # bufferView index out of range.
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[_position_accessor(bufferView=9)]))
+
+    # bufferView present but its buffer index dangles.
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(
+            _with(
+                accessors=[_position_accessor()],
+                bufferViews=[{"buffer": 7, "byteLength": 36}],
+            )
+        )
+
+    # type != VEC3 (min/max would not be a 3-vector bbox).
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[_position_accessor(type="SCALAR")]))
+
+    # count == 0 (no vertices behind the bounds).
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[_position_accessor(count=0)]))
+
+    # min not length-3.
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[_position_accessor(min=[0.0, 0.0])]))
+
+    # max element non-numeric.
+    with pytest.raises(GlbParseError):
+        extract_fingerprint(_with(accessors=[_position_accessor(max=[1.0, "2", 1.0])]))
 
 
 def test_m4_glb_json_parser_bytes_fail_closed() -> None:

@@ -21,9 +21,13 @@ Fail-closed discipline (design §1.3, Codex HIGH-1 / HIGH-2):
   moves geometry would make the witness lie; a non-identity node is a Stop, not
   a silently-hashed value.
 * **HIGH-2** — ``KHR_draco_mesh_compression`` / ``EXT_meshopt_compression``
-  (mesh compression makes accessor min/max non-authoritative), an external
-  buffer ``uri`` (data outside the committed ``.glb``), or a sparse POSITION
-  accessor (data not in the plain bufferView the min/max describe) each raise.
+  (mesh compression makes accessor min/max non-authoritative) or an external
+  buffer ``uri`` (data outside the committed ``.glb``) each raise. Every
+  POSITION accessor must also resolve to a **concrete plain bufferView** (a
+  sparse-only accessor, a missing / dangling ``bufferView``, a dangling buffer
+  behind it, a non-``VEC3`` type, a non-positive ``count``, or ``min``/``max``
+  that are not length-3 numeric arrays each raise) — otherwise the mesh-local
+  min/max the fingerprint hashes would not describe the committed geometry.
 """
 
 from __future__ import annotations
@@ -159,6 +163,52 @@ def _position_accessor_indices(gltf: dict[str, Any]) -> list[int]:
     return indices
 
 
+def _as_int(value: Any) -> int | None:
+    """Return ``value`` if it is a plain (non-bool) int, else ``None``."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
+def _assert_concrete_position(
+    gltf: dict[str, Any], accessor_index: int, accessor: dict[str, Any]
+) -> None:
+    """HIGH-2: a POSITION accessor must resolve to a concrete, plain bufferView.
+
+    A sparse-only accessor (no ``bufferView``) has no plain buffer for its
+    ``min``/``max`` to describe, so the mesh-local fingerprint would be a lie.
+    Fail-closed on: a sparse accessor, a missing / dangling ``bufferView``, a
+    dangling ``buffer`` behind it, a non-``VEC3`` type, a non-positive ``count``,
+    or ``min``/``max`` that are not length-3 numeric arrays.
+    """
+    prefix = f"POSITION accessor {accessor_index}"
+    if "sparse" in accessor:
+        raise GlbParseError(f"{prefix} is sparse (min/max not plain)")
+
+    buffer_view_index = _as_int(accessor.get("bufferView"))
+    if buffer_view_index is None:
+        raise GlbParseError(f"{prefix} has no concrete bufferView (sparse-only)")
+    buffer_views = gltf.get("bufferViews", [])
+    if not 0 <= buffer_view_index < len(buffer_views):
+        raise GlbParseError(f"{prefix} references out-of-range bufferView")
+    buffer_index = _as_int(buffer_views[buffer_view_index].get("buffer"))
+    if buffer_index is None or not 0 <= buffer_index < len(gltf.get("buffers", [])):
+        raise GlbParseError(f"{prefix} bufferView references out-of-range buffer")
+
+    if accessor.get("type") != "VEC3":
+        raise GlbParseError(f"{prefix} is not VEC3")
+    count = _as_int(accessor.get("count"))
+    if count is None or count <= 0:
+        raise GlbParseError(f"{prefix} has non-positive count")
+
+    for bound in ("min", "max"):
+        values = accessor.get(bound)
+        if not isinstance(values, (list, tuple)) or len(values) != 3:
+            raise GlbParseError(f"{prefix} {bound} is not a length-3 array")
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in values):
+            raise GlbParseError(f"{prefix} {bound} has a non-numeric element")
+
+
 def extract_fingerprint(gltf: dict[str, Any]) -> dict[str, Any]:
     """Return the structural fingerprint of a parsed glTF (fail-closed first).
 
@@ -176,15 +226,12 @@ def extract_fingerprint(gltf: dict[str, Any]) -> dict[str, Any]:
     positions: list[dict[str, Any]] = []
     for accessor_index in _position_accessor_indices(gltf):
         accessor = accessors[accessor_index]
-        if "sparse" in accessor:
-            raise GlbParseError(
-                f"POSITION accessor {accessor_index} is sparse (min/max not plain)"
-            )
+        _assert_concrete_position(gltf, accessor_index, accessor)
         positions.append(
             {
                 "count": int(accessor["count"]),
-                "min": list(accessor.get("min", [])),
-                "max": list(accessor.get("max", [])),
+                "min": list(accessor["min"]),
+                "max": list(accessor["max"]),
             }
         )
 

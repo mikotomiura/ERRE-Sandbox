@@ -260,11 +260,19 @@ def _guard_identifiers(node: ast.AST, tokens: tuple[str, ...]) -> None:
     names: list[str] = []
     if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
         names.append(node.id)
+    elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
+        # Assignment/annotation target attribute — ``self.verdict = ...`` /
+        # ``obj.scorer = ...`` (the ``.attr`` in a Store context).
+        names.append(node.attr)
     elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
         names.append(node.target.id)
     elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
         names.append(node.name)
     elif isinstance(node, ast.arg):
+        names.append(node.arg)
+    elif isinstance(node, ast.keyword) and node.arg is not None:
+        # A keyword-argument name at a call site — ``emit(floor=...)`` (``**kw``
+        # unpacking carries ``arg is None`` and is skipped).
         names.append(node.arg)
     for name in names:
         low = name.lower()
@@ -314,8 +322,17 @@ def _strip_gd_comments(src: str) -> str:
     for line in src.splitlines():
         quote: str | None = None
         cut = len(line)
-        for i, ch in enumerate(line):
+        i = 0
+        n = len(line)
+        while i < n:
+            ch = line[i]
             if quote is not None:
+                if ch == "\\":
+                    # Backslash escape inside a string literal: skip the escaped
+                    # char so an escaped quote (``"a \" # b"``) does not close the
+                    # string early and mis-classify a ``#`` inside it as a comment.
+                    i += 2
+                    continue
                 if ch == quote:
                     quote = None
             elif ch in ('"', "'"):
@@ -323,6 +340,7 @@ def _strip_gd_comments(src: str) -> str:
             elif ch == "#":
                 cut = i
                 break
+            i += 1
         out_lines.append(line[:cut])
     return "\n".join(out_lines)
 
@@ -405,6 +423,13 @@ def test_m4_viz_gdscript_no_measurement() -> None:
         'd = {"d_loco": 0.0}\n',
         'path = "results/spdm_verdict.jsonl"\n',
         'importlib.import_module("erre_sandbox.evidence.spdm")\n',
+        # Attribute-target (Store) assignments — MEDIUM: previously missed.
+        "self.verdict = 1\n",
+        "obj.scorer = 2\n",
+        "self.divergence: float = 0.0\n",
+        # Keyword-argument name at a call site — MEDIUM: previously missed.
+        "emit(floor=3)\n",
+        "record(scorer=obj)\n",
     ],
 )
 def test_m4_viz_guard_catches_negative_fixture(src: str) -> None:
@@ -413,6 +438,27 @@ def test_m4_viz_guard_catches_negative_fixture(src: str) -> None:
     with pytest.raises(AssertionError):
         assert_no_measurement_surface_py(
             ast.parse(src), identifier_tokens=_IDENTIFIER_BAN_FULL
+        )
+
+
+def test_m4_viz_guard_geometry_tier_allows_building_keyword() -> None:
+    """MEDIUM-2 tier policy: a building-floor attribute/keyword is legitimate
+    vocabulary in the geometry exporter tier and must NOT trip that tier's guard,
+    while the FULL tier still catches it (proving the tier split is deliberate)."""
+    # Geometry tier: bare ``floor`` dropped — building-floor vocabulary allowed.
+    assert_no_measurement_surface_py(
+        ast.parse("place(floor=3)\nself.floor_height = 0.15\n"),
+        identifier_tokens=_IDENTIFIER_BAN_GEOMETRY,
+    )
+    # But ``verdict`` / ``scorer`` attribute+keyword still trip the geometry tier.
+    with pytest.raises(AssertionError):
+        assert_no_measurement_surface_py(
+            ast.parse("self.verdict = 1\n"), identifier_tokens=_IDENTIFIER_BAN_GEOMETRY
+        )
+    # And the FULL tier still catches ``floor=`` (layout/parser/test tier).
+    with pytest.raises(AssertionError):
+        assert_no_measurement_surface_py(
+            ast.parse("place(floor=3)\n"), identifier_tokens=_IDENTIFIER_BAN_FULL
         )
 
 
@@ -436,6 +482,22 @@ def test_m4_viz_guard_catches_negative_fixture_gd(src: str) -> None:
 # --------------------------------------------------------------------------- #
 # I1-G4 — docstring / comment content is never flagged (HIGH-1)
 # --------------------------------------------------------------------------- #
+
+
+def test_m4_viz_gd_comment_strip_respects_escapes() -> None:
+    """MEDIUM (.gd escape): an escaped quote inside a string literal must not be
+    treated as closing the string — otherwise a ``#`` inside the string is
+    mis-read as a comment start, silently hiding real denylist code after it."""
+    # WITHOUT escape handling, the ``\"`` closes the string early, the ``#`` is
+    # taken as a comment, and the trailing ``scorer`` code is stripped away
+    # (a missed detection). With escape handling the string stays open through
+    # the ``#`` and the real ``scorer`` identifier is caught.
+    with pytest.raises(AssertionError):
+        assert_no_measurement_in_gdscript('var s = "x \\" #"\nvar scorer = 1\n')
+
+    # A legitimate string containing an escaped quote (no denylist token in real
+    # code) must NOT trip — the escape must not corrupt normal parsing.
+    assert_no_measurement_in_gdscript('var label = "a \\" b"\nvar y = floor(3.7)\n')
 
 
 def test_m4_viz_guard_docstring_not_flagged() -> None:
