@@ -1693,6 +1693,38 @@ class WorldRuntime:
             development_state=rt.development_state,
         )
 
+    async def step_cognition_once(self, agent_id: str) -> CycleResult:
+        """Deterministically step exactly one agent's cognition (record-mode seam).
+
+        Public-ish seam (design-final.md §M4.1, DA-M2IMPL-3, Codex MEDIUM-6):
+        a record-mode sequential driver (``integration.embodied.society``)
+        needs a supported way to step one named agent's cognition without
+        going through the live phase-wheel's due-time / dwell gating and
+        ``asyncio.gather`` fan-out (:meth:`_on_cognition_tick`). This method
+        calls the same ``_step_one``/``_consume_result`` pair the phase-wheel
+        calls per due agent — unconditionally, with no dwell/due-time check —
+        so a record-mode caller that wants every agent to step every window
+        (mirroring ``run_ecl_loop``'s single-agent private direct-drive
+        precedent, ``loop.py`` L624-625) gets a public, non-underscore-prefixed
+        contract instead of reaching into ``_step_one``/``_consume_result``
+        directly. ``_on_cognition_tick`` (the live wall-clock phase-wheel) is
+        completely unchanged — this method is purely additive and does not
+        alter live behaviour or byte determinism of any existing flow.
+
+        Raises ``KeyError`` if ``agent_id`` is not registered (surfaced, not
+        swallowed — a caller bug should fail loudly, matching
+        :meth:`inject_observation`'s existing contract). Unlike the
+        phase-wheel's ``asyncio.gather(..., return_exceptions=True)``, a
+        raised cognition-cycle exception here propagates directly to the
+        caller (matching ``run_ecl_loop``'s un-caught precedent), since
+        record-mode drivers want failures to surface rather than be logged
+        and swallowed.
+        """
+        rt = self._agents[agent_id]
+        result = await self._step_one(rt)
+        self._consume_result(rt, result)
+        return result
+
     def _consume_result(
         self,
         rt: AgentRuntime,
