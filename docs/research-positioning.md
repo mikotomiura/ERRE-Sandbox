@@ -702,6 +702,30 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   次工程 (別タスク) = 選定 M2 の impl-design ADR (HOW) → 実コード (Loop Engineering)。詳細 =
   `.steering/20260711-m13-construction-m2-scoping/design-final.md` (+ design-v1/v2/comparison / codex-review.md
   verbatim / decisions.md)。
+- **M2 impl-design ADR = HOW 技術契約 pre-register (FROZEN 2026-07-11、doc-only・非 spend・measurement 非再入)**:
+  M2 scoping (WHAT/WHY) を受け、sealed 実コード前に HOW を pre-register する impl-design (ECL v0 / B と同型の
+  正典パターン scoping →【impl-design】→ 実コード)。**reimagine v1(α: Layer1+Layer2 統合 1 本) 意図破棄 → v2(β:
+  Layer1-only 先行) 独立生成 → β spine + Layer2 seam graft + Placement-1** (user ratify AskUserQuestion)。
+  **裁定 = 本 ADR は Layer1 (N体 determinism, GATING) の HOW を full 契約化**、Layer2 (ミラー・シム) は
+  **seam/readiness 契約のみ graft** (event-log の self-other slot を最小 wire envelope で予約 + continuity 原則
+  + 4 規律)、内部 HOW (prompt schema/continuity fixture) は Layer1 実コード land 後の別 mirror-sim impl-design
+  ADR へ defer (scoping §2.3.1 実装順序 binding を ADR 分割で機械担保)。配置 = `integration/embodied/society.py`
+  新規 (loop.py Plane2/checksum + handoff.py [既に N体前方互換] 再利用、run_ecl_loop 無改変)。**Layer1 契約核** =
+  record-mode 逐次 sorted scheduler (asyncio.gather を record mode で捨てる = run_ecl_loop 単一 agent 直駆動の
+  N体一般化、live は gather 保持) + per-agent/per-pair named RNG substream + **b-nbody §B4 侵入経路 sorted 化**
+  (separation/proximity `combinations(values,2)` / 非 sorted values() / async gather / dialog RNG) + discovery
+  guard (登録順 permutation → 同一 checksum、DB ORDER BY、canonical key sort) + **versioned event/decision log
+  全体 checksum** (geometry はその一部) + spend ast-guard + acceptance test 凍結 (causal wiring/boolean のみ、
+  floor/verdict でない)。**実コード確証を binding** (impl-design は ADR 由来でなく code-verify、FixturePlayer H1
+  教訓): WorldRuntime N体保持 / run_ecl_loop 単一 agent 逐次直駆動 / handoff 既に sorted(agent_id)→order_slot /
+  dialog injected Random。process = /reimagine + Codex **Verdict=Adopt-with-changes** (事実誤認 HIGH なし、
+  HIGH 4 [token guard を executable AST 限定 / N=1 byte 不変を legacy·M2 canonical-equivalent の 2 経路二分 /
+  「N≤2 byte 不変」撤回→N=1 限定+sorted pair canonical / set blanket ban 撤回→sorted(set) allow] + MEDIUM 4 +
+  LOW 1 全反映)。**claim 境界 = HOW 技術契約の pre-register であって floor/divergence/measurement でない**
+  (holding 不可侵・R-budget=0、over-read 禁止、reasoning-trace door 保全のまま)。次工程 (別タスク) = M2 実コード
+  (Loop Engineering、Layer1 I1-I6 → Layer2 別 ADR 後の別 Loop)。詳細 =
+  `.steering/20260711-m13-m2-impl-design/design-final.md` (+ design-v1/v2/comparison / codex-review.md verbatim /
+  decisions.md)。
 
 ## 9. スコープ / 非スコープ
 
@@ -723,8 +747,11 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
     第一 cognitive 次元 (Layer2 = bounded construction attempt、4 規律付き = construction-mode only / functional
     analog 語彙 / 予算ゼロ SimToM prompt / appraisal measurement 非混入)。可視化は既存 live seam の N体 primitive
     拡張、full Blender 可視化は M4 残置、M3 endurance は post-M2 (construction scoping FROZEN 2026-07-11、
-    measurement でなく建設、acceptance は causal wiring/boolean のみ、holding 不可侵・R-budget 未消費)。**技術契約
-    (HOW) は impl-design ADR + 実コードで別タスク**。
+    measurement でなく建設、acceptance は causal wiring/boolean のみ、holding 不可侵・R-budget 未消費)。**Layer1
+    (N体 determinism) の技術契約 (HOW) は M2 impl-design ADR (FROZEN 2026-07-11、doc-only) で pre-register 済** =
+    society.py 逐次 sorted scheduler + §B4 侵入経路 sorted 化 + versioned event/decision log 全体 checksum +
+    spend ast-guard、Layer2 (ミラー・シム) は seam 契約のみで内部 HOW は Layer1 land 後の別 ADR、**実コードは別
+    タスク (Loop Engineering、Layer1 I1-I6 → Layer2 別 ADR)**。
   - 事前登録された falsifiable な GO/NO_GO verdict と two-sided guard の徹底。
   - 凍結された認知契約・apparatus 上での非循環・matched-null 設計。
 - **やらない**:
