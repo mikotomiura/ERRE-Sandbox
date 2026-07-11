@@ -751,6 +751,35 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   5 機序分離継承、holding 不可侵、reasoning-trace door 保全のまま)。次工程 = Layer2 (ミラー・シム) mirror-sim
   impl-design ADR (Layer1 land 後、実 API 上で prompt schema/continuity fixture を確定) → 別 Loop。詳細 =
   `.steering/20260711-m13-m2-society-layer1-code/` + `loop/20260711-m13-m2-society-layer1-code/`。
+- **M4 situated 3D 可視化 scoping ADR (FROZEN 2026-07-11、G-GEAR、user 裁定 ratify・doc-only・非 spend・
+  R-budget=0 不変)**: 建設 pivot の第2 milestone。Layer1 (PR #72) が供給した決定的 N体 substrate + committed
+  golden + handoff (`m2-society-1`) + Godot playback を**初めて 3D で「動く N体 society」として可視化する建設
+  spike の WHAT/WHY + high-level scope**。正典パターン scoping (本 ADR) →【impl-design】→ 実コード。**技術 =
+  geometry nodes (Blender) は user 裁定で確定**、reimagine は HOW/scope を weigh (使うか否かは論点でない)。
+  **reimagine v1 (最大構成: 環境+avatar 両方 geo nodes + skinned rig/anim + live WS) 意図破棄 → v2 (最小逆算:
+  「楽しめる動く 3D N体 society」から逆算) 独立生成 → v2 spine + v1 zone 網羅 graft** (user ratify)。**選定** =
+  環境=geometry nodes で 5 zone (study/peripatos/chashitsu/agora/garden) 手続き生成 → zone 単位 .glb export →
+  `godot_project/assets/environment/` 消費 (既存 `erre-sandbox-blender/export_chashitsu.py` 手続き primitive→glTF
+  先例の進化形) / avatar = primitive placeholder (skinned humanoid rig/anim は fidelity として後続 defer) / 消費 =
+  offline committed-golden 決定的再生 (新規 dev viewer、live WS defer・LLM 非接触) / 全景 = dev-only wrapper
+  (既存 `MainScene.tscn` は production WebSocketClient 接続済ゆえ無改変)。**replay 入力 role split** = position/motion
+  は `ecl_trace.jsonl` の `(physics_tick_index, order_slot)`、speech/animation は `envelope_stream.jsonl`
+  (Codex MEDIUM-2)。**GPL 分離 binding** (bpy を `src/erre_sandbox/` に絶対置かない、`erre-sandbox-blender/`
+  GPL-3.0 分離、.glb はデータゆえ Godot 消費可)。**acceptance = causal wiring / boolean / 再現性のみ** (AC1 決定的
+  build [再走 byte 不変] / AC2 golden→N avatar order_slot 配置・trace 通り移動 / AC3 決定性 / AC4 5 zone 描画 /
+  AC5 measurement 面ゼロ [evidence/spdm/runningness/floor/landscape/verdict/scorer/bank*/D_* を import も emit も
+  しない denylist、Codex HIGH-1 で本文同幅化])。process = /reimagine + Codex **Verdict=Adopt-with-changes**
+  (Windows PowerShell sandbox degrade を Node REPL フォールバックで回避し完走、HIGH-1 [AC5 guard 幅] + FACT×2
+  [座標 SSOT=`contracts.geometry.ZONE_CENTERS`/`world.zones` は shim、golden trace 全 peripatos で "zone 間移動"
+  は齟齬] + MEDIUM×3 全反映、LOW-2 [新 Blender script SPDX header] は impl-design defer)。**claim 境界 =
+  construction (substrate を observe する可視化) であって measurement でない** (可視化は observe、floor/verdict/
+  divergence を作らない・測らない、「2体が golden 通り移動」は construction 現象で measured convergence でない、
+  golden が両者 peripatos なのは fixture 性質であって measured 収束でない、firing⇔detectability 混同禁止、over-read
+  禁止、holding 不可侵・R-budget=0、reasoning-trace door 保全のまま)。次工程 (別タスク) = M4 impl-design ADR
+  (HOW = geometry nodes ノードグラフ / zone .glb 粒度 / dev viewer 具体 / 決定的再生検証 / Zazen 非 zone 扱い /
+  GPL export 自動化 + SPDX header) → 実コード (Loop)。Layer2 mirror-sim impl-design ADR は別トラック併存。詳細 =
+  `.steering/20260711-m13-m4-3d-visualization-scoping/design-final.md` (+ design.md [reimagine 2 案] /
+  codex-review.md verbatim / decisions.md)。
 
 ## 9. スコープ / 非スコープ
 
