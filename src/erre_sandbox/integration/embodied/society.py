@@ -616,6 +616,19 @@ def event_log_checksum(
     ``memory_id`` (already deterministic, ``ecl-{agent_id}-{tick:04d}``) — so
     a byte-identical re-run under the same (seed, recorded Plane 2) yields a
     byte-identical digest, independent of collection order.
+
+    cross-review MEDIUM-B (loop/20260711-m13-m2-society-layer1-code/cross-
+    review-synthesis.md): the per-agent Plane 2 ``decisions`` mapping is also
+    now **explicitly** sorted here — by ``agent_id`` (the same total order
+    ``order_slot = sorted(agent_ids).index(agent_id)`` derives from) for the
+    outer mapping key, then by ``agent_tick`` for each agent's own decision
+    list — rather than resting on the driver's append discipline (§M4.1's
+    strictly-increasing sequential-tick loop already produces this exact
+    order, so ``run_society_loop``'s caller-observed digest is unchanged) or
+    on ``json.dumps(sort_keys=True)`` alone (which only sorts the dict's own
+    keys, not each agent's decision *list*). This turns the full-order-key
+    contract above into a function-internal guarantee, independent of any
+    future caller's collection order.
     """
     _validate_self_other_slot(self_other_observation_input)
     geometry_checksum = ecl_trace_checksum(rows)
@@ -647,8 +660,11 @@ def event_log_checksum(
         ],
         "self_other_observation_input": self_other_observation_input,
         "decisions": {
-            agent_id: [_decision_projection(d) for d in decs]
-            for agent_id, decs in decisions.items()
+            agent_id: [
+                _decision_projection(d)
+                for d in sorted(decs, key=lambda d: d.agent_tick)
+            ]
+            for agent_id, decs in sorted(decisions.items())
         },
     }
     blob = json.dumps(

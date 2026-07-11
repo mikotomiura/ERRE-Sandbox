@@ -52,6 +52,23 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SOCIETY_SRC = (
     _REPO_ROOT / "src" / "erre_sandbox" / "integration" / "embodied" / "society.py"
 )
+_HANDOFF_SRC = (
+    _REPO_ROOT / "src" / "erre_sandbox" / "integration" / "embodied" / "handoff.py"
+)
+"""cross-review MEDIUM-A (loop/20260711-m13-m2-society-layer1-code/cross-review-
+synthesis.md): the M2 society handoff functions (``render_society_golden`` /
+``build_society_envelope_stream`` / ``build_society_decisions_stream`` /
+``project_society_agent_to_ecl_result``) live in this module alongside the
+pre-existing legacy (single-agent) handoff surface, and were previously outside
+this guard's scan (society.py + this loop's tests only). Extended here
+(guard-only; ``handoff.py`` itself stays unmodified) so a future drift into a
+measurement/aggregation import on the M2 path is caught the same way society.py
+already is — belt-and-suspenders denylist + aggregation-surface ban, not the
+closed *allowlist* (:func:`assert_society_import_allowlist` enumerates
+society.py's own import surface specifically; handoff.py legitimately imports a
+different, wider stdlib/erre_sandbox set — pydantic/importlib.metadata/os/sys/
+etc — so only the denylist + computation-surface checks apply here, matching
+Codex's "denylist import + 集計/分布生成 非在" framing)."""
 _GATING_TEST_SRC = _REPO_ROOT / "tests" / "test_integration" / "test_m2_society.py"
 _THIS_FILE = Path(__file__)
 
@@ -317,6 +334,31 @@ def test_m2_society_no_measurement_computation() -> None:
         "landscape_divergence",
     ):
         assert token not in society_src, f"society.py must not reference {token!r}"
+
+
+def test_m2_handoff_no_measurement_computation() -> None:
+    """cross-review MEDIUM-A: the M2 society functions in ``handoff.py`` carry no
+    measurement/aggregation surface either — denylist import + aggregation-
+    surface ban (§M8), same as society.py's own I6-G1, applied to the sibling
+    module the M2 handoff path (Issue 005) actually lives in. This is a
+    guard-only extension (``handoff.py`` is not modified for this check to
+    pass) — the module is already measurement-import-free (pure serialisation
+    of ``SocietyRunResult``/``EclRunResult``), so this is expected to be green
+    on first run and to catch a *future* drift, not a defect being fixed now.
+    """
+    handoff_tree = _parse(_HANDOFF_SRC)
+    assert_no_denylist_import(handoff_tree)
+    assert_no_measurement_computation(handoff_tree)
+
+    # No raw-source-text token belt-and-suspenders here (unlike society.py's
+    # own I6-G1, whose module docstring never mentions these words at all):
+    # handoff.py's module docstring *legitimately* narrates the scope guard in
+    # prose ("imports no evidence / spdm / runningness machinery", line ~27),
+    # so a bare substring-in-raw-text check would false-positive on that
+    # sentence. The AST-based checks above are the real (import-statement- and
+    # executable-identifier-scoped) guard and already do not look at
+    # docstrings/comments (Codex HIGH-1 discipline, mirrored from society.py's
+    # own guard).
 
 
 @pytest.mark.parametrize(
