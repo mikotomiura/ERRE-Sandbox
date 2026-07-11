@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Procedural builder + glb exporter for the M6-C chashitsu (茶室).
 
 Run headlessly::
