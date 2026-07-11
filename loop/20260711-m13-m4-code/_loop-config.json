@@ -1,0 +1,18 @@
+{
+  "task": "20260711-m13-m4-code",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "bash scripts/dev/pre-push-check.sh",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 2 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260711-m13-m4-code/_loop-events.jsonl",
+  "env": {
+    "GODOT_BIN": "C:/Users/johnd/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.6.2-stable_win64.exe",
+    "BLENDER_BIN": "C:/Program Files/Blender Foundation/Blender 5.1/blender.exe"
+  },
+  "notes": "M13 M4 situated 3D 可視化 実コード。binding = FROZEN M4 impl-design ADR .steering/20260711-m13-m4-impl-design/design-final.md §1-12 (PR #74, merged) + decisions.md 判断1-5 (Gate0 Godot 4.6.2 導入 / Blender 5.1.2 pin / .glb↔viewer decouple / 5 zone / expected schema)。construction であって measurement でない (floor/landscape/verdict/scorer/D_* 非計算・非測定、R-budget=0 不変、holding 不可侵、over-read 禁止、firing⇔detectability 混同禁止、fingerprint/placement checksum は再現性 witness であって metric でない)。実装 spend であって measurement spend でない (offline golden 決定的再生のみ、LLM 非接触)。GPL 分離 binding (bpy は erre-sandbox-blender/ + SPDX header のみ、src/ に import bpy 禁止、Godot は GDScript のみ、非 GPL tool は scripts//tests/)。実行 = subagent-per-issue (worktree)。依存: I1(guard) → I2(tooling) → I3(1 zone .glb pipeline) → I4(残り zone) / I5(viewer) → I6(headless 検証)。verify_level: I1/I3/I6=recheck (AC直結/measurement 非再入/決定性), I2/I4/I5=recheck (AC直結)。binding 逸脱 (handoff.py/EclReplayPlayer.gd/MainScene.tscn/read-only zone .tscn/凍結 apparatus 改変 / HOW 再交渉 / measurement 再入 / GPL を src/ に import) は Stop→superseding ADR。reasoning-trace door 保全のまま touch しない。CI (GitHub) は Godot/Blender 非導入なら該当 test skip (既存パターン)、local pre-push で GODOT_BIN/BLENDER_BIN 実走 + WSL byte parity。"
+}
