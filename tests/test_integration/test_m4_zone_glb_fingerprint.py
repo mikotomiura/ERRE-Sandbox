@@ -35,8 +35,16 @@ _ENV_DIR: Final[Path] = _REPO_ROOT / "godot_project" / "assets" / "environment"
 _CANONICAL_DECIMALS: Final[int] = 6
 
 # Zones whose committed geometry-nodes ``.glb`` + fingerprint this test covers.
-# I3 = {peripatos}; I4 appends study / chashitsu / agora / garden here.
-_ZONES: Final[tuple[str, ...]] = ("peripatos",)
+# I3 landed {peripatos}; I4 appended study / chashitsu / agora / garden (all five
+# baked from seed-free geometry-nodes exporters under the identical determinism
+# contract, so the parametrised body stays zone-agnostic).
+_ZONES: Final[tuple[str, ...]] = (
+    "peripatos",
+    "study",
+    "chashitsu",
+    "agora",
+    "garden",
+)
 
 
 def _glb_path(zone: str) -> Path:
@@ -118,14 +126,15 @@ def render_fingerprint_text(data: bytes) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# I3-G1 — committed .glb fingerprint recomputes byte-identically
+# I3-G1 / I4-G1 — committed .glb fingerprint recomputes byte-identically
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("zone", _ZONES)
-def test_peripatos_fingerprint(zone: str) -> None:
-    """AC I3-G1: recomputing the committed ``<zone>_v1.glb`` fingerprint through
-    the pure parser byte-matches the committed ``<zone>_v1.fingerprint.json``."""
+def test_zone_fingerprint(zone: str) -> None:
+    """AC I3-G1 / I4-G1: recomputing the committed ``<zone>_v1.glb`` fingerprint
+    through the pure parser byte-matches the committed
+    ``<zone>_v1.fingerprint.json`` (all five zones)."""
     glb_path = _glb_path(zone)
     fingerprint_path = _fingerprint_path(zone)
     assert glb_path.is_file(), glb_path
@@ -137,13 +146,13 @@ def test_peripatos_fingerprint(zone: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# I3-G2 — the real .glb does NOT trip the parser's fail-closed paths
+# I3-G2 / I4-G1 — the real .glb does NOT trip the parser's fail-closed paths
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("zone", _ZONES)
-def test_peripatos_glb_not_fail_closed(zone: str) -> None:
-    """AC I3-G2: the committed ``<zone>_v1.glb`` passes every HIGH-1 / HIGH-2
+def test_zone_glb_not_fail_closed(zone: str) -> None:
+    """AC I3-G2 / I4-G1: the committed ``<zone>_v1.glb`` passes every HIGH-1 / HIGH-2
     precondition — identity node transforms, no Draco / meshopt compression, no
     external buffer, no sparse POSITION — proving the exporter honoured the
     identity + uncompressed contract (dual to I2-G4's synthetic fail-closed)."""

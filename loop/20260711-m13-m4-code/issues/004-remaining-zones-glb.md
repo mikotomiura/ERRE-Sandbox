@@ -59,7 +59,29 @@ chashitsu は既存 `export_chashitsu.py`（primitive）があるが、§1.2 の
 - I2（tests/_glb_json.py パーサ）。I1（GPL/measurement guard）。
 
 ## Status
-TODO
+done
 
 ## Execution Result
-（完了時に記入）
+I3 の決定的 geometry-nodes pipeline を残り 4 zone へ反復適用して完了。
+
+**新規 export script（各 SPDX GPL header、seed-free + identity transform + 無圧縮、I3 と同契約）**
+- `erre-sandbox-blender/scripts/export_study.py`（書斎: floor grid + bookshelf 列）
+- `erre-sandbox-blender/scripts/export_chashitsu_gn.py`（茶室: floor grid + 2×2 grid 頂点上の 4 隅柱。
+  §1.2 に従い primitive の `export_chashitsu.py` は無改変で温存、別名で共存）
+- `erre-sandbox-blender/scripts/export_agora.py`（広場: 大 floor grid + colonnade 列）
+- `erre-sandbox-blender/scripts/export_garden.py`（庭: 砂利 floor grid + 石列）
+
+**committed 生成物（実 bake）**
+- `godot_project/assets/environment/{study,chashitsu,agora,garden}_v1.glb`
+- `godot_project/assets/environment/{study,chashitsu,agora,garden}_v1.fingerprint.json`（canonical、
+  committed .glb を `tests/_glb_json.py` で読んで算出）
+
+**AC 検証**
+- I4-G1: `test_m4_zone_glb_fingerprint.py` を 5 zone parametrize（peripatos + study/chashitsu/agora/garden）
+  へ拡張、全緑（committed .glb ↔ committed fingerprint byte 一致）。
+- I4-G2: 4 zone 新規 export に SPDX GPL header → `test_m4_gpl_spdx_boundary.py` 緑。
+  新規 export .py は `test_m4_viz_measurement_guard.py`（I1 guard）も通過。
+- I4-G3: 各 zone 2 回 bake で .glb byte 一致（run.sh --idempotency 実測、sha256 記録）:
+  study=38be385f…, chashitsu=4aacdf5e…, agora=86f23ea4…, garden=7f85c797…。全 IDEMPOTENT。
+
+3 AC test（46 passed） + ruff format/check（新規 clean） + mypy src（Success）緑。
