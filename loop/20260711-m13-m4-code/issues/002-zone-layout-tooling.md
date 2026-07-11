@@ -72,7 +72,20 @@ handoff.py の canonical 規律（`CANONICAL_FLOAT_DECIMALS=6` + sort_keys + com
 - I3 は本 issue の `tests/_glb_json.py` に依存（helper を先行供給）。
 
 ## Status
-TODO
+done
 
 ## Execution Result
-（完了時に記入）
+- 新規: `scripts/export_zone_layout.py`（純 Python・bpy 非依存・非 GPL）/
+  `godot_project/assets/environment/zone_layout.json`（committed 生成物、canonical）/
+  `tests/_glb_json.py`（純 GLB-JSON パーサ helper、fail-closed HIGH-1/HIGH-2）/
+  `tests/test_integration/test_m4_zone_layout.py`（I2-G1..G4）。
+- .tscn root drift 是正（root origin のみ、child mesh/material 無改変）:
+  Study `-33.33,0,-33.33`→`-33.333333,0,-33.333333` / Chashitsu `33.33,0,-33.33`→`33.333333,0,-33.333333` /
+  Agora `0,0,33.33`→`0,0,33.333333` / Garden `33.33,0,33.33`→`33.333333,0,33.333333`。
+  Peripatos は root transform 無し（identity=0,0,0）で無改変。Zazen は zone 非該当で無改変。
+- テスト: `pytest -q tests/test_integration/test_m4_zone_layout.py test_m4_viz_measurement_guard.py` = 40 passed。
+- idempotent: `python scripts/export_zone_layout.py` 再走で zone_layout.json byte 一致（sha256 一致）。
+- lint/type: `ruff check scripts/export_zone_layout.py` 緑 / `ruff check src tests` 緑 /
+  `ruff format --check` 新規 3 ファイル緑 / `mypy src` Success。
+- binding: construction のみ（metric/floor/verdict 非在、R-budget=0）、GPL 分離（bpy 非依存、scripts//tests/ 配置）、
+  無改変厳守（geometry.py/handoff.py 等 touch せず、zone .tscn は root origin 6桁是正のみ）。HOW 越え無し。

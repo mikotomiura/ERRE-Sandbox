@@ -34,7 +34,7 @@ roughness = 0.88
 size = Vector3(0.9, 0.12, 0.9)
 
 [node name="Garden" type="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.33, 0, 33.33)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.333333, 0, 33.333333)
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
