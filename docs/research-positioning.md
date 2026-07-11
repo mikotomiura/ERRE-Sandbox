@@ -811,6 +811,30 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   `.steering/20260711-m13-m4-impl-design/design-final.md` (+ design.md/design-comparison.md [reimagine 2 案] /
   codex-review.md verbatim / decisions.md)。
 
+- **M4 situated 3D 可視化 実コード landed (2026-07-12、G-GEAR、construction・実装 spend・measurement spend
+  でない = R-budget=0 不変)**: 上記 impl-design (PR #74) の HOW を実コードへ。Loop Engineering =
+  **subagent-per-issue** (worktree /loop-issue モデルの実体、各 worker → loop-watchdog の verify_level=recheck
+  独立再走で done gate、I1-I6 全緑)。成果 = **5 zone geometry-nodes 環境 .glb + 6 桁量子化構造 fingerprint**
+  (純 GLB-JSON パーサ [bpy 非依存] で committed .glb 再計算 → committed fingerprint と byte 一致、非 identity
+  node transform/圧縮 ext/external buffer/sparse-only POSITION を fail-closed、同一機 idempotency sha256 一致) +
+  **dev-only `SocietyReplayViewer.gd`** (golden N体 substrate を headless 再生、motion=`ecl_trace` pass-through
+  echo / speech·anim=`envelope_stream` [move 非位置]、別 clock domain 独立系列、`EclReplayPlayer.gd`/`MainScene.tscn`
+  無改変) + **headless placement dump → Python canonicalizer 正規化 → committed `expected_placement.jsonl`
+  byte 一致** (N=2 order_slot 順・trace 通り) + **measurement-zero guard** (.py executable-AST [Attribute/keyword
+  scan 込み] + .gd text scan、denylist 全幅) + **GPL/SPDX 境界 guard**。**cross-platform 決定性 = WSL byte
+  parity 実測** (5 fingerprint + expected_placement Linux 再生成 byte 一致)。統合フル CI 緑 (3659 passed) +
+  TASK-POST cross-review (code-reviewer[Opus] + Codex[gpt-5.5]、**両者 HIGH=なし**、MEDIUM 3 反映 = parser
+  fail-closed 完全実装 [§1.3 HIGH-2] / guard scan 拡張 / .tscn コメント是正)。**claim 境界 = construction であって
+  measurement でない** (fingerprint/placement checksum は再現性 witness であって metric/floor/verdict/scorer に
+  接続しない、over-read 禁止、firing⇔detectability 混同禁止、5 機序分離継承、holding 不可侵・R-budget=0、
+  reasoning-trace door 保全)。「2 avatar が golden 通り move」は construction 現象で measured
+  convergence/divergence でない (golden は 2 体とも全 peripatos = fixture 性質)。**保留 (user 裁定待ち)** =
+  interactive mode の scene 実体化・avatar 駆動 (design §3.4 と issue I5「最小実装で可」の乖離、推奨 = M4 fidelity
+  別 ADR へ defer)。詳細 = `loop/20260711-m13-m4-code/` (issues I1-I6 / retrospective / _loop-events) +
+  `.steering/20260711-m13-m4-code/` (decisions [判断6+cross-review 採否] / code-reviewer-review.md /
+  codex-review.md verbatim)。次工程 = Layer2 mirror-sim impl-design ADR (別トラック併存) or M4 fidelity
+  (skinned humanoid) 別 ADR (順序 + interactive 裁定は user)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
