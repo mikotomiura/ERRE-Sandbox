@@ -726,6 +726,31 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   (Loop Engineering、Layer1 I1-I6 → Layer2 別 ADR 後の別 Loop)。詳細 =
   `.steering/20260711-m13-m2-impl-design/design-final.md` (+ design-v1/v2/comparison / codex-review.md verbatim /
   decisions.md)。
+- **M2 Layer1 実コード landed (2026-07-11、construction・実装 spend、measurement spend でない = R-budget=0 不変)**:
+  M2 impl-design ADR (Layer1 HOW、FROZEN PR #71) を binding 前提に、**Layer1 (N体 composition + 並行
+  determinism, GATING) を Loop Engineering (I1-I6 subagent-per-issue、worktree /loop-issue) で実装しきった** 初の
+  実コード。`integration/embodied/society.py` 新規 (N体決定的 driver = record-mode 逐次 sorted scheduler、
+  run_ecl_loop 無改変で N=1 byte-identical) + `world/tick.py` §B4 侵入経路 sorted 化 (separation/proximity
+  combinations / 非 sorted values() を `_sorted_runtimes()` 経由、live 挙動不変) + `step_cognition_once` public
+  seam + **versioned event/decision log 全体 checksum** (geometry はその一部、self_other slot は null で予約=
+  Layer2-ready) + per-agent/per-pair named RNG substream (pair_key=canonical JSON array) + discovery guard
+  (登録順 permutation → 同一 checksum) + record-mode dialog 逐次配線 (utterance=決定的テンプレート、LLM call
+  ゼロ) + handoff N体 additive schema (`m2-society-1`、legacy byte unchanged / M2 N=1 canonical-equivalent の
+  **2 経路二分**) + committed N体 golden + spend ast-guard。**acceptance = §M9 全 test 緑** (causal wiring /
+  boolean、floor/verdict でない): event_log_checksum_stable / determinism_permutation / determinism_checklist /
+  pair_interaction_deterministic / legacy_byte_unchanged / n1_canonical_equivalent / handoff_manifest_pins /
+  log_carries_self_other_slot_forward_compat / no_measurement_computation / llm_call_cap。**統合フル pre-push
+  4 段 ALL CHECKS PASSED (3580 passed)**、**DG-2 cross-platform byte parity = WSL Ubuntu byte 一致実測 PASS**
+  (6 桁量子化が libm 1-ULP drift 封鎖)。TASK-POST cross-review = code-reviewer(Opus) LGTM/HIGH なし + Codex
+  (Windows sandbox degrade、observable concern fold-in)、MEDIUM 2 件反映 (spend guard を handoff 拡張 / decisions
+  明示 sort、golden byte 不変)。**決定的 construction 発見**: (i) dialog を record-mode driver に配線する際 uuid4
+  dialog_id が checksum 混入で latent 非決定 → per-pair seeded 採番で封鎖 (I4)、(ii) N=1 society driver は
+  run_ecl_loop と byte-identical (単一 agent 埋込 per-agent 純関数不変の強 witness)。**claim 境界 = construction
+  (再現可能な N体 substrate を建てた) であって measurement でない** (N体 emergence は construction 現象で measured
+  divergence でない、checksum は再現性であって floor でない、firing⇔detectability 混同禁止、over-read 禁止、
+  5 機序分離継承、holding 不可侵、reasoning-trace door 保全のまま)。次工程 = Layer2 (ミラー・シム) mirror-sim
+  impl-design ADR (Layer1 land 後、実 API 上で prompt schema/continuity fixture を確定) → 別 Loop。詳細 =
+  `.steering/20260711-m13-m2-society-layer1-code/` + `loop/20260711-m13-m2-society-layer1-code/`。
 
 ## 9. スコープ / 非スコープ
 
