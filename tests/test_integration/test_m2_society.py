@@ -74,9 +74,10 @@ import httpx
 import pytest
 
 from erre_sandbox.cognition import parse_llm_plan
+from erre_sandbox.cognition.embodiment import K_ECL
 from erre_sandbox.inference.ollama_adapter import ChatResponse, OllamaChatClient
+from erre_sandbox.integration.embodied import handoff, society
 from erre_sandbox.integration.embodied import loop as ecl_loop
-from erre_sandbox.integration.embodied import society
 from erre_sandbox.integration.embodied.loop import (
     RecordedLlmCall,
     RecordReplayChatClient,
@@ -92,11 +93,18 @@ from erre_sandbox.integration.embodied.society import (
     run_society_loop,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
+from erre_sandbox.schemas import (
+    AgentState,
+    CognitiveHabit,
+    HabitFlag,
+    PersonalityTraits,
+    PersonaSpec,
+    Zone,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from erre_sandbox.schemas import AgentState, PersonaSpec
+    from typing import Any
 
 _FIXED = datetime(2026, 1, 1, tzinfo=UTC)
 _PLAN_JSON = json.dumps(
@@ -1036,3 +1044,430 @@ def test_m2_pair_key_collision_free() -> None:
     assert society._pair_key("a-b", "c") == society._pair_key("c", "a-b")
     assert key_1 == json.dumps(["a-b", "c"], separators=(",", ":"), ensure_ascii=True)
     assert key_2 == json.dumps(["a", "b-c"], separators=(",", ":"), ensure_ascii=True)
+
+
+# --------------------------------------------------------------------------- #
+# I5 — handoff N-agent schema (§M7, additive, 2-path bifurcation, Codex HIGH-2)
+# --------------------------------------------------------------------------- #
+#
+# * **I5-G1** ``test_m2_society_legacy_byte_unchanged`` — legacy path: the
+#   pre-existing ``run_ecl_loop`` + committed ``ecl_v0_golden`` fixture render
+#   byte-identically to the committed bundle, in the same test session that
+#   also imports ``society`` — society's presence never touches the legacy
+#   path.
+# * **I5-G2** ``test_m2_society_handoff_n1_canonical_equivalent`` — M2 path:
+#   a genuine N=1 society run, projected through the new
+#   :func:`handoff.project_society_agent_to_ecl_result` adapter, renders the
+#   *same* ``ecl_trace.jsonl``/``decisions.jsonl``/``envelope_stream.jsonl``
+#   bytes as the legacy ``run_ecl_loop`` reference; only ``manifest.json``
+#   differs (schema version tag + appended N-body determinism pins) — raw
+#   byte identity of the *whole* manifest is not required (DA-M2IMPL-7).
+# * **I5-G3** ``test_m2_society_handoff_manifest_pins`` — the M2-schema
+#   manifest (:func:`handoff.render_society_golden`) pins
+#   ``M2_MANIFEST_SCHEMA_VERSION`` / coordinate convention / two-axis tick
+#   mapping / the appended N-body determinism checklist items
+#   (agent_id/order_slot/pair-order).
+# * **I5-G4** ``test_m2_society_golden_matches_committed`` — the committed
+#   N-agent golden (``tests/fixtures/m2_society_golden/``) byte-matches a
+#   fresh society run under the same (seed, recorded Plane 2) pins, and a
+#   second fresh bake reproduces every artifact (bake determinism).
+#
+# NOT a structural-floor verdict; verdict は holding.
+
+_ECL_V0_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "ecl_v0_golden"
+
+
+def _handoff_run_config(
+    *, seed: int, physics_ticks_per_cognition: int
+) -> dict[str, Any]:
+    """Explicit non-golden ``run_config`` (mirrors the actual run's own inputs,
+    Codex TASK-POST MEDIUM-2 precedent) for a fixed-clock ``_FIXED`` run."""
+    return {
+        "seed": seed,
+        "physics_ticks_per_cognition": physics_ticks_per_cognition,
+        "k_ecl": K_ECL,
+        "base_ts": _FIXED.isoformat(),
+        "retrieval_now": _FIXED.isoformat(),
+    }
+
+
+async def test_m2_society_legacy_byte_unchanged() -> None:
+    """Legacy path (Codex HIGH-2): ``run_ecl_loop`` + committed golden unchanged.
+
+    NOT a structural-floor verdict; verdict は holding. Society's presence in
+    this module (imported at the top of this very test file) must never touch
+    the legacy single-agent handoff bytes — this is a regression witness, run
+    in the same interpreter session as every other ``society`` test.
+    """
+    golden_dir = _ECL_V0_GOLDEN_DIR
+    committed_manifest = json.loads(
+        (golden_dir / "manifest.json").read_text(encoding="utf-8")
+    )
+    committed_decisions = (golden_dir / "decisions.jsonl").read_text(encoding="utf-8")
+    committed_trace = (golden_dir / "ecl_trace.jsonl").read_text(encoding="utf-8")
+    committed_envelope = (golden_dir / "envelope_stream.jsonl").read_text(
+        encoding="utf-8"
+    )
+
+    recorded = handoff.recorded_calls_from_jsonl(committed_decisions)
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    embedding = _embed_client()
+    llm = RecordReplayChatClient(recorded=recorded)
+    try:
+        result = await run_ecl_loop(
+            run_id=handoff.GOLDEN_RUN_ID,
+            store=store,
+            embedding=embedding,
+            llm=llm,
+            agent_state=handoff.golden_agent_state(),
+            persona=handoff.golden_persona(),
+            retrieval_now=handoff.GOLDEN_TS,
+            base_ts=handoff.GOLDEN_TS,
+            seed=handoff.GOLDEN_SEED,
+            n_cognition_ticks=handoff.GOLDEN_N_COGNITION_TICKS,
+            physics_ticks_per_cognition=handoff.GOLDEN_PHYSICS_TICKS_PER_COGNITION,
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+    assert llm.inner_invocations == 0, "golden replay must not touch a live LLM"
+
+    rendered = handoff.render_golden(result, env_pins=committed_manifest["env_pins"])
+    assert rendered["ecl_trace.jsonl"] == committed_trace
+    assert rendered["decisions.jsonl"] == committed_decisions
+    assert rendered["envelope_stream.jsonl"] == committed_envelope
+    assert json.loads(rendered["manifest.json"]) == committed_manifest
+    assert handoff.MANIFEST_SCHEMA_VERSION == "ecl-v0-handoff-2", (
+        "the legacy manifest_version constant itself must never be mutated in "
+        "place (Codex HIGH-2) — the M2 schema is a separate, additive constant"
+    )
+
+
+async def test_m2_society_handoff_n1_canonical_equivalent(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """M2 path (Codex HIGH-2): N=1 society, projected, is legacy-equivalent.
+
+    NOT a structural-floor verdict; verdict は holding. Complements I2-G1 (driver
+    level) at the handoff manifest layer: a genuine N=1 society run, through
+    :func:`handoff.project_society_agent_to_ecl_result`, renders the exact same
+    data-artifact bytes as the pre-existing single-agent ``run_ecl_loop`` path
+    reused unmodified; only ``manifest.json`` differs (a real schema-version
+    tag + appended N-body pins), and raw byte identity of the whole manifest is
+    not the claim (DA-M2IMPL-7) — the *other* manifest fields still agree.
+    """
+    agent_state = make_agent_state()
+    persona = make_persona_spec()
+    fixed_env_pins = {"pinned": "for-test"}
+    run_config = _handoff_run_config(seed=0, physics_ticks_per_cognition=5)
+
+    # --- legacy reference: run_ecl_loop, rendered via the unmodified path ---
+    inner = _chat_client(_PLAN_JSON)
+    ecl_client = RecordReplayChatClient(inner=inner)
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    embedding = _embed_client()
+    try:
+        ecl_result = await run_ecl_loop(
+            run_id="s0",
+            store=store,
+            embedding=embedding,
+            llm=ecl_client,
+            agent_state=agent_state,
+            persona=persona,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            seed=0,
+            n_cognition_ticks=4,
+            physics_ticks_per_cognition=5,
+            observation_factory=ecl_loop._default_observation_factory(
+                agent_state.agent_id
+            ),
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+        await inner.close()
+    legacy_artifacts = handoff.render_golden(
+        ecl_result, run_config=run_config, env_pins=fixed_env_pins
+    )
+
+    # --- M2 path: society driver at N=1, projected through the adapter ---
+    # Uses the same httpx-mock chat client shape as the legacy reference above
+    # (not the ``_run_society`` helper's ``_ScriptedInner``, whose hardcoded
+    # ``eval_count=1`` would introduce an unrelated raw-response difference
+    # unconnected to the schema-equivalence claim under test) so the recorded
+    # ``RecordedLlmCall`` is byte-identical between the two paths. Likewise
+    # passes ``run_ecl_loop``'s own observation factory explicitly: society.py's
+    # *default* factory intentionally emits differently-worded perception
+    # content ("m2 society forage step N" vs "ecl v0 forage step N", by design
+    # per its own module docstring) — an honest, harmless driver-identity
+    # label, not a semantic divergence, so it is neutralised here to isolate
+    # the claim under test (schema/handoff equivalence) from that label.
+    society_store = MemoryStore(db_path=":memory:")
+    society_store.create_schema()
+    society_embedding = _embed_client()
+    society_inner = _chat_client(_PLAN_JSON)
+    society_client = RecordReplayChatClient(inner=society_inner)
+    try:
+        society_result = await run_society_loop(
+            run_id="s0",
+            store=society_store,
+            embedding=society_embedding,
+            llms={agent_state.agent_id: society_client},
+            agent_states=[agent_state],
+            personas={agent_state.agent_id: persona},
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            seed=0,
+            n_cognition_ticks=4,
+            physics_ticks_per_cognition=5,
+            observation_factories={
+                agent_state.agent_id: ecl_loop._default_observation_factory(
+                    agent_state.agent_id
+                )
+            },
+        )
+    finally:
+        await society_embedding.close()
+        await society_store.close()
+        await society_inner.close()
+    projected = handoff.project_society_agent_to_ecl_result(
+        society_result, agent_state.agent_id
+    )
+    m2_artifacts = handoff.render_golden(
+        projected,
+        run_config=run_config,
+        env_pins=fixed_env_pins,
+        manifest_version=handoff.M2_MANIFEST_SCHEMA_VERSION,
+        extra_determinism_checklist=handoff.M2_NBODY_DETERMINISM_CHECKLIST,
+    )
+
+    # Data artifacts: byte-identical (N=1 society reduces to exactly the
+    # single-agent path — a strictly stronger witness than "semantic
+    # equivalence", since no schema element differs in these three files).
+    assert m2_artifacts["ecl_trace.jsonl"] == legacy_artifacts["ecl_trace.jsonl"]
+    assert m2_artifacts["decisions.jsonl"] == legacy_artifacts["decisions.jsonl"]
+    assert (
+        m2_artifacts["envelope_stream.jsonl"]
+        == legacy_artifacts["envelope_stream.jsonl"]
+    )
+
+    # manifest.json: NOT required to be raw-byte identical (DA-M2IMPL-7) —
+    # the schema version differs by construction.
+    m2_manifest = json.loads(m2_artifacts["manifest.json"])
+    legacy_manifest = json.loads(legacy_artifacts["manifest.json"])
+    assert m2_manifest["manifest_version"] == handoff.M2_MANIFEST_SCHEMA_VERSION
+    assert legacy_manifest["manifest_version"] == handoff.MANIFEST_SCHEMA_VERSION
+    assert m2_manifest["manifest_version"] != legacy_manifest["manifest_version"]
+    assert m2_artifacts["manifest.json"] != legacy_artifacts["manifest.json"]
+
+    # ...but every OTHER manifest field is semantically equivalent (the
+    # "canonical projection/adapter" equivalence the ADR requires).
+    for key in (
+        "schema_version",
+        "run",
+        "coordinate_convention",
+        "tick_mapping",
+        "canonical_json_rules",
+        "env_pins",
+        "artifacts",
+        "replay_checksum",
+        "replay_checksum_algorithm",
+        "replay_checksum_json_rules",
+        "expected_envelope_ordering",
+        "envelope_stream_kinds",
+        "godot_headless_command",
+    ):
+        assert m2_manifest[key] == legacy_manifest[key], key
+
+    # The M2 checklist is the legacy checklist with the N-body pins appended
+    # (additive, not a replacement).
+    n_legacy = len(legacy_manifest["determinism_checklist"])
+    assert (
+        m2_manifest["determinism_checklist"][:n_legacy]
+        == (legacy_manifest["determinism_checklist"])
+    )
+    assert m2_manifest["determinism_checklist"][n_legacy:] == list(
+        handoff.M2_NBODY_DETERMINISM_CHECKLIST
+    )
+
+
+async def test_m2_society_handoff_manifest_pins(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """I5-G3: the M2-schema manifest pins version/coord/tick/N-body checklist.
+
+    NOT a structural-floor verdict; verdict は holding.
+    """
+    agent_states = [
+        make_agent_state(agent_id="a_one", persona_id="kant"),
+        make_agent_state(agent_id="a_two", persona_id="kant"),
+        make_agent_state(agent_id="a_three", persona_id="kant"),
+    ]
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in agent_states}
+    sorted_ids = sorted(s.agent_id for s in agent_states)
+
+    result, _clients = await _run_society(
+        agent_states, personas, run_id="m2-pins", n_cognition_ticks=3
+    )
+    run_config = _handoff_run_config(seed=0, physics_ticks_per_cognition=5)
+    artifacts = handoff.render_society_golden(
+        result, run_config=run_config, env_pins={"pinned": "for-test"}
+    )
+    manifest = json.loads(artifacts["manifest.json"])
+
+    assert manifest["manifest_version"] == handoff.M2_MANIFEST_SCHEMA_VERSION
+    assert manifest["schema_version"] == society.SCHEMA_VERSION
+
+    coord = manifest["coordinate_convention"]
+    assert coord["up_axis"] == "Y"
+    assert coord["ground_plane"] == "XZ"
+    assert coord["units"] == "meters"
+    assert coord["yaw"] == "atan2(dz, dx)"
+
+    tick_mapping = manifest["tick_mapping"]
+    assert "physics_tick_index" in tick_mapping
+    assert "agent_tick" in tick_mapping
+    assert "30 Hz" in tick_mapping["physics_tick_index"]
+
+    checklist = manifest["determinism_checklist"]
+    assert len(checklist) == len(handoff.DETERMINISM_CHECKLIST) + len(
+        handoff.M2_NBODY_DETERMINISM_CHECKLIST
+    )
+    assert any("order_slot = sorted(agent_ids)" in item for item in checklist)
+    assert any("pair-order is canonicalised" in item for item in checklist)
+    assert any("no asyncio.gather fan-out" in item for item in checklist)
+
+    assert manifest["run"]["run_id"] == "m2-pins"
+    assert manifest["run"]["agent_ids"] == sorted_ids
+    assert manifest["replay_checksum"] == result.checksum
+
+
+# --------------------------------------------------------------------------- #
+# I5-G4 — committed N-agent golden (Windows bake; WSL byte match is separate)
+# --------------------------------------------------------------------------- #
+
+_M2_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "m2_society_golden"
+_M2_GOLDEN_RUN_ID = "m2-society-golden"
+_M2_GOLDEN_SEED = 0
+_M2_GOLDEN_N_TICKS = 4
+_M2_GOLDEN_PHYSICS_TICKS = 5
+_M2_GOLDEN_ENV_PINS: dict[str, Any] = {"pinned": "m2-society-golden"}
+
+
+def _m2_golden_persona() -> PersonaSpec:
+    """Minimal Kant-shaped persona (design-copy of conftest's ``make_persona_spec``
+    default, standalone so the golden scenario does not depend on a pytest
+    fixture — mirrors ``handoff.golden_persona``'s existing precedent)."""
+    return PersonaSpec.model_validate(
+        {
+            "persona_id": "kant",
+            "display_name": "Immanuel Kant",
+            "era": "1724-1804",
+            "primary_corpus_refs": ["kuehn2001"],
+            "personality": PersonalityTraits(
+                conscientiousness=0.95,
+                openness=0.85,
+            ).model_dump(),
+            "cognitive_habits": [
+                CognitiveHabit(
+                    description="15:30 daily walk",
+                    source="kuehn2001",
+                    flag=HabitFlag.FACT,
+                    mechanism="DMN activation via rhythmic locomotion",
+                    trigger_zone=Zone.PERIPATOS,
+                ).model_dump(mode="json"),
+            ],
+            "preferred_zones": ["study", "peripatos"],
+        }
+    )
+
+
+def _m2_golden_agent_states() -> list[AgentState]:
+    """Two agents, co-located in ``peripatos`` from tick 0 (mirrors I4's dialog
+    scenario) so the committed golden genuinely exercises the dialog channel —
+    an empty ``dialog_events`` witness here would be a vacuous fixture."""
+    return [
+        AgentState.model_validate(
+            {
+                "agent_id": "a_alpha",
+                "persona_id": "kant",
+                "tick": 0,
+                "position": {"x": 0.0, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+                "erre": {"name": "deep_work", "entered_at_tick": 0},
+            }
+        ),
+        AgentState.model_validate(
+            {
+                "agent_id": "a_bravo",
+                "persona_id": "kant",
+                "tick": 0,
+                "position": {"x": 0.1, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+                "erre": {"name": "deep_work", "entered_at_tick": 0},
+            }
+        ),
+    ]
+
+
+def _m2_golden_personas() -> dict[str, PersonaSpec]:
+    persona = _m2_golden_persona()
+    return {"a_alpha": persona, "a_bravo": persona}
+
+
+def _m2_golden_run_config() -> dict[str, Any]:
+    return _handoff_run_config(
+        seed=_M2_GOLDEN_SEED, physics_ticks_per_cognition=_M2_GOLDEN_PHYSICS_TICKS
+    )
+
+
+async def _run_m2_golden() -> SocietyRunResult:
+    result, _clients = await _run_society(
+        _m2_golden_agent_states(),
+        _m2_golden_personas(),
+        run_id=_M2_GOLDEN_RUN_ID,
+        seed=_M2_GOLDEN_SEED,
+        n_cognition_ticks=_M2_GOLDEN_N_TICKS,
+        physics_ticks_per_cognition=_M2_GOLDEN_PHYSICS_TICKS,
+    )
+    return result
+
+
+async def test_m2_society_golden_matches_committed() -> None:
+    """I5-G4: committed N-agent golden byte-matches a fresh society run.
+
+    NOT a structural-floor verdict; verdict は holding. Windows-side bake +
+    verify (this test); cross-platform WSL byte match is a separate, later
+    step (orchestrator, ``feedback_golden_crossplatform_float_drift``) — every
+    emitted float is already 6-decimal quantised before serialisation
+    (:data:`handoff.CANONICAL_FLOAT_DECIMALS`, unconditionally applied by
+    :func:`handoff.canonical_dumps`), the cross-platform-byte-identity
+    precondition.
+    """
+    result = await _run_m2_golden()
+    rendered = handoff.render_society_golden(
+        result, run_config=_m2_golden_run_config(), env_pins=_M2_GOLDEN_ENV_PINS
+    )
+
+    for filename in handoff.GOLDEN_FILENAMES:
+        committed_text = (_M2_GOLDEN_DIR / filename).read_text(encoding="utf-8")
+        assert rendered[filename] == committed_text, filename
+
+    # A well-formed, non-vacuous N-agent fixture (over-read guard, DG-6):
+    # dialog genuinely fired for this committed scenario.
+    assert result.dialog_events, (
+        "committed m2_society_golden scenario expected to exercise the dialog "
+        "channel (DG-6) — an empty witness would be a vacuous fixture"
+    )
+
+    # Bake determinism (issue completion condition 5): a second, independent
+    # fresh run reproduces every artifact byte-for-byte.
+    result2 = await _run_m2_golden()
+    rendered2 = handoff.render_society_golden(
+        result2, run_config=_m2_golden_run_config(), env_pins=_M2_GOLDEN_ENV_PINS
+    )
+    for filename in handoff.GOLDEN_FILENAMES:
+        assert rendered[filename] == rendered2[filename], filename

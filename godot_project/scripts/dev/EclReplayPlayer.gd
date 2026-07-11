@@ -1,9 +1,18 @@
-# EclReplayPlayer — ECL v0 handoff replay (developer-only)
+# EclReplayPlayer — ECL v0/M2 handoff replay (developer-only)
 #
-# Offline-replays a G-GEAR-generated ECL v0 embodiment handoff: reads
-# ``manifest.json`` + ``envelope_stream.jsonl`` (design-final.md §論点5), sorts
-# the wrapped envelopes by ``(order_slot, agent_tick, seq)`` and dispatches each
-# ``ControlEnvelope`` (speech / move / animation) in that deterministic order.
+# Offline-replays a G-GEAR-generated ECL handoff (single-agent ECL v0 or N-agent
+# M2 society, design-final.md §論点5 / M2 impl-design ADR §M7): reads
+# ``manifest.json`` + ``envelope_stream.jsonl``, sorts the wrapped envelopes by
+# ``(order_slot, agent_tick, seq)`` and dispatches each ``ControlEnvelope``
+# (speech / move / animation) in that deterministic order. Every entry already
+# carries its own ``order_slot`` (frozen ``sorted(agent_ids).index(agent_id)``,
+# handoff.py's ``build_envelope_stream``/``build_society_envelope_stream``), so
+# the sort + dispatch logic below is unchanged whether the stream came from a
+# single agent (``order_slot`` always ``0``) or an N-agent society run
+# (``order_slot`` spans ``0..N-1``) — this is the "N体 trace を order_slot 順に
+# offline 再生する bounded 拡張" (Issue 005, §M7): the only addition is the final
+# per-agent replay summary (:func:`_print_summary`), which makes an N-agent
+# replay's agent composition visible without touching the dispatch order.
 #
 # It extends ``SceneTree`` so it runs as a standalone headless smoke without a
 # scene, e.g.::
@@ -17,8 +26,8 @@
 # playlist, so ECL stream replay lives here, in a SEPARATE file. Production
 # scripts (``WebSocketClient.gd`` / ``EnvelopeRouter.gd`` / ``AgentManager.gd``)
 # MUST NOT depend on this file, and it never opens the production WebSocket — the
-# real gateway is never contacted (see ``dev/README.md``). Full-session
-# visualisation is Milestone 4 (out of scope).
+# real gateway is never contacted (see ``dev/README.md``). Full-session (Blender
+# skinned-humanoid) visualisation is Milestone 4 (out of scope, GPL-separated).
 class_name EclReplayPlayer
 extends SceneTree
 
@@ -63,6 +72,10 @@ func _initialize() -> void:
 	entries.sort_custom(_order_before)
 
 	var replayed := 0
+	# order_slot -> agent_id, discovered as entries are dispatched (bounded N-body
+	# extension, Issue 005 §M7): every entry already carries its own order_slot, so
+	# this is a read-only tally, not a change to the sort/dispatch order above.
+	var agents_by_slot: Dictionary = {}
 	for entry: Dictionary in entries:
 		var envelope: Dictionary = entry.get("envelope", {})
 		var kind := String(envelope.get("kind", ""))
@@ -70,10 +83,30 @@ func _initialize() -> void:
 			push_warning("[EclReplayPlayer] skipping non-replayable kind: %s" % kind)
 			continue
 		_replay_envelope(entry, envelope, kind)
+		var order_slot := int(entry.get("order_slot", 0))
+		var agent_id := String(envelope.get("agent_id", ""))
+		if agent_id != "":
+			agents_by_slot[order_slot] = agent_id
 		replayed += 1
 
-	print("[EclReplayPlayer] replayed %d envelopes, quitting" % replayed)
+	_print_summary(replayed, agents_by_slot)
 	quit(0)
+
+
+# Per-agent replay summary (bounded N体 extension, Issue 005 §M7): makes an
+# N-agent society replay's agent composition visible (order_slot 0..N-1) without
+# altering the dispatch order above; a single-agent ECL v0 stream degenerates to
+# exactly one slot (0), matching the pre-existing single-agent behaviour.
+func _print_summary(replayed: int, agents_by_slot: Dictionary) -> void:
+	var slots: Array = agents_by_slot.keys()
+	slots.sort()
+	var ordered_agents: PackedStringArray = []
+	for slot: int in slots:
+		ordered_agents.append("%d:%s" % [slot, agents_by_slot[slot]])
+	print(
+		"[EclReplayPlayer] replayed %d envelopes across %d agent(s) [%s], quitting"
+		% [replayed, slots.size(), ordered_agents.join(", ")]
+	)
 
 
 # Kind-based branch (schemas.py §7 / godot-gdscript Skill ルール 3). Dev smoke:
