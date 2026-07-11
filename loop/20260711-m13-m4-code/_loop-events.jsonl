@@ -1,3 +1,5 @@
 {"ts":"2026-07-11","issue":"ALL","event":"gate0_resolved","actor":"orchestrator","note":"Gate0: Blender 5.1.2 present; Godot absent → user 裁定で 4.6.2 導入 (GODOT_BIN 永続化、test_godot_project.py 4 passed)"}
 {"ts":"2026-07-11","issue":"ALL","event":"grill_done","actor":"orchestrator","note":"grilling Skill 実起動、検証可能ゴール AC1-AC5 確定 (test 名/exit code)、判断分岐 0 (decisions.md 判断1-5)"}
 {"ts":"2026-07-11","issue":"ALL","event":"issues_sliced","actor":"orchestrator","note":"issue-slicing Skill 実起動、6 縦スライス issue 001-006 (I1 guard→I2 tooling→I3 peripatos .glb→I4 残り zone→I5 viewer→I6 headless verify)、全 verify_level=recheck"}
+{"ts":"2026-07-11","issue":"ALL","event":"scaffold_committed","actor":"orchestrator","commit":"f130f36","branch":"feat/m13-m4-code","note":"Loop 足場 (issues I1-I6 + config + grill-goals + HOW SSOT 同梱) を feat/m13-m4-code に commit。worktree base = feat/m13-m4-code (LOOP_BASE_BRANCH)"}
+{"ts":"2026-07-11","issue":"ALL","event":"handoff_ready","actor":"orchestrator","note":"user 裁定 = worktree /loop-issue 正典 + /clear handoff。次セッション prompt = .steering/20260711-m13-m4-code/next-session-prompt-execute.md。実行順 I1→I2→(I3→I4)/I5→I6"}
