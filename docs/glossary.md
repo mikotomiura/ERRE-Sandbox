@@ -14,6 +14,7 @@
 | 逍遥 / ペリパトス | Peripatos | アリストテレスのペリパトス学派に由来する歩行ゾーン。エージェントが歩きながら発散的思考を行う場所 | 「peripatos ゾーンでは DMN バイアスが高まる」 |
 | 茶室 | Chashitsu | 利休の一期一会に由来する収束的思考ゾーン。注意を絞り込み、重要な記憶のみを検索する | 「chashitsu 入室時は温度 -0.2 で収束的生成」 |
 | 守破離 | Shu-Ha-Ri | 日本の芸道における3段階のスキル獲得モデル。shu=型の遵守、ha=型からの逸脱、ri=型からの自由 | 「shu 段階では固定スクリプトのみ実行可能」 |
+| ミラー・シム | Mirror-Sim | 他者の行動/情動を観察し、共有潜在を介して自己の行動/affinity を変調する inter-agent 機構の **functional analog**。SimToM 型の prompt-level self-other simulation として器官化する (M13 construction milestone-2 = M2 の Layer2、self-other latent alignment)。守破離「守＝模倣」の計算的類比。**✗「ミラーニューロン実装 / 神経機構再現」ではない** (過大主張ガード、citation-inaccurate)。予算ゼロ = prompt 先行、SOO LoRA fine-tuning は後段 defer | 「ミラー・シムの continuity gate = 他者観察を ablation すると自己変調が退化するかの boolean wiring (depends_on_other_observation ∈ {true,false})」 |
 | 一期一会 | Ichigo-Ichie | 茶道の概念。一度きりの出会いとして各インタラクションを扱う。Relationship モデルの `ichigo_ichie_count` で計測 | 「茶室での対話は一期一会としてカウントされる」 |
 | 間 | Ma | 日本文化における沈黙・余白の価値。エージェントの `ma_sense` 特性で沈黙への耐性を表現 | 「ma_sense が高いエージェントは対話中の沈黙を長く許容する」 |
 | 侘寂 / 侘び | Wabi(-Sabi) | 不完全・簡素・未完成の中に美を見出す日本の美意識。エージェントの `wabi` 特性で不完全性への受容度を表現 | 「wabi が高いエージェントは不完全な解答でも満足する」 |

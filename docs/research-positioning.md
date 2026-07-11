@@ -680,8 +680,9 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   society 成立後、反復幅≠endurance-length)。**二層構造** (Codex HIGH-1 crux 一意化) = **Layer1 (N体 composition
   + 並行 determinism、機序非依存) が milestone を定義する GATING** + **Layer2 (self-other/mirror functional
   analog、user 着眼 2026-07-11) は bounded construction attempt** (難航しても M2 を invalidate しない、実装順序
-  Layer1→Layer2 binding)。self-other/mirror は守破離「守=模倣」・cognitive habits と直結し単一 agent では不成立で
-  N体でこそ意味を持つ、文献カード [affect-appraisal 統合サーヴェイ] desk-audit 済 construction 経路。**4 規律
+  Layer1→Layer2 binding)。self-other/mirror = **ミラー・シム (mirror-sim、`glossary.md`)** = 守破離「守=模倣」・
+  cognitive habits と直結し単一 agent では不成立で N体でこそ意味を持つ functional analog、文献カード
+  [affect-appraisal 統合サーヴェイ] desk-audit 済 construction 経路。**4 規律
   (binding)** = (a) construction-mode only (SimToM prompt-level・causal wiring・floor/verdict/scorer なし) /
   (b) functional analog 語彙 (✗ミラーニューロン実装/神経再現) / (c) 予算ゼロ SimToM prompt 先行 (SOO LoRA は
   後段 defer) / (d) appraisal measurement (行動予測 H-B / 非同定性 H-C + AppraisalState measurement 部分) 非混入
