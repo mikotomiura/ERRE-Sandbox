@@ -1,0 +1,17 @@
+{
+  "task": "20260712-m13-m4-society-enrichment",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 3 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260712-m13-m4-society-enrichment/_loop-events.jsonl",
+  "env": {
+    "GODOT_BIN": "C:/Users/johnd/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.6.2-stable_win64.exe"
+  },
+  "notes": "M4 society run enrichment。binding = FROZEN design-final .steering/20260712-m13-m4-society-enrichment/design-final.md §A-F + 凍結定数 (Plan mode + reimagine 独立2案収束 + user 承認) + decisions.md 判断1-2 + Codex HIGH-1..6/MEDIUM/LOW 採否。construction であって measurement でない (verdict/scorer/floor/D_*/family/landscape/divergence 非計算・非 emit、R-budget=0、measurement line CLOSE 済で再入しない、§D0.2 非反射条項、fp/placement/checksum は再現性 witness で metric でない)。ECL v0 live-capture(N=1) を society scope に 1:1 mirror。read-only 無改変: society.py/handoff.py/live.py/loop.py/EclReplayPlayer.gd/MainScene.tscn/SocietyReplayViewer.gd/既存 m2_society_golden/凍結 evidence。編集は新 3 ファイル (society_live.py/m4_society_live_capture.py/test_m4_society_live.py) + 新 fixture dir + SocietyReplayScene.tscn に Avatar2 1 ノード append + test_m4_society_replay.py parametrize のみ。DAG {I1,I2,I3}→I4(sealed 非Loop human-run)→I5。I1/I2/I3/I5=recheck、I4=非 Loop (VRAM 依存・非再現・一発、ECL Issue 003 posture)。凍結定数 (tune-to-pass 封鎖、sealed run 後変更は Stop): SOCIETY_LIVE_N_COGNITION_TICKS=12/seed=0/3 agent(kant/nietzsche/rikyu)/初期 zone=study/peripatos/chashitsu/run_id=m4-society-live-golden/think=False/model=qwen3:8b。scripted で zone 移動を捏造しない (plan.destination_zone は cycle.py:1394 が読む唯一の駆動源、完全 LLM authored)。honest single-zone = first-class pass。GPL 分離 (bpy 不使用、Godot は GDScript、src/ に import bpy 禁止)。binding 逸脱は Stop→superseding ADR。"
+}
