@@ -1,4 +1,5 @@
-"""M4 situated-3D — Issue 006 (I6): headless placement-dump verification.
+"""M4 situated-3D — Issue 006 (I6) + Issue 003 (I3): headless placement-dump
+verification, parametrized over golden fixtures.
 
 Machine-checks (AC2/AC3/AC4, design-final-ref.md §4 / §3.4) that the landed
 ``SocietyReplayViewer.gd`` (I5, read-only here) replays the committed N-body
@@ -8,7 +9,7 @@ committed trace**:
 * **I6-G1 / AC2 (causal wiring)** — ``test_headless_dump_matches_expected``:
   run the viewer headless (``--manifest --trace --stream --dump=<tmp>``),
   normalise every dump line through handoff ``canonical_dumps`` and byte-compare
-  to the committed ``expected_placement.jsonl``. The N=2 avatars resolve in
+  to the committed ``expected_placement.jsonl``. The N avatars resolve in
   ``order_slot`` order to their trace ``(x, y, z, yaw)``; live WS / LLM are never
   contacted (offline golden only).
 * **I6-G2 / AC3 (reproducibility)** — ``test_dump_deterministic``: two headless
@@ -17,11 +18,20 @@ committed trace**:
 * **I6-G3 / AC4 (5-zone load)** — ``test_scene_loads_five_zones``: headless-load
   ``SocietyReplayScene.tscn`` and assert exactly 5 zone nodes load (Study /
   Peripatos / Chashitsu / Agora / Garden), Zazen absent (it is an ERRE mode, not
-  a Zone). Boolean only.
+  a Zone), and exactly ``n_agents`` avatar nodes (``Avatar0..N-1``) are present
+  (I3: static Avatar2 landed for the N=3 society golden, decisions.md M3).
 * **I6-G4 (idempotent expected)** — ``test_expected_placement_idempotent``:
   regenerate the expected列 from the golden via the pure-Python
   :func:`build_expected_placement` and byte-compare to the committed file (no
   Godot needed — deterministic derivation).
+
+I3 (M13-M4 society enrichment): the above 4 tests are parametrized over
+``[m2(N=2), m4(N=3)]`` golden fixtures (``_GOLDEN_CASES``). The ``m2`` case runs
+immediately against the existing committed ``m2_society_golden`` (regression
+proof: byte-identical to the pre-parametrize expected). The ``m4`` case is
+``pytest.mark.skip``-marked until Issue 004 (I4) lands the
+``tests/fixtures/m4_society_live_golden/`` fixture + its
+``expected_placement.jsonl`` — unskip it then (see the case's ``skip_reason``).
 
 HIGH-3 (Codex): a Godot runtime float→str is NOT a cross-machine byte witness.
 The witness is the committed trace value echoed pass-through by the viewer; the
@@ -40,6 +50,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
@@ -53,11 +64,7 @@ from tests._godot_helpers import (
 )
 
 _REPO_ROOT: Final = Path(__file__).resolve().parents[2]
-_GOLDEN_DIR: Final = _REPO_ROOT / "tests" / "fixtures" / "m2_society_golden"
-_TRACE_PATH: Final = _GOLDEN_DIR / "ecl_trace.jsonl"
-_STREAM_PATH: Final = _GOLDEN_DIR / "envelope_stream.jsonl"
-_MANIFEST_PATH: Final = _GOLDEN_DIR / "manifest.json"
-_EXPECTED_PATH: Final = _GOLDEN_DIR / "expected_placement.jsonl"
+_FIXTURES_DIR: Final = _REPO_ROOT / "tests" / "fixtures"
 
 _VIEWER_RES: Final = "res://scripts/dev/SocietyReplayViewer.gd"
 _SCENE_RES: Final = "res://scenes/dev/SocietyReplayScene.tscn"
@@ -66,8 +73,72 @@ _SCENE_RES: Final = "res://scenes/dev/SocietyReplayScene.tscn"
 # authority (design-final-ref.md §3.3). Mirrors ``SocietyReplayViewer.FIRING_KINDS``.
 _FIRING_KINDS: Final[frozenset[str]] = frozenset({"speech", "animation"})
 
-_EXPECTED_PLACEMENT_ROWS: Final = 40  # 2 order_slots × 20 physics ticks
-_EXPECTED_ENVELOPE_ROWS: Final = 16  # speech 8 + animation 8 (move excluded)
+
+# --------------------------------------------------------------------------- #
+# Golden-fixture case table (I3: replaces the former single hard-coded golden).
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class _GoldenCase:
+    """One golden fixture's parametrization record (design-final §E)."""
+
+    case_id: str
+    golden_dir_name: str
+    n_agents: int
+    # n_agents × physics_ticks_per_cognition × cognition_ticks (design-final §E).
+    expected_placement_rows: int
+    expected_envelope_rows: int
+    expected_slots: list[int]
+    skip_reason: str | None = None
+
+
+_GOLDEN_CASES: Final[list[_GoldenCase]] = [
+    _GoldenCase(
+        case_id="m2",
+        golden_dir_name="m2_society_golden",
+        n_agents=2,
+        expected_placement_rows=40,  # 2 order_slots × 20 physics ticks
+        expected_envelope_rows=16,  # speech 8 + animation 8 (move excluded)
+        expected_slots=[0, 1],
+    ),
+    _GoldenCase(
+        case_id="m4",
+        golden_dir_name="m4_society_live_golden",
+        n_agents=3,
+        # Placeholder (fixture not yet committed) — filled in when I4 lands
+        # tests/fixtures/m4_society_live_golden/ + its expected_placement.jsonl.
+        expected_placement_rows=-1,
+        expected_envelope_rows=-1,
+        expected_slots=[0, 1, 2],
+        skip_reason=(
+            "m4_society_live_golden fixture lands in I4 (real qwen3:8b sealed "
+            "capture, design-final §Loop Engineering I4); unskip once "
+            "tests/fixtures/m4_society_live_golden/ + expected_placement.jsonl "
+            "are committed."
+        ),
+    ),
+]
+
+
+def _golden_params(*fields: str) -> list[Any]:
+    """Build ``pytest.param`` entries selecting only the given ``_GoldenCase``
+    fields, applying each case's ``skip_reason`` (if any) as a skip mark."""
+    params: list[Any] = []
+    for case in _GOLDEN_CASES:
+        values = tuple(getattr(case, field) for field in fields)
+        marks = (pytest.mark.skip(reason=case.skip_reason),) if case.skip_reason else ()
+        params.append(pytest.param(*values, id=case.case_id, marks=marks))
+    return params
+
+
+def _golden_paths(golden_dir_name: str) -> tuple[Path, Path, Path, Path]:
+    """Resolve (trace, stream, manifest, expected) paths for a golden dir name."""
+    golden_dir = _FIXTURES_DIR / golden_dir_name
+    return (
+        golden_dir / "ecl_trace.jsonl",
+        golden_dir / "envelope_stream.jsonl",
+        golden_dir / "manifest.json",
+        golden_dir / "expected_placement.jsonl",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -139,8 +210,14 @@ def _normalise_dump(text: str) -> str:
     return "".join(f"{canonical_dumps(json.loads(line))}\n" for line in lines)
 
 
-def _run_viewer_dump(godot: Path, dump_path: Path) -> str:
-    """Run the viewer headless over the committed golden, return the raw dump."""
+def _run_viewer_dump(
+    godot: Path,
+    manifest_path: Path,
+    trace_path: Path,
+    stream_path: Path,
+    dump_path: Path,
+) -> str:
+    """Run the viewer headless over the given golden, return the raw dump."""
     # All argv from known locations (resolve_godot path, fixed project path,
     # committed fixtures, tmp dump path) — no user-supplied input.
     result = subprocess.run(  # noqa: S603
@@ -152,9 +229,9 @@ def _run_viewer_dump(godot: Path, dump_path: Path) -> str:
             "--script",
             _VIEWER_RES,
             "--",
-            f"--manifest={_MANIFEST_PATH}",
-            f"--trace={_TRACE_PATH}",
-            f"--stream={_STREAM_PATH}",
+            f"--manifest={manifest_path}",
+            f"--trace={trace_path}",
+            f"--stream={stream_path}",
             f"--dump={dump_path}",
         ],
         capture_output=True,
@@ -176,19 +253,51 @@ def _run_viewer_dump(godot: Path, dump_path: Path) -> str:
 # I6-G1 — AC2 causal wiring.
 # --------------------------------------------------------------------------- #
 @pytest.mark.godot
-def test_headless_dump_matches_expected(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    (
+        "golden_dir_name",
+        "n_agents",
+        "expected_placement_rows",
+        "expected_envelope_rows",
+        "expected_slots",
+    ),
+    _golden_params(
+        "golden_dir_name",
+        "n_agents",
+        "expected_placement_rows",
+        "expected_envelope_rows",
+        "expected_slots",
+    ),
+)
+def test_headless_dump_matches_expected(
+    tmp_path: Path,
+    golden_dir_name: str,
+    n_agents: int,
+    expected_placement_rows: int,
+    expected_envelope_rows: int,
+    expected_slots: list[int],
+) -> None:
     """AC2: normalised headless dump == committed expected_placement.jsonl.
 
-    N=2 avatars resolve in ``order_slot`` order to their committed trace poses;
+    N avatars resolve in ``order_slot`` order to their committed trace poses;
     offline golden only (no live WS / LLM)."""
     godot = resolve_godot()
     if godot is None:
         pytest.skip("Godot not installed; see docs for setup instructions")
 
-    dump_text = _run_viewer_dump(godot, tmp_path / "placement_dump.jsonl")
+    assert expected_slots == list(range(n_agents)), (
+        "test data bug: expected_slots must be range(n_agents) (M3)"
+    )
+
+    trace_path, stream_path, manifest_path, expected_path = _golden_paths(
+        golden_dir_name
+    )
+    dump_text = _run_viewer_dump(
+        godot, manifest_path, trace_path, stream_path, tmp_path / "placement_dump.jsonl"
+    )
     normalised = _normalise_dump(dump_text)
 
-    expected = _EXPECTED_PATH.read_text(encoding="utf-8")
+    expected = expected_path.read_text(encoding="utf-8")
     assert normalised == expected, "headless dump diverged from committed expected列"
 
     lines = normalised.splitlines()
@@ -198,42 +307,65 @@ def test_headless_dump_matches_expected(tmp_path: Path) -> None:
     envelopes = [
         json.loads(line) for line in lines if json.loads(line)["kind"] == "envelope"
     ]
-    assert len(placements) == _EXPECTED_PLACEMENT_ROWS
-    assert len(envelopes) == _EXPECTED_ENVELOPE_ROWS
+    assert len(placements) == expected_placement_rows
+    assert len(envelopes) == expected_envelope_rows
 
-    # N=2 avatars, resolved in order_slot order within each physics tick.
+    # N avatars, resolved in order_slot order within the first physics tick.
     slots_at_tick0 = [
         p["order_slot"] for p in placements if p["physics_tick_index"] == 0
     ]
-    assert slots_at_tick0 == [0, 1]
+    assert slots_at_tick0 == expected_slots
 
 
 # --------------------------------------------------------------------------- #
 # I6-G2 — AC3 reproducibility.
 # --------------------------------------------------------------------------- #
 @pytest.mark.godot
-def test_dump_deterministic(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "golden_dir_name",
+    _golden_params("golden_dir_name"),
+)
+def test_dump_deterministic(tmp_path: Path, golden_dir_name: str) -> None:
     """AC3: two headless runs over the same golden are byte-identical (normalised)
     and both equal the committed expected列."""
     godot = resolve_godot()
     if godot is None:
         pytest.skip("Godot not installed; see docs for setup instructions")
 
-    first = _normalise_dump(_run_viewer_dump(godot, tmp_path / "dump_a.jsonl"))
-    second = _normalise_dump(_run_viewer_dump(godot, tmp_path / "dump_b.jsonl"))
+    trace_path, stream_path, manifest_path, expected_path = _golden_paths(
+        golden_dir_name
+    )
+    first = _normalise_dump(
+        _run_viewer_dump(
+            godot, manifest_path, trace_path, stream_path, tmp_path / "dump_a.jsonl"
+        )
+    )
+    second = _normalise_dump(
+        _run_viewer_dump(
+            godot, manifest_path, trace_path, stream_path, tmp_path / "dump_b.jsonl"
+        )
+    )
     assert first == second, "repeat headless dumps diverged (non-deterministic)"
-    assert first == _EXPECTED_PATH.read_text(encoding="utf-8")
+    assert first == expected_path.read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- #
-# I6-G3 — AC4 5-zone load (boolean).
+# I6-G3 — AC4 5-zone load (boolean) + I3 avatar-count check.
 # --------------------------------------------------------------------------- #
 @pytest.mark.godot
-def test_scene_loads_five_zones(tmp_path: Path) -> None:
-    """AC4: the dev scene loads exactly 5 zone nodes; Zazen is absent."""
+@pytest.mark.parametrize(
+    "n_agents",
+    _golden_params("n_agents"),
+)
+def test_scene_loads_five_zones(tmp_path: Path, n_agents: int) -> None:
+    """AC4: the dev scene loads exactly 5 zone nodes (Zazen absent) and at least
+    ``n_agents`` avatar nodes (I3: Avatar2 landed for the N=3 society case)."""
     godot = resolve_godot()
     if godot is None:
         pytest.skip("Godot not installed; see docs for setup instructions")
+
+    avatar_names = [f"Avatar{i}" for i in range(n_agents)]
+    avatar_literal = json.dumps(avatar_names)
 
     smoke = tmp_path / "scene_load_smoke.gd"
     smoke.write_text(
@@ -255,6 +387,11 @@ def test_scene_loads_five_zones(tmp_path: Path) -> None:
         "\t\tif scene.has_node(NodePath(zname)):\n"
         "\t\t\tfound += 1\n"
         '\tvar has_zazen := scene.has_node(NodePath("Zazen"))\n'
+        f"\tvar avatar_names: Array = {avatar_literal}\n"
+        "\tvar found_avatars := 0\n"
+        "\tfor aname: String in avatar_names:\n"
+        "\t\tif scene.has_node(NodePath(aname)):\n"
+        "\t\t\tfound_avatars += 1\n"
         "\tscene.free()\n"
         "\tif found != 5:\n"
         '\t\tpush_error("expected 5 zone nodes, got %d" % found)\n'
@@ -264,7 +401,12 @@ def test_scene_loads_five_zones(tmp_path: Path) -> None:
         '\t\tpush_error("Zazen must not be present")\n'
         "\t\tquit(1)\n"
         "\t\treturn\n"
-        '\tprint("SCENE_OK zones=%d" % found)\n'
+        f"\tif found_avatars != {len(avatar_names)}:\n"
+        '\t\tpush_error("expected %d avatar nodes, got %d" % '
+        "[avatar_names.size(), found_avatars])\n"
+        "\t\tquit(1)\n"
+        "\t\treturn\n"
+        '\tprint("SCENE_OK zones=%d avatars=%d" % [found, found_avatars])\n'
         "\tquit(0)\n",
         encoding="utf-8",
     )
@@ -292,22 +434,35 @@ def test_scene_loads_five_zones(tmp_path: Path) -> None:
     assert "ERROR:" not in result.stderr, (
         f"scene-load smoke emitted runtime errors:\n{result.stderr}"
     )
-    assert "SCENE_OK zones=5" in result.stdout
+    assert f"SCENE_OK zones=5 avatars={n_agents}" in result.stdout
 
 
 # --------------------------------------------------------------------------- #
 # I6-G4 — idempotent expected列 (no Godot needed).
 # --------------------------------------------------------------------------- #
-def test_expected_placement_idempotent() -> None:
+@pytest.mark.parametrize(
+    ("golden_dir_name", "expected_placement_rows", "expected_envelope_rows"),
+    _golden_params(
+        "golden_dir_name", "expected_placement_rows", "expected_envelope_rows"
+    ),
+)
+def test_expected_placement_idempotent(
+    golden_dir_name: str,
+    expected_placement_rows: int,
+    expected_envelope_rows: int,
+) -> None:
     """AC I6-G4: regenerating expected_placement.jsonl from the golden via the
     pure-Python derivation byte-matches the committed file (deterministic)."""
-    regenerated = build_expected_placement(_TRACE_PATH, _STREAM_PATH)
-    assert regenerated == _EXPECTED_PATH.read_text(encoding="utf-8")
+    trace_path, stream_path, _manifest_path, expected_path = _golden_paths(
+        golden_dir_name
+    )
+    regenerated = build_expected_placement(trace_path, stream_path)
+    assert regenerated == expected_path.read_text(encoding="utf-8")
 
     lines = regenerated.splitlines()
     assert len([line for line in lines if '"kind":"placement"' in line]) == (
-        _EXPECTED_PLACEMENT_ROWS
+        expected_placement_rows
     )
     assert len([line for line in lines if '"kind":"envelope"' in line]) == (
-        _EXPECTED_ENVELOPE_ROWS
+        expected_envelope_rows
     )

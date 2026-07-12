@@ -64,7 +64,42 @@ skip（I4 で fixture 追加後に自動有効）。GODOT_BIN 不在時は既存
 - なし（既存 m2 golden + viewer は committed、read-only）。**m4 パラメータの有効化は I4（golden landed）に依存**。
 
 ## Status
-todo
+done
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+
+- `godot_project/scenes/dev/SocietyReplayScene.tscn`: `Avatar2` ノードを 1 個 append
+  （Avatar0/1 ブロックを mirror、`7_avatar` ext_resource 再利用、`load_steps=10` 据置、
+  transform を Avatar1 と別位置 `(-2, 0, 0)` に）。
+- `tests/test_integration/test_m4_society_replay.py`: `_GoldenCase` dataclass +
+  `_GOLDEN_CASES`([m2(N=2), m4(N=3)]) + `_golden_params()` ヘルパで
+  `_GOLDEN_DIR`/行数定数/slot 集合を golden 毎レコードへ置換。4 つの
+  `@pytest.mark.godot` test を parametrize、m4 は `pytest.mark.skip`（I4 で
+  fixture 委譲後に解除する reason 明記）。`test_scene_loads_five_zones` は
+  `n_agents` から avatar node 数（`Avatar0..N-1`）も検証するよう拡張（I3 の
+  Avatar2 追加を機械 witness 化）。`canonical_dumps`/`build_expected_placement`/
+  `resolve_godot`/viewer CLI は無改修再利用。
+
+### AC ↔ test 結果（GODOT_BIN 有効、実走）
+
+- AC3-G1（回帰ゼロ）: PASS — `pytest tests/test_integration/test_m4_society_replay.py -q`
+  → m2 パラメータで既存 4 test 全緑（`4 passed, 4 skipped`）、既存 committed
+  `m2_society_golden/expected_placement.jsonl` は byte 不変（`git status --porcelain`
+  で fixture dir 差分なし）。
+- AC3-G2: PASS — m2 の `test_headless_dump_matches_expected` で dump slots ==
+  `[0, 1]`、placement 40 / envelope 16 行を維持（`expected_slots == list(range(n_agents))`
+  も assert）。
+- AC3-G3: PASS — `test_scene_loads_five_zones` headless load 成功、5 zone 不変
+  + m2 パラメータで avatar node 数 2 個を確認（`SCENE_OK zones=5 avatars=2`）。
+- AC3-G4: PASS — `pytest tests/test_integration/test_m4_viz_measurement_guard.py -q`
+  → `41 passed`（denylist 非在、glob 自動追随）。
+- AC3-G5（m4）: SKIPPED（意図通り）— `m4_society_live_golden` フィクスチャ未着地
+  (I4 待ち)、4 test とも `pytest.mark.skip` reason 付きで正直に skip。fake 緑にしない。
+- 追加確認: `python -m mypy src` → `Success: no issues found in 240 source files`。
+  `python -m ruff check` / `ruff format --check` → 両方緑。
+
+### binding 逸脱
+
+なし。`SocietyReplayViewer.gd` / `EclReplayPlayer.gd` / `MainScene.tscn` /
+`AgentAvatar.tscn` / 既存 zone `.tscn` / 既存 `m2_society_golden` fixture は
+無改変（`git status --porcelain` で確認、diff は本 issue の Allowed Files 2 件のみ）。

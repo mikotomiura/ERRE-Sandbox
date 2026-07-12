@@ -44,6 +44,13 @@ transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 0, 0, 0)
 [node name="Avatar1" parent="." instance=ExtResource("7_avatar")]
 transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 2, 0, 0)
 
+; order_slot 2 avatar (a_charlie). M4 society-run enrichment adds a third
+; agent slot; the viewer resolves it via get_node_or_null("Avatar%d" % slot)
+; and skips slots absent from the replayed trace (M2 traces have only slots
+; 0/1, so this node is a cosmetic idle avatar for M2 replay — decisions.md M3).
+[node name="Avatar2" parent="." instance=ExtResource("7_avatar")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, -2, 0, 0)
+
 [node name="DevLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.8, -0.3, 0.5, 0, 0.86, 0.5, -0.6, -0.4, 0.7, 0, 20, 0)
 
