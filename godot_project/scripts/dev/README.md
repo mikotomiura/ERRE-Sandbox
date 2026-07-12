@@ -7,6 +7,22 @@
 - `FixturePlayer.gd` — Replays `fixtures/control_envelope/*.json` against the
   `EnvelopeRouter` so `scenes/dev/FixtureHarness.tscn` can exercise the full
   signal wiring without a running G-GEAR gateway (Contract-First workflow).
+- `EclReplayPlayer.gd` — Offline-replays an ECL v0 / M2-society handoff
+  (`manifest.json` + `envelope_stream.jsonl`) as an envelope-only headless print.
+- `SocietyReplayViewer.gd` — M4 situated-3D viewer (`extends SceneTree`). Stands
+  the committed N-body society substrate up with a replay **role split**: motion
+  authority = `ecl_trace.jsonl` (per-`(physics_tick_index, order_slot)` absolute
+  placement, echoed pass-through), speech/animation firing = `envelope_stream.jsonl`
+  (`move` is not a position authority). Two modes: headless dump for CI witness
+  (`--dump=<abs>`) and interactive timeline print. The whole-view wrapper scene
+  is `scenes/dev/SocietyReplayScene.tscn`. Boot path (headless dump):
+
+  ```
+  godot --headless --path godot_project \
+    --script res://scripts/dev/SocietyReplayViewer.gd \
+    -- --manifest=<abs>/manifest.json --trace=<abs>/ecl_trace.jsonl \
+       --stream=<abs>/envelope_stream.jsonl --dump=<abs>/placement_dump.jsonl
+  ```
 
 ## Rules
 

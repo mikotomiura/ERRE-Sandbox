@@ -6,9 +6,9 @@
 ; The Blender-authored .glb eventually replaces this build (see Slice β
 ; plan backlog).
 ;
-; Scene root sits at (0, 0, 33.33) to match ``ZONE_CENTERS[AGORA]``
-; (``+WORLD_SIZE_M / 3`` on Z). Keep in sync with ``world/zones.py`` and
-; ``BoundaryLayer.gd``.
+; Scene root sits at (0, 0, 33.333333) to match ``ZONE_CENTERS[AGORA]``
+; (``+WORLD_SIZE_M / 3`` on Z). Keep in sync with
+; ``src/erre_sandbox/contracts/geometry.py`` and ``BoundaryLayer.gd``.
 
 [sub_resource type="PlaneMesh" id="1_agora_ground"]
 size = Vector2(24, 24)
@@ -25,7 +25,7 @@ albedo_color = Color(0.58, 0.55, 0.50, 1)
 roughness = 0.9
 
 [node name="Agora" type="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 33.33)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 33.333333)
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)

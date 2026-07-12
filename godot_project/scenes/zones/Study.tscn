@@ -6,8 +6,8 @@
 ; zone's footprint; the Blender-authored .glb eventually replaces this
 ; build (tracked under the backlog in the Slice β plan).
 ;
-; Scene root sits at (-33.33, 0, -33.33) to match
-; ``src/erre_sandbox/world/zones.py`` ``ZONE_CENTERS[STUDY]``
+; Scene root sits at (-33.333333, 0, -33.333333) to match
+; ``src/erre_sandbox/contracts/geometry.py`` ``ZONE_CENTERS[STUDY]``
 ; (``-WORLD_SIZE_M / 3``). Keep that transform in sync whenever
 ; ``WORLD_SIZE_M`` changes; the wireframe in ``BoundaryLayer.gd``
 ; ``zone_rects`` is the parallel mirror.
@@ -27,7 +27,7 @@ albedo_color = Color(0.32, 0.22, 0.14, 1)
 roughness = 0.78
 
 [node name="Study" type="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.33, 0, -33.33)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.333333, 0, -33.333333)
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
