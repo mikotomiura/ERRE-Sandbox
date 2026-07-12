@@ -835,6 +835,44 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   codex-review.md verbatim)。次工程 = Layer2 mirror-sim impl-design ADR (別トラック併存) or M4 fidelity
   (skinned humanoid) 別 ADR (順序 + interactive 裁定は user)。
 
+- **M4 society run enrichment 実コード landed (2026-07-13、G-GEAR、construction・real qwen3:8b 実装 spend・
+  measurement spend でない = R-budget=0 不変、PR #76)**: 上記 M4 可視化 (PR #75) の薄い golden
+  (2 agent・全 tick peripatos・scripted plan) を **real qwen3:8b sealed golden へ enrichment**。ECL v0
+  live-capture(N=1) を society scope に 1:1 mirror し、**N=3 agent (kant/nietzsche/rikyu、初期 zone=
+  study/peripatos/chashitsu) society run を real qwen3:8b sealed capture (record-mode, think=False, seed=0,
+  horizon=12) で封印記録** → 新 golden `tests/fixtures/m4_society_live_golden/` + Godot viewer 可視化 +
+  headless placement byte-parity。Loop Engineering = **subagent-per-issue** (I1-I5、各 worker →
+  test-runner→loop-watchdog verify_level=recheck 独立再走で done gate)。成果 = `society_live.py` N体
+  live-capture harness (固定 constructor、`build_society_live_env_pins`、annotation 型 observables) +
+  `m4_society_live_capture.py` `--capture`/`--verify` + R3 per-agent from-jsonl decoder (既存
+  `handoff.recorded_calls_from_jsonl` に委譲、order_slot は fail-closed 検証のみ) + `SocietyReplayScene.tscn`
+  Avatar2 + replay test `[m2,m4]` parametrize (m2 回帰ゼロ)。**honest outcome (over-read guard)** = real
+  qwen3:8b は **genuine に 5 distinct destination_zone を author** (llm_status=ok 36/36、fallback ゼロ) し
+  **R1「think=False で zone 移動しない」を empirical 反証**、しかし rendered zone は locomotion resolver
+  (`resolved_from=memory_centroid`、mocked constant embedding、§設計通り action-LLM のみ live) で単一
+  peripatos に collapse = **honest single rendered-zone (壁1&4 と同 kernel、first-class pass、動きを捏造しない・
+  multi-zone へ toward-tune しない)**。**判断3 (superseding ADR、frozen `society.py` 改変・user 裁定)** =
+  I5 cross-platform closure で `event_log_checksum` の Win↔Linux drift を検出 → 根本原因を per-category →
+  field-level diff で完全 localize (`_decision_projection` が `envelope_provenance` を生 `model_dump_json`
+  文字列で載せ、埋め込まれた full-precision `cognitive.valence`/`mood_baseline` [physiology dynamics/libm] が
+  last-ULP drift、他 float は 6桁量子化を通るが provenance だけ素通り = `society.py` 自身の §M4.4「every float
+  quantised」invariant 違反、M2 Layer1 latent gap を M4 live run が初露見) → **既存 proven helper
+  `handoff._quantize_embedded_json` (rendered decisions で使用中、serializer 一致) を `_decision_projection` に
+  適用** → WSL byte-parity 実測 PASS (`e22ecc91` が Win==Linux 一致)。M2 は committed event_log_checksum を
+  持たず property test のみゆえ regression なし。**cross-platform 決定性 = WSL byte parity 実測** (replay +
+  event_log + manifest 再render + fingerprint 全 Linux 一致) + pre-push 4段 ALL CHECKS PASSED (3676 passed)。
+  process = user 裁定 (A=量子化 fix + ADR) + Codex 個別 review (実装前、HIGH3 [M2 no-op 条件不足→exact test
+  化 / parse fail-fast / 量子化 float 限定 bool 除外]・MEDIUM5 全反映) + TASK-POST /cross-review (code-reviewer
+  [Opus] + Codex [gpt-5.5]、**両者 HIGH=なし**、MEDIUM 反映 = verify decoder fail-closed 統一 / WSL parity
+  最新 HEAD 再記録 / R3 global order は checksum witness で担保)。**claim 境界 = construction であって
+  measurement でない** (checksum/fingerprint/placement は再現性 witness であって metric/floor/verdict/scorer/
+  divergence に接続しない、observables は annotation 型、over-read 禁止、firing⇔detectability 混同禁止、holding
+  不可侵・R-budget=0、reasoning-trace door 保全)。詳細 = `loop/20260712-m13-m4-society-enrichment/`
+  (issues I1-I5 / retrospective / _loop-events) + `.steering/20260712-m13-m4-society-enrichment/`
+  (design-final / decisions [判断1-3 + Codex 採否] / blockers [BLOCKER-2 診断] / codex-review* verbatim)。
+  次工程 = memory `project_m4_society_enrichment` 記録 / real embedding で rendered multi-zone を genuine に
+  出す別 ADR (memory_centroid collapse 解消) / M2 Layer2 mirror-sim / M4 fidelity Wave 2 (skinned humanoid)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:

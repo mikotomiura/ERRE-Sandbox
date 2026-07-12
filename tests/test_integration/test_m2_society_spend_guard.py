@@ -101,6 +101,7 @@ _ALLOWED_ERRE_PREFIXES: Final[tuple[str, ...]] = (
     "erre_sandbox.cognition",
     "erre_sandbox.integration.dialog",
     "erre_sandbox.integration.embodied.loop",
+    "erre_sandbox.integration.embodied.handoff",
     "erre_sandbox.memory",
     "erre_sandbox.schemas",
     "erre_sandbox.world",
@@ -108,10 +109,15 @@ _ALLOWED_ERRE_PREFIXES: Final[tuple[str, ...]] = (
 )
 """``erre_sandbox.*`` prefixes ``society.py`` actually imports — Plane 2 /
 checksum primitives from ``loop.py`` (never ``run_ecl_loop`` itself as a
-driver), the dialog scheduler, memory/schemas/world seams, and the
-``inference`` type-only imports under ``TYPE_CHECKING``. Deliberately
-excludes ``erre_sandbox.evidence`` and every sibling measurement-line
-package (§M1/§M8 binding)."""
+driver), the dialog scheduler, memory/schemas/world seams, the
+``inference`` type-only imports under ``TYPE_CHECKING``, and
+``handoff._quantize_embedded_json`` (判断3 superseding ADR,
+``.steering/20260712-m13-m4-society-enrichment/decisions.md`` — reused, not
+re-implemented, so ``event_log_checksum`` and rendered ``decisions.jsonl``
+stay on the same envelope_provenance serializer). Deliberately excludes
+``erre_sandbox.evidence`` and every sibling measurement-line package
+(§M1/§M8 binding); ``handoff`` itself carries the same construction-only
+scope guard, so this is not a measurement-line door."""
 
 _DENIED_IMPORT_SUBSTRINGS: Final[tuple[str, ...]] = (
     "evidence",

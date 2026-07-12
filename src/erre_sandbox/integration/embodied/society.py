@@ -72,6 +72,7 @@ from typing import TYPE_CHECKING, Any, Final, cast
 from erre_sandbox.cognition import BiasFiredEvent, CognitionCycle, parse_llm_plan
 from erre_sandbox.cognition.embodiment import K_ECL, EclRecordMode
 from erre_sandbox.integration.dialog import InMemoryDialogScheduler
+from erre_sandbox.integration.embodied.handoff import _quantize_embedded_json
 from erre_sandbox.integration.embodied.loop import (
     DEFAULT_PHYSICS_TICKS_PER_COGNITION,
     GOLDEN_COGNITION_TICKS,
@@ -567,6 +568,21 @@ def _decision_projection(d: EclDecisionRecord) -> dict[str, Any]:
     ``geometry_checksum`` (§M4.4, "geometry checksum is part of it"), so
     repeating it here would double-count the same provenance rather than add
     a new witness.
+
+    ``envelope_provenance`` (superseding ADR, ``.steering/
+    20260712-m13-m4-society-enrichment/decisions.md`` 判断3): each element is a
+    *pre-serialised* ``ControlEnvelope.model_dump_json`` string, so its
+    embedded floats (e.g. ``agent_state.cognitive.valence``/``mood_baseline``)
+    are text and invisible to :func:`_q`'s blanket 6-decimal rule once the
+    surrounding dict is canonicalised — the same gap
+    :func:`~erre_sandbox.integration.embodied.handoff._quantize_embedded_json`
+    closes for ``decisions.jsonl``. Reusing that exact helper here keeps the
+    event-log checksum and the rendered ``decisions.jsonl`` on the *same*
+    serializer for this field (Codex M-a/H1), makes ``event_log_checksum``'s
+    witness semantic-normalized rather than raw-byte (Codex M-b), and repairs
+    this module's own §M4.4 "every float in the projection is quantised"
+    invariant, which this field silently violated before (the latent
+    cross-platform drift the superseding ADR fixes).
     """
     return {
         "agent_tick": d.agent_tick,
@@ -581,7 +597,9 @@ def _decision_projection(d: EclDecisionRecord) -> dict[str, Any]:
             if d.bias_fired is not None
             else None
         ),
-        "envelope_provenance": list(d.envelope_provenance),
+        "envelope_provenance": [
+            _quantize_embedded_json(env) for env in d.envelope_provenance
+        ],
     }
 
 
