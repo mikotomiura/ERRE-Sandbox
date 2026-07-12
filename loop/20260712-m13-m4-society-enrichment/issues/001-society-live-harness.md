@@ -85,7 +85,46 @@ result → `render_society_golden` → tmp write → 再 replay（`result.replay
 - なし（`live.py`/`society.py`/`handoff.py` は committed、read-only 消費）。I2 が本 harness を CLI 化。
 
 ## Status
-todo
+done
 
 ## Execution Result
-（完了時に記入。PR 本文になる）
+実装完了（2026-07-12）。
+
+- 新規 `src/erre_sandbox/integration/embodied/society_live.py`:
+  - `run_society_live_capture`（`inner_chats` mapping → 各 agent
+    `RecordReplayChatClient(inner=ThinkOffChatClient(...))` を dict comprehension
+    で構築 → `run_society_loop` を無改変で駆動）。
+  - `SOCIETY_LIVE_N_COGNITION_TICKS=12`（凍結定数）/ `SOCIETY_LIVE_RUN_ID`。
+  - 固定 agent_states/personas コンストラクタ（`society_live_agent_states`/
+    `society_live_personas`、kant/nietzsche/rikyu、agent_id
+    `a_kant`/`a_nietzsche`/`a_rikyu` で sorted 順が order_slot 0/1/2 と一致、
+    初期 zone=study/peripatos/chashitsu）。
+  - per-agent observation_factories（`society_live_observation_factory`、
+    `society._default_observation_factory` の STUDY ハードコードを per-agent 化、
+    legitimate nudge、`plan.destination_zone` は非改変）。
+  - `fixed_constructor_fingerprint`（agent_states/personas/observation_factories
+    の canonical JSON SHA-256、HIGH-4/M2）+ `build_society_live_env_pins`
+    （model digest/think:false/seed/horizon/run_id/fingerprint を env_pins に固定、
+    HIGH-4/M2/M5）。
+  - `SOCIETY_LIVE_OBSERVABLES`（O1-O3b 継承 + `O4_distinct_zones`/
+    `O_multi_agent_speech` annotation、値は凍結文字列リテラルのみ、統計計算コード非在）
+    + `attach_society_live_observables`（manifest `annotations` key、
+    `verdict`/`passed`/`score`/`floor` 非使用、L3）。
+  - scope-guard docstring を `live.py` から verbatim 複製（construction≠measurement）。
+- 新規 `tests/test_integration/test_m4_society_live.py`（7 test、全緑）:
+  AC1-G1 `test_record_replay_byte_parity` / AC1-G2
+  `test_replay_no_inner_invocations` / AC1-G3 `test_think_off_forced` /
+  AC1-G4 `test_society_live_measurement_guard` / AC1-G5
+  `test_observables_are_annotation` / AC1-G6
+  `test_fixed_constructors_fingerprint` + sanity
+  `test_society_live_capture_drives_every_agent`。
+- Codex HIGH-4/M2/M5/L3 反映済（本 issue スコープ分）。HIGH-1/2/3/5/M1/M3/M4/L1/L2
+  は I2/I3/I4 スコープ（本 issue 対象外）。
+- society.py / handoff.py / live.py / loop.py / .gd / .tscn / 既存 golden は無改変
+  （git diff で確認済）。
+- CI parity: `pytest tests/test_integration/test_m4_society_live.py -q` = 7
+  passed。`pytest tests/test_integration -q` = 505 passed, 3 skipped(Godot
+  未導入、既存)。`mypy src` = no issues (240 files)。`ruff check`/
+  `ruff format --check`（対象2ファイル）= 緑。
+- Stop 条件は発火せず（society.py 改変不要で駆動できた、observables は annotation
+  のまま、固定 persona は zone-pick を駆動しない設計）。
