@@ -28,10 +28,9 @@ committed trace**:
 I3 (M13-M4 society enrichment): the above 4 tests are parametrized over
 ``[m2(N=2), m4(N=3)]`` golden fixtures (``_GOLDEN_CASES``). The ``m2`` case runs
 immediately against the existing committed ``m2_society_golden`` (regression
-proof: byte-identical to the pre-parametrize expected). The ``m4`` case is
-``pytest.mark.skip``-marked until Issue 004 (I4) lands the
-``tests/fixtures/m4_society_live_golden/`` fixture + its
-``expected_placement.jsonl`` — unskip it then (see the case's ``skip_reason``).
+proof: byte-identical to the pre-parametrize expected). The ``m4`` case ran
+against the I4 (2026-07-12) sealed ``tests/fixtures/m4_society_live_golden/``
+fixture + its ``expected_placement.jsonl`` (commit 9d37ae6) and is unskipped.
 
 HIGH-3 (Codex): a Godot runtime float→str is NOT a cross-machine byte witness.
 The witness is the committed trace value echoed pass-through by the viewer; the
@@ -104,17 +103,11 @@ _GOLDEN_CASES: Final[list[_GoldenCase]] = [
         case_id="m4",
         golden_dir_name="m4_society_live_golden",
         n_agents=3,
-        # Placeholder (fixture not yet committed) — filled in when I4 lands
-        # tests/fixtures/m4_society_live_golden/ + its expected_placement.jsonl.
-        expected_placement_rows=-1,
-        expected_envelope_rows=-1,
+        # I4 sealed golden (commit 9d37ae6): committed expected_placement.jsonl
+        # has 720 placement rows + 72 envelope rows (speech/animation only).
+        expected_placement_rows=720,
+        expected_envelope_rows=72,
         expected_slots=[0, 1, 2],
-        skip_reason=(
-            "m4_society_live_golden fixture lands in I4 (real qwen3:8b sealed "
-            "capture, design-final §Loop Engineering I4); unskip once "
-            "tests/fixtures/m4_society_live_golden/ + expected_placement.jsonl "
-            "are committed."
-        ),
     ),
 ]
 

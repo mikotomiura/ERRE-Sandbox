@@ -103,3 +103,25 @@ done
 なし。`SocietyReplayViewer.gd` / `EclReplayPlayer.gd` / `MainScene.tscn` /
 `AgentAvatar.tscn` / 既存 zone `.tscn` / 既存 `m2_society_golden` fixture は
 無改変（`git status --porcelain` で確認、diff は本 issue の Allowed Files 2 件のみ）。
+
+### 追記（I4 sealed golden landed 後、m4 有効化 — 2026-07-13）
+
+I4 (commit 9d37ae6) で `tests/fixtures/m4_society_live_golden/`
+(`ecl_trace.jsonl` / `envelope_stream.jsonl` / `decisions.jsonl` /
+`manifest.json` / `expected_placement.jsonl`) が sealed landed。本 issue が
+入れた m4 `pytest.mark.skip` を除去し、`expected_placement_rows=720` /
+`expected_envelope_rows=72`（プレースホルダ `-1` から実測値へ、
+`expected_placement.jsonl` を機械カウントして確定）に置換して m4(N=3) を実 test
+として有効化。
+
+- `python scripts/m4_society_live_capture.py --verify --artifact-dir
+  tests/fixtures/m4_society_live_golden` → **exit 0**（record→replay byte 一致 /
+  全 client `inner_invocations==0` / manifest 再 render 一致 / structural
+  completeness / constructor fingerprint assert、全 OK ログ出力）。
+- `GODOT_BIN` 設定下 `pytest tests/test_integration/test_m4_society_replay.py -q`
+  → **8 passed, 0 skipped**（m2(4) + m4(4)、Godot 実走）。m4 の headless dump
+  は slots `[0,1,2]` を `order_slot` 順に解決し `expected_placement.jsonl` と
+  byte 一致。
+- `pytest tests/test_integration/test_m4_society_live.py -q` → **12 passed**
+  （回帰なし）。
+- binding 逸脱なし（golden fixture 無改変、test の skip 解除 + 定数実測値化のみ）。
