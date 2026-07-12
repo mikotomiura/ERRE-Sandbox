@@ -50,6 +50,7 @@ is a non-gate boolean count, never a measurement-line statistic (§事前登録)
 from __future__ import annotations
 
 import hashlib
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Final
 
 from erre_sandbox.cognition.embodiment import K_ECL
@@ -72,7 +73,6 @@ from erre_sandbox.schemas import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
-    from datetime import datetime
 
     from erre_sandbox.cognition.reflection import Reflector
     from erre_sandbox.inference.sampling import ResolvedSampling
@@ -92,6 +92,20 @@ a Stop condition (§事前登録 tune-to-pass closure, decisions.md 判断1)."""
 
 SOCIETY_LIVE_RUN_ID: Final[str] = "m4-society-live-golden"
 """Pinned ``run_id`` for the sealed society live-capture (§事前登録)."""
+
+_SEALED_WALL_CLOCK: Final[datetime] = datetime(2026, 1, 1, tzinfo=UTC)
+"""Fixed UTC timestamp for every ``wall_clock`` field this module's fixed
+constructors emit (``AgentState.wall_clock`` / ``PerceptionEvent.wall_clock``,
+both ``Field(default_factory=_utc_now)`` in ``schemas.py``). A sealed
+reproducible run's fixed constructors must be fully deterministic in every
+field: leaving ``wall_clock`` to ``now()`` makes
+``fixed_constructor_fingerprint`` non-reproducible across processes (two
+back-to-back constructions in the *same* interpreter already disagree at
+microsecond resolution on Linux/WSL, and CI runs on Linux) — a byte-identical
+sealed-run contract violation this module must not reintroduce. All agents
+share this single fixed value (a *legitimate nudge* is zone distribution
+only, §C — there is no reason for wall-clock to vary between agents or
+across constructions)."""
 
 # --------------------------------------------------------------------------- #
 # Fixed agent_states/personas constructors (decisions.md 判断2, HIGH-4)
@@ -139,6 +153,7 @@ def _society_live_agent_state(agent_id: str) -> AgentState:
             "tick": 0,
             "position": {"x": 0.0, "y": 0.0, "z": 0.0, "zone": zone.value},
             "erre": {"name": "deep_work", "entered_at_tick": 0},
+            "wall_clock": _SEALED_WALL_CLOCK,
         }
     )
 
@@ -271,6 +286,7 @@ def society_live_observation_factory(
                 source_zone=source_zone,
                 content=f"m4 society live forage step {agent_tick}",
                 intensity=0.4,
+                wall_clock=_SEALED_WALL_CLOCK,
             )
         ]
 

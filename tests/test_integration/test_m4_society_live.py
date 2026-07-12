@@ -33,6 +33,7 @@ import ast
 import importlib.util
 import json
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -370,19 +371,24 @@ def test_observables_are_annotation() -> None:
 
 
 def test_fixed_constructors_fingerprint() -> None:
-    agent_states_a = society_live_agent_states()
-    personas_a = society_live_personas()
-    agent_states_b = society_live_agent_states()
-    personas_b = society_live_personas()
+    # Construct 4 times with a ~10ms sleep between each: a system-clock-luck
+    # regression (wall_clock leaking from schemas.py's `default_factory=_utc_now`
+    # into the fixed constructors) would only coincidentally pass a bare 2-call
+    # comparison on a coarse-resolution clock (observed on Windows, ~15ms tick)
+    # — it reliably fails on a microsecond-resolution clock (Linux/WSL/CI) or
+    # across a real inter-call gap. All 4 fingerprints must be identical.
+    fingerprints: list[dict[str, str]] = []
+    for _ in range(4):
+        agent_states = society_live_agent_states()
+        personas = society_live_personas()
+        fingerprints.append(
+            fixed_constructor_fingerprint(agent_states=agent_states, personas=personas)
+        )
+        time.sleep(0.01)
 
-    fp_a = fixed_constructor_fingerprint(
-        agent_states=agent_states_a, personas=personas_a
-    )
-    fp_b = fixed_constructor_fingerprint(
-        agent_states=agent_states_b, personas=personas_b
-    )
-
-    assert fp_a == fp_b
+    fp_a = fingerprints[0]
+    for fp in fingerprints[1:]:
+        assert fp == fp_a
     assert set(fp_a) == {
         "agent_states_sha256",
         "personas_sha256",
@@ -400,8 +406,8 @@ def test_fixed_constructors_fingerprint() -> None:
         resolved_sampling=ResolvedSampling(
             temperature=0.7, top_p=0.9, repeat_penalty=1.1
         ),
-        agent_states=agent_states_a,
-        personas=personas_a,
+        agent_states=society_live_agent_states(),
+        personas=society_live_personas(),
         base_env_pins={"python": "3.11.9", "packages": {}, "godot": "4.6"},
     )
     assert env_pins["fixed_constructor_fingerprint"] == fp_a
@@ -512,18 +518,10 @@ def _render_mock_bundle(recorded: Any) -> dict[str, str]:
         base_env_pins={"python": "3.11.9", "packages": {}, "godot": "4.6"},
     )
     env_pins["captured_event_log_checksum"] = recorded.event_log_checksum
-    # I2 discovery: society_live.fixed_constructor_fingerprint's
-    # observation_factories_sha256 hashes a wall-clock-stamped PerceptionEvent
-    # (schemas._ObservationBase.wall_clock default_factory=_utc_now), so it is
-    # non-deterministic across calls (see test_fixed_constructors_fingerprint,
-    # an I1 test, unmodified). The CLI corrects just that sub-field
-    # (_m4._corrected_fixed_constructor_fingerprint); mock bundles must apply
-    # the same correction so verify()'s HIGH-4 assert can ever match.
-    env_pins["fixed_constructor_fingerprint"] = (
-        _m4._corrected_fixed_constructor_fingerprint(
-            agent_states=society_live_agent_states(), personas=society_live_personas()
-        )
-    )
+    # env_pins["fixed_constructor_fingerprint"] is already set by
+    # build_society_live_env_pins() above — society_live.py's fixed
+    # constructors pin a fixed wall_clock, so the fingerprint is
+    # deterministic across calls (no CLI-side correction needed).
     rendered = handoff.render_society_golden(
         recorded, run_config=_run_config(), env_pins=env_pins
     )

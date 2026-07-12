@@ -111,7 +111,6 @@ from erre_sandbox.integration.embodied.society_live import (
     run_society_live_capture,
     society_live_agent_states,
     society_live_observation_factories,
-    society_live_observation_factory,
     society_live_personas,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
@@ -300,101 +299,6 @@ def build_expected_placement(trace_jsonl: str, stream_jsonl: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Deterministic correction of society_live.py's constructor fingerprint
-# (society_live.py untouched — this is a CLI-owned override of one sub-field)
-# --------------------------------------------------------------------------- #
-
-
-def _observation_factory_fingerprint_deterministic(
-    agent_ids: Sequence[str] = SOCIETY_LIVE_AGENT_IDS,
-) -> str:
-    """A deterministic peer of ``society_live``'s ``observation_factories_sha256``.
-
-    ``society_live.society_live_observation_factory``'s tick-0
-    ``PerceptionEvent`` carries a ``wall_clock`` field defaulted via
-    ``schemas._ObservationBase``'s ``default_factory=_utc_now`` — a
-    non-deterministic value that leaks into
-    ``society_live.fixed_constructor_fingerprint``'s
-    ``observation_factories_sha256`` component (discovered empirically while
-    building this issue's ``--verify`` apparatus: two back-to-back calls of
-    ``fixed_constructor_fingerprint`` in the *same process* already disagree
-    on that one sub-field — see
-    ``tests/test_integration/test_m4_society_live.py::test_fixed_constructors_fingerprint``,
-    an Issue 001 test unmodified here). ``society_live.py`` is untouched (I2
-    Allowed Files scope, ``無改変厳守``); this CLI-owned helper reproduces the
-    exact same factory-name/version/tick-0-observation shape but excludes
-    ``wall_clock`` before hashing, so :func:`_corrected_fixed_constructor_fingerprint`
-    below — used by both :func:`capture` (what gets pinned into ``env_pins``)
-    and :func:`verify` (what gets recomputed and asserted against it) — is
-    actually stable across processes, restoring the drift-detection Codex
-    HIGH-4 intended.
-    """
-    factories = society_live_observation_factories(agent_ids)
-    payload = {
-        agent_id: {
-            "factory": (
-                f"{society_live_observation_factory.__module__}."
-                f"{society_live_observation_factory.__qualname__}"
-            ),
-            "factory_version": 1,
-            "tick0_observation": [
-                obs.model_dump(mode="json", exclude={"wall_clock"})
-                for obs in factories[agent_id](0)
-            ],
-        }
-        for agent_id in agent_ids
-    }
-    blob = handoff.canonical_dumps(payload).encode("utf-8")
-    return hashlib.sha256(blob).hexdigest()
-
-
-def _agent_states_fingerprint_deterministic(agent_states: Sequence[Any]) -> str:
-    """A deterministic peer of ``society_live``'s ``agent_states_sha256``.
-
-    ``schemas.AgentState`` also carries a ``wall_clock: datetime =
-    Field(default_factory=_utc_now)`` field (same root cause as
-    :func:`_observation_factory_fingerprint_deterministic`'s docstring),
-    which likewise leaks non-determinism into
-    ``society_live.fixed_constructor_fingerprint``'s ``agent_states_sha256``
-    (confirmed empirically). Excludes ``wall_clock`` before hashing.
-    """
-    payload = [
-        state.model_dump(mode="json", exclude={"wall_clock"}) for state in agent_states
-    ]
-    blob = handoff.canonical_dumps(payload).encode("utf-8")
-    return hashlib.sha256(blob).hexdigest()
-
-
-def _corrected_fixed_constructor_fingerprint(
-    *,
-    agent_states: Sequence[Any],
-    personas: Any,
-    agent_ids: Sequence[str] = SOCIETY_LIVE_AGENT_IDS,
-) -> dict[str, str]:
-    """:func:`fixed_constructor_fingerprint` with deterministic sub-fields.
-
-    ``personas_sha256`` is already deterministic (``PersonaSpec`` carries no
-    wall-clock field) and is reused verbatim from
-    ``society_live.fixed_constructor_fingerprint``; ``agent_states_sha256``
-    and ``observation_factories_sha256`` are overridden with this module's
-    wall-clock-excluding recomputations (both discovered non-deterministic
-    while building this issue's ``--verify`` apparatus).
-    """
-    fingerprint = dict(
-        fixed_constructor_fingerprint(
-            agent_states=agent_states, personas=personas, agent_ids=agent_ids
-        )
-    )
-    fingerprint["agent_states_sha256"] = _agent_states_fingerprint_deterministic(
-        agent_states
-    )
-    fingerprint["observation_factories_sha256"] = (
-        _observation_factory_fingerprint_deterministic(agent_ids)
-    )
-    return fingerprint
-
-
-# --------------------------------------------------------------------------- #
 # Shared Ollama-free mock embedding (design-copy of ecl_v0_live_capture's)
 # --------------------------------------------------------------------------- #
 
@@ -500,14 +404,11 @@ async def capture(
     # rather than only ever recomputing it fresh with nothing committed to
     # compare against.
     env_pins["captured_event_log_checksum"] = result.event_log_checksum
-    # Override the non-deterministic observation_factories_sha256 sub-field
-    # (see _corrected_fixed_constructor_fingerprint docstring) so a later
-    # --verify recomputation can actually match.
-    env_pins["fixed_constructor_fingerprint"] = (
-        _corrected_fixed_constructor_fingerprint(
-            agent_states=agent_states, personas=personas
-        )
-    )
+    # env_pins["fixed_constructor_fingerprint"] is already set by
+    # build_society_live_env_pins() above (society_live.py's own
+    # fixed_constructor_fingerprint, now deterministic — society_live.py
+    # pins a fixed wall_clock in its fixed constructors — so no CLI-owned
+    # override/correction is needed here).
     run_config = {
         "seed": seed,
         "physics_ticks_per_cognition": physics_ticks_per_cognition,
@@ -562,7 +463,7 @@ async def verify(artifact_dir: Path) -> bool:
     agent_states = society_live_agent_states()
     personas = society_live_personas()
     observation_factories = society_live_observation_factories()
-    fresh_fp = _corrected_fixed_constructor_fingerprint(
+    fresh_fp = fixed_constructor_fingerprint(
         agent_states=agent_states, personas=personas
     )
     committed_fp = env_pins.get("fixed_constructor_fingerprint")
