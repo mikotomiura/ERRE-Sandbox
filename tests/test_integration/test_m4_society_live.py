@@ -30,11 +30,15 @@ Issue 004. These tests pin:
 from __future__ import annotations
 
 import ast
+import importlib.util
 import json
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import pytest
 
 from erre_sandbox.cognition.embodiment import K_ECL
 from erre_sandbox.inference.ollama_adapter import ChatMessage, ChatResponse
@@ -44,6 +48,9 @@ from erre_sandbox.integration.embodied import society_live as society_live_modul
 from erre_sandbox.integration.embodied.loop import DEFAULT_PHYSICS_TICKS_PER_COGNITION
 from erre_sandbox.integration.embodied.society import run_society_loop
 from erre_sandbox.integration.embodied.society_live import (
+    KANT_AGENT_ID,
+    NIETZSCHE_AGENT_ID,
+    RIKYU_AGENT_ID,
     SOCIETY_LIVE_AGENT_IDS,
     SOCIETY_LIVE_N_COGNITION_TICKS,
     SOCIETY_LIVE_OBSERVABLES,
@@ -416,3 +423,258 @@ async def test_society_live_capture_drives_every_agent() -> None:
         assert inners[agent_id].calls
     assert SOCIETY_LIVE_N_COGNITION_TICKS == 12
     assert DEFAULT_PHYSICS_TICKS_PER_COGNITION > 0
+
+
+# --------------------------------------------------------------------------- #
+# Issue 002 (I2): scripts/m4_society_live_capture.py — --capture/--verify CLI
+# + R3 per-agent from-jsonl decoder (design-final.md §B/§R3, handoff.py
+# untouched). The script lives outside the ``erre_sandbox`` package (it is a
+# CLI, not a library module), so it is loaded via ``importlib`` from its file
+# path — the same idiom ``tests/test_evidence/test_p3a_decide.py`` uses for
+# ``scripts/p3a_decide.py``.
+# --------------------------------------------------------------------------- #
+
+_M4_SCRIPT = (
+    Path(__file__).resolve().parents[2] / "scripts" / "m4_society_live_capture.py"
+)
+
+
+def _load_m4_module() -> Any:
+    spec = importlib.util.spec_from_file_location(
+        "scripts_m4_society_live_capture", _M4_SCRIPT
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_m4 = _load_m4_module()
+
+
+async def _capture_full_horizon(
+    inner_chats: dict[str, _ScriptedInner] | None = None,
+) -> tuple[Any, dict[str, _ScriptedInner]]:
+    """Same shape as ``_capture`` but at the pinned 12-tick horizon.
+
+    I2's ``--verify`` structural-completeness check (Codex M1) asserts the
+    replayed run has exactly ``SOCIETY_LIVE_N_COGNITION_TICKS`` decisions per
+    agent, so a mock bundle exercising the full ``verify()`` round trip needs
+    that horizon — ``_capture``'s ``_N_TICKS=3`` stays untouched for I1's own
+    (faster) tests.
+    """
+    agent_states = society_live_agent_states()
+    personas = society_live_personas()
+    inners = inner_chats or {
+        agent_id: _ScriptedInner() for agent_id in SOCIETY_LIVE_AGENT_IDS
+    }
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    embedding = _embed_client()
+    try:
+        result = await run_society_live_capture(
+            inner_chats=inners,
+            store=store,
+            embedding=embedding,
+            run_id=SOCIETY_LIVE_RUN_ID,
+            agent_states=agent_states,
+            personas=personas,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            n_cognition_ticks=SOCIETY_LIVE_N_COGNITION_TICKS,
+            physics_ticks_per_cognition=_PHYSICS_TICKS,
+            observation_factories=society_live_observation_factories(),
+        )
+        return result, inners
+    finally:
+        await embedding.close()
+        await store.close()
+
+
+def _render_mock_bundle(recorded: Any) -> dict[str, str]:
+    """Render a mock-captured bundle the same way ``m4_society_live_capture.py``'s
+    ``capture()`` would (Ollama-free — this is the ``_ScriptedInner``-driven
+    in-memory result, not a live run)."""
+    resolved_sampling = recorded.decisions[SOCIETY_LIVE_AGENT_IDS[0]][0].call.sampling
+    env_pins = build_society_live_env_pins(
+        qwen3_model_digest="sha256:mock",
+        ollama_version="0.0.0-mock",
+        vram_gb=0.0,
+        uv_lock_sha256="mock",
+        resolved_sampling=resolved_sampling,
+        agent_states=society_live_agent_states(),
+        personas=society_live_personas(),
+        run_id=SOCIETY_LIVE_RUN_ID,
+        n_cognition_ticks=SOCIETY_LIVE_N_COGNITION_TICKS,
+        seed=0,
+        base_env_pins={"python": "3.11.9", "packages": {}, "godot": "4.6"},
+    )
+    env_pins["captured_event_log_checksum"] = recorded.event_log_checksum
+    # I2 discovery: society_live.fixed_constructor_fingerprint's
+    # observation_factories_sha256 hashes a wall-clock-stamped PerceptionEvent
+    # (schemas._ObservationBase.wall_clock default_factory=_utc_now), so it is
+    # non-deterministic across calls (see test_fixed_constructors_fingerprint,
+    # an I1 test, unmodified). The CLI corrects just that sub-field
+    # (_m4._corrected_fixed_constructor_fingerprint); mock bundles must apply
+    # the same correction so verify()'s HIGH-4 assert can ever match.
+    env_pins["fixed_constructor_fingerprint"] = (
+        _m4._corrected_fixed_constructor_fingerprint(
+            agent_states=society_live_agent_states(), personas=society_live_personas()
+        )
+    )
+    rendered = handoff.render_society_golden(
+        recorded, run_config=_run_config(), env_pins=env_pins
+    )
+    manifest = json.loads(rendered["manifest.json"])
+    rendered["manifest.json"] = (
+        handoff.canonical_dumps(attach_society_live_observables(manifest)) + "\n"
+    )
+    return rendered
+
+
+def _write_bundle(out_dir: Path, rendered: dict[str, str]) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for filename, text in rendered.items():
+        (out_dir / filename).write_text(text, encoding="utf-8", newline="\n")
+
+
+# --------------------------------------------------------------------------- #
+# AC2-G1 — mock bundle round trip: verify() True, inner_invocations==0 for
+# every replay client, checksum/SHA/manifest re-render all byte-identical.
+# --------------------------------------------------------------------------- #
+
+
+async def test_verify_roundtrip_mock_bundle(tmp_path: Path) -> None:
+    recorded, _inners = await _capture_full_horizon()
+    rendered = _render_mock_bundle(recorded)
+    _write_bundle(tmp_path, rendered)
+
+    ok = await _m4.verify(tmp_path)
+
+    assert ok is True
+
+
+# --------------------------------------------------------------------------- #
+# AC2-G2 — R3 decoder fail-closed (Codex HIGH-1): duplicate (agent,tick) /
+# unknown agent / order_slot inconsistent-with-roster / insufficient rows.
+# --------------------------------------------------------------------------- #
+
+
+async def test_decoder_fail_closed() -> None:
+    recorded, _inners = await _capture()
+    lines = handoff.build_society_decisions_stream(recorded)
+    assert lines, "fixture precondition: at least one decision row"
+
+    def _to_text(entries: list[dict[str, Any]]) -> str:
+        return "\n".join(json.dumps(e) for e in entries) + "\n"
+
+    # Sanity: the unmodified stream decodes cleanly (no expected_agent_ids).
+    decoded = _m4.society_recorded_calls_from_jsonl(_to_text(lines))
+    assert set(decoded) == set(SOCIETY_LIVE_AGENT_IDS)
+
+    # Duplicate (agent_id, agent_tick) pair.
+    duplicated = [*lines, lines[0]]
+    with pytest.raises(ValueError, match="duplicate"):
+        _m4.society_recorded_calls_from_jsonl(_to_text(duplicated))
+
+    # Unknown agent_id relative to an explicit expected roster.
+    with pytest.raises(ValueError, match="unknown agent_id"):
+        _m4.society_recorded_calls_from_jsonl(
+            _to_text(lines),
+            expected_agent_ids=(KANT_AGENT_ID, NIETZSCHE_AGENT_ID),
+        )
+
+    # order_slot inconsistent with the sorted(agent_ids) roster.
+    tampered_slot = [dict(e) for e in lines]
+    tampered_slot[0] = {**tampered_slot[0], "order_slot": 99}
+    with pytest.raises(ValueError, match="order_slot"):
+        _m4.society_recorded_calls_from_jsonl(_to_text(tampered_slot))
+
+    # Missing rows: an entire expected agent absent from the stream.
+    missing_agent = [e for e in lines if e["agent_id"] != RIKYU_AGENT_ID]
+    with pytest.raises(ValueError, match="missing agent_id"):
+        _m4.society_recorded_calls_from_jsonl(
+            _to_text(missing_agent), expected_agent_ids=SOCIETY_LIVE_AGENT_IDS
+        )
+
+    # Insufficient rows: one agent has a tick-slot gap (present overall, but
+    # missing one agent_tick another agent reported).
+    tick_gap = [
+        e
+        for e in lines
+        if not (e["agent_id"] == RIKYU_AGENT_ID and e["decision"]["agent_tick"] == 0)
+    ]
+    with pytest.raises(ValueError, match="insufficient rows"):
+        _m4.society_recorded_calls_from_jsonl(_to_text(tick_gap))
+
+
+# --------------------------------------------------------------------------- #
+# AC2-G3 — anti-vacuous-pass (Codex HIGH-5): a 1-byte manifest.json
+# corruption must fail verify(), never vacuously pass.
+# --------------------------------------------------------------------------- #
+
+
+async def test_verify_anti_vacuous(tmp_path: Path) -> None:
+    recorded, _inners = await _capture_full_horizon()
+    rendered = _render_mock_bundle(recorded)
+    _write_bundle(tmp_path, rendered)
+
+    manifest_path = tmp_path / "manifest.json"
+    original = manifest_path.read_text(encoding="utf-8")
+    corrupted = original.rstrip("\n") + " \n"  # still valid JSON, 1 byte added
+    assert corrupted != original
+    json.loads(corrupted)  # precondition: still parses
+    manifest_path.write_text(corrupted, encoding="utf-8", newline="\n")
+
+    ok = await _m4.verify(tmp_path)
+
+    assert ok is False
+
+
+# --------------------------------------------------------------------------- #
+# AC2-G4 — structural completeness (Codex M1, fail-closed): agent drift /
+# horizon shortfall both fail verify() (never a raise, never a silent pass).
+# --------------------------------------------------------------------------- #
+
+
+async def test_verify_structural_completeness(tmp_path: Path) -> None:
+    # horizon 不足 — a structurally valid (uniform tick count across all 3
+    # agents) bundle whose horizon is below the pinned 12-tick constant.
+    short_dir = tmp_path / "short_horizon"
+    recorded_short, _inners = await _capture()  # _N_TICKS == 3, all agents uniform
+    rendered_short = _render_mock_bundle(recorded_short)
+    _write_bundle(short_dir, rendered_short)
+    assert await _m4.verify(short_dir) is False
+
+    # agent 欠落 — manifest.run.agent_ids drifted to drop one pinned agent
+    # while decisions.jsonl itself stays fully valid for all three.
+    missing_dir = tmp_path / "missing_agent"
+    recorded_full, _inners = await _capture_full_horizon()
+    rendered_full = dict(_render_mock_bundle(recorded_full))
+    manifest = json.loads(rendered_full["manifest.json"])
+    manifest["run"]["agent_ids"] = [
+        agent_id
+        for agent_id in manifest["run"]["agent_ids"]
+        if agent_id != RIKYU_AGENT_ID
+    ]
+    rendered_full["manifest.json"] = json.dumps(manifest) + "\n"
+    _write_bundle(missing_dir, rendered_full)
+    assert await _m4.verify(missing_dir) is False
+
+
+# --------------------------------------------------------------------------- #
+# AC2-G5 — measurement-line non-re-entry guard on the CLI script itself.
+# --------------------------------------------------------------------------- #
+
+_M4_SCRIPT_TREE = ast.parse(_M4_SCRIPT.read_text(encoding="utf-8"))
+
+
+def test_m4_capture_measurement_guard() -> None:
+    """``m4_society_live_capture.py`` imports no measurement machinery and
+    defines no floor/landscape/verdict output identifier or gate key literal
+    (design §F, mirrors the ``society_live.py``/``handoff.py`` guards)."""
+    _assert_no_measurement_imports(_M4_SCRIPT_TREE)
+    _assert_no_measurement_output_identifiers(_M4_SCRIPT_TREE)
+    _assert_no_gate_keys(_M4_SCRIPT_TREE)
