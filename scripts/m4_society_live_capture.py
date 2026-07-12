@@ -478,9 +478,13 @@ async def verify(artifact_dir: Path) -> bool:
 
     # R3 decoder (Codex HIGH-1/HIGH-2) + Codex HIGH-3 (exact 3-agent key set,
     # no live fallback possible).
-    recorded = society_recorded_calls_from_jsonl(
-        decisions_text, expected_agent_ids=SOCIETY_LIVE_AGENT_IDS
-    )
+    try:
+        recorded = society_recorded_calls_from_jsonl(
+            decisions_text, expected_agent_ids=SOCIETY_LIVE_AGENT_IDS
+        )
+    except ValueError as e:
+        print(f"[verify] FAIL decode: {e}")
+        return False
     llms = {
         agent_id: RecordReplayChatClient(recorded=recorded[agent_id])
         for agent_id in SOCIETY_LIVE_AGENT_IDS
