@@ -25,6 +25,14 @@ Issue 004. These tests pin:
   deterministic, byte-stable canonical JSON fingerprint that
   ``build_society_live_env_pins`` pins into the manifest's ``env_pins`` block
   (Codex HIGH-4/M2).
+* ``test_decision_projection_fully_quantised`` — regression test for the
+  判断3 superseding ADR
+  (``.steering/20260712-m13-m4-society-enrichment/decisions.md``, Codex M-d):
+  every float in ``society._decision_projection``'s output is quantised to 6
+  decimals, including floats embedded as text inside ``envelope_provenance``'s
+  pre-serialised JSON strings (the field that silently broke society.py's own
+  §M4.4 "every float in the projection is quantised" invariant and caused the
+  Win/Linux ``event_log_checksum`` drift this ADR fixes).
 """
 
 from __future__ import annotations
@@ -32,6 +40,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import json
+import re
 import sys
 import time
 from dataclasses import dataclass, field
@@ -44,7 +53,7 @@ import pytest
 from erre_sandbox.cognition.embodiment import K_ECL
 from erre_sandbox.inference.ollama_adapter import ChatMessage, ChatResponse
 from erre_sandbox.inference.sampling import ResolvedSampling
-from erre_sandbox.integration.embodied import handoff
+from erre_sandbox.integration.embodied import handoff, society
 from erre_sandbox.integration.embodied import society_live as society_live_module
 from erre_sandbox.integration.embodied.loop import DEFAULT_PHYSICS_TICKS_PER_COGNITION
 from erre_sandbox.integration.embodied.society import run_society_loop
@@ -222,6 +231,63 @@ async def test_record_replay_byte_parity() -> None:
     assert rendered == rendered_replayed
     assert recorded.checksum == replayed.checksum
     assert recorded.event_log_checksum == replayed.event_log_checksum
+
+
+# --------------------------------------------------------------------------- #
+# 判断3 (superseding ADR, Codex M-d) — decision projection is fully quantised,
+# including floats embedded as text inside envelope_provenance JSON strings.
+# --------------------------------------------------------------------------- #
+
+_LONG_DECIMAL_FLOAT_RE = re.compile(r"-?\d+\.\d{7,}")
+"""Matches a decimal literal with more than 6 fractional digits — the shape a
+full-precision (un-quantised) float renders as in JSON text. Used to scan
+*inside* ``envelope_provenance``'s pre-serialised JSON strings, where a raw
+float is invisible to a recursive Python-object walk (it is just characters
+in a ``str`` until re-parsed)."""
+
+
+def _assert_no_unquantised_floats(obj: Any) -> None:
+    """Recursively assert every float in ``obj`` is already 6-decimal quantised.
+
+    ``bool`` is excluded first (it is an ``int`` subclass, never a ``float``,
+    and must never be rounded — Codex H3). Any ``envelope_provenance`` list is
+    additionally scanned as raw text for a longer-than-6-decimal literal,
+    since those entries are pre-serialised JSON strings whose embedded floats
+    a plain Python-object walk cannot see.
+    """
+    if isinstance(obj, bool):
+        return
+    if isinstance(obj, float):
+        assert obj == round(obj, 6), f"un-quantised float found: {obj!r}"
+        return
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key == "envelope_provenance" and isinstance(value, list):
+                for env_json in value:
+                    assert isinstance(env_json, str)
+                    match = _LONG_DECIMAL_FLOAT_RE.search(env_json)
+                    assert match is None, (
+                        f"long-decimal literal {match.group() if match else ''!r} "
+                        f"survives in envelope_provenance JSON text: {env_json!r}"
+                    )
+                    _assert_no_unquantised_floats(json.loads(env_json))
+                continue
+            _assert_no_unquantised_floats(value)
+        return
+    if isinstance(obj, (list, tuple)):
+        for item in obj:
+            _assert_no_unquantised_floats(item)
+
+
+async def test_decision_projection_fully_quantised() -> None:
+    recorded, _inners = await _capture()
+    assert recorded.decisions
+    for agent_decisions in recorded.decisions.values():
+        assert agent_decisions
+        for decision in agent_decisions:
+            projection = society._decision_projection(decision)
+            assert projection["envelope_provenance"], "no envelope_provenance to scan"
+            _assert_no_unquantised_floats(projection)
 
 
 # --------------------------------------------------------------------------- #
