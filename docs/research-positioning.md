@@ -914,6 +914,28 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   (design-final / decisions / codex-review verbatim) + `.steering/20260713-m13-m2-layer2-code/`
   (cross-review-synthesis / codex-review* / blockers) + `loop/20260713-m13-m2-layer2-code/` (issues J1-J5)。
 
+- **M2 Layer2 (ミラー・シム) real 封印実走 validate (2026-07-13、construction・実 qwen3:8b capture spend、
+  measurement spend でない = R-budget=0 不変)**: landed 済み Layer2 (mock/replay の continuity gate のみ) を
+  **real qwen3:8b で初封印実走**し、self-other context が genuine に prompt へ注入され LLM が応答するかを sealed
+  golden で record→replay-verify した。`self_other_enabled` を society_live 収録 harness + `m4_society_live_capture`
+  CLI に **additive thread** (既存 Layer2-off path byte-identical、env_pins additive witness は True 時のみ書込・
+  False 除去) し、`tests/fixtures/m2_layer2_live_golden/` (N=3 kant/nietzsche/rikyu、think=False、seed=0、
+  horizon=12) を bake。**honest outcome (acceptance = 非意味論 boolean のみ)**: (1) self-other 注入 = tick0 全
+  framing 不在 / tick 1..11 全 observer framing 有り + observed set == `sorted(all_agents)-{observer}` + 自己行なし
+  (**構造完全**)、(2) LLM 応答 36/36 decode + 構造 parse、(3) Windows record→replay byte-parity (inner_invocations=0)、
+  (4) **WSL cross-platform byte-parity Win==Linux 実測**。**over-read guard (Codex pre-register HIGH-1 = material)**:
+  think=False 縮退 / rendering collapse を acceptance/見送り の gating にしない (covert scorer 禁止) → non-gating
+  human memo (「semantic uptake not assessed」)。**rendering collapse 診断** (M4 finding 再確認、artifact
+  observation): authored `destination_zone` は 5 zone label を含んだが segment 内 `zone=` は peripatos に collapse
+  (memory_centroid) → multi-zone rendering fix は別 scoping で deferred。**claim 境界 = construction (ミラー・シムの
+  wiring が real qwen3 で発火し LLM が応答する) であって measurement でない** (semantic effect = 他者観察が行動を
+  どれだけ変えたか は measured でない、magnitude 非読取、holding 不可侵・R-budget=0、reasoning-trace door 保全)。
+  TASK-POST cross-review = code-reviewer(Opus) Approve/HIGH・MEDIUM なし + Codex(gpt-5.5) 最終 merge 止める HIGH なし
+  (Codex MEDIUM = helper pop-on-False + M4 golden no-key test 反映)。**PR #78**。詳細 =
+  `.steering/20260713-m13-layer2-mirror-sim-live-run/` (design / decisions / codex-review* / findings) +
+  `experiments/20260713-m13-layer2-live/` (run.sh / results) + `loop/20260713-m13-layer2-mirror-sim-live-run/`
+  (issues K1-K3)。次工程 = (C) multi-zone rendering fix (deferred scoping) or M3 endurance の別 scoping。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
