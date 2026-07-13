@@ -957,8 +957,9 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   条件付き)。measurement 非 authorize、aha を離散 scorer で測らない、R-budget=0 / holding / measurement-line CLOSE 不変、
   5 機序分離継承。詳細 = `.steering/20260713-aha-phase2-door-scoping/` (design-final / decisions / design-v1/v2/comparison /
   codex-review* verbatim)。次工程 = Phase 3 (think=True LLM 稼働検証、real qwen3 construction spend、verdict なし、
-  record→観察のみ) → Phase 4 (construction fork = λ↔二相 knob 建設 / measurement door fork = aha-judge 別文脈 from-scratch、
-  door-open は user 裁定)。
+  record→観察のみ) → Phase 4 = **本 ADR 推奨の construction-only** (λ↔二相 knob 建設、Phase 3 存在確認を承けた後)。
+  measurement door fork (aha-judge 別文脈 from-scratch) は door 条件② (壁2 非循環 scorer) 解決 + **user 裁定**時のみ到達可能で、
+  本 ADR では開けない。
 
 ## 9. スコープ / 非スコープ
 
