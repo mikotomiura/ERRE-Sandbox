@@ -552,7 +552,8 @@ class SelfOtherObservedRecord:
 
     Canonical, float-free projection: every scalar is ``{str, int, bool, None}``
     (the slot payload does not pass through :func:`_q`'s quantisation, so a float
-    here would drift cross-platform — §L2/§L7, judgement 3 教訓)."""
+    here would drift cross-platform — §L2/§L7, judgement 3 教訓).
+    """
 
     other_agent_id: str
     observed_zone: str
@@ -1051,8 +1052,42 @@ async def _step_one_agent(
     )
 
 
+def _build_window_self_other_contexts(
+    *,
+    enabled: bool,
+    agent_ids: Sequence[str],
+    window_index: int,
+    prior_records: Sequence[SelfOtherPriorRecord],
+    sink: list[SelfOtherContext],
+) -> dict[str, SelfOtherContext]:
+    """Build each observer's self-other context for one window (Layer2, §L3, J3).
+
+    NOT a structural-floor verdict; verdict は holding. ``enabled=False`` (Layer2
+    off) returns ``{}`` immediately so the driver's step kwarg defaults to ``None``
+    (byte-identical). When enabled, a pure per-observer build via
+    :func:`build_self_other_context` (strict prefix filter keeps only
+    ``window == window_index - 1`` others), appending each **non-empty** context to
+    ``sink`` (the run-level slot aggregate). The ``enabled`` gate lives here (not in
+    the driver loop) so the sequential scheduler body stays a thin orchestrator.
+    """
+    if not enabled:
+        return {}
+    contexts: dict[str, SelfOtherContext] = {}
+    for agent_id in agent_ids:
+        ctx = build_self_other_context(
+            observer_id=agent_id,
+            window_index=window_index,
+            prior_records=prior_records,
+        )
+        contexts[agent_id] = ctx
+        if not ctx.is_empty:
+            sink.append(ctx)
+    return contexts
+
+
 def _capture_window_behaviour(
     *,
+    enabled: bool,
     rows: Sequence[EclTraceRow],
     decisions: Mapping[str, Sequence[EclDecisionRecord]],
     window_pair: Sequence[PairEventRecord],
@@ -1062,16 +1097,21 @@ def _capture_window_behaviour(
 ) -> list[SelfOtherPriorRecord]:
     """Capture each agent's window behaviour for the NEXT window's self-other context.
 
-    NOT a structural-floor verdict; verdict は holding. Layer2 (J3): reads **only**
-    already-recorded Layer1 event-log data — the end-of-window zone (the last
-    geometry ``EclTraceRow`` of this ``(agent, window)``), the resolved
-    ``destination_zone`` (from the window's own ``EclDecisionRecord`` plan), the
-    window's dialog delta, and the window's pair-event delta (``was_proximate`` is
-    a plain ``bool`` — no distance float, keeping the payload float-free, §L7).
-    **No ``AppraisalState`` measurement field** is read (規律 d): the observer
-    *simulates* the other's inner state in the SimToM prompt, it is not stored as
-    a measured value. Deterministic given the (already-computed) inputs.
+    NOT a structural-floor verdict; verdict は holding. ``enabled=False`` (Layer2
+    off) returns ``[]`` immediately (byte-identical — nothing is captured). When
+    enabled, Layer2 (J3) reads **only** already-recorded Layer1 event-log data —
+    the end-of-window zone (the last geometry ``EclTraceRow`` of this ``(agent,
+    window)``), the resolved ``destination_zone`` (from the window's own
+    ``EclDecisionRecord`` plan), the window's dialog delta, and the window's
+    pair-event delta (``was_proximate`` is a plain ``bool`` — no distance float,
+    keeping the payload float-free, §L7). **No ``AppraisalState`` measurement
+    field** is read (規律 d): the observer *simulates* the other's inner state in
+    the SimToM prompt, it is not stored as a measured value. Deterministic given
+    the (already-computed) inputs. The ``enabled`` gate lives here so the driver
+    loop stays a thin orchestrator.
     """
+    if not enabled:
+        return []
     records: list[SelfOtherPriorRecord] = []
     for agent_id in agent_ids:
         window_rows = [
@@ -1131,7 +1171,7 @@ def _build_self_other_slot(
 # --------------------------------------------------------------------------- #
 
 
-async def run_society_loop(
+async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent driver; the additive Layer2 seam (build/capture) is already extracted into helpers, the residual statements are the sequential scheduler's own construction wiring (mirrors cycle.step's PLR0915 precedent)
     *,
     run_id: str,
     store: MemoryStore,
@@ -1298,21 +1338,17 @@ async def run_society_loop(
                 world.inject_observation(agent_id, obs)
         # §L3 (Layer2, default-off): build each observer's transient self-other
         # context from the PRIOR window's OTHER-agent behaviour *before* stepping
-        # (the strict prefix filter in build_self_other_context keeps only
-        # ``window == cognition_tick - 1`` records — this-window/future/self can
-        # never leak). Empty contexts (window 0 / no others) render to ``""`` =
-        # byte-identical, and contribute nothing to the slot.
-        window_contexts: dict[str, SelfOtherContext] = {}
-        if self_other_enabled:
-            for agent_id in sorted_agent_ids:
-                ctx = build_self_other_context(
-                    observer_id=agent_id,
-                    window_index=cognition_tick,
-                    prior_records=prior_records,
-                )
-                window_contexts[agent_id] = ctx
-                if not ctx.is_empty:
-                    self_other_contexts.append(ctx)
+        # (the strict prefix filter keeps only ``window == cognition_tick - 1``
+        # records — this-window/future/self can never leak). Empty contexts
+        # (window 0 / no others) render to ``""`` = byte-identical, and contribute
+        # nothing to the slot. ``{}`` when off → the step kwarg defaults to None.
+        window_contexts = _build_window_self_other_contexts(
+            enabled=self_other_enabled,
+            agent_ids=sorted_agent_ids,
+            window_index=cognition_tick,
+            prior_records=prior_records,
+            sink=self_other_contexts,
+        )
         # §M4.1 record-mode sequential sorted(order_slot) scheduler — every
         # agent steps ONE AT A TIME in sorted(agent_id) order; no
         # asyncio.gather fan-out (that lives only in the live phase-wheel,
@@ -1350,18 +1386,19 @@ async def run_society_loop(
         )
         # §L3/§L7 (Layer2, default-off): after this window is fully settled,
         # record each agent's behaviour so the NEXT window's observers can
-        # build their self-other context. Reads only already-computed data.
-        if self_other_enabled:
-            prior_records.extend(
-                _capture_window_behaviour(
-                    rows=rows,
-                    decisions=decisions,
-                    window_pair=pair_events[pair_before:],
-                    window_dialog=dialog_events[dialog_before:],
-                    agent_ids=sorted_agent_ids,
-                    window=cognition_tick,
-                )
+        # build their self-other context. Reads only already-computed data; the
+        # ``enabled`` gate lives in the helper (returns [] when off = no-op).
+        prior_records.extend(
+            _capture_window_behaviour(
+                enabled=self_other_enabled,
+                rows=rows,
+                decisions=decisions,
+                window_pair=pair_events[pair_before:],
+                window_dialog=dialog_events[dialog_before:],
+                agent_ids=sorted_agent_ids,
+                window=cognition_tick,
             )
+        )
 
     frozen_rows = tuple(rows)
     frozen_decisions = {a: tuple(decs) for a, decs in decisions.items()}
