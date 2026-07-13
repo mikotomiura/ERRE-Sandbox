@@ -496,6 +496,178 @@ def _validate_self_other_slot(value: SelfOtherObservationInput) -> None:
         raise TypeError(msg)
 
 
+# --------------------------------------------------------------------------- #
+# Layer2 (mirror-sim) — pure self-other context builder (§L3/§L7, J2)
+#
+# NOT a structural-floor verdict; verdict は holding (design-final.md §L4/§L13).
+# This is a *construction* seam: a pure, deterministic function of the other
+# agents' prior-window observed behaviour. It computes no floor / verdict /
+# scorer / divergence / magnitude — it renders a SimToM prompt segment (a
+# **functional analog** of taking another agent's perspective, NOT a neural
+# mirror-neuron mechanism, §L1 規律 b) and a canonical float-free payload piece.
+# --------------------------------------------------------------------------- #
+
+M2_SELFOTHER_SCHEMA_VERSION: Final[str] = "m2-selfother-1"
+"""Versioned-additive wire tag for the Layer2 ``self_other_observation_input``
+slot payload (§L7). Distinct from :data:`M2_EVENTLOG_SCHEMA_VERSION` (the whole
+event-log projection tag) — this versions the self-other payload shape only."""
+
+_SELF_OTHER_FRAMING: Final[str] = (
+    "Others you observed one step ago — simulate each one's likely inner state "
+    "and let it inform your own next action. This is a functional analog of "
+    "taking their perspective, not a claim about their true mind:"
+)
+"""SimToM prompt framing (§L3/§L7, prompt-level self-other simulation, 予算ゼロ
+規律 c). Functional-analog vocabulary only (規律 b — no "mirror neuron / neural
+mechanism / 神経機構再現"). Bounded and imperative so a think=False low-entropy
+decode stays parseable (文献 §9-ii); the think=False parseability desk-audit
+(§L11) is recorded in ``experiments/20260713-m13-m2-layer2/``."""
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherPriorRecord:
+    """One other agent's prior-window observed behaviour (builder input, §L7).
+
+    A pure value object the driver (:func:`run_society_loop`, J3) assembles from
+    the Layer1 event log it already records — ``zone``/``destination_zone`` from
+    the geometry + resolved move, ``utterance`` from ``dialog_events``,
+    ``was_proximate`` from ``pair_events`` (a plain bool — no distance float, so
+    the payload stays float-free, §L7). Carries **only** already-recorded
+    behaviour events — never an ``AppraisalState`` measurement field (規律 d): the
+    observer *simulates* the other's inner state in the SimToM prompt, it is not
+    stored as a measured value here.
+    """
+
+    agent_id: str
+    window: int
+    zone: str
+    destination_zone: str | None = None
+    utterance: str | None = None
+    was_proximate: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherObservedRecord:
+    """One observed other agent inside a :class:`SelfOtherContext` (§L7 ``observed``).
+
+    Canonical, float-free projection: every scalar is ``{str, int, bool, None}``
+    (the slot payload does not pass through :func:`_q`'s quantisation, so a float
+    here would drift cross-platform — §L2/§L7, judgement 3 教訓)."""
+
+    other_agent_id: str
+    observed_zone: str
+    observed_destination_zone: str | None
+    observed_utterance: str | None
+    was_proximate: bool
+
+    def payload(self) -> dict[str, Any]:
+        return {
+            "other_agent_id": self.other_agent_id,
+            "observed_zone": self.observed_zone,
+            "observed_destination_zone": self.observed_destination_zone,
+            "observed_utterance": self.observed_utterance,
+            "was_proximate": self.was_proximate,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherContext:
+    """One observer's self-other injection at one cognition window (§L3/§L7).
+
+    ``rendered`` is the deterministic SimToM text segment fed to
+    :func:`~erre_sandbox.cognition.prompting.build_user_prompt`'s
+    ``self_other_context`` kwarg (``""`` when no other agent was observed —
+    window 0 or an all-empty prior window, §L4.3 → no slot contribution).
+    :meth:`injection_payload` is the canonical, float-free payload piece the
+    run-level slot aggregates (J3).
+    """
+
+    observer_agent_id: str
+    window: int
+    source_window: int
+    observed: tuple[SelfOtherObservedRecord, ...]
+    rendered: str
+
+    @property
+    def is_empty(self) -> bool:
+        """``True`` when no other agent was observed (no slot contribution)."""
+        return not self.observed
+
+    def injection_payload(self) -> dict[str, Any]:
+        """Canonical injection dict (§L7): ``observed`` already builder-sorted."""
+        return {
+            "window": self.window,
+            "observer_agent_id": self.observer_agent_id,
+            "source_window": self.source_window,
+            "observed": [r.payload() for r in self.observed],
+        }
+
+
+def _render_self_other(observed: Sequence[SelfOtherObservedRecord]) -> str:
+    """Deterministic SimToM segment render (pure function of ``observed``, §L7)."""
+    lines = [_SELF_OTHER_FRAMING]
+    for r in observed:
+        parts = [f"zone={r.observed_zone}"]
+        if r.observed_destination_zone is not None:
+            parts.append(f"moved_toward={r.observed_destination_zone}")
+        if r.observed_utterance is not None:
+            parts.append(f'said="{r.observed_utterance}"')
+        if r.was_proximate:
+            parts.append("was_near_you")
+        lines.append(f"- {r.other_agent_id}: {', '.join(parts)}")
+    return "\n".join(lines)
+
+
+def build_self_other_context(
+    *,
+    observer_id: str,
+    window_index: int,
+    prior_records: Sequence[SelfOtherPriorRecord],
+) -> SelfOtherContext:
+    """Build one observer's self-other context (pure, exact-oracle, §L3/§L7).
+
+    NOT a structural-floor verdict; verdict は holding. A deterministic function
+    of the other agents' prior-window behaviour: **strict prefix filter**
+    (DA-L2-2, Codex HIGH-2) keeps only records where ``agent_id != observer_id``
+    (never the observer's own action) **and** ``window == window_index - 1`` —
+    the immediately-prior window ``source_window = t-1``, which is ``< window_index``
+    by construction, so this-window / future-window records can never leak into
+    the context (pinned by ``test_self_other_no_future_or_self_leak``). ``observed``
+    is canonically sorted by ``other_agent_id`` (a total string order) so the
+    payload/render are order-insensitive and float-free (``test_self_other_context_
+    builder_purity``). ``window_index == 0`` → empty context (no prior window,
+    honest). The build reads no store / memory / RNG / wall-clock — it is a pure
+    seam boundary (§L6 disjointness: the observed input stream never touches the
+    memory sink).
+    """
+    source_window = window_index - 1
+    observed = tuple(
+        SelfOtherObservedRecord(
+            other_agent_id=r.agent_id,
+            observed_zone=r.zone,
+            observed_destination_zone=r.destination_zone,
+            observed_utterance=r.utterance,
+            was_proximate=r.was_proximate,
+        )
+        for r in sorted(
+            (
+                r
+                for r in prior_records
+                if r.agent_id != observer_id and r.window == source_window
+            ),
+            key=lambda r: r.agent_id,
+        )
+    )
+    rendered = _render_self_other(observed) if observed else ""
+    return SelfOtherContext(
+        observer_agent_id=observer_id,
+        window=window_index,
+        source_window=source_window,
+        observed=observed,
+        rendered=rendered,
+    )
+
+
 def _pair_event_projection(e: PairEventRecord) -> dict[str, Any]:
     return {
         "tick": e.tick,
@@ -1084,12 +1256,17 @@ async def run_society_loop(
 
 __all__ = [
     "M2_EVENTLOG_SCHEMA_VERSION",
+    "M2_SELFOTHER_SCHEMA_VERSION",
     "AffinityDeltaRecord",
     "DialogEventRecord",
     "MemoryMutationRecord",
     "PairEventRecord",
+    "SelfOtherContext",
     "SelfOtherObservationInput",
+    "SelfOtherObservedRecord",
+    "SelfOtherPriorRecord",
     "SocietyRunResult",
+    "build_self_other_context",
     "event_log_checksum",
     "run_society_loop",
 ]

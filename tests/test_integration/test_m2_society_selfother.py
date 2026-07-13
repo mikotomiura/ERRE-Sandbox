@@ -39,9 +39,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from erre_sandbox.cognition.prompting import build_user_prompt
 from erre_sandbox.contracts.cognition_layers import WorldModelEntry
+from erre_sandbox.integration.embodied.society import (
+    SelfOtherPriorRecord,
+    build_self_other_context,
+)
 from erre_sandbox.schemas import MemoryEntry, MemoryKind
 
 # --------------------------------------------------------------------------- #
@@ -163,3 +168,160 @@ def test_self_other_world_model_coexist_deterministic() -> None:
         )
     ]
     assert held_block_bytes in both
+
+
+# --------------------------------------------------------------------------- #
+# J2 helpers + tests — pure builder (§L3/§L7, DA-L2-2 strict prefix filter)
+# --------------------------------------------------------------------------- #
+
+_ALLOWED_SCALARS = (str, int, bool, type(None))
+
+
+def _assert_float_free(obj: Any) -> None:
+    """Every scalar under ``obj`` is in {str, int, bool, None} — no float (§L7).
+
+    ``bool`` is a subclass of ``int`` but explicitly allowed; a bare ``float``
+    anywhere would drift cross-platform (the slot payload never passes through
+    the 6-decimal quantiser, §L2/§L7 — float-free is the structural mitigation).
+    """
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            assert isinstance(k, str), f"non-str key {k!r}"
+            _assert_float_free(v)
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            _assert_float_free(v)
+    else:
+        assert isinstance(obj, _ALLOWED_SCALARS) and not isinstance(obj, float), (
+            f"payload scalar {obj!r} is not in {{str, int, bool, None}} (§L7 float-free)"
+        )
+
+
+def _prior(
+    agent_id: str,
+    window: int,
+    *,
+    zone: str = "peripatos",
+    destination_zone: str | None = None,
+    utterance: str | None = None,
+    was_proximate: bool = False,
+) -> SelfOtherPriorRecord:
+    return SelfOtherPriorRecord(
+        agent_id=agent_id,
+        window=window,
+        zone=zone,
+        destination_zone=destination_zone,
+        utterance=utterance,
+        was_proximate=was_proximate,
+    )
+
+
+def test_self_other_context_builder_purity() -> None:
+    """Same prior records → same canonical context (deterministic, sorted, float-free).
+
+    NOT a structural-floor verdict; verdict は holding. The builder is an
+    exact-oracle pure function: identical input yields an identical
+    :class:`SelfOtherContext` (payload + rendered), the ``observed`` list is
+    canonically sorted by ``other_agent_id`` regardless of input order, and the
+    payload carries no float (the §L7 cross-platform-drift structural guard).
+    """
+    # Deliberately non-sorted input order (charlie, alpha, bravo) at the
+    # immediately-prior window (t-1 = 2) for observer at window 3.
+    records = [
+        _prior("a_charlie", 2, zone="agora", utterance="こんにちは"),
+        _prior("a_alpha", 2, zone="study", destination_zone="peripatos"),
+        _prior("a_bravo", 2, zone="chashitsu", was_proximate=True),
+    ]
+
+    ctx_a = build_self_other_context(
+        observer_id="a_observer", window_index=3, prior_records=records
+    )
+    # Purity: rebuild with the SAME records → byte-identical context.
+    ctx_b = build_self_other_context(
+        observer_id="a_observer", window_index=3, prior_records=list(records)
+    )
+    assert ctx_a == ctx_b
+    assert ctx_a.injection_payload() == ctx_b.injection_payload()
+    assert ctx_a.rendered == ctx_b.rendered
+
+    # Order-insensitivity: a shuffled input yields the same canonical output.
+    shuffled = [records[1], records[2], records[0]]
+    ctx_shuffled = build_self_other_context(
+        observer_id="a_observer", window_index=3, prior_records=shuffled
+    )
+    assert ctx_shuffled == ctx_a
+
+    # observed is canonically sorted by other_agent_id (a total string order).
+    observed_ids = [r.other_agent_id for r in ctx_a.observed]
+    assert observed_ids == sorted(observed_ids)
+    assert observed_ids == ["a_alpha", "a_bravo", "a_charlie"]
+
+    # source_window is the immediately-prior window (t-1), strictly < window_index.
+    assert ctx_a.source_window == 2
+    assert ctx_a.source_window < ctx_a.window
+
+    # Payload is float-free (§L7) and every declared scalar is str/int/bool/None.
+    payload = ctx_a.injection_payload()
+    _assert_float_free(payload)
+    # A non-None destination / utterance / proximity round-trips into the payload.
+    alpha = next(o for o in payload["observed"] if o["other_agent_id"] == "a_alpha")
+    assert alpha["observed_destination_zone"] == "peripatos"
+    assert alpha["observed_utterance"] is None
+    assert alpha["was_proximate"] is False
+    bravo = next(o for o in payload["observed"] if o["other_agent_id"] == "a_bravo")
+    assert bravo["was_proximate"] is True
+    charlie = next(o for o in payload["observed"] if o["other_agent_id"] == "a_charlie")
+    assert charlie["observed_utterance"] == "こんにちは"
+
+    # The rendered SimToM segment is deterministic, non-empty, and mentions each
+    # observed other exactly once (bounded functional-analog framing).
+    assert ctx_a.rendered
+    for oid in ("a_alpha", "a_bravo", "a_charlie"):
+        assert ctx_a.rendered.count(f"- {oid}:") == 1
+
+
+def test_self_other_no_future_or_self_leak() -> None:
+    """Builder reads only ``other != observer`` ∧ ``source_window < window_index``.
+
+    NOT a structural-floor verdict; verdict は holding. Codex HIGH-2 / DA-L2-2:
+    a 2-window fixture proves the strict prefix filter structurally rejects (a)
+    the observer's own action, (b) any this-window record, and (c) any
+    future-window record — if any leaked into the context the assertions below
+    would go red. The context for window ``t`` is built **only** from the
+    immediately-prior window ``t-1`` of *other* agents.
+    """
+    observer = "a_observer"
+    window_index = 2  # source_window = 1
+    records = [
+        # (a) observer's OWN record at t-1 — must be excluded (self leak guard).
+        _prior(observer, 1, zone="study"),
+        # (b) another agent this-window (t) — must be excluded (future/this leak).
+        _prior("a_other", 2, zone="agora"),
+        # (c) another agent future window (t+1) — must be excluded.
+        _prior("a_other", 3, zone="garden"),
+        # (d) another agent two windows back (t-2) — excluded (source_window is t-1).
+        _prior("a_other", 0, zone="chashitsu"),
+        # (e) the ONLY admissible record: another agent at t-1.
+        _prior("a_peer", 1, zone="peripatos", utterance="どうも"),
+    ]
+
+    ctx = build_self_other_context(
+        observer_id=observer, window_index=window_index, prior_records=records
+    )
+
+    observed_ids = {r.other_agent_id for r in ctx.observed}
+    # Only the other agent's t-1 record survives.
+    assert observed_ids == {"a_peer"}
+    # The observer never observes itself.
+    assert observer not in observed_ids
+    # No this-window / future / t-2 record leaked in.
+    assert all(r.observed_zone == "peripatos" for r in ctx.observed)
+    assert ctx.source_window == 1
+
+    # window 0 → empty context (no prior window; honest, not a builder failure).
+    ctx0 = build_self_other_context(
+        observer_id=observer, window_index=0, prior_records=records
+    )
+    assert ctx0.is_empty
+    assert ctx0.rendered == ""
+    assert ctx0.injection_payload()["observed"] == []
