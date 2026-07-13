@@ -515,6 +515,7 @@ class CognitionCycle:
         tick_seconds: float = DEFAULT_TICK_SECONDS,
         world_model_runtime: WorldModelRuntimeState | None = None,
         development_state: DevelopmentState | None = None,
+        self_other_context: str | None = None,
     ) -> CycleResult:
         """Run the 9-step cognition pipeline for one tick.
 
@@ -534,6 +535,19 @@ class CognitionCycle:
         flag-off. On a fresh-evidence tick it is folded with this tick's
         LLM-independent evidence by :func:`maybe_advance_development` and returned
         on :attr:`CycleResult.development_state` for write-back.
+
+        ``self_other_context`` (M2 Layer2 mirror-sim, transient) is a pre-rendered
+        bounded SimToM segment (the deterministic render of *other* agents'
+        prior-window observed behaviour, built by
+        :func:`~erre_sandbox.integration.embodied.society.build_self_other_context`).
+        ``None`` (the default, and every live / non-Layer2 caller) threads through
+        as ``""`` to :func:`~erre_sandbox.cognition.prompting.build_user_prompt`,
+        keeping the prompt byte-identical. When present it is injected into the
+        **user** prompt only and — crucially — is **never written to episodic
+        memory** (it does not pass through Step 1's ``_write_observations``): the
+        mirror-sim circularity guard (design-final.md §L6) keeps the observed
+        input stream disjoint from the memory sink. NOT a structural-floor
+        verdict; verdict は holding.
         """
         _ = tick_seconds  # reserved for T13, intentionally unused here
 
@@ -690,6 +704,7 @@ class CognitionCycle:
             memories,
             world_model_entries=world_model_entries,
             world_model_update_enabled=flag_on,
+            self_other_context=self_other_context or "",
         )
         try:
             resp = await self._llm.chat(

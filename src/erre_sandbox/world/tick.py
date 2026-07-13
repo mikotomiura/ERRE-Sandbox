@@ -1676,12 +1676,21 @@ class WorldRuntime:
 
     # ----- Cognition helpers -----
 
-    async def _step_one(self, rt: AgentRuntime) -> CycleResult:
+    async def _step_one(
+        self, rt: AgentRuntime, *, self_other_context: str | None = None
+    ) -> CycleResult:
         # Exceptions raised by the cycle are NOT caught here; the caller is
         # ``asyncio.gather(..., return_exceptions=True)`` which turns them
         # into result-list entries so one agent's failure cannot cancel its
         # siblings. Adding a try/except here would duplicate that contract
         # and confuse future maintainers.
+        #
+        # ``self_other_context`` (M2 Layer2 mirror-sim, keyword-only, default
+        # ``None``): the live phase-wheel (``_on_cognition_tick``) never passes
+        # it, so its call stays byte-identical; only the record-mode society
+        # driver threads a pre-rendered SimToM segment through
+        # :meth:`step_cognition_once`. Transient prompt-context only — it does
+        # not touch ``rt.pending`` / memory (design-final.md §L6).
         obs: list[Observation] = rt.pending
         rt.pending = []
         return await self._cycle.step(
@@ -1691,9 +1700,12 @@ class WorldRuntime:
             tick_seconds=self._cognition_period,
             world_model_runtime=rt.world_model_runtime,
             development_state=rt.development_state,
+            self_other_context=self_other_context,
         )
 
-    async def step_cognition_once(self, agent_id: str) -> CycleResult:
+    async def step_cognition_once(
+        self, agent_id: str, *, self_other_context: str | None = None
+    ) -> CycleResult:
         """Deterministically step exactly one agent's cognition (record-mode seam).
 
         Public-ish seam (design-final.md §M4.1, DA-M2IMPL-3, Codex MEDIUM-6):
@@ -1719,9 +1731,17 @@ class WorldRuntime:
         caller (matching ``run_ecl_loop``'s un-caught precedent), since
         record-mode drivers want failures to surface rather than be logged
         and swallowed.
+
+        ``self_other_context`` (M2 Layer2 mirror-sim, keyword-only, default
+        ``None``, additive): a record-mode society driver may thread a
+        pre-rendered SimToM segment (other agents' prior-window observed
+        behaviour) into this one agent's cognition. ``None`` — every existing
+        caller — keeps the step byte-identical. The segment is injected into the
+        user prompt only and never written to episodic memory (design-final.md
+        §L6 disjointness). NOT a structural-floor verdict; verdict は holding.
         """
         rt = self._agents[agent_id]
-        result = await self._step_one(rt)
+        result = await self._step_one(rt, self_other_context=self_other_context)
         self._consume_result(rt, result)
         return result
 

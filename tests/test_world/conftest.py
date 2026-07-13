@@ -40,6 +40,10 @@ class MockCycleCall:
     # M11-B: the carried development state passed by the runtime (same rationale
     # as ``world_model_runtime``; ``None`` flag-off).
     development_state: object | None = None
+    # M2 Layer2 mirror-sim: the transient self-other SimToM segment threaded by
+    # ``step_cognition_once`` (record-mode society driver only). ``None`` on
+    # every live phase-wheel step (the default in these world tests).
+    self_other_context: str | None = None
 
 
 StepResponder = Callable[[MockCycleCall], Awaitable[object]]
@@ -71,6 +75,7 @@ class MockCycle:
         tick_seconds: float,
         world_model_runtime: object | None = None,
         development_state: object | None = None,
+        self_other_context: str | None = None,
     ) -> object:
         call = MockCycleCall(
             agent_state=agent_state,
@@ -79,6 +84,7 @@ class MockCycle:
             tick_seconds=tick_seconds,
             world_model_runtime=world_model_runtime,
             development_state=development_state,
+            self_other_context=self_other_context,
         )
         self.calls.append(call)
         if self._responder is None:
