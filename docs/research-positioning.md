@@ -872,6 +872,47 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   (design-final / decisions [判断1-3 + Codex 採否] / blockers [BLOCKER-2 診断] / codex-review* verbatim)。
   次工程 = memory `project_m4_society_enrichment` 記録 / real embedding で rendered multi-zone を genuine に
   出す別 ADR (memory_centroid collapse 解消) / M2 Layer2 mirror-sim / M4 fidelity Wave 2 (skinned humanoid)。
+- **M2 Layer2 (ミラー・シム = self-other functional analog) impl-design ADR + 実コード landed (2026-07-13、
+  construction・実装 spend、measurement spend でない = R-budget=0 不変)**: M2 の第二 cognitive 次元 =
+  **self-other/mirror functional analog (bounded construction attempt、GATING は Layer1)** を、HOW 技術契約の
+  pre-register (impl-design ADR、FROZEN 2026-07-13) → 実コード (Loop Engineering、J1-J5 縦スライス) の正典
+  パターンで landed。**HOW 契約核** = (a) seam = **single-call transient prompt-context injection** — observer の
+  既存 cognition call に他者 window-(t-1) 記録行動由来の self-other context を **M10-B `world_model_entries`
+  idiom** で注入 (**新 LLM call を作らない** = 予算ゼロ SimToM prompt 先行の最純粋形、空なら byte-identical・
+  USER 側・memory 非書込み transient、default-off で Layer1 byte-identical) + pure builder (strict prefix filter
+  `other != observer` ∧ `source_window = t-1 < window_index` で self/future leak 構造排除) / (b) continuity =
+  **exact-oracle boolean wiring** (builder purity + behavior-dependency 二点 witness、`depends_on_other_observation`
+  は test 計算値で LLM 非 emit、**poison fixture** で replay ⊥ causal-fixture 分離を反証可能に固定) / (c)
+  disjointness = **runtime write-spy** で self-other が episodic memory 非書込み (ES-4 self-anchor collapse 同型
+  循環を構造排除) / (d) payload = run-level 集約 + 継承 serializer + allowed scalar {str,int,bool,None}
+  (**float-free** で cross-platform drift 構造回避) + list canonical pre-sort + 禁止 field 名 / (e) handoff
+  Layer2 additive schema (`m2-selfother-1`、slot None=Layer1 byte-unchanged) + spend ast-guard。process =
+  /reimagine (v1[explicit two-step] 意図破棄 → v2[single-call injection] 独立生成 → **v2 spine + v1 pure builder
+  graft**) + Codex **Verdict=Revise の HIGH 4 全反映** (poison fixture / no-future-self-leak / determinism 契約
+  完全 pin / runtime write-spy) + MEDIUM 5 / LOW 2。**実コード** = `cognition/prompting.py` (self_other_context
+  kwarg) + `cognition/cycle.py` / `world/tick.py` (transient thread) + `integration/embodied/society.py`
+  (build_self_other_context + SelfOtherContext 型 + run_society_loop `self_other_enabled` + run-level slot 集約、
+  逐次 sorted scheduler ループ無改変) + `handoff.py` (Layer2 additive bump)。**acceptance = §L10 test 13 本緑**
+  (全 boolean/count/AST-only、floor/verdict/scorer/statistics ゼロ): wiring_continuity_positive/negative /
+  context_builder_purity / slot_provenance / replay_causal_separation (poison) / no_future_or_self_leak /
+  disjointness (write-spy) / event_log_checksum_stable / n1_degenerate (4 経路) / world_model_coexist_deterministic /
+  functional_analog_vocabulary / no_measurement_computation / llm_call_cap。**統合フル pre-push 4 段 ALL CHECKS
+  PASSED (3692 passed)**、**Layer2 golden WSL byte-parity 実測 PASS** (4 artifact、payload float-free + 継承
+  serializer + 6桁量子化)。TASK-POST cross-review = code-reviewer(Opus 実読)=**Approve/HIGH なし** + Codex
+  (Windows sandbox degrade→embedded-diff)=**Revise、HIGH 2 [utterance json escape / adversarial disjointness] +
+  MEDIUM 3 [proximity 非 observer-relative relabel / window<=0 guard / checksum comment 是正] 全反映**。**決定的
+  construction 発見** = (i) observed utterance の raw prompt 補間は prompt-injection 面ゆえ json escape が bounded
+  契約の必要条件、(ii) disjointness は echoing mock で「LLM が segment を echo しても memory sink 非到達」を
+  adversarial に固定して初めて non-vacuous、(iii) 新 LLM call を作らない設計ゆえ on/off call-count 同一 = seam の
+  最純粋 witness。**claim 境界 = construction (相互観察する N体 society の中核=ミラー・シムを建てた) であって
+  measurement でない** (self-other 相互変調は construction 現象で measured divergence でない、continuity は causal
+  wiring/boolean であって floor/magnitude でない、magnitude 非読取=covert scorer 禁止、firing⇔detectability
+  混同禁止、over-read 禁止、5 機序分離継承、holding 不可侵・R-budget=0、reasoning-trace door 保全のまま、SOO
+  LoRA は defer=prompt-level SimToM のみ)。**landing で construction milestone M2 完結** (Layer1 GATING + Layer2
+  bounded、相互観察する N体 embodied society が建つ)。次工程 = memory `project_m13_m2_layer2_code` 記録 / M3
+  endurance or M4 fidelity Wave 2 の別 scoping。詳細 = `.steering/20260713-m13-m2-layer2-impl-design/`
+  (design-final / decisions / codex-review verbatim) + `.steering/20260713-m13-m2-layer2-code/`
+  (cross-review-synthesis / codex-review* / blockers) + `loop/20260713-m13-m2-layer2-code/` (issues J1-J5)。
 
 ## 9. スコープ / 非スコープ
 
