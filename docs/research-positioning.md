@@ -945,7 +945,7 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   壁2 (非循環 scorer 先行解決) は survey 段で未解決 → fork を construction 寄りに制約**。salience switch/DMN-ECN dynamics =
   construction ターゲット / marker・reward・scorer = measurement 領域 (離散化は第2リンク detectability circularity の
   aha 版を再来)。DeepSeek-R1 "aha moment" [23] は observational 命名で形式的 scorer でなく Yang et al. [24] epoch-0 反例。
-  **Phase 2 door scoping ADR (本 PR、doc-only、Plan mode + reimagine + Codex)**: (a) `<think>` トレードオフ (決定性 vs
+  **Phase 2 door scoping ADR (PR #80、doc-only、Plan mode + reimagine + Codex)**: (a) `<think>` トレードオフ (決定性 vs
   二相可観測性、両立不能ゆえ別 capture 体制が必然) + (b) 二相捕捉 regime の**設計** (think=True 非決定を existence として
   観察、record→観察のみ・verdict/scorer/floor なし、sealed-golden 無改変、over-read guard 付き。**実装しない**) + (c)
   **construction/measurement fork 判定 = construction-only を推奨・reasoning-trace door は CLOSED 維持** (reimagine v1
