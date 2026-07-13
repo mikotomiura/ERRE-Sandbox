@@ -37,17 +37,30 @@ on/off draw the same per-agent-per-window call count.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import httpx
 
 from erre_sandbox.cognition.prompting import build_user_prompt
 from erre_sandbox.contracts.cognition_layers import WorldModelEntry
+from erre_sandbox.inference.ollama_adapter import ChatResponse
+from erre_sandbox.integration.embodied.loop import RecordReplayChatClient
 from erre_sandbox.integration.embodied.society import (
     SelfOtherPriorRecord,
+    SocietyRunResult,
     build_self_other_context,
+    run_society_loop,
 )
+from erre_sandbox.memory import EmbeddingClient, MemoryStore
 from erre_sandbox.schemas import MemoryEntry, MemoryKind
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from erre_sandbox.schemas import AgentState, PersonaSpec
 
 # --------------------------------------------------------------------------- #
 # Shared Ollama-free fixtures (mirrors test_prompting_world_model.py)
@@ -87,8 +100,7 @@ def _entry(axis: str, key: str, value: float, confidence: float) -> WorldModelEn
 # emits: a self-contained header + body). J1 only pins *placement*, so the exact
 # wording is irrelevant here — J2/J4 pin the builder's real render.
 _SELF_OTHER_SEGMENT = (
-    "Observed others (prior window):\n"
-    "- a_bravo: zone=peripatos, was_proximate=true"
+    "Observed others (prior window):\n- a_bravo: zone=peripatos, was_proximate=true"
 )
 
 
@@ -192,8 +204,11 @@ def _assert_float_free(obj: Any) -> None:
         for v in obj:
             _assert_float_free(v)
     else:
-        assert isinstance(obj, _ALLOWED_SCALARS) and not isinstance(obj, float), (
-            f"payload scalar {obj!r} is not in {{str, int, bool, None}} (§L7 float-free)"
+        assert not isinstance(obj, float), (
+            f"payload scalar {obj!r} is a float (§L7 float-free drift guard)"
+        )
+        assert isinstance(obj, _ALLOWED_SCALARS), (
+            f"payload scalar {obj!r} is not in {{str, int, bool, None}} (§L7)"
         )
 
 
@@ -325,3 +340,232 @@ def test_self_other_no_future_or_self_leak() -> None:
     assert ctx0.is_empty
     assert ctx0.rendered == ""
     assert ctx0.injection_payload()["observed"] == []
+
+
+# --------------------------------------------------------------------------- #
+# J3 helpers + tests — run_society_loop Layer2 param + run-level slot 集約
+# (§L7, Codex MEDIUM-5 / HIGH-3)
+# --------------------------------------------------------------------------- #
+
+_FIXED = datetime(2026, 1, 1, tzinfo=UTC)
+_PLAN_JSON = json.dumps(
+    {
+        "thought": "walk the peripatos",
+        "utterance": "散歩へ",
+        "destination_zone": "peripatos",
+        "animation": "walk",
+    }
+)
+
+
+def _embed_client() -> EmbeddingClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        inputs = body.get("input") or []
+        count = len(inputs) if isinstance(inputs, list) else 1
+        vec = [0.01] * EmbeddingClient.DEFAULT_DIM
+        return httpx.Response(httpx.codes.OK, json={"embeddings": [vec] * count})
+
+    return EmbeddingClient(
+        client=httpx.AsyncClient(
+            base_url=EmbeddingClient.DEFAULT_ENDPOINT,
+            transport=httpx.MockTransport(handler),
+        )
+    )
+
+
+class _ScriptedInner:
+    """Duck-typed inner chat client returning a fixed content, call-counted."""
+
+    def __init__(self, content: str) -> None:
+        self._content = content
+        self.calls = 0
+
+    async def chat(self, messages, *, sampling, model=None, options=None, think=None):  # noqa: ARG002
+        self.calls += 1
+        return ChatResponse(
+            content=self._content,
+            model="qwen3:8b",
+            eval_count=1,
+            total_duration_ms=0.0,
+        )
+
+
+async def _run_selfother_society(
+    agent_states: list[AgentState],
+    personas: dict[str, PersonaSpec],
+    *,
+    self_other_enabled: bool = False,
+    run_id: str = "so0",
+    seed: int = 0,
+    n_cognition_ticks: int = 3,
+    physics_ticks_per_cognition: int = 5,
+    omit_flag: bool = False,
+) -> SocietyRunResult:
+    """One record-mode society drive (optionally Layer2-on) on a fresh store."""
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    embedding = _embed_client()
+    clients = {
+        s.agent_id: RecordReplayChatClient(inner=_ScriptedInner(_PLAN_JSON))
+        for s in agent_states
+    }
+    kwargs: dict[str, Any] = {}
+    if not omit_flag:
+        kwargs["self_other_enabled"] = self_other_enabled
+    try:
+        return await run_society_loop(
+            run_id=run_id,
+            store=store,
+            embedding=embedding,
+            llms=clients,
+            agent_states=agent_states,
+            personas=personas,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            seed=seed,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=physics_ticks_per_cognition,
+            **kwargs,
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+
+
+def _n3_states(
+    make_agent_state: Callable[..., AgentState],
+) -> list[AgentState]:
+    return [
+        make_agent_state(agent_id="a_one", persona_id="kant"),
+        make_agent_state(agent_id="a_two", persona_id="kant"),
+        make_agent_state(agent_id="a_three", persona_id="kant"),
+    ]
+
+
+async def test_self_other_slot_provenance(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Slot populated iff (enabled ∧ others ∧ window≥1); else None.
+
+    NOT a structural-floor verdict; verdict は holding. The slot is causal-wiring
+    provenance (which observer received which prior-window observation), not a
+    metric. Populated only when Layer2 is enabled with ≥2 agents over ≥2 windows;
+    every degenerate path yields ``None`` (no ``{}`` / empty header).
+    """
+    states = _n3_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    on = await _run_selfother_society(states, personas, self_other_enabled=True)
+    slot = on.self_other_observation_input
+    assert slot is not None, "N=3 Layer2-on over 3 windows must populate the slot"
+    assert slot["schema_version"] == "m2-selfother-1"
+    injections = slot["payload"]["injections"]
+    assert injections, "expected at least one non-empty injection"
+    # injections canonically sorted by (window, observer_agent_id); every window
+    # is ≥1 (window 0 has no prior), every observer names itself and observes
+    # OTHER agents only.
+    keys = [(inj["window"], inj["observer_agent_id"]) for inj in injections]
+    assert keys == sorted(keys)
+    for inj in injections:
+        assert inj["window"] >= 1
+        assert inj["source_window"] == inj["window"] - 1
+        assert inj["observed"], "a non-empty injection must observe ≥1 other"
+        observed_ids = [o["other_agent_id"] for o in inj["observed"]]
+        assert inj["observer_agent_id"] not in observed_ids  # never self
+        assert observed_ids == sorted(observed_ids)  # canonical
+
+    # Flag-off → slot None.
+    off = await _run_selfother_society(states, personas, self_other_enabled=False)
+    assert off.self_other_observation_input is None
+
+    # N=1 enabled → no others ever → slot None.
+    n1 = await _run_selfother_society(
+        [make_agent_state(agent_id="a_solo", persona_id="kant")],
+        {"a_solo": make_persona_spec(persona_id="kant")},
+        self_other_enabled=True,
+    )
+    assert n1.self_other_observation_input is None
+
+
+async def test_self_other_n1_degenerate(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Four degenerate paths → slot None → Layer1 byte-equivalent (Codex MEDIUM-5).
+
+    NOT a structural-floor verdict; verdict は holding. (i) default-omitted,
+    (ii) flag-off, (iii) N=1-enabled-empty, (iv) N≥2-enabled-all-empty (only
+    window 0, no prior) each yield ``self_other_observation_input is None`` — never
+    a ``{}`` / ``{"injections": []}`` header — and an ``event_log_checksum``
+    byte-equal to the corresponding Layer1 (flag-off) run.
+    """
+    states = _n3_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+    solo = [make_agent_state(agent_id="a_solo", persona_id="kant")]
+    solo_personas = {"a_solo": make_persona_spec(persona_id="kant")}
+
+    # (i) default-omitted (self_other_enabled not passed at all).
+    default_omitted = await _run_selfother_society(states, personas, omit_flag=True)
+    # (ii) explicit flag-off.
+    flag_off = await _run_selfother_society(states, personas, self_other_enabled=False)
+    # (iii) N=1 enabled (no other agent ever exists).
+    n1_enabled = await _run_selfother_society(
+        solo, solo_personas, self_other_enabled=True
+    )
+    n1_off = await _run_selfother_society(solo, solo_personas, self_other_enabled=False)
+    # (iv) N≥2 enabled but only window 0 (no prior window → all contexts empty).
+    all_empty = await _run_selfother_society(
+        states, personas, self_other_enabled=True, n_cognition_ticks=1
+    )
+    all_empty_off = await _run_selfother_society(
+        states, personas, self_other_enabled=False, n_cognition_ticks=1
+    )
+
+    for result in (default_omitted, flag_off, n1_enabled, n1_off, all_empty):
+        assert result.self_other_observation_input is None
+
+    # byte-equivalence: enabled-but-degenerate == the flag-off Layer1 run.
+    assert default_omitted.event_log_checksum == flag_off.event_log_checksum
+    assert n1_enabled.event_log_checksum == n1_off.event_log_checksum
+    assert all_empty.event_log_checksum == all_empty_off.event_log_checksum
+
+
+async def test_self_other_event_log_checksum_stable(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Populated slot → checksum byte-stable across replay + float-free (§L7/§L8).
+
+    NOT a structural-floor verdict; verdict は holding. Two runs of the same
+    (seed, recorded Plane 2) yield the same ``event_log_checksum`` (the populated
+    self-other slot participates deterministically), and the slot payload is
+    float-free — the cross-platform (WSL) byte-identity precondition (the
+    payload never passes through the 6-decimal quantiser, §L2/§L7, so a float
+    would drift; a genuine WSL byte match is verified separately in J5's golden).
+    """
+    states = _n3_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    run1 = await _run_selfother_society(
+        states, personas, self_other_enabled=True, run_id="so-stable"
+    )
+    run2 = await _run_selfother_society(
+        states, personas, self_other_enabled=True, run_id="so-stable"
+    )
+    assert run1.self_other_observation_input is not None
+    assert run1.event_log_checksum == run2.event_log_checksum
+    assert run1.self_other_observation_input == run2.self_other_observation_input
+
+    # The populated slot genuinely participates in the digest: a Layer2-on run
+    # differs from the byte-equivalent Layer1 (flag-off) run of the same scenario
+    # (the self-other segment changes the observers' prompts, so the recorded
+    # Plane 2 / geometry differ — a real causal wiring, not a decorative field).
+    off = await _run_selfother_society(
+        states, personas, self_other_enabled=False, run_id="so-stable"
+    )
+    assert run1.event_log_checksum != off.event_log_checksum
+
+    # Payload float-free (cross-platform byte precondition).
+    _assert_float_free(run1.self_other_observation_input)
