@@ -134,6 +134,17 @@ unchanged. A raw-byte comparison between an ``m2-society-1`` manifest and an
 DA-M2IMPL-7); the M2 path's acceptance is canonical-projection/adapter
 *semantic* equivalence (Codex HIGH-2), not raw-byte identity."""
 
+M2_SELFOTHER_MANIFEST_SCHEMA_VERSION: Final[str] = "m2-selfother-1"
+"""M2 Layer2 (mirror-sim) handoff manifest schema version (§L8, additive bump).
+
+Versioned-additive sibling of :data:`M2_MANIFEST_SCHEMA_VERSION`: a society run
+whose ``self_other_observation_input`` slot is **populated** (Layer2 enabled with
+≥2 agents over ≥1 prior window) tags its manifest with this value and carries the
+slot payload as provenance (:func:`render_society_golden`). A Layer1 / Layer2-off
+run (slot ``None``) keeps the :data:`M2_MANIFEST_SCHEMA_VERSION` tag and omits the
+slot key entirely, so the committed Layer1 golden bundle stays **byte-unchanged**
+(§L8 two-path bifurcation). NOT a structural-floor verdict; verdict は holding."""
+
 COORDINATE_CONVENTION: Final[dict[str, str]] = {
     "up_axis": "Y",
     "ground_plane": "XZ",
@@ -1001,10 +1012,21 @@ def render_society_golden(
     which defaults to the fixed single-agent :func:`golden_run_config`) — the
     caller always supplies the actual society run's inputs, since there is no
     single canonical N-agent config to default to.
+
+    **M2 Layer2 (mirror-sim, §L8, additive):** when the run's
+    ``self_other_observation_input`` slot is **populated** (Layer2 enabled with
+    other agents observed), the manifest is tagged
+    :data:`M2_SELFOTHER_MANIFEST_SCHEMA_VERSION` and carries the slot payload as
+    cross-machine provenance. When the slot is ``None`` (Layer1 / Layer2-off) the
+    manifest keeps the :data:`M2_MANIFEST_SCHEMA_VERSION` tag and omits the slot
+    key entirely, so the committed **Layer1 golden bundle is byte-unchanged**. The
+    slot payload is float-free (§L7), so ``canonical_dumps``' float quantisation is
+    a no-op on it and cross-platform byte identity holds.
     """
     trace_jsonl = trace_rows_to_jsonl(result.rows)
     decisions_jsonl = society_decisions_to_jsonl(result)
     envelope_jsonl = envelope_stream_to_jsonl(build_society_envelope_stream(result))
+    self_other_slot = result.self_other_observation_input
     manifest = build_manifest(
         result,
         run_config=run_config,
@@ -1012,9 +1034,17 @@ def render_society_golden(
         decisions_jsonl=decisions_jsonl,
         envelope_jsonl=envelope_jsonl,
         env_pins=env_pins,
-        manifest_version=M2_MANIFEST_SCHEMA_VERSION,
+        manifest_version=(
+            M2_SELFOTHER_MANIFEST_SCHEMA_VERSION
+            if self_other_slot is not None
+            else M2_MANIFEST_SCHEMA_VERSION
+        ),
         extra_determinism_checklist=M2_NBODY_DETERMINISM_CHECKLIST,
     )
+    # Additive: carry the populated slot as provenance (§L8). Omitted entirely
+    # when None, so a Layer1 society manifest is byte-unchanged.
+    if self_other_slot is not None:
+        manifest["self_other_observation_input"] = self_other_slot
     return {
         "manifest.json": canonical_dumps(manifest) + "\n",
         "ecl_trace.jsonl": trace_jsonl,
@@ -1044,6 +1074,7 @@ __all__ = [
     "GOLDEN_TS",
     "M2_MANIFEST_SCHEMA_VERSION",
     "M2_NBODY_DETERMINISM_CHECKLIST",
+    "M2_SELFOTHER_MANIFEST_SCHEMA_VERSION",
     "MANIFEST_SCHEMA_VERSION",
     "TICK_MAPPING",
     "build_envelope_stream",

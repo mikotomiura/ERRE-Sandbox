@@ -37,6 +37,8 @@ on/off draw the same per-agent-per-window call count.
 
 from __future__ import annotations
 
+import ast
+import dataclasses
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -48,6 +50,7 @@ import httpx
 from erre_sandbox.cognition.prompting import build_user_prompt
 from erre_sandbox.contracts.cognition_layers import WorldModelEntry
 from erre_sandbox.inference.ollama_adapter import ChatResponse
+from erre_sandbox.integration.embodied import handoff, society
 from erre_sandbox.integration.embodied.loop import RecordReplayChatClient
 from erre_sandbox.integration.embodied.society import (
     SelfOtherPriorRecord,
@@ -56,14 +59,27 @@ from erre_sandbox.integration.embodied.society import (
     run_society_loop,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
-from erre_sandbox.schemas import MemoryEntry, MemoryKind, Zone
+from erre_sandbox.schemas import (
+    AgentState,
+    CognitiveHabit,
+    HabitFlag,
+    MemoryEntry,
+    MemoryKind,
+    PersonalityTraits,
+    PersonaSpec,
+    Zone,
+)
+from tests.test_integration.test_m2_society_spend_guard import (
+    assert_no_denylist_import,
+    assert_no_measurement_computation,
+    assert_society_import_allowlist,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from erre_sandbox.inference.ollama_adapter import ChatMessage
     from erre_sandbox.inference.sampling import ResolvedSampling
-    from erre_sandbox.schemas import AgentState, PersonaSpec
 
 # --------------------------------------------------------------------------- #
 # Shared Ollama-free fixtures (mirrors test_prompting_world_model.py)
@@ -906,3 +922,340 @@ def test_self_other_think_false_desk_audit_present() -> None:
     required = ("think=false", "parseability", "見送り", "bounded", "functional analog")
     for marker in required:
         assert marker.lower() in low, f"desk-audit doc missing marker: {marker!r}"
+
+
+# --------------------------------------------------------------------------- #
+# J5 — spend ast-guard + functional-analog vocab + handoff bump + Layer2 golden
+# (§L9, Codex MEDIUM-1/MEDIUM-4, 規律 b, §L8)
+# --------------------------------------------------------------------------- #
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SOCIETY_SRC = (
+    _REPO_ROOT / "src" / "erre_sandbox" / "integration" / "embodied" / "society.py"
+)
+_THIS_FILE = Path(__file__)
+
+# §L7/§L9 (Codex MEDIUM-4): measurement field names banned from the Layer2 payload.
+_FORBIDDEN_SELFOTHER_FIELD_TOKENS = (
+    "magnitude",
+    "score",
+    "confidence",
+    "utility",
+    "appraisal_state",
+    "floor",
+    "verdict",
+    "divergence",
+)
+
+# 規律 b: over-claim vocabulary banned from the prompt-facing Layer2 text.
+_BANNED_VOCAB = (
+    "mirror neuron",
+    "mirror-neuron",
+    "neural mechanism",
+    "神経機構再現",
+    "神経再現",
+    "ミラーニューロン実装",
+)
+
+
+def _parse(path: Path) -> ast.Module:
+    return ast.parse(path.read_text(encoding="utf-8"))
+
+
+def _selfother_payload_sample() -> dict[str, Any]:
+    """A representative populated payload to scan its emitted field names (§L7)."""
+    ctx = build_self_other_context(
+        observer_id="a_obs",
+        window_index=1,
+        prior_records=[
+            SelfOtherPriorRecord(
+                agent_id="a_peer",
+                window=0,
+                zone="study",
+                destination_zone="peripatos",
+                utterance="やあ",
+                was_proximate=True,
+            ),
+        ],
+    )
+    return ctx.injection_payload()
+
+
+def _all_dict_keys(obj: Any) -> list[str]:
+    keys: list[str] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(k, str):
+                keys.append(k)
+            keys.extend(_all_dict_keys(v))
+    elif isinstance(obj, (list, tuple)):
+        for v in obj:
+            keys.extend(_all_dict_keys(v))
+    return keys
+
+
+def test_self_other_functional_analog_vocabulary() -> None:
+    """Layer2 prompt-facing text uses functional-analog vocabulary only (規律 b).
+
+    NOT a structural-floor verdict; verdict は holding. The SimToM framing const
+    and every rendered segment carry no "mirror neuron / neural mechanism /
+    神経機構再現 / ミラーニューロン実装" over-claim, and affirmatively state the
+    functional-analog framing. Self-scan-aware: docstrings that *disclaim* "not a
+    neural mirror-neuron mechanism" are never flagged — only the prompt-facing
+    string VALUES (not docstring free text) are scanned.
+    """
+    framing = society._SELF_OTHER_FRAMING.lower()
+    for term in _BANNED_VOCAB:
+        assert term.lower() not in framing, f"framing uses banned vocab: {term!r}"
+    # The framing affirmatively frames the mechanism as a functional analog.
+    assert "functional analog" in framing
+
+    # A rendered segment (the actual prompt text the LLM sees) is also clean.
+    rendered = _selfother_payload_sample()  # exercises the builder
+    ctx = build_self_other_context(
+        observer_id="a_obs",
+        window_index=1,
+        prior_records=[
+            SelfOtherPriorRecord(agent_id="a_peer", window=0, zone="study"),
+        ],
+    )
+    assert rendered  # non-vacuous
+    rendered_text = ctx.rendered.lower()
+    for term in _BANNED_VOCAB:
+        assert term.lower() not in rendered_text, f"render uses banned vocab: {term!r}"
+
+    # AST identifier scan (self-scan-aware): no EXECUTABLE identifier in society.py
+    # is named after a banned mechanism (docstring free text is never scanned —
+    # the guard walks identifier positions only, mirroring _bank_spend_guard).
+    banned_identifier_tokens = ("mirror_neuron", "mirrorneuron", "neural_mechanism")
+    for node in ast.walk(_parse(_SOCIETY_SRC)):
+        names: list[str] = []
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.append(node.id)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.append(node.name)
+        elif isinstance(node, ast.arg):
+            names.append(node.arg)
+        for name in names:
+            low = name.lower()
+            assert not any(tok in low for tok in banned_identifier_tokens), name
+
+
+def test_self_other_no_measurement_computation() -> None:
+    """Layer2 (in society.py) + this test carry no measurement/aggregation surface.
+
+    NOT a structural-floor verdict; verdict は holding. Reuses the landed Layer1
+    guard (import allowlist + no numpy/pandas/scipy/statistics/Counter/groupby/
+    math.log + no floor/divergence/verdict/scorer identifier, production
+    executable AST only) — the Layer2 builder lives in society.py, so it is
+    already in that guard's scan surface — and adds the §L7/§L9 (Codex MEDIUM-4)
+    Layer2 field-name ban: the payload's dataclass fields and emitted dict keys
+    carry no magnitude/score/confidence/utility/appraisal_state token.
+    """
+    society_tree = _parse(_SOCIETY_SRC)
+    assert_society_import_allowlist(society_tree)
+    assert_no_measurement_computation(society_tree)
+    assert_no_denylist_import(_parse(_THIS_FILE))
+
+    # Layer2 field-name ban (scoped to the payload — dataclass fields + emitted
+    # dict keys), Codex MEDIUM-4 "field 名レベル".
+    for cls in (
+        society.SelfOtherPriorRecord,
+        society.SelfOtherObservedRecord,
+        society.SelfOtherContext,
+    ):
+        for f in dataclasses.fields(cls):
+            low = f.name.lower()
+            assert not any(tok in low for tok in _FORBIDDEN_SELFOTHER_FIELD_TOKENS), (
+                f"{cls.__name__}.{f.name} names a banned measurement field (§L7)"
+            )
+    for key in _all_dict_keys(_selfother_payload_sample()):
+        low = key.lower()
+        assert not any(tok in low for tok in _FORBIDDEN_SELFOTHER_FIELD_TOKENS), (
+            f"payload key {key!r} names a banned measurement field (§L7)"
+        )
+
+    # Negative controls: the field-name guard actually trips on a banned token.
+    for bad in ("magnitude", "appraisal_state_score", "utility"):
+        assert any(tok in bad for tok in _FORBIDDEN_SELFOTHER_FIELD_TOKENS)
+
+
+async def _count_inner_calls(
+    agent_states: list[AgentState],
+    personas: dict[str, PersonaSpec],
+    *,
+    self_other_enabled: bool,
+    n_cognition_ticks: int = 3,
+) -> int:
+    """Sum the inner (record-mode) LLM invocations across all agents."""
+    llms = {
+        s.agent_id: RecordReplayChatClient(inner=_ScriptedInner(_PLAN_JSON))
+        for s in agent_states
+    }
+    await _run_with_llms(
+        agent_states,
+        personas,
+        llms,
+        self_other_enabled=self_other_enabled,
+        n_cognition_ticks=n_cognition_ticks,
+    )
+    return sum(client.inner_invocations for client in llms.values())
+
+
+async def test_self_other_llm_call_cap(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """No new LLM call: Layer2 on/off draw the same runtime call count (Codex MEDIUM-1).
+
+    NOT a structural-floor verdict; verdict は holding. §L9: the採用 design adds no
+    new LLM call (the self-other segment rides the existing cognition call's
+    prompt), so a runtime call-count spy over Layer2 on vs off yields the **same**
+    count — exactly one action-LLM call per (agent, window), the existing per-agent
+    -per-window cap, unchanged. Gating stays replay/mock only.
+    """
+    states = _n2_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+    n_ticks = 3
+
+    on_calls = await _count_inner_calls(
+        states, personas, self_other_enabled=True, n_cognition_ticks=n_ticks
+    )
+    off_calls = await _count_inner_calls(
+        states, personas, self_other_enabled=False, n_cognition_ticks=n_ticks
+    )
+    # No new LLM call: on/off identical.
+    assert on_calls == off_calls
+    # The count is exactly the existing per-agent-per-window cap (unchanged).
+    assert on_calls == len(states) * n_ticks
+
+
+# --------------------------------------------------------------------------- #
+# J5 — committed Layer2 golden (Windows bake; WSL byte match verified separately)
+# --------------------------------------------------------------------------- #
+
+_L2_GOLDEN_DIR = _REPO_ROOT / "tests" / "fixtures" / "m2_society_selfother_golden"
+_L2_GOLDEN_RUN_ID = "m2-selfother-golden"
+_L2_GOLDEN_SEED = 0
+_L2_GOLDEN_N_TICKS = 4
+_L2_GOLDEN_PHYSICS_TICKS = 5
+_L2_GOLDEN_ENV_PINS: dict[str, Any] = {"pinned": "m2-selfother-golden"}
+
+
+def _l2_golden_persona() -> PersonaSpec:
+    """Minimal Kant-shaped persona (standalone, mirrors Layer1 golden precedent)."""
+    return PersonaSpec.model_validate(
+        {
+            "persona_id": "kant",
+            "display_name": "Immanuel Kant",
+            "era": "1724-1804",
+            "primary_corpus_refs": ["kuehn2001"],
+            "personality": PersonalityTraits(
+                conscientiousness=0.95,
+                openness=0.85,
+            ).model_dump(),
+            "cognitive_habits": [
+                CognitiveHabit(
+                    description="15:30 daily walk",
+                    source="kuehn2001",
+                    flag=HabitFlag.FACT,
+                    mechanism="DMN activation via rhythmic locomotion",
+                    trigger_zone=Zone.PERIPATOS,
+                ).model_dump(mode="json"),
+            ],
+            "preferred_zones": ["study", "peripatos"],
+        }
+    )
+
+
+def _l2_golden_agent_states() -> list[AgentState]:
+    """Two agents, co-located in peripatos so each observes the other (Layer2 on)."""
+    return [
+        AgentState.model_validate(
+            {
+                "agent_id": "a_alpha",
+                "persona_id": "kant",
+                "tick": 0,
+                "position": {"x": 0.0, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+                "erre": {"name": "deep_work", "entered_at_tick": 0},
+            }
+        ),
+        AgentState.model_validate(
+            {
+                "agent_id": "a_bravo",
+                "persona_id": "kant",
+                "tick": 0,
+                "position": {"x": 0.1, "y": 0.0, "z": 0.0, "zone": "peripatos"},
+                "erre": {"name": "deep_work", "entered_at_tick": 0},
+            }
+        ),
+    ]
+
+
+def _l2_golden_personas() -> dict[str, PersonaSpec]:
+    persona = _l2_golden_persona()
+    return {"a_alpha": persona, "a_bravo": persona}
+
+
+def _l2_golden_run_config() -> dict[str, Any]:
+    return {
+        "seed": _L2_GOLDEN_SEED,
+        "physics_ticks_per_cognition": _L2_GOLDEN_PHYSICS_TICKS,
+        "k_ecl": 8,
+        "base_ts": _FIXED.isoformat(),
+        "retrieval_now": _FIXED.isoformat(),
+    }
+
+
+async def _run_l2_golden() -> SocietyRunResult:
+    return await _run_selfother_society(
+        _l2_golden_agent_states(),
+        _l2_golden_personas(),
+        self_other_enabled=True,
+        run_id=_L2_GOLDEN_RUN_ID,
+        seed=_L2_GOLDEN_SEED,
+        n_cognition_ticks=_L2_GOLDEN_N_TICKS,
+        physics_ticks_per_cognition=_L2_GOLDEN_PHYSICS_TICKS,
+    )
+
+
+async def test_self_other_golden_matches_committed() -> None:
+    """Committed Layer2 golden byte-matches a fresh Layer2-on society run (§L8).
+
+    NOT a structural-floor verdict; verdict は holding. The manifest is tagged
+    ``m2-selfother-1`` and carries the (float-free) self-other slot as provenance;
+    the four artifacts byte-match the committed bundle, and a second fresh bake
+    reproduces every artifact (bake determinism). Every emitted float is 6-decimal
+    quantised by ``canonical_dumps`` and the self-other payload is float-free, the
+    cross-platform (WSL) byte-identity precondition — a real WSL byte match is
+    checked by the pre-push WSL run, not this Windows-side test.
+    """
+    result = await _run_l2_golden()
+    rendered = handoff.render_society_golden(
+        result, run_config=_l2_golden_run_config(), env_pins=_L2_GOLDEN_ENV_PINS
+    )
+
+    # Layer2 genuinely active + manifest tagged / carries the slot (§L8).
+    assert result.self_other_observation_input is not None
+    manifest = json.loads(rendered["manifest.json"])
+    assert manifest["manifest_version"] == handoff.M2_SELFOTHER_MANIFEST_SCHEMA_VERSION
+    assert (
+        manifest["self_other_observation_input"] == result.self_other_observation_input
+    )
+
+    for filename in handoff.GOLDEN_FILENAMES:
+        committed = (_L2_GOLDEN_DIR / filename).read_text(encoding="utf-8")
+        assert rendered[filename] == committed, filename
+
+    # Bake determinism: a second, independent fresh run reproduces every artifact.
+    result2 = await _run_l2_golden()
+    rendered2 = handoff.render_society_golden(
+        result2, run_config=_l2_golden_run_config(), env_pins=_L2_GOLDEN_ENV_PINS
+    )
+    for filename in handoff.GOLDEN_FILENAMES:
+        assert rendered[filename] == rendered2[filename], filename
+
+
+def test_self_other_selfother_module_self_scan() -> None:
+    """This test module itself carries no denylisted (measurement-line) import."""
+    assert_no_denylist_import(_parse(_THIS_FILE))
