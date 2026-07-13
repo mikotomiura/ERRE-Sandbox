@@ -324,6 +324,7 @@ async def run_society_live_capture(
     reflector: Reflector | None = None,
     observation_factories: Mapping[str, Callable[[int], Sequence[Observation]]]
     | None = None,
+    self_other_enabled: bool = False,
 ) -> SocietyRunResult:
     """Drive one record-mode society run through per-agent ``inner_chats``.
 
@@ -339,6 +340,11 @@ async def run_society_live_capture(
     constructs its own Ollama or sqlite-vec connection — a live caller
     (Issue 004) wires real ``OllamaChatClient`` instances; this module's tests
     wire a mock per agent.
+
+    ``self_other_enabled`` (M2 Layer2 mirror-sim, additive, default ``False``)
+    is passed straight through to ``run_society_loop`` unchanged — this module
+    adds no wiring of its own, it only threads the caller's choice down to the
+    already-landed Layer2 seam (society.py, unmodified by this issue).
     """
     llms: dict[str, RecordReplayChatClient] = {
         state.agent_id: RecordReplayChatClient(
@@ -361,6 +367,7 @@ async def run_society_live_capture(
         k_ecl=k_ecl,
         reflector=reflector,
         observation_factories=observation_factories,
+        self_other_enabled=self_other_enabled,
     )
 
 
@@ -491,6 +498,30 @@ def build_society_live_env_pins(
     return pins
 
 
+def apply_self_other_env_pin(
+    env_pins: dict[str, Any], *, self_other_enabled: bool
+) -> None:
+    """Persist the M2 Layer2 self-other witness into ``env_pins`` (in place).
+
+    Single seam (Codex MEDIUM, code-review) for the *write only when True*
+    discipline shared by ``scripts/m4_society_live_capture.py``'s ``capture()``
+    (live-Ollama path, CI-unreached) and its Ollama-free mock-bundle test
+    renderer: when ``self_other_enabled`` is ``True`` the key
+    ``"self_other_enabled"`` is set to ``True``; when ``False`` **any existing
+    key is removed** so no ``self_other_enabled`` key survives — the existing M4
+    Layer2-off golden's ``env_pins`` block (which never had the key) and
+    therefore its byte-identity is untouched, and a re-used / stale dict cannot
+    leave a lingering ``true``/``false`` that would weaken the *absence ==
+    Layer2-off* invariant (Codex MEDIUM, cross-review). ``--verify`` auto-detects
+    Layer2-on from this key's presence. This is a pure ``dict`` mutation
+    helper, not a schema change to ``handoff.py``.
+    """
+    if self_other_enabled:
+        env_pins["self_other_enabled"] = True
+    else:
+        env_pins.pop("self_other_enabled", None)
+
+
 # --------------------------------------------------------------------------- #
 # Observables overlay (annotation-only, never a gate — Codex HIGH-6/§L3)
 # --------------------------------------------------------------------------- #
@@ -567,6 +598,7 @@ __all__ = [
     "SOCIETY_LIVE_N_COGNITION_TICKS",
     "SOCIETY_LIVE_OBSERVABLES",
     "SOCIETY_LIVE_RUN_ID",
+    "apply_self_other_env_pin",
     "attach_society_live_observables",
     "build_society_live_env_pins",
     "build_society_live_manifest_overlay",

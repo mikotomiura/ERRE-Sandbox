@@ -56,7 +56,10 @@ from erre_sandbox.inference.sampling import ResolvedSampling
 from erre_sandbox.integration.embodied import handoff, society
 from erre_sandbox.integration.embodied import society_live as society_live_module
 from erre_sandbox.integration.embodied.loop import DEFAULT_PHYSICS_TICKS_PER_COGNITION
-from erre_sandbox.integration.embodied.society import run_society_loop
+from erre_sandbox.integration.embodied.society import (
+    _SELF_OTHER_FRAMING,
+    run_society_loop,
+)
 from erre_sandbox.integration.embodied.society_live import (
     KANT_AGENT_ID,
     NIETZSCHE_AGENT_ID,
@@ -65,6 +68,7 @@ from erre_sandbox.integration.embodied.society_live import (
     SOCIETY_LIVE_N_COGNITION_TICKS,
     SOCIETY_LIVE_OBSERVABLES,
     SOCIETY_LIVE_RUN_ID,
+    apply_self_other_env_pin,
     attach_society_live_observables,
     build_society_live_env_pins,
     fixed_constructor_fingerprint,
@@ -154,6 +158,8 @@ def _run_config() -> dict[str, Any]:
 
 async def _capture(
     inner_chats: dict[str, _ScriptedInner] | None = None,
+    *,
+    self_other_enabled: bool = False,
 ) -> tuple[Any, dict[str, _ScriptedInner]]:
     agent_states = society_live_agent_states()
     personas = society_live_personas()
@@ -176,6 +182,7 @@ async def _capture(
             n_cognition_ticks=_N_TICKS,
             physics_ticks_per_cognition=_PHYSICS_TICKS,
             observation_factories=society_live_observation_factories(),
+            self_other_enabled=self_other_enabled,
         )
         return result, inners
     finally:
@@ -317,6 +324,112 @@ async def test_think_off_forced() -> None:
     for agent_id, inner in inners.items():
         assert inner.calls, f"inner for {agent_id} was never called"
         assert all(call["think"] is False for call in inner.calls), agent_id
+
+
+# --------------------------------------------------------------------------- #
+# Issue 001 (K1) — society_live.py::run_society_live_capture threads
+# ``self_other_enabled`` through to ``run_society_loop`` (additive, default
+# ``False``). This is a *construction* wiring test — it proves the causal
+# path (segment present when on / absent when off), never a floor/verdict.
+# --------------------------------------------------------------------------- #
+
+_KANT_PLAN_JSON = json.dumps(
+    {
+        "thought": "consider the categorical imperative",
+        "utterance": "定言命法を考える",
+        "destination_zone": "peripatos",
+        "animation": "walk",
+    }
+)
+_NIETZSCHE_PLAN_JSON = json.dumps(
+    {
+        "thought": "compose amidst the mountains",
+        "utterance": "山にて思索す",
+        "destination_zone": "agora",
+        "animation": "walk",
+    }
+)
+_RIKYU_PLAN_JSON = json.dumps(
+    {
+        "thought": "prepare the tea ceremony",
+        "utterance": "茶の湯を整える",
+        "destination_zone": "garden",
+        "animation": "walk",
+    }
+)
+
+
+def _per_agent_scripted_inners() -> dict[str, _ScriptedInner]:
+    """Distinct per-agent scripted plans (different ``destination_zone``/
+    ``utterance``) so a tick>=1 self-other segment is genuinely non-vacuous
+    (an observed bullet body, not just the bare framing header)."""
+    return {
+        KANT_AGENT_ID: _ScriptedInner(content=_KANT_PLAN_JSON),
+        NIETZSCHE_AGENT_ID: _ScriptedInner(content=_NIETZSCHE_PLAN_JSON),
+        RIKYU_AGENT_ID: _ScriptedInner(content=_RIKYU_PLAN_JSON),
+    }
+
+
+def _call_text(call: dict[str, Any]) -> str:
+    """Concatenate every recorded ``ChatMessage``'s content for one call."""
+    return "\n".join(message.content for message in call["messages"])
+
+
+async def test_self_other_enabled_injects_segment() -> None:
+    inners = _per_agent_scripted_inners()
+    _recorded, used_inners = await _capture(inner_chats=inners, self_other_enabled=True)
+
+    # Window 0 (each agent's first call) has no prior window — honest: the
+    # framing must be absent regardless of ``self_other_enabled``.
+    for agent_id, inner in used_inners.items():
+        assert inner.calls, f"inner for {agent_id} was never called"
+        assert _SELF_OTHER_FRAMING not in _call_text(inner.calls[0]), agent_id
+
+    # Some tick>=1 call across the roster must carry the framing — the
+    # segment actually rides an existing cognition call (no new LLM call).
+    injected = [
+        (agent_id, tick)
+        for agent_id, inner in used_inners.items()
+        for tick, call in enumerate(inner.calls)
+        if tick >= 1 and _SELF_OTHER_FRAMING in _call_text(call)
+    ]
+    assert injected, "no self-other framing found in any tick>=1 call"
+
+
+async def test_self_other_default_off_no_segment() -> None:
+    inners = _per_agent_scripted_inners()
+    _recorded, used_inners = await _capture(inner_chats=inners)  # default False
+
+    for agent_id, inner in used_inners.items():
+        assert inner.calls, f"inner for {agent_id} was never called"
+        for call in inner.calls:
+            assert _SELF_OTHER_FRAMING not in _call_text(call), agent_id
+
+
+# --------------------------------------------------------------------------- #
+# Issue 002 (K2) — shared write-when-True env-pin seam (code-review MEDIUM):
+# ``apply_self_other_env_pin`` is the single seam both the CLI ``capture()``
+# (live-Ollama, CI-unreached) and the mock-bundle renderer call, so the
+# write-only-when-True witness discipline is CI-covered by this focused unit
+# test rather than only by the live path.
+# --------------------------------------------------------------------------- #
+
+
+def test_apply_self_other_env_pin() -> None:
+    on: dict[str, Any] = {}
+    apply_self_other_env_pin(on, self_other_enabled=True)
+    assert on["self_other_enabled"] is True
+
+    off: dict[str, Any] = {}
+    apply_self_other_env_pin(off, self_other_enabled=False)
+    assert "self_other_enabled" not in off  # absence, never a False literal
+
+    # Codex MEDIUM (cross-review): False also *removes* a stale/re-used key, so
+    # a lingering true/false cannot weaken the absence == Layer2-off invariant.
+    stale: dict[str, Any] = {"self_other_enabled": True, "other": 1}
+    apply_self_other_env_pin(stale, self_other_enabled=False)
+    assert "self_other_enabled" not in stale
+    assert stale == {"other": 1}
 
 
 # --------------------------------------------------------------------------- #
@@ -528,6 +641,8 @@ _m4 = _load_m4_module()
 
 async def _capture_full_horizon(
     inner_chats: dict[str, _ScriptedInner] | None = None,
+    *,
+    self_other_enabled: bool = False,
 ) -> tuple[Any, dict[str, _ScriptedInner]]:
     """Same shape as ``_capture`` but at the pinned 12-tick horizon.
 
@@ -535,7 +650,10 @@ async def _capture_full_horizon(
     replayed run has exactly ``SOCIETY_LIVE_N_COGNITION_TICKS`` decisions per
     agent, so a mock bundle exercising the full ``verify()`` round trip needs
     that horizon — ``_capture``'s ``_N_TICKS=3`` stays untouched for I1's own
-    (faster) tests.
+    (faster) tests. ``self_other_enabled`` (default ``False``, unchanged
+    existing callers) threads straight through to
+    :func:`run_society_live_capture` (Issue 002/I2's Layer2-on mock bundle
+    path).
     """
     agent_states = society_live_agent_states()
     personas = society_live_personas()
@@ -558,6 +676,7 @@ async def _capture_full_horizon(
             n_cognition_ticks=SOCIETY_LIVE_N_COGNITION_TICKS,
             physics_ticks_per_cognition=_PHYSICS_TICKS,
             observation_factories=society_live_observation_factories(),
+            self_other_enabled=self_other_enabled,
         )
         return result, inners
     finally:
@@ -565,10 +684,16 @@ async def _capture_full_horizon(
         await store.close()
 
 
-def _render_mock_bundle(recorded: Any) -> dict[str, str]:
+def _render_mock_bundle(
+    recorded: Any, *, self_other_enabled: bool = False
+) -> dict[str, str]:
     """Render a mock-captured bundle the same way ``m4_society_live_capture.py``'s
     ``capture()`` would (Ollama-free — this is the ``_ScriptedInner``-driven
-    in-memory result, not a live run)."""
+    in-memory result, not a live run). ``self_other_enabled`` (default
+    ``False``, unchanged existing callers) mirrors the script's own
+    capture()-seam discipline: the ``env_pins["self_other_enabled"]`` key is
+    injected **only when True** (Codex MEDIUM-2) so the default-False path
+    stays byte-identical to the existing M4 golden."""
     resolved_sampling = recorded.decisions[SOCIETY_LIVE_AGENT_IDS[0]][0].call.sampling
     env_pins = build_society_live_env_pins(
         qwen3_model_digest="sha256:mock",
@@ -588,6 +713,9 @@ def _render_mock_bundle(recorded: Any) -> dict[str, str]:
     # build_society_live_env_pins() above — society_live.py's fixed
     # constructors pin a fixed wall_clock, so the fingerprint is
     # deterministic across calls (no CLI-side correction needed).
+    # Same shared write-when-True seam ``capture()`` uses (code-review
+    # MEDIUM: one seam, so this renderer cannot drift from the script).
+    apply_self_other_env_pin(env_pins, self_other_enabled=self_other_enabled)
     rendered = handoff.render_society_golden(
         recorded, run_config=_run_config(), env_pins=env_pins
     )
@@ -618,6 +746,40 @@ async def test_verify_roundtrip_mock_bundle(tmp_path: Path) -> None:
     ok = await _m4.verify(tmp_path)
 
     assert ok is True
+
+
+# --------------------------------------------------------------------------- #
+# Issue 002 (K2) — verify() auto-detects self_other_enabled from the
+# committed manifest's env_pins (Codex MEDIUM-2/MEDIUM-3): a Layer2-on bundle
+# replays True with zero live-LLM touches, and a poisoned non-bool value
+# fails closed rather than silently coercing truthy.
+# --------------------------------------------------------------------------- #
+
+
+async def test_verify_roundtrip_selfother_bundle(tmp_path: Path) -> None:
+    recorded, _inners = await _capture_full_horizon(self_other_enabled=True)
+    rendered = _render_mock_bundle(recorded, self_other_enabled=True)
+    _write_bundle(tmp_path, rendered)
+
+    manifest = json.loads(rendered["manifest.json"])
+    assert manifest["env_pins"]["self_other_enabled"] is True  # fixture precondition
+
+    ok = await _m4.verify(tmp_path)
+
+    assert ok is True
+
+
+async def test_verify_rejects_nonbool_self_other(tmp_path: Path) -> None:
+    recorded, _inners = await _capture_full_horizon()
+    rendered = dict(_render_mock_bundle(recorded))
+    manifest = json.loads(rendered["manifest.json"])
+    manifest["env_pins"]["self_other_enabled"] = "true"  # poisoned: string, not bool
+    rendered["manifest.json"] = handoff.canonical_dumps(manifest) + "\n"
+    _write_bundle(tmp_path, rendered)
+
+    ok = await _m4.verify(tmp_path)
+
+    assert ok is False
 
 
 # --------------------------------------------------------------------------- #

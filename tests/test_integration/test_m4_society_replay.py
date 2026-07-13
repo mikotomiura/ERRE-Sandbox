@@ -109,6 +109,19 @@ _GOLDEN_CASES: Final[list[_GoldenCase]] = [
         expected_envelope_rows=72,
         expected_slots=[0, 1, 2],
     ),
+    _GoldenCase(
+        case_id="m2_layer2",
+        golden_dir_name="m2_layer2_live_golden",
+        n_agents=3,
+        # M2 Layer2 sealed golden (Issue 003/K3, real qwen3:8b, self_other_enabled
+        # =True): same N=3/horizon=12/20-physics-ticks shape as the m4 case above
+        # (3 agents x 20 physics ticks x 12 cognition ticks = 720 placement rows),
+        # measured directly off the committed expected_placement.jsonl (720
+        # "kind":"placement" + 72 "kind":"envelope" lines).
+        expected_placement_rows=720,
+        expected_envelope_rows=72,
+        expected_slots=[0, 1, 2],
+    ),
 ]
 
 
