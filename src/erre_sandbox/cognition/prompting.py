@@ -337,6 +337,7 @@ def build_user_prompt(
     *,
     world_model_entries: Sequence[WorldModelEntry] = (),
     world_model_update_enabled: bool = False,
+    self_other_context: str = "",
 ) -> str:
     """Build the user message: recent observations + memories + JSON contract.
 
@@ -364,6 +365,22 @@ def build_user_prompt(
     set on the individual-layer-enabled path, so the flag-off **base path**
     (empty entries; and ``RESPONSE_SCHEMA_HINT``) stays byte-identical — the off
     branch below is the literal pre-M10-C output (DA-M10C-3).
+
+    ``self_other_context`` (M2 Layer2 mirror-sim, keyword-only) is a *pre-rendered*
+    bounded SimToM text segment — the deterministic render of the other agents'
+    prior-window observed behaviour that
+    :func:`~erre_sandbox.integration.embodied.society.build_self_other_context`
+    produces (self-contained header + body). It follows the exact same additive
+    idiom as ``world_model_entries``: injected on the **user** side only, at a
+    stable position **after** the held world-model block, so the shared system
+    prefix is untouched and the world-model block's byte position is unchanged
+    whether or not this segment is present. When empty (``""`` — the flag-off
+    default and every non-Layer2 caller) the section is omitted entirely, so the
+    output is **byte-identical** to the prior contract. This is a transient
+    prompt-context injection: it is **never written to episodic memory** (that
+    disjointness is the mirror-sim circularity guard, design-final.md §L6), so
+    it rides in here as a plain string argument and nowhere near the memory sink.
+    NOT a structural-floor verdict; verdict は holding.
     """
     recent = _clamp_proximity(list(observations)[-recent_limit:])
     obs_block = (
@@ -383,6 +400,11 @@ def build_user_prompt(
         )
     else:
         held_block = ""
+    # M2 Layer2: the pre-rendered self-other segment carries its own header/body
+    # (build_self_other_context), so it is placed as-is with a trailing blank
+    # line at a stable position after the held block. Empty (``""``) → no
+    # section → byte-identical to the pre-Layer2 contract (§L8 coexist golden).
+    self_other_block = f"{self_other_context}\n\n" if self_other_context else ""
     schema_hint = (
         RESPONSE_SCHEMA_HINT_WITH_UPDATE
         if world_model_update_enabled
@@ -394,6 +416,7 @@ def build_user_prompt(
         "Relevant memories:\n"
         f"{mem_block}\n\n"
         f"{held_block}"
+        f"{self_other_block}"
         "Decide what to do in the next ten seconds.\n\n"
         f"{schema_hint}"
     )

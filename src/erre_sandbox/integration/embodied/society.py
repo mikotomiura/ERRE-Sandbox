@@ -496,6 +496,206 @@ def _validate_self_other_slot(value: SelfOtherObservationInput) -> None:
         raise TypeError(msg)
 
 
+# --------------------------------------------------------------------------- #
+# Layer2 (mirror-sim) — pure self-other context builder (§L3/§L7, J2)
+#
+# NOT a structural-floor verdict; verdict は holding (design-final.md §L4/§L13).
+# This is a *construction* seam: a pure, deterministic function of the other
+# agents' prior-window observed behaviour. It computes no floor / verdict /
+# scorer / divergence / magnitude — it renders a SimToM prompt segment (a
+# **functional analog** of taking another agent's perspective, NOT a neural
+# mirror-neuron mechanism, §L1 規律 b) and a canonical float-free payload piece.
+# --------------------------------------------------------------------------- #
+
+M2_SELFOTHER_SCHEMA_VERSION: Final[str] = "m2-selfother-1"
+"""Versioned-additive wire tag for the Layer2 ``self_other_observation_input``
+slot payload (§L7). Distinct from :data:`M2_EVENTLOG_SCHEMA_VERSION` (the whole
+event-log projection tag) — this versions the self-other payload shape only."""
+
+_SELF_OTHER_FRAMING: Final[str] = (
+    "Others you observed one step ago — simulate each one's likely inner state "
+    "and let it inform your own next action. This is a functional analog of "
+    "taking their perspective, not a claim about their true mind:"
+)
+"""SimToM prompt framing (§L3/§L7, prompt-level self-other simulation, 予算ゼロ
+規律 c). Functional-analog vocabulary only (規律 b — no "mirror neuron / neural
+mechanism / 神経機構再現"). Bounded and imperative so a think=False low-entropy
+decode stays parseable (文献 §9-ii); the think=False parseability desk-audit
+(§L11) is recorded in ``experiments/20260713-m13-m2-layer2/``."""
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherPriorRecord:
+    """One other agent's prior-window observed behaviour (builder input, §L7).
+
+    A pure value object the driver (:func:`run_society_loop`, J3) assembles from
+    the Layer1 event log it already records — ``zone``/``destination_zone`` from
+    the geometry + resolved move, ``utterance`` from ``dialog_events``,
+    ``was_proximate`` from ``pair_events`` (a plain bool — no distance float, so
+    the payload stays float-free, §L7). Carries **only** already-recorded
+    behaviour events — never an ``AppraisalState`` measurement field (規律 d): the
+    observer *simulates* the other's inner state in the SimToM prompt, it is not
+    stored as a measured value here.
+    """
+
+    agent_id: str
+    window: int
+    zone: str
+    destination_zone: str | None = None
+    utterance: str | None = None
+    was_proximate: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherObservedRecord:
+    """One observed other agent inside a :class:`SelfOtherContext` (§L7 ``observed``).
+
+    Canonical, float-free projection: every scalar is ``{str, int, bool, None}``
+    (the slot payload does not pass through :func:`_q`'s quantisation, so a float
+    here would drift cross-platform — §L2/§L7, judgement 3 教訓).
+    """
+
+    other_agent_id: str
+    observed_zone: str
+    observed_destination_zone: str | None
+    observed_utterance: str | None
+    was_proximate: bool
+
+    def payload(self) -> dict[str, Any]:
+        return {
+            "other_agent_id": self.other_agent_id,
+            "observed_zone": self.observed_zone,
+            "observed_destination_zone": self.observed_destination_zone,
+            "observed_utterance": self.observed_utterance,
+            "was_proximate": self.was_proximate,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SelfOtherContext:
+    """One observer's self-other injection at one cognition window (§L3/§L7).
+
+    ``rendered`` is the deterministic SimToM text segment fed to
+    :func:`~erre_sandbox.cognition.prompting.build_user_prompt`'s
+    ``self_other_context`` kwarg (``""`` when no other agent was observed —
+    window 0 or an all-empty prior window, §L4.3 → no slot contribution).
+    :meth:`injection_payload` is the canonical, float-free payload piece the
+    run-level slot aggregates (J3).
+    """
+
+    observer_agent_id: str
+    window: int
+    source_window: int
+    observed: tuple[SelfOtherObservedRecord, ...]
+    rendered: str
+
+    @property
+    def is_empty(self) -> bool:
+        """``True`` when no other agent was observed (no slot contribution)."""
+        return not self.observed
+
+    def injection_payload(self) -> dict[str, Any]:
+        """Canonical injection dict (§L7): ``observed`` already builder-sorted."""
+        return {
+            "window": self.window,
+            "observer_agent_id": self.observer_agent_id,
+            "source_window": self.source_window,
+            "observed": [r.payload() for r in self.observed],
+        }
+
+
+def _render_self_other(observed: Sequence[SelfOtherObservedRecord]) -> str:
+    """Deterministic SimToM segment render (pure function of ``observed``, §L7).
+
+    The observed ``utterance`` is another agent's LLM-generated text, so it is
+    **JSON-string-encoded** before interpolation (Codex HIGH-1): quotes /
+    backslashes / newlines are escaped, keeping each other's line single-line and
+    the SimToM segment genuinely *bounded* (a raw f-string interpolation would let
+    a prior utterance containing quotes/newlines/instructions break the segment or
+    inject arbitrary text into another agent's cognition call). For a clean
+    utterance the encoded form is byte-identical to the naive ``"..."`` quoting.
+    ``was_proximate`` is a **per-agent** signal ("this agent was in a proximity
+    crossing this window", Codex MEDIUM-1) — rendered non-observer-relatively as
+    ``was_in_proximity`` (never "was_near_you", which would falsely imply the other
+    was near *this* observer when in an N>2 run it may have been near a third agent).
+    """
+    lines = [_SELF_OTHER_FRAMING]
+    for r in observed:
+        parts = [f"zone={r.observed_zone}"]
+        if r.observed_destination_zone is not None:
+            parts.append(f"moved_toward={r.observed_destination_zone}")
+        if r.observed_utterance is not None:
+            parts.append(f"said={json.dumps(r.observed_utterance, ensure_ascii=False)}")
+        if r.was_proximate:
+            parts.append("was_in_proximity")
+        lines.append(f"- {r.other_agent_id}: {', '.join(parts)}")
+    return "\n".join(lines)
+
+
+def build_self_other_context(
+    *,
+    observer_id: str,
+    window_index: int,
+    prior_records: Sequence[SelfOtherPriorRecord],
+) -> SelfOtherContext:
+    """Build one observer's self-other context (pure, exact-oracle, §L3/§L7).
+
+    NOT a structural-floor verdict; verdict は holding. A deterministic function
+    of the other agents' prior-window behaviour: **strict prefix filter**
+    (DA-L2-2, Codex HIGH-2) keeps only records where ``agent_id != observer_id``
+    (never the observer's own action) **and** ``window == window_index - 1`` —
+    the immediately-prior window ``source_window = t-1``, which is ``< window_index``
+    by construction, so this-window / future-window records can never leak into
+    the context (pinned by ``test_self_other_no_future_or_self_leak``). ``observed``
+    is canonically sorted by ``other_agent_id`` (a total string order) so the
+    payload/render are order-insensitive and float-free (``test_self_other_context_
+    builder_purity``). ``window_index == 0`` → empty context (no prior window,
+    honest). The build reads no store / memory / RNG / wall-clock — it is a pure
+    seam boundary (§L6 disjointness: the observed input stream never touches the
+    memory sink).
+
+    ``window_index <= 0`` → empty context, guarded explicitly (Codex MEDIUM-2) so
+    the public builder never admits a malformed ``window=-1`` record. Precondition
+    (Codex LOW-1): the driver supplies at most one record per ``(agent_id,
+    window)``, so the ``other_agent_id`` sort is a total order (a caller passing
+    duplicate ``(agent_id, window)`` records is out of contract).
+    """
+    if window_index <= 0:
+        return SelfOtherContext(
+            observer_agent_id=observer_id,
+            window=window_index,
+            source_window=window_index - 1,
+            observed=(),
+            rendered="",
+        )
+    source_window = window_index - 1
+    observed = tuple(
+        SelfOtherObservedRecord(
+            other_agent_id=r.agent_id,
+            observed_zone=r.zone,
+            observed_destination_zone=r.destination_zone,
+            observed_utterance=r.utterance,
+            was_proximate=r.was_proximate,
+        )
+        for r in sorted(
+            (
+                r
+                for r in prior_records
+                if r.agent_id != observer_id and r.window == source_window
+            ),
+            key=lambda r: r.agent_id,
+        )
+    )
+    rendered = _render_self_other(observed) if observed else ""
+    return SelfOtherContext(
+        observer_agent_id=observer_id,
+        window=window_index,
+        source_window=source_window,
+        observed=observed,
+        rendered=rendered,
+    )
+
+
 def _pair_event_projection(e: PairEventRecord) -> dict[str, Any]:
     return {
         "tick": e.tick,
@@ -843,17 +1043,25 @@ async def _step_one_agent(
     bias_slots: dict[str, list[BiasFiredEvent]],
     agent_id: str,
     cognition_tick: int,
+    self_other_context: str | None = None,
 ) -> EclDecisionRecord:
     """Step one agent's cognition via the public seam and build its decision record.
 
     §M4.1: the caller invokes this once per agent per window, strictly in
     ``sorted(agent_id)`` order — never concurrently — so ``llm_router``'s
     "active agent" is always unambiguous.
+
+    ``self_other_context`` (M2 Layer2 mirror-sim, §L3, default ``None``): a
+    pre-rendered transient SimToM segment threaded into the observer's existing
+    cognition call — it adds **no new LLM call** (the採用 design's核, §L9). When
+    ``None`` (Layer2 off) the step is byte-identical to Layer1.
     """
     llm_router.activate(agent_id)
     client = llms[agent_id]
     used_before = len(client.used)
-    result = await world.step_cognition_once(agent_id)
+    result = await world.step_cognition_once(
+        agent_id, self_other_context=self_other_context
+    )
     ctxs[agent_id].move = result.ecl_destination
     served = client.used[used_before:]
     if len(served) != 1:
@@ -871,12 +1079,131 @@ async def _step_one_agent(
     )
 
 
+def _build_window_self_other_contexts(
+    *,
+    enabled: bool,
+    agent_ids: Sequence[str],
+    window_index: int,
+    prior_records: Sequence[SelfOtherPriorRecord],
+    sink: list[SelfOtherContext],
+) -> dict[str, SelfOtherContext]:
+    """Build each observer's self-other context for one window (Layer2, §L3, J3).
+
+    NOT a structural-floor verdict; verdict は holding. ``enabled=False`` (Layer2
+    off) returns ``{}`` immediately so the driver's step kwarg defaults to ``None``
+    (byte-identical). When enabled, a pure per-observer build via
+    :func:`build_self_other_context` (strict prefix filter keeps only
+    ``window == window_index - 1`` others), appending each **non-empty** context to
+    ``sink`` (the run-level slot aggregate). The ``enabled`` gate lives here (not in
+    the driver loop) so the sequential scheduler body stays a thin orchestrator.
+    """
+    if not enabled:
+        return {}
+    contexts: dict[str, SelfOtherContext] = {}
+    for agent_id in agent_ids:
+        ctx = build_self_other_context(
+            observer_id=agent_id,
+            window_index=window_index,
+            prior_records=prior_records,
+        )
+        contexts[agent_id] = ctx
+        if not ctx.is_empty:
+            sink.append(ctx)
+    return contexts
+
+
+def _capture_window_behaviour(
+    *,
+    enabled: bool,
+    rows: Sequence[EclTraceRow],
+    decisions: Mapping[str, Sequence[EclDecisionRecord]],
+    window_pair: Sequence[PairEventRecord],
+    window_dialog: Sequence[DialogEventRecord],
+    agent_ids: Sequence[str],
+    window: int,
+) -> list[SelfOtherPriorRecord]:
+    """Capture each agent's window behaviour for the NEXT window's self-other context.
+
+    NOT a structural-floor verdict; verdict は holding. ``enabled=False`` (Layer2
+    off) returns ``[]`` immediately (byte-identical — nothing is captured). When
+    enabled, Layer2 (J3) reads **only** already-recorded Layer1 event-log data —
+    the end-of-window zone (the last geometry ``EclTraceRow`` of this ``(agent,
+    window)``), the resolved ``destination_zone`` (from the window's own
+    ``EclDecisionRecord`` plan), the window's dialog delta, and the window's
+    pair-event delta (``was_proximate`` is a plain ``bool`` — no distance float,
+    keeping the payload float-free, §L7). **No ``AppraisalState`` measurement
+    field** is read (規律 d): the observer *simulates* the other's inner state in
+    the SimToM prompt, it is not stored as a measured value. Deterministic given
+    the (already-computed) inputs. The ``enabled`` gate lives here so the driver
+    loop stays a thin orchestrator.
+    """
+    if not enabled:
+        return []
+    records: list[SelfOtherPriorRecord] = []
+    for agent_id in agent_ids:
+        window_rows = [
+            r for r in rows if r.agent_id == agent_id and r.agent_tick == window
+        ]
+        if not window_rows:
+            continue
+        end_zone = max(window_rows, key=lambda r: r.physics_tick_index).zone.value
+        decision = decisions[agent_id][window]
+        dest = decision.plan.destination_zone if decision.plan is not None else None
+        dest_zone = dest.value if dest is not None else None
+        utterances = [
+            e.utterance for e in window_dialog if e.speaker_agent_id == agent_id
+        ]
+        # ``observed_utterance`` is a single str field (§L7); when an agent spoke
+        # multiple turns this window we keep the LAST (most-recent) utterance —
+        # earlier turns are intentionally dropped, not aggregated (code-review LOW).
+        # ``was_proximate`` is a per-agent bool ("was in any crossing this window",
+        # rendered non-observer-relatively as ``was_in_proximity``, Codex MEDIUM-1).
+        was_proximate = any(agent_id in pe.sorted_pair for pe in window_pair)
+        records.append(
+            SelfOtherPriorRecord(
+                agent_id=agent_id,
+                window=window,
+                zone=end_zone,
+                destination_zone=dest_zone,
+                utterance=utterances[-1] if utterances else None,
+                was_proximate=was_proximate,
+            )
+        )
+    return records
+
+
+def _build_self_other_slot(
+    contexts: Sequence[SelfOtherContext],
+) -> SelfOtherObservationInput:
+    """Aggregate the run's non-empty self-other contexts into the slot (§L7, J3).
+
+    NOT a structural-floor verdict; verdict は holding. ``injections`` are
+    canonically sorted by ``(window, observer_agent_id)`` (each ``observed`` list
+    is already builder-sorted by ``other_agent_id``) so the payload is
+    deterministic and order-insensitive; every scalar is ``{str, int, bool,
+    None}`` (float-free, §L7) and it is serialised by the **inherited**
+    ``event_log_checksum`` ``json.dumps`` (no independent serializer). Returns
+    ``None`` when no non-empty context exists (Layer2 off / N=1 / all-empty →
+    Layer1 byte-equivalent, §L4.3 — never a ``{}`` / empty-header envelope).
+    """
+    if not contexts:
+        return None
+    injections = sorted(
+        (ctx.injection_payload() for ctx in contexts),
+        key=lambda inj: (inj["window"], inj["observer_agent_id"]),
+    )
+    return {
+        "schema_version": M2_SELFOTHER_SCHEMA_VERSION,
+        "payload": {"injections": injections},
+    }
+
+
 # --------------------------------------------------------------------------- #
 # Driver
 # --------------------------------------------------------------------------- #
 
 
-async def run_society_loop(
+async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent driver; the additive Layer2 seam (build/capture) is already extracted into helpers, the residual statements are the sequential scheduler's own construction wiring (mirrors cycle.step's PLR0915 precedent)
     *,
     run_id: str,
     store: MemoryStore,
@@ -893,6 +1220,7 @@ async def run_society_loop(
     reflector: Reflector | None = None,
     observation_factories: Mapping[str, Callable[[int], Sequence[Observation]]]
     | None = None,
+    self_other_enabled: bool = False,
 ) -> SocietyRunResult:
     """Drive N agents' embodiment loop deterministically (Layer1, §M3/§M4).
 
@@ -908,6 +1236,19 @@ async def run_society_loop(
 
     ``llms`` / ``personas`` must have an entry for every ``agent_states.agent_id``
     (missing entries raise ``ValueError`` at construction, not a KeyError mid-run).
+
+    ``self_other_enabled`` (M2 Layer2 mirror-sim, additive, default ``False``):
+    when ``True`` each observer's existing cognition call receives a transient
+    SimToM segment built from the OTHER agents' immediately-prior-window
+    behaviour (:func:`build_self_other_context`), and the run-level
+    ``self_other_observation_input`` slot is populated with the canonical,
+    float-free aggregate of every non-empty injection (§L3/§L7). It adds **no new
+    LLM call** (the segment rides the existing prompt, §L9). When ``False`` — the
+    default and every Layer1 caller — the sequential scheduler loop is
+    byte-identical: no context is built, the additive step kwarg defaults to
+    ``None``, and the slot stays ``None`` (Layer1-equivalent, §L8). NOT a
+    structural-floor verdict; verdict は holding — the slot proves reproducibility
+    / causal wiring, never a floor / magnitude.
     """
     agent_ids = [s.agent_id for s in agent_states]
     _validate_agents(agent_ids, llms, personas)
@@ -1012,6 +1353,14 @@ async def run_society_loop(
     step_order: list[str] = []
     pair_events: list[PairEventRecord] = []
     sorted_agent_ids = sorted(agent_ids)
+    # §L3/§L7 (Layer2, default-off): the accumulated per-(agent, window)
+    # behaviour records the builder reads (strict prefix filter picks each
+    # window's t-1), and the run-level collection of every non-empty injection.
+    # Both stay empty when ``self_other_enabled`` is False, so the Layer1 path
+    # is byte-identical (the loop body below only *reads* extra state / passes an
+    # additive kwarg that defaults to ``None``).
+    prior_records: list[SelfOtherPriorRecord] = []
+    self_other_contexts: list[SelfOtherContext] = []
 
     for cognition_tick in range(n_cognition_ticks):
         for agent_id in sorted_agent_ids:
@@ -1019,12 +1368,26 @@ async def run_society_loop(
             bias_slots[agent_id].clear()
             for obs in obs_factories[agent_id](cognition_tick):
                 world.inject_observation(agent_id, obs)
+        # §L3 (Layer2, default-off): build each observer's transient self-other
+        # context from the PRIOR window's OTHER-agent behaviour *before* stepping
+        # (the strict prefix filter keeps only ``window == cognition_tick - 1``
+        # records — this-window/future/self can never leak). Empty contexts
+        # (window 0 / no others) render to ``""`` = byte-identical, and contribute
+        # nothing to the slot. ``{}`` when off → the step kwarg defaults to None.
+        window_contexts = _build_window_self_other_contexts(
+            enabled=self_other_enabled,
+            agent_ids=sorted_agent_ids,
+            window_index=cognition_tick,
+            prior_records=prior_records,
+            sink=self_other_contexts,
+        )
         # §M4.1 record-mode sequential sorted(order_slot) scheduler — every
         # agent steps ONE AT A TIME in sorted(agent_id) order; no
         # asyncio.gather fan-out (that lives only in the live phase-wheel,
         # which this driver never calls).
         for agent_id in sorted_agent_ids:
             step_order.append(agent_id)
+            so_ctx = window_contexts.get(agent_id)
             decisions[agent_id].append(
                 await _step_one_agent(
                     world=world,
@@ -1034,8 +1397,10 @@ async def run_society_loop(
                     bias_slots=bias_slots,
                     agent_id=agent_id,
                     cognition_tick=cognition_tick,
+                    self_other_context=so_ctx.rendered if so_ctx is not None else None,
                 )
             )
+        pair_before = len(pair_events)
         for _ in range(physics_ticks_per_cognition):
             await world._on_physics_tick()  # noqa: SLF001 — record-mode driver (society, mirrors run_ecl_loop precedent)
         # §M4.4: harvest this window's pair events before the NEXT window's
@@ -1046,9 +1411,25 @@ async def run_society_loop(
         # settled — the same two (unmodified) hooks the live phase-wheel's
         # ``_on_cognition_tick`` tail calls, invoked here sequentially by this
         # record-mode driver instead.
+        dialog_before = len(dialog_events)
         world._run_dialog_tick()  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
         await world._drive_dialog_turns(  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
             world._current_world_tick()  # noqa: SLF001 — record-mode driver hook (unmodified WorldRuntime method)
+        )
+        # §L3/§L7 (Layer2, default-off): after this window is fully settled,
+        # record each agent's behaviour so the NEXT window's observers can
+        # build their self-other context. Reads only already-computed data; the
+        # ``enabled`` gate lives in the helper (returns [] when off = no-op).
+        prior_records.extend(
+            _capture_window_behaviour(
+                enabled=self_other_enabled,
+                rows=rows,
+                decisions=decisions,
+                window_pair=pair_events[pair_before:],
+                window_dialog=dialog_events[dialog_before:],
+                agent_ids=sorted_agent_ids,
+                window=cognition_tick,
+            )
         )
 
     frozen_rows = tuple(rows)
@@ -1056,9 +1437,12 @@ async def run_society_loop(
     frozen_pair_events = tuple(pair_events)
     frozen_dialog_events = tuple(dialog_events)
     memory_mutations = _collect_memory_mutations(store, sorted_agent_ids)
-    # §M5.1: Layer1 always passes None — the Layer2 seam slot is reserved but
-    # never populated here (payload composition is Layer2 impl-design scope).
-    self_other_observation_input: SelfOtherObservationInput = None
+    # §L7 (Layer2): aggregate the run's non-empty self-other injections into the
+    # slot (canonical-sorted, float-free, inherited serializer). ``None`` when
+    # Layer2 is off / N=1 / all-empty — the Layer1 byte-equivalent case (§L4.3).
+    self_other_observation_input: SelfOtherObservationInput = _build_self_other_slot(
+        self_other_contexts
+    )
     return SocietyRunResult(
         run_id=run_id,
         rows=frozen_rows,
@@ -1084,12 +1468,17 @@ async def run_society_loop(
 
 __all__ = [
     "M2_EVENTLOG_SCHEMA_VERSION",
+    "M2_SELFOTHER_SCHEMA_VERSION",
     "AffinityDeltaRecord",
     "DialogEventRecord",
     "MemoryMutationRecord",
     "PairEventRecord",
+    "SelfOtherContext",
     "SelfOtherObservationInput",
+    "SelfOtherObservedRecord",
+    "SelfOtherPriorRecord",
     "SocietyRunResult",
+    "build_self_other_context",
     "event_log_checksum",
     "run_society_loop",
 ]
