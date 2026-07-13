@@ -605,16 +605,29 @@ class SelfOtherContext:
 
 
 def _render_self_other(observed: Sequence[SelfOtherObservedRecord]) -> str:
-    """Deterministic SimToM segment render (pure function of ``observed``, §L7)."""
+    """Deterministic SimToM segment render (pure function of ``observed``, §L7).
+
+    The observed ``utterance`` is another agent's LLM-generated text, so it is
+    **JSON-string-encoded** before interpolation (Codex HIGH-1): quotes /
+    backslashes / newlines are escaped, keeping each other's line single-line and
+    the SimToM segment genuinely *bounded* (a raw f-string interpolation would let
+    a prior utterance containing quotes/newlines/instructions break the segment or
+    inject arbitrary text into another agent's cognition call). For a clean
+    utterance the encoded form is byte-identical to the naive ``"..."`` quoting.
+    ``was_proximate`` is a **per-agent** signal ("this agent was in a proximity
+    crossing this window", Codex MEDIUM-1) — rendered non-observer-relatively as
+    ``was_in_proximity`` (never "was_near_you", which would falsely imply the other
+    was near *this* observer when in an N>2 run it may have been near a third agent).
+    """
     lines = [_SELF_OTHER_FRAMING]
     for r in observed:
         parts = [f"zone={r.observed_zone}"]
         if r.observed_destination_zone is not None:
             parts.append(f"moved_toward={r.observed_destination_zone}")
         if r.observed_utterance is not None:
-            parts.append(f'said="{r.observed_utterance}"')
+            parts.append(f"said={json.dumps(r.observed_utterance, ensure_ascii=False)}")
         if r.was_proximate:
-            parts.append("was_near_you")
+            parts.append("was_in_proximity")
         lines.append(f"- {r.other_agent_id}: {', '.join(parts)}")
     return "\n".join(lines)
 
@@ -640,7 +653,21 @@ def build_self_other_context(
     honest). The build reads no store / memory / RNG / wall-clock — it is a pure
     seam boundary (§L6 disjointness: the observed input stream never touches the
     memory sink).
+
+    ``window_index <= 0`` → empty context, guarded explicitly (Codex MEDIUM-2) so
+    the public builder never admits a malformed ``window=-1`` record. Precondition
+    (Codex LOW-1): the driver supplies at most one record per ``(agent_id,
+    window)``, so the ``other_agent_id`` sort is a total order (a caller passing
+    duplicate ``(agent_id, window)`` records is out of contract).
     """
+    if window_index <= 0:
+        return SelfOtherContext(
+            observer_agent_id=observer_id,
+            window=window_index,
+            source_window=window_index - 1,
+            observed=(),
+            rendered="",
+        )
     source_window = window_index - 1
     observed = tuple(
         SelfOtherObservedRecord(
@@ -1126,6 +1153,11 @@ def _capture_window_behaviour(
         utterances = [
             e.utterance for e in window_dialog if e.speaker_agent_id == agent_id
         ]
+        # ``observed_utterance`` is a single str field (§L7); when an agent spoke
+        # multiple turns this window we keep the LAST (most-recent) utterance —
+        # earlier turns are intentionally dropped, not aggregated (code-review LOW).
+        # ``was_proximate`` is a per-agent bool ("was in any crossing this window",
+        # rendered non-observer-relatively as ``was_in_proximity``, Codex MEDIUM-1).
         was_proximate = any(agent_id in pe.sorted_pair for pe in window_pair)
         records.append(
             SelfOtherPriorRecord(
