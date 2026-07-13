@@ -936,6 +936,31 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   `experiments/20260713-m13-layer2-live/` (run.sh / results) + `loop/20260713-m13-layer2-mirror-sim-live-run/`
   (issues K1-K3)。次工程 = (C) multi-zone rendering fix (deferred scoping) or M3 endurance の別 scoping。
 
+- **aha!/DMN-ECN forward — Phase 1 survey + Phase 2 reasoning-trace door scoping ADR (2026-07-13、doc-only・非 spend・
+  measurement 非 authorize)**: M2 Layer2 real validate (PR #78) 後の forward direction。着想 (user) = 「aha! = DMN・ECN
+  の黄金比調合を歩行 λ で調整」。既存 substrate (ERRE モード = DMN↔ECN スペクトル `erre/sampling_table.py` + 歩行 λ =
+  発散一方向 `erre/locomotion_sampling.py`) の gap = 生成↔評価の二相交替 (調合 switch) が λ に未結線。
+  **Phase 1 survey (PR #79 MERGED)**: aha!/insight 神経科学 + 計算論的 insight-scoring/LLM-judge を落合フォーマットで
+  6 テーマ 12 論文カード化 ([12]-[24]、`docs/literature/20260713-aha-insight-neuroscience.md`)。**honest verdict =
+  壁2 (非循環 scorer 先行解決) は survey 段で未解決 → fork を construction 寄りに制約**。salience switch/DMN-ECN dynamics =
+  construction ターゲット / marker・reward・scorer = measurement 領域 (離散化は第2リンク detectability circularity の
+  aha 版を再来)。DeepSeek-R1 "aha moment" [23] は observational 命名で形式的 scorer でなく Yang et al. [24] epoch-0 反例。
+  **Phase 2 door scoping ADR (PR #80、doc-only、Plan mode + reimagine + Codex)**: (a) `<think>` トレードオフ (決定性 vs
+  二相可観測性、両立不能ゆえ別 capture 体制が必然) + (b) 二相捕捉 regime の**設計** (think=True 非決定を existence として
+  観察、record→観察のみ・verdict/scorer/floor なし、sealed-golden 無改変、over-read guard 付き。**実装しない**) + (c)
+  **construction/measurement fork 判定 = construction-only を推奨・reasoning-trace door は CLOSED 維持** (reimagine v1
+  mechanism-first 意図破棄 → v2 door-discipline-first 独立再生成、両案 construction-only 収束、採用 = v2 spine + v1 knob
+  スケッチ graft) + (d) **door 3 条件 ledger** (① 本 ADR プロセスとして satisfied・非反射 / door-open 条件としては未消費、
+  ② 壁2 UNMET = binding blocker、③ 二相捕捉 enabler DESIGNED・存在確認は Phase 3 pending)。Codex independent review
+  (gpt-5.5/xhigh) Verdict = **Adopt-with-changes、HIGH 0 / MEDIUM 3 / LOW 3、事実誤認なし、全 6 件反映済**。**claim 境界 =
+  fork の *推奨* であって door を開ける行為ではない** (door-open は将来別 from-scratch spend タスク + **user 裁定**、②解決
+  条件付き)。measurement 非 authorize、aha を離散 scorer で測らない、R-budget=0 / holding / measurement-line CLOSE 不変、
+  5 機序分離継承。詳細 = `.steering/20260713-aha-phase2-door-scoping/` (design-final / decisions / design-v1/v2/comparison /
+  codex-review* verbatim)。次工程 = Phase 3 (think=True LLM 稼働検証、real qwen3 construction spend、verdict なし、
+  record→観察のみ) → Phase 4 = **本 ADR 推奨の construction-only** (λ↔二相 knob 建設、Phase 3 存在確認を承けた後)。
+  measurement door fork (aha-judge 別文脈 from-scratch) は door 条件② (壁2 非循環 scorer) 解決 + **user 裁定**時のみ到達可能で、
+  本 ADR では開けない。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
