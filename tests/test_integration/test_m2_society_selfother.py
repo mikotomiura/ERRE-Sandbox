@@ -38,9 +38,10 @@ on/off draw the same per-agent-per-window call count.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Self
 
 import httpx
 
@@ -55,11 +56,13 @@ from erre_sandbox.integration.embodied.society import (
     run_society_loop,
 )
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
-from erre_sandbox.schemas import MemoryEntry, MemoryKind
+from erre_sandbox.schemas import MemoryEntry, MemoryKind, Zone
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
+    from erre_sandbox.inference.ollama_adapter import ChatMessage
+    from erre_sandbox.inference.sampling import ResolvedSampling
     from erre_sandbox.schemas import AgentState, PersonaSpec
 
 # --------------------------------------------------------------------------- #
@@ -569,3 +572,337 @@ async def test_self_other_event_log_checksum_stable(
 
     # Payload float-free (cross-platform byte precondition).
     _assert_float_free(run1.self_other_observation_input)
+
+
+# --------------------------------------------------------------------------- #
+# J4 — continuity gate (exact-oracle boolean wiring) + SimToM + think=False audit
+# (§L4/§L5/§L6, Codex HIGH-1/HIGH-2/HIGH-3/HIGH-4, MEDIUM-3)
+# --------------------------------------------------------------------------- #
+#
+# The exact-oracle mock: ``_PLAN_A`` iff the self-other segment is in the user
+# prompt, else ``_PLAN_B``. Both destinations are inside make_persona_spec's
+# preferred_zones (peripatos / study) so the β zone-bias never resamples them —
+# the route is a pure, deterministic function of context presence (§L4.2), never
+# a magnitude read. ``depends_on_other_observation`` is a boolean the TEST
+# computes from (context presence × mock route), NOT a field the LLM emits
+# (Codex MEDIUM-3): production code never emits it.
+
+_ROUTE_MARKER = "Others you observed one step ago"  # head of _SELF_OTHER_FRAMING
+_PLAN_A = json.dumps(
+    {
+        "thought": "context present → route A",
+        "utterance": "皆を見て",
+        "destination_zone": "peripatos",  # preferred → no β-bias resample
+        "animation": "walk",
+    }
+)
+_PLAN_B = json.dumps(
+    {
+        "thought": "no context → baseline B",
+        "utterance": "ひとりで",
+        "destination_zone": "study",  # preferred → no β-bias resample
+        "animation": "walk",
+    }
+)
+
+
+class _ContextRoutingChat:
+    """Exact-oracle inner chat: ``_PLAN_A`` iff the self-other segment is present.
+
+    The route is a deterministic function of *context presence only* — never a
+    stored/recorded outcome (§L4.2). Records each call's ``has_context`` so a
+    test can confirm the fixture actually exercised both branches.
+    """
+
+    def __init__(self) -> None:
+        self.routes: list[bool] = []
+
+    async def chat(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        sampling: ResolvedSampling,  # noqa: ARG002
+        model: str | None = None,  # noqa: ARG002
+        options: dict[str, Any] | None = None,  # noqa: ARG002
+        think: bool | None = None,  # noqa: ARG002
+    ) -> ChatResponse:
+        user = next((m.content for m in messages if m.role == "user"), "")
+        has_context = _ROUTE_MARKER in user
+        self.routes.append(has_context)
+        return ChatResponse(
+            content=_PLAN_A if has_context else _PLAN_B,
+            model="qwen3:8b",
+            eval_count=1,
+            total_duration_ms=0.0,
+        )
+
+
+def _routing_llms(
+    agent_states: list[AgentState],
+) -> dict[str, RecordReplayChatClient]:
+    return {
+        s.agent_id: RecordReplayChatClient(inner=_ContextRoutingChat())
+        for s in agent_states
+    }
+
+
+async def _run_with_llms(
+    agent_states: list[AgentState],
+    personas: dict[str, PersonaSpec],
+    llms: dict[str, RecordReplayChatClient],
+    *,
+    self_other_enabled: bool,
+    run_id: str = "j4",
+    n_cognition_ticks: int = 3,
+    physics_ticks_per_cognition: int = 5,
+) -> SocietyRunResult:
+    """One society drive with caller-supplied ``llms`` (routing mock or replay)."""
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    embedding = _embed_client()
+    try:
+        return await run_society_loop(
+            run_id=run_id,
+            store=store,
+            embedding=embedding,
+            llms=llms,
+            agent_states=agent_states,
+            personas=personas,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            seed=0,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=physics_ticks_per_cognition,
+            self_other_enabled=self_other_enabled,
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+
+
+@dataclass
+class _MemoryWriteSpy:
+    """Process-wide spy on ``MemoryStore.add`` (bank ``_RetrieveSpy`` idiom).
+
+    Captures every written episodic memory's ``content`` for the duration of the
+    ``with`` block so a test can assert self-other context never reaches the
+    memory sink (§L6 disjointness runtime witness, Codex HIGH-4).
+    """
+
+    written_contents: list[str] = field(default_factory=list)
+    _orig_add: Any = None
+
+    def __enter__(self) -> Self:
+        self._orig_add = MemoryStore.add
+        spy = self
+        orig = self._orig_add
+
+        async def spy_add(
+            self_store: MemoryStore, entry: Any, *args: Any, **kwargs: Any
+        ) -> Any:
+            spy.written_contents.append(entry.content)
+            return await orig(self_store, entry, *args, **kwargs)
+
+        MemoryStore.add = spy_add  # type: ignore[method-assign]
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        MemoryStore.add = self._orig_add  # type: ignore[method-assign]
+
+
+def _n2_states(
+    make_agent_state: Callable[..., AgentState],
+) -> list[AgentState]:
+    return [
+        make_agent_state(agent_id="a_one", persona_id="kant"),
+        make_agent_state(agent_id="a_two", persona_id="kant"),
+    ]
+
+
+async def test_self_other_wiring_continuity_positive(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Context present → observer's resolved behaviour depends on it (boolean).
+
+    NOT a structural-floor verdict; verdict は holding. The exact-oracle routes
+    ``_PLAN_A`` when the self-other segment is present, ``_PLAN_B`` when absent.
+    At window ≥1 the enabled run injects a non-empty context (the observer sees
+    the OTHER agent's prior window) → route A; the ablated (flag-off) run has no
+    context → route B. ``depends_on_other_observation`` is computed by the test
+    from (context × route) — never emitted by the LLM (Codex MEDIUM-3) — and is
+    ``True``. This is a causal-wiring boolean, NOT a magnitude read (§L4.1).
+    """
+    states = _n2_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    enabled = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=True
+    )
+    off = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=False
+    )
+
+    observer, window = "a_two", 1
+    with_context = enabled.decisions[observer][window].plan.destination_zone
+    without_context = off.decisions[observer][window].plan.destination_zone
+
+    # Boolean causal wiring (test-computed, not LLM-emitted).
+    depends_on_other_observation = with_context != without_context
+    assert depends_on_other_observation is True
+    # The route is the exact oracle's: context → A (peripatos), none → B (study).
+    assert with_context == Zone.PERIPATOS
+    assert without_context == Zone.STUDY
+    # The enabled run genuinely populated the seam (non-vacuous).
+    assert enabled.self_other_observation_input is not None
+
+
+async def test_self_other_wiring_continuity_negative(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Context ablated → behaviour == baseline B, no dependence (boolean False).
+
+    NOT a structural-floor verdict; verdict は holding. Two ablation controls:
+    (a) window 0 has no prior window, so even the enabled run injects no context
+    → the enabled and flag-off behaviours are identical (baseline B) and
+    ``depends_on_other_observation`` is ``False``; (b) the whole flag-off run
+    never varies from baseline B. No magnitude is read.
+    """
+    states = _n2_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    enabled = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=True
+    )
+    off = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=False
+    )
+
+    observer = "a_two"
+    # (a) window 0: no prior → no context even when enabled → behaviour matches
+    #     the flag-off baseline B, so there is nothing to depend on.
+    w0_enabled = enabled.decisions[observer][0].plan.destination_zone
+    w0_off = off.decisions[observer][0].plan.destination_zone
+    depends_on_other_observation = w0_enabled != w0_off
+    assert depends_on_other_observation is False
+    assert w0_enabled == Zone.STUDY  # baseline B (no self-other to depend on)
+
+    # (b) the flag-off run never departs from baseline B (no context, ever).
+    off_behaviours = {
+        off.decisions[observer][w].plan.destination_zone for w in range(3)
+    }
+    assert off_behaviours == {Zone.STUDY}
+
+
+async def test_self_other_replay_causal_separation(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Poison fixture: continuity uses the live oracle, never the stored outcome.
+
+    NOT a structural-floor verdict; verdict は holding. Codex HIGH-1/HIGH-3:
+    replaying the ENABLED recording under the flag-off scenario re-injects the
+    recorded ``_PLAN_A`` regardless of the now-absent context — a **poison** that
+    deliberately decouples the *stored* outcome from what the *live* oracle would
+    route. The continuity assertion built on the exact-oracle (live routing mock)
+    detects the wiring (``depends == True``); the variant that reads the stored
+    (replayed) outcome misses it (``depends == False``) — proving the gate must
+    use the fixture oracle, not a replay-stored outcome (no outcome-leakage
+    tautology).
+    """
+    states = _n2_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    enabled_live = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=True
+    )
+    off_live = await _run_with_llms(
+        states, personas, _routing_llms(states), self_other_enabled=False
+    )
+    # Poison: replay the enabled recording under the flag-off scenario. Replay
+    # ignores the (now-empty) prompt and re-injects the recorded response.
+    off_replay = await _run_with_llms(
+        states, personas, enabled_live.replay_clients(), self_other_enabled=False
+    )
+
+    observer, window = "a_two", 1
+    oracle_enabled = enabled_live.decisions[observer][window].plan.destination_zone
+    oracle_off = off_live.decisions[observer][window].plan.destination_zone
+    stored_off = off_replay.decisions[observer][window].plan.destination_zone
+
+    # Continuity via the exact-oracle (live route) detects the wiring.
+    depends_via_oracle = oracle_enabled != oracle_off
+    # Continuity via the stored (replayed) outcome MISSES the wiring (tautology).
+    depends_via_stored = oracle_enabled != stored_off
+
+    assert depends_via_oracle is True
+    assert depends_via_stored is False
+    # The poison genuinely decoupled stored from oracle: the flag-off live route
+    # (B / study) differs from the replayed stored outcome (A / peripatos).
+    assert oracle_off == Zone.STUDY
+    assert stored_off == Zone.PERIPATOS
+    assert oracle_off != stored_off
+
+
+async def test_self_other_disjointness(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Self-other context never reaches episodic memory (runtime write-spy).
+
+    NOT a structural-floor verdict; verdict は holding. Codex HIGH-4 / §L6: the
+    self-other segment is a transient prompt-context argument — it must never be
+    written to the memory sink (the ES-4 self-anchor-collapse circularity guard:
+    the observed-input stream stays disjoint from the verification-output stream).
+    A process-wide ``MemoryStore.add`` spy captures every written content while a
+    Layer2-on run executes; none may contain the self-other framing marker.
+    """
+    states = _n2_states(make_agent_state)
+    personas = {s.agent_id: make_persona_spec(persona_id="kant") for s in states}
+
+    with _MemoryWriteSpy() as spy:
+        result = await _run_with_llms(
+            states, personas, _routing_llms(states), self_other_enabled=True
+        )
+
+    # Layer2 genuinely active (non-vacuous — the seam was exercised).
+    assert result.self_other_observation_input is not None
+    # Non-vacuous spy: episodic memory writes DID happen this run.
+    assert spy.written_contents, "expected episodic memory writes to be observed"
+    # Disjointness: no written memory content carries the self-other segment.
+    for content in spy.written_contents:
+        assert _ROUTE_MARKER not in content, (
+            "self-other framing leaked into episodic memory (§L6 disjointness)"
+        )
+        assert "moved_toward=" not in content
+        assert "was_near_you" not in content
+
+
+# --------------------------------------------------------------------------- #
+# J4 — think=False parseability desk-audit doc presence (§L11, 文献 §9-ii)
+# --------------------------------------------------------------------------- #
+
+_DESK_AUDIT_DOC = (
+    Path(__file__).resolve().parents[1]
+    / ".."
+    / "experiments"
+    / "20260713-m13-m2-layer2"
+    / "think_false_parseability_desk_audit.md"
+).resolve()
+
+
+def test_self_other_think_false_desk_audit_present() -> None:
+    """The think=False parseability desk-audit doc exists with the honest-見送り path.
+
+    NOT a structural-floor verdict; verdict は holding. §L11 / 文献 §9-ii: the
+    think=False low-entropy collapse risk for the SimToM segment is recorded, and
+    the honest bounded-close path (degenerate → Layer2 見送り, Layer1 is the valid
+    milestone) is on record — presence/section grep only, never a quality judgement.
+    """
+    assert _DESK_AUDIT_DOC.exists(), f"missing desk-audit doc: {_DESK_AUDIT_DOC}"
+    text = _DESK_AUDIT_DOC.read_text(encoding="utf-8")
+    low = text.lower()
+    required = ("think=false", "parseability", "見送り", "bounded", "functional analog")
+    for marker in required:
+        assert marker.lower() in low, f"desk-audit doc missing marker: {marker!r}"
