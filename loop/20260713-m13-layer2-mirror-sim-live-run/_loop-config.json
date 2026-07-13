@@ -1,0 +1,14 @@
+{
+  "task": "20260713-m13-layer2-mirror-sim-live-run",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260713-m13-layer2-mirror-sim-live-run/_loop-events.jsonl",
+  "notes": "M2 Layer2 ミラー・シム real 封印実走 validate。binding = FROZEN pre-register .steering/20260713-m13-layer2-mirror-sim-live-run/design.md（Codex HIGH-1 反映済み acceptance = 非意味論 boolean のみ）+ decisions.md（Codex HIGH-1 反映 material + MEDIUM-1..4 + LOW-1..3 全反映）。construction であって measurement でない（floor/verdict/scorer/magnitude/divergence 非計算・非 emit、R-budget=0、measurement line CLOSE 済で再入しない、holding 不可侵、reasoning-trace door 保全）。M4 society enrichment harness を additive に self_other_enabled=True で拡張、既存 Layer2-off path 無改変。read-only 無改変: society.py（run_society_loop param+wiring landed）/handoff.py/live.py/loop.py/既存 m4_society_live_golden・m2_society_selfother_golden・m2_society_golden・凍結 evidence。編集は society_live.py（seam1）+ m4_society_live_capture.py（seam2/3/4）+ 新 test_m2_layer2_live.py + 新 fixture dir m2_layer2_live_golden + test_m4_society_replay.py parametrize のみ。DAG K1(001)→K2(002)→real-run bake(非 Loop human-run spend)→K3(003)。K1/K2/K3=recheck、real-run=非 Loop（VRAM 依存・非再現・一発）。凍結定数（tune-to-pass 封鎖）: SOCIETY_LIVE_N_COGNITION_TICKS=12/seed=0/3 agent(kant/nietzsche/rikyu)/think=False/model=qwen3:8b/self_other_enabled=True/run_id=m2-layer2-live-golden。acceptance は非意味論 boolean のみ（segment 存在/decode/parse/byte-parity/cross-platform byte-parity）、think=False 縮退・rendering collapse は non-gating human memo（semantic uptake not assessed）。honest outcome を tune しない。env_pins[self_other_enabled] は True の時だけ書く（MEDIUM-2）、verify は present 時 type(v) is bool を fail-closed 検証（MEDIUM-3）。binding 逸脱は Stop→superseding ADR→user 裁定。"
+}

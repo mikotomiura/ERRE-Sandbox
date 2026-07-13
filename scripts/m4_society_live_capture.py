@@ -105,6 +105,7 @@ from erre_sandbox.integration.embodied.society_live import (
     SOCIETY_LIVE_AGENT_IDS,
     SOCIETY_LIVE_N_COGNITION_TICKS,
     SOCIETY_LIVE_RUN_ID,
+    apply_self_other_env_pin,
     attach_society_live_observables,
     build_society_live_env_pins,
     fixed_constructor_fingerprint,
@@ -336,6 +337,7 @@ async def capture(
     ollama_version: str,
     vram_gb: float,
     uv_lock_sha256: str,
+    self_other_enabled: bool = False,
 ) -> tuple[SocietyRunResult, dict[str, str]]:
     """Drive one society live-capture run and render the four handoff artifacts.
 
@@ -346,6 +348,14 @@ async def capture(
     ``handoff.render_society_golden`` plus the society live env-pin +
     annotations overlay ``society_live.py`` (Issue 001) owns. Does not write
     anything to disk — the caller (``main``) does that.
+
+    ``self_other_enabled`` (M2 Layer2 mirror-sim, additive, default ``False``)
+    is threaded straight through to :func:`run_society_live_capture` and, only
+    when ``True`` (Codex MEDIUM-2), persisted into ``env_pins`` so
+    :func:`verify` can auto-detect it from the committed manifest rather than
+    requiring a CLI flag to be repeated at replay time. When ``False`` no key
+    is written at all — the existing M4 Layer2-off golden's ``env_pins``
+    block, and therefore its byte-identity, is untouched.
     """
     # Deliberately lazy (Codex-style D-4 precedent, ecl_v0_live_capture.py):
     # a bare `import` of this module must never require Ollama reachability.
@@ -377,6 +387,7 @@ async def capture(
             n_cognition_ticks=n_cognition_ticks,
             physics_ticks_per_cognition=physics_ticks_per_cognition,
             observation_factories=society_live_observation_factories(),
+            self_other_enabled=self_other_enabled,
         )
     finally:
         for client in inner_chats.values():
@@ -409,6 +420,14 @@ async def capture(
     # fixed_constructor_fingerprint, now deterministic — society_live.py
     # pins a fixed wall_clock in its fixed constructors — so no CLI-owned
     # override/correction is needed here).
+    # I2-owned additive witness field, written **only when True** (Codex
+    # MEDIUM-2): the existing M4 Layer2-off golden never sets this key, so
+    # its env_pins block — and therefore its byte-identity — is unaffected
+    # by this seam. verify() auto-detects Layer2-on from its presence. The
+    # write-when-True discipline lives in one shared seam (code-review
+    # MEDIUM) so this live-Ollama path and the CI mock-bundle renderer can
+    # never drift apart.
+    apply_self_other_env_pin(env_pins, self_other_enabled=self_other_enabled)
     run_config = {
         "seed": seed,
         "physics_ticks_per_cognition": physics_ticks_per_cognition,
@@ -459,6 +478,21 @@ async def verify(artifact_dir: Path) -> bool:
 
     ok = True
 
+    # M2 Layer2 auto-detect (Codex MEDIUM-3, fail-closed): absence -> False
+    # (existing M4 Layer2-off golden byte-identical replay), presence ->
+    # must be exactly ``bool`` (a poisoned/tampered "true" string must not
+    # silently coerce truthy).
+    so_enabled_raw = env_pins.get("self_other_enabled", False)
+    if "self_other_enabled" in env_pins and type(so_enabled_raw) is not bool:
+        ok = False
+        print(
+            f"[verify] FAIL self_other_enabled not bool: {so_enabled_raw!r} "
+            f"({type(so_enabled_raw).__name__})"
+        )
+        so_enabled = False
+    else:
+        so_enabled = bool(so_enabled_raw)
+
     # Codex HIGH-4 — fixed-constructor fingerprint assert.
     agent_states = society_live_agent_states()
     personas = society_live_personas()
@@ -508,6 +542,7 @@ async def verify(artifact_dir: Path) -> bool:
             physics_ticks_per_cognition=run_config["physics_ticks_per_cognition"],
             k_ecl=run_config["k_ecl"],
             observation_factories=observation_factories,
+            self_other_enabled=so_enabled,
         )
     finally:
         await embedding.close()
@@ -662,9 +697,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ollama-version", default="unknown")
     parser.add_argument("--vram-gb", type=float, default=0.0)
     parser.add_argument("--uv-lock-sha256", default="unknown")
+    parser.add_argument(
+        "--self-other",
+        action="store_true",
+        help="enable M2 Layer2 self-other injection (capture only)",
+    )
     args = parser.parse_args(argv)
 
     if args.verify:
+        # LOW-2: --self-other is a capture-only knob; verify auto-detects
+        # Layer2 from the committed manifest's env_pins, so surface the
+        # ignore explicitly rather than silently dropping the flag.
+        if args.self_other:
+            print(
+                "[verify] note: --self-other は無視されます"
+                "（manifest から auto-detect）"
+            )
         ok = asyncio.run(verify(args.artifact_dir))
         return 0 if ok else 1
 
@@ -678,12 +726,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             ollama_version=args.ollama_version,
             vram_gb=args.vram_gb,
             uv_lock_sha256=args.uv_lock_sha256,
+            self_other_enabled=args.self_other,
         )
     )
     _write(args.out_dir, rendered)
     print(f"[capture] wrote {len(rendered)} artifacts to {args.out_dir}")
     print(f"[capture] replay_checksum = {result.checksum}")
     print(f"[capture] event_log_checksum = {result.event_log_checksum}")
+
+    # Silent-off guard (Codex LOW-1): if --self-other was requested, the
+    # baked manifest must actually carry the True witness — a silent
+    # regression in the capture()/env_pins seam above must never look like
+    # a successful Layer2-on capture.
+    if args.self_other:
+        manifest_path = args.out_dir / "manifest.json"
+        baked_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # LOW-1: defensive access — a future manifest schema drift should
+        # surface as an explicit FAIL, not a KeyError stack trace.
+        if baked_manifest.get("env_pins", {}).get("self_other_enabled") is not True:
+            print(
+                "[capture] FAIL --self-other requested but baked manifest.json "
+                "env_pins.self_other_enabled is not True",
+                file=sys.stderr,
+            )
+            return 1
+
     return 0
 
 
