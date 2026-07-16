@@ -961,7 +961,7 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   measurement door fork (aha-judge 別文脈 from-scratch) は door 条件② (壁2 非循環 scorer) 解決 + **user 裁定**時のみ到達可能で、
   本 ADR では開けない。
 
-- **aha!/DMN-ECN forward — Phase 3 前段 = J-lens scoping spike (2026-07-17、doc-only・非 spend・J-lens 非実行・
+- **aha!/DMN-ECN forward — Phase 3 前段 = J-lens scoping spike (2026-07-17、PR #81、doc-only・非 spend・J-lens 非実行・
   measurement 非 authorize)**: Phase 2 §(b) 二相捕捉 regime の候補 instrument として Anthropic **J-lens** (Jacobian lens
   [25][26]、2026-07-06 OSS、中間 activation → 将来 token verbalize ポテンシャルの平均 Jacobian 読み出し `E[∂h_final/∂h_ℓ]`、
   内部 workspace = J-space) を採否判定。**literature-card** ([25] 論文 "Verbalizable Representations Form a Global Workspace
