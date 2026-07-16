@@ -35,6 +35,8 @@
 | [22] | DOI:10.1016/j.tsc.2023.101356 | Organisciak, P., Acar, S., Dumas, D. & Berthiaume, K. — *Beyond semantic distance: Automated scoring of divergent thinking greatly improves with large language models* | Thinking Skills and Creativity, 49, 101356, 2023 | docs/literature/20260713-aha-insight-neuroscience.md | active |
 | [23] | arXiv:2501.12948 | DeepSeek-AI — *DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning* | arXiv:2501.12948, 2025 | docs/literature/20260713-aha-insight-neuroscience.md | active |
 | [24] | arXiv:2504.02956 | Yang, S., Wu, J., Chen, X., Xiao, Y., Yang, X., Wong, D. F. & Wang, D. — *Understanding Aha Moments: from External Observations to Internal Mechanisms* | arXiv:2504.02956, 2025 | docs/literature/20260713-aha-insight-neuroscience.md | active |
+| [25] | URL:https://transformer-circuits.pub/2026/workspace/ | Gurnee, W., Sofroniew, N., Pearce, A. et al. (Anthropic) — *Verbalizable Representations Form a Global Workspace in Language Models* | Transformer Circuits Thread (transformer-circuits.pub), 2026-07-06 | docs/literature/20260717-jlens-jacobian-lens.md | active |
+| [26] | URL:https://github.com/anthropics/jacobian-lens | Anthropic — *jacobian-lens: Companion code for the global workspace interpretability paper* (Apache-2.0, reference implementation) | GitHub, 2026 | docs/literature/20260717-jlens-jacobian-lens.md | active |
 
 ## 追加・撤回ルール
 
@@ -49,3 +51,7 @@
   同一研究の査読版が **Guo, D. et al. — *DeepSeek-R1 incentivizes reasoning in LLMs through reinforcement learning*,
   Nature, 645(8081), 633–638, 2025, DOI:10.1038/s41586-025-09422-z** として出版 (著者表記が団体名 "DeepSeek-AI" → 筆頭個人
   "Guo, D. et al."、タイトル小文字化)。正式公開時はどちらを引くか (arXiv preprint vs Nature peer-reviewed) を用途に応じて選ぶ。
+
+- **[25] J-lens（global workspace）**: Transformer Circuits Thread の web 出版物 (arXiv 版・巻号なし)。著者表記
+  (Gurnee, W., Sofroniew, N., Pearce, A. et al.) は WebFetch 由来の recall であり、**正式引用の前に原典で著者順・全著者を
+  再確認**する (citation-ssot 規則6)。companion software = [26]。
