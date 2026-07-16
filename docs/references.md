@@ -35,8 +35,8 @@
 | [22] | DOI:10.1016/j.tsc.2023.101356 | Organisciak, P., Acar, S., Dumas, D. & Berthiaume, K. — *Beyond semantic distance: Automated scoring of divergent thinking greatly improves with large language models* | Thinking Skills and Creativity, 49, 101356, 2023 | docs/literature/20260713-aha-insight-neuroscience.md | active |
 | [23] | arXiv:2501.12948 | DeepSeek-AI — *DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning* | arXiv:2501.12948, 2025 | docs/literature/20260713-aha-insight-neuroscience.md | active |
 | [24] | arXiv:2504.02956 | Yang, S., Wu, J., Chen, X., Xiao, Y., Yang, X., Wong, D. F. & Wang, D. — *Understanding Aha Moments: from External Observations to Internal Mechanisms* | arXiv:2504.02956, 2025 | docs/literature/20260713-aha-insight-neuroscience.md | active |
-| [25] | URL:https://transformer-circuits.pub/2026/workspace/ | Gurnee, W., Sofroniew, N., Pearce, A. et al. (Anthropic) — *Verbalizable Representations Form a Global Workspace in Language Models* | Transformer Circuits Thread (transformer-circuits.pub), 2026-07-06 | docs/literature/20260717-jlens-jacobian-lens.md | active |
-| [26] | URL:https://github.com/anthropics/jacobian-lens | Anthropic — *jacobian-lens: Companion code for the global workspace interpretability paper* (Apache-2.0, reference implementation) | GitHub, 2026 | docs/literature/20260717-jlens-jacobian-lens.md | active |
+| [25] | URL:https://transformer-circuits.pub/2026/workspace/ | Gurnee, W., Sofroniew, N., Pearce, A. et al. (Anthropic) — *Verbalizable Representations Form a Global Workspace in Language Models* | Transformer Circuits Thread (transformer-circuits.pub), 2026-07-06 | docs/literature/20260717-jlens-jacobian-lens.md; research-positioning §8 | active |
+| [26] | URL:https://github.com/anthropics/jacobian-lens | Anthropic — *jacobian-lens: Companion code for the global workspace interpretability paper* (Apache-2.0, reference implementation) | GitHub, 2026 | docs/literature/20260717-jlens-jacobian-lens.md; research-positioning §8 | active |
 
 ## 追加・撤回ルール
 
