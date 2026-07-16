@@ -961,6 +961,27 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   measurement door fork (aha-judge 別文脈 from-scratch) は door 条件② (壁2 非循環 scorer) 解決 + **user 裁定**時のみ到達可能で、
   本 ADR では開けない。
 
+- **aha!/DMN-ECN forward — Phase 3 前段 = J-lens scoping spike (2026-07-17、PR #81、doc-only・非 spend・J-lens 非実行・
+  measurement 非 authorize)**: Phase 2 §(b) 二相捕捉 regime の候補 instrument として Anthropic **J-lens** (Jacobian lens
+  [25][26]、2026-07-06 OSS、中間 activation → 将来 token verbalize ポテンシャルの平均 Jacobian 読み出し `E[∂h_final/∂h_ℓ]`、
+  内部 workspace = J-space) を採否判定。**literature-card** ([25] 論文 "Verbalizable Representations Form a Global Workspace
+  in Language Models" transformer-circuits 2026 / [26] repo anthropics/jacobian-lens = Apache-2.0、
+  `docs/literature/20260717-jlens-jacobian-lens.md`) + **制約 audit** (license=Apache ✅ / cloud 非依存 ✅ だが 白箱
+  backward-pass 必須で Ollama inference-only と別経路・VRAM 16GB 重大リスク・qwen3 未検証・"reference impl, not maintained")
+  + **construction/measurement fork 判定**。**判定 = (B) REJECT / DEFER**: J-lens を aha/二相 **scorer** 化は禁止 (door②
+  over-read)、existence instrument への fold も今は採らない (**主根拠 = estimand mismatch: J-space existence ≠ think=True
+  text-trace 二相 existence、両者を繋ぐ構成妥当性 = §(b) 原則5 が禁じる「J-space を ERRE の named construction へ写す比喩
+  写像」で未確立** + qwen3 未検証。二次補強 = feasibility だが解消しても guard/construct 問題は残る)。**Phase 3 は
+  think=True text trace のみで前進** (construction-only fallback)。**door は DEFER で温存** (Phase 2 と同型・reject-forever
+  でない・条件充足で auto-open せず別 ADR + user 裁定)。process = Plan mode + reimagine (v1 instrument-first 意図破棄 → v2
+  guard-first、2 案 **非収束** = 再審査 trigger、v2 採用根拠は「§(b) 5 原則が tool feasibility より上位」) + Codex
+  (gpt-5.5/xhigh) Verdict = **Adopt-with-changes、HIGH 3 / MEDIUM 4 / LOW 2、事実誤認なし、fork を覆す指摘なし、全 9 件反映**
+  (HIGH-1 主根拠を estimand mismatch へ / HIGH-2 非収束を再審査 trigger 化 / HIGH-3 反証条件を再考開始 trigger 化 +
+  operationalize)。**claim 境界 = J-lens の *採否推奨* であって door を開ける・scorer を確定する行為ではない** (採用・merge・
+  door-open は **user 裁定**)。measurement 非 authorize、R-budget=0 / holding / measurement-line CLOSE 不変、5 機序分離継承。
+  詳細 = `.steering/20260717-jlens-scoping-spike/` (design-final / decisions / design-v1/v2/comparison / codex-review
+  verbatim)。次工程 = Phase 3 (観察器 = **text trace のみ**、J-lens fold なし)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
