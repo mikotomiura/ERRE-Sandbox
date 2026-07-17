@@ -11,6 +11,7 @@ Ollama: a ``MockTransport`` returns synthetic ``/api/chat`` payloads.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -193,6 +194,26 @@ async def test_think_trace_client_transport_error_on_http_500() -> None:
         await client.close()
 
 
+@pytest.mark.asyncio
+async def test_think_trace_client_malformed_eval_count_is_transport_error() -> None:
+    # Codex TASK-POST MEDIUM-2: a non-int eval_count must stay inside the
+    # transport-failure contract, not escape as a bare ValueError.
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"message": {"thinking": "t", "content": "c"}, "eval_count": "bad"},
+        )
+
+    client = tc.ThinkTraceClient(model="m", client=_mock_client(handler))
+    try:
+        with pytest.raises(tc.ThinkCaptureTransportError):
+            await client.capture(
+                system_prompt="s", user_prompt="u", sampling=_SAMPLING, num_predict=10
+            )
+    finally:
+        await client.close()
+
+
 # --------------------------------------------------------------------------- #
 # run_think_capture — records + partial-on-transport-failure (Codex H5)
 # --------------------------------------------------------------------------- #
@@ -270,45 +291,91 @@ def test_validate_prompt_provenance_happy_path() -> None:
     )  # Codex H2: source_manifest_checksum, not replay_checksum
 
 
+def _valid_manifest_for(decisions_text: str) -> dict[str, Any]:
+    """A manifest whose integrity fields match ``decisions_text`` so a bad-case test
+    reaches its targeted check rather than the sha/replay_checksum gate (Codex H3)."""
+    return {
+        "replay_checksum": "a" * 64,
+        "artifacts": {
+            "decisions.jsonl": {
+                "sha256": hashlib.sha256(decisions_text.encode("utf-8")).hexdigest()
+            }
+        },
+    }
+
+
+def _mutate_line(decisions: str, idx: int, key: str, value: str) -> str:
+    lines = decisions.splitlines()
+    rec = json.loads(lines[idx])
+    rec["call"][key] = value
+    lines[idx] = json.dumps(rec, ensure_ascii=False)
+    return "\n".join(lines) + "\n"
+
+
 def test_validate_prompt_provenance_rejects_wrong_n() -> None:
-    decisions, manifest = _read_source()
+    decisions, _ = _read_source()
     truncated = "\n".join(decisions.splitlines()[:5]) + "\n"
-    # Drop the manifest integrity sha so the N-check is what fires.
-    manifest2 = {**manifest, "artifacts": {}}
     with pytest.raises(tc.ProvenanceError):
-        tc.validate_prompt_provenance(decisions_text=truncated, manifest=manifest2)
+        tc.validate_prompt_provenance(
+            decisions_text=truncated, manifest=_valid_manifest_for(truncated)
+        )
 
 
 def test_validate_prompt_provenance_rejects_sha_mismatch() -> None:
     decisions, manifest = _read_source()
-    bad = {**manifest, "artifacts": {"decisions.jsonl": {"sha256": "deadbeef"}}}
+    bad = {**manifest, "artifacts": {"decisions.jsonl": {"sha256": "b" * 64}}}
     with pytest.raises(tc.ProvenanceError):
         tc.validate_prompt_provenance(decisions_text=decisions, manifest=bad)
 
 
-def test_validate_prompt_provenance_rejects_wrong_persona() -> None:
-    decisions, _ = _read_source()
-    lines = decisions.splitlines()
-    first = json.loads(lines[0])
-    first["call"]["system_prompt"] = "Persona: Somebody Else (fake)."
-    lines[0] = json.dumps(first, ensure_ascii=False)
-    mutated = "\n".join(lines) + "\n"
+def test_validate_prompt_provenance_rejects_missing_sha() -> None:
+    decisions, manifest = _read_source()
     with pytest.raises(tc.ProvenanceError):
         tc.validate_prompt_provenance(
-            decisions_text=mutated, manifest={"artifacts": {}}
+            decisions_text=decisions, manifest={**manifest, "artifacts": {}}
+        )
+
+
+@pytest.mark.parametrize("bad_ck", [None, "", "notahex" * 8, "a" * 63, "A" * 64])
+def test_validate_prompt_provenance_rejects_bad_replay_checksum(
+    bad_ck: str | None,
+) -> None:
+    # Codex TASK-POST HIGH-1: replay_checksum must be present + 64-hex.
+    decisions, _ = _read_source()
+    m = _valid_manifest_for(decisions)
+    if bad_ck is None:
+        m.pop("replay_checksum")
+    else:
+        m["replay_checksum"] = bad_ck
+    with pytest.raises(tc.ProvenanceError):
+        tc.validate_prompt_provenance(decisions_text=decisions, manifest=m)
+
+
+def test_validate_prompt_provenance_rejects_wrong_persona_first() -> None:
+    decisions, _ = _read_source()
+    mutated = _mutate_line(decisions, 0, "system_prompt", "Persona: Somebody Else.")
+    with pytest.raises(tc.ProvenanceError):
+        tc.validate_prompt_provenance(
+            decisions_text=mutated, manifest=_valid_manifest_for(mutated)
+        )
+
+
+def test_validate_prompt_provenance_rejects_wrong_persona_in_later_call() -> None:
+    # Codex TASK-POST HIGH-1: persona is checked on EVERY call, not just the first.
+    decisions, _ = _read_source()
+    mutated = _mutate_line(decisions, 10, "system_prompt", "Persona: Somebody Else.")
+    with pytest.raises(tc.ProvenanceError):
+        tc.validate_prompt_provenance(
+            decisions_text=mutated, manifest=_valid_manifest_for(mutated)
         )
 
 
 def test_validate_prompt_provenance_rejects_empty_prompt() -> None:
     decisions, _ = _read_source()
-    lines = decisions.splitlines()
-    first = json.loads(lines[0])
-    first["call"]["user_prompt"] = "   "
-    lines[0] = json.dumps(first, ensure_ascii=False)
-    mutated = "\n".join(lines) + "\n"
+    mutated = _mutate_line(decisions, 0, "user_prompt", "   ")
     with pytest.raises(tc.ProvenanceError):
         tc.validate_prompt_provenance(
-            decisions_text=mutated, manifest={"artifacts": {}}
+            decisions_text=mutated, manifest=_valid_manifest_for(mutated)
         )
 
 

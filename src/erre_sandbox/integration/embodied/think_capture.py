@@ -37,7 +37,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final, Literal, Self
+from typing import TYPE_CHECKING, Any, Final, Literal, Self, TypeGuard
 
 import httpx
 
@@ -84,8 +84,9 @@ follow-up, never a silent bump.
 """
 
 PHASE3_REQUESTED_SEED_METADATA: Final[int] = 0
-"""Recorded as *metadata only* (Codex M3): ``think=True`` is non-deterministic, so this
-is **not a reproducibility guarantee** — documents the requested seed only."""
+"""Recorded as *metadata only* (Codex M3 / TASK-POST LOW-1): **not sent to Ollama
+options**; ``think=True`` is non-deterministic, so this is **not a reproducibility
+guarantee** — documents the requested seed for the record only."""
 
 MANIFEST_SCHEMA: Final[str] = "aha-phase3-think-capture/v1"
 CAPTURE_KIND: Final[str] = "prompt-replay think=True capture, not live-loop execution"
@@ -349,6 +350,16 @@ class ThinkTraceClient:
                 "Ollama /api/chat payload missing 'message' "
                 f"(top-level keys: {sorted(payload.keys())})"
             )
+        # Normalise every top-level conversion to ThinkCaptureTransportError so a
+        # malformed payload (e.g. non-int eval_count) stays inside the transport-failure
+        # partial-diagnostic contract instead of escaping run_think_capture (Codex
+        # TASK-POST MEDIUM-2).
+        try:
+            eval_count = int(payload.get("eval_count", 0))
+        except (TypeError, ValueError) as exc:
+            raise ThinkCaptureTransportError(
+                f"Ollama /api/chat eval_count not an int: {payload.get('eval_count')!r}"
+            ) from exc
         done_reason = str(payload.get("done_reason", "stop"))
         finish_reason: Literal["stop", "length"] = (
             "length" if done_reason == "length" else "stop"
@@ -356,7 +367,7 @@ class ThinkTraceClient:
         return RawThinkResponse(
             raw_message=message,
             content=str(message.get("content", "")),
-            eval_count=int(payload.get("eval_count", 0)),
+            eval_count=eval_count,
             done_reason=done_reason,
             finish_reason=finish_reason,
         )
@@ -437,6 +448,11 @@ class ThinkCaptureRecord:
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _is_sha256_hex(value: object) -> TypeGuard[str]:
+    """True iff ``value`` is a 64-char lowercase-hex string (a SHA-256 digest)."""
+    return isinstance(value, str) and bool(re.fullmatch(r"[0-9a-f]{64}", value))
 
 
 def _source_call_fingerprint(call: RecordedLlmCall) -> str:
@@ -553,17 +569,28 @@ def validate_prompt_provenance(
 ) -> PromptProvenance:
     """Preflight-validate the committed ECL v0 prompts before any live call (Codex H3).
 
-    Raises :class:`ProvenanceError` (a structural Stop, *before* spend) when: the
-    committed ``decisions.jsonl`` sha256 mismatches the source manifest's artifact hash
-    (integrity); the record count is not ``n_expected``; any call lacks a non-empty
-    system/user prompt; or the first system prompt does not name the pinned persona. On
-    success returns the reconstructed calls plus the provenance block for the manifest.
+    Raises :class:`ProvenanceError` (a structural Stop, *before* spend, Codex TASK-POST
+    HIGH-1) when: the source manifest's ``replay_checksum`` is absent or not a 64-hex
+    digest; its ``artifacts.decisions.jsonl.sha256`` is absent or does not match the
+    committed ``decisions.jsonl`` sha256 (integrity); the record count is not
+    ``n_expected``; **any** call lacks a non-empty system/user prompt or does not name
+    the pinned persona (checked on every call, not just the first). On success returns
+    the reconstructed calls plus the provenance block for the manifest.
     """
+    replay_checksum = manifest.get("replay_checksum")
+    if not _is_sha256_hex(replay_checksum):
+        raise ProvenanceError(
+            f"source manifest replay_checksum missing/not-64hex: {replay_checksum!r}"
+        )
     committed_sha = _sha256(decisions_text)
     recorded_sha = (
         manifest.get("artifacts", {}).get("decisions.jsonl", {}).get("sha256")
     )
-    if recorded_sha is not None and committed_sha != recorded_sha:
+    if not isinstance(recorded_sha, str):
+        raise ProvenanceError(
+            "source manifest missing artifacts.decisions.jsonl.sha256"
+        )
+    if committed_sha != recorded_sha:
         raise ProvenanceError(
             f"source decisions.jsonl sha256 {committed_sha} != "
             f"manifest artifact sha256 {recorded_sha}"
@@ -574,14 +601,14 @@ def validate_prompt_provenance(
     for i, call in enumerate(calls):
         if not call.system_prompt.strip() or not call.user_prompt.strip():
             raise ProvenanceError(f"source call {i} has an empty system/user prompt")
-    if persona_display not in calls[0].system_prompt:
-        raise ProvenanceError(
-            f"persona check failed: {persona_display!r} not in first system prompt"
-        )
+        if persona_display not in call.system_prompt:
+            raise ProvenanceError(
+                f"source call {i} persona check failed: {persona_display!r} absent"
+            )
     return PromptProvenance(
         calls=calls,
         source_artifact=source_artifact,
-        source_manifest_checksum=str(manifest.get("replay_checksum", "unknown")),
+        source_manifest_checksum=replay_checksum,
         source_decisions_sha256=committed_sha,
         n_source_calls=len(calls),
     )
