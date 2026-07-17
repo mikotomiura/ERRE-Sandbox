@@ -22,6 +22,7 @@ from erre_sandbox.erre.locomotion_sampling import (
     DEFAULT_LOCO_GAIN_T,
     locomotion_delta,
 )
+from erre_sandbox.erre.sampling_table import SAMPLING_DELTA_BY_MODE
 from erre_sandbox.erre.two_phase import (
     EVALUATION_MODES,
     GENERATION_MODES,
@@ -137,6 +138,14 @@ def test_phase_partition_covers_every_mode_exactly_once() -> None:
         assert phase_of_mode(mode) in (TwoPhase.GENERATION, TwoPhase.EVALUATION)
 
 
+def test_phase_of_mode_rejects_unclassified_value() -> None:
+    # The raise is unreachable for a real ERREModeName (the import-time guard
+    # keeps the partition exhaustive), but the fail-fast branch must reject an
+    # out-of-partition value rather than silently defaulting to a phase.
+    with pytest.raises(ValueError, match="not classified"):
+        phase_of_mode("not_a_mode")  # type: ignore[arg-type]
+
+
 # --- (5) pinned constants + knob hygiene (tune-to-pass 封鎖, Codex HIGH-3/LOW-2)
 
 
@@ -144,6 +153,17 @@ def test_gains_are_pinned() -> None:
     assert TWO_PHASE_GAIN_T == DEFAULT_LOCO_GAIN_T == 0.3
     assert TWO_PHASE_GAIN_P == DEFAULT_LOCO_GAIN_P == 0.1
     assert TWO_PHASE_GAIN_R == 0.1
+
+
+def test_gain_r_grounded_in_chashitsu_repeat_penalty() -> None:
+    # The evaluation-phase rp gain is grounded in the convergent chashitsu mode's
+    # repeat_penalty override (ADR §(1) / Codex MED-1). Pinning the equality here
+    # makes the grounding machine-checked, so a future sampling_table drift breaks
+    # CI instead of silently unmooring the gain.
+    assert (
+        SAMPLING_DELTA_BY_MODE[ERREModeName.CHASHITSU].repeat_penalty
+        == TWO_PHASE_GAIN_R
+    )
 
 
 def test_knob_is_a_marker_with_no_tunable_gains() -> None:

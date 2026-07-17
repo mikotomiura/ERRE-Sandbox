@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from erre_sandbox.erre.locomotion_sampling import (
@@ -62,10 +63,12 @@ class TwoPhase(StrEnum):
 # magnitude, blended in opposite directions by phase — the "調合" of the salience
 # switch. Signs grounded in ``sampling_table`` (temp/top_p) and the ES-3
 # zero-control / convergent modes (rp); see the module docstring.
-_PHASE_SIGN: Final[Mapping[TwoPhase, tuple[float, float, float]]] = {
-    TwoPhase.GENERATION: (1.0, 1.0, 0.0),
-    TwoPhase.EVALUATION: (-1.0, -1.0, 1.0),
-}
+_PHASE_SIGN: Final[Mapping[TwoPhase, tuple[float, float, float]]] = MappingProxyType(
+    {
+        TwoPhase.GENERATION: (1.0, 1.0, 0.0),
+        TwoPhase.EVALUATION: (-1.0, -1.0, 1.0),
+    },
+)
 
 # Pinned gains (Final; env/CLI/persona override forbidden — Codex HIGH-3,
 # tune-to-pass 封鎖). temp/top_p inherit the ES-3 frozen gains; the evaluation

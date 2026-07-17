@@ -60,7 +60,13 @@ async def _resolved_options(
     cognition_retriever: Retriever,
     perception_event: PerceptionEvent,
 ) -> dict[str, float]:
-    """Run one cycle step and return the ``options`` the LLM actually received."""
+    """Run one cycle step and return the ``options`` the LLM actually received.
+
+    Assumes exactly one chat call per step: the ``perception_event`` fixture has
+    ``importance_hint`` below ``REFLECTION_IMPORTANCE_THRESHOLD`` and a non-reflective
+    source zone, so no reflection LLM call fires. A future fixture that trips
+    reflection would need to disambiguate the captured calls.
+    """
     captured: list[dict[str, Any]] = []
     persona = make_persona_spec(default_sampling=_HEADROOM_SAMPLING)
     agent = make_agent_state(
