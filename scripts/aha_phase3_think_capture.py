@@ -57,6 +57,9 @@ _DEFAULT_OUT_DIR = (
     _REPO_ROOT / "experiments" / "20260717-aha-phase3-think-true-live" / "artifacts"
 )
 _DEFAULT_MODEL = "qwen3:8b"
+# code-reviewer MEDIUM-3: cap the excerpts printed per trace so a very long trace does not
+# flood the console. Display-only; NOT a measure of marker frequency (over-read guard).
+_MAX_DISPLAYED_EXCERPTS = 8
 
 
 def _read_source(source_dir: Path) -> tuple[str, dict]:
@@ -88,19 +91,19 @@ async def _capture(
         f"source_manifest_checksum={provenance.source_manifest_checksum[:16]}"
     )
 
-    client = ThinkTraceClient(model=model, endpoint=endpoint)
     partial = False
-    try:
-        records: tuple[ThinkCaptureRecord, ...] = await run_think_capture(
-            prompts=provenance.calls, client=client, num_predict=num_predict
-        )
-    except ThinkCapturePartialError as exc:
-        # Transport failure (Codex H5): write what we have as a partial diagnostic, nonzero.
-        records = exc.records
-        partial = True
-        print(f"[capture] TRANSPORT FAILURE: {exc}", file=sys.stderr)
-    finally:
-        await client.close()
+    records: tuple[ThinkCaptureRecord, ...] = ()
+    # code-reviewer MEDIUM-1: use the client's own async context manager.
+    async with ThinkTraceClient(model=model, endpoint=endpoint) as client:
+        try:
+            records = await run_think_capture(
+                prompts=provenance.calls, client=client, num_predict=num_predict
+            )
+        except ThinkCapturePartialError as exc:
+            # Transport failure (Codex H5): write what we have as a partial diagnostic.
+            records = exc.records
+            partial = True
+            print(f"[capture] TRANSPORT FAILURE: {exc}", file=sys.stderr)
 
     env_pins = build_phase3_env_pins(
         qwen3_model_digest=qwen3_model_digest,
@@ -114,8 +117,8 @@ async def _capture(
         records=records,
         env_pins=env_pins,
         num_predict=num_predict,
+        partial=partial,
     )
-    manifest["partial"] = partial
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "manifest.json").write_text(
         handoff.canonical_dumps(manifest) + "\n", encoding="utf-8", newline="\n"
@@ -154,7 +157,7 @@ def _observe(traces_path: Path) -> int:
         head = thinking[:400].replace("\n", " ")
         print(f"  thinking[head]: {head}")
         # Excerpt inventory (Codex H4): illustrative excerpts only, NOT a count/score/gate.
-        for ex in excerpts[:8]:
+        for ex in excerpts[:_MAX_DISPLAYED_EXCERPTS]:
             print(f"  · marker excerpt: …{ex}…")
     print(
         "\n[observe] raw material only — write the descriptive two-phase observation into "

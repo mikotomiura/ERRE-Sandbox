@@ -193,10 +193,12 @@ _THINK_CLOSE: Final[str] = "</think>"
 def _extract_embedded_think(
     content: str,
 ) -> tuple[str | None, Literal["n/a", "ok", "failed"]]:
-    """Extract a ``<think>...</think>`` block embedded in ``content`` (old-Ollama path).
+    """Extract the **first** ``<think>...</think>`` block in ``content`` (old Ollama).
 
-    Returns ``(text, "ok")`` for a well-formed block, ``(None, "failed")`` when an
-    opening ``<think>`` has no matching close, and ``(None, "n/a")`` when there is none.
+    Only the first block is extracted (code-reviewer LOW-1); modern Ollama returns a
+    single ``message.thinking`` field so multi-block content is not expected. Returns
+    ``(text, "ok")`` for a well-formed block, ``(None, "failed")`` when an opening
+    ``<think>`` has no matching close, and ``(None, "n/a")`` when there is none.
     """
     open_i = content.find(_THINK_OPEN)
     if open_i < 0:
@@ -689,6 +691,7 @@ def build_phase3_manifest(
     records: Sequence[ThinkCaptureRecord],
     env_pins: dict[str, Any],
     num_predict: int = PHASE3_THINK_NUM_PREDICT,
+    partial: bool = False,
 ) -> dict[str, Any]:
     """Assemble the Phase 3 manifest.
 
@@ -696,6 +699,8 @@ def build_phase3_manifest(
     non-deterministic and this apparatus does no byte-parity verification. The
     deterministic layer is captured by ``prompt_provenance`` (source checksum + JSONL
     sha256). The counts block is mechanical technical facts only (Codex H4).
+    ``partial`` (code-reviewer MEDIUM-2) records whether a transport failure interrupted
+    the run — kept in the builder so the schema is visible in one place.
     """
     return {
         "schema": MANIFEST_SCHEMA,
@@ -707,6 +712,7 @@ def build_phase3_manifest(
         "think": PHASE3_THINK,
         "num_predict": num_predict,
         "requested_seed_metadata": PHASE3_REQUESTED_SEED_METADATA,
+        "partial": partial,
         "prompt_provenance": provenance.block(),
         "env_pins": env_pins,
         "mechanical_technical_counts": mechanical_counts(records),
