@@ -94,6 +94,7 @@ from erre_sandbox.erre.locomotion_sampling import (
     advance_lambda,
     locomotion_delta,
 )
+from erre_sandbox.erre.two_phase import phase_of_mode, two_phase_delta
 from erre_sandbox.inference import (
     ChatMessage,
     OllamaChatClient,
@@ -142,6 +143,7 @@ if TYPE_CHECKING:
         SubjectiveWorldModel,
         WorldModelEntry,
     )
+    from erre_sandbox.erre.two_phase import TwoPhaseKnob
     from erre_sandbox.memory import MemoryStore, RankedMemory, Retriever
     from erre_sandbox.schemas import (
         ERREModeName,
@@ -437,6 +439,7 @@ class CognitionCycle:
         bias_sink: Callable[[BiasFiredEvent], None] | None = None,
         individual_layer: IndividualLayerConfig | None = None,
         ecl_mode: EclRecordMode | None = None,
+        two_phase_knob: TwoPhaseKnob | None = None,
     ) -> None:
         self._retriever = retriever
         self._store = store
@@ -505,6 +508,14 @@ class CognitionCycle:
         # §論点1/§論点3). Same optional-collaborator idiom as ``erre_policy`` /
         # ``individual_layer``.
         self._ecl_mode = ecl_mode
+        # aha!/DMN-ECN Phase 4 (construction-only) two-phase locomotion knob.
+        # ``None`` (default) keeps the frozen ES-3 ``locomotion_delta`` path so
+        # every existing sealed golden stays byte-identical; an injected
+        # :class:`~erre_sandbox.erre.two_phase.TwoPhaseKnob` makes the locomotion
+        # sampling term phase-signed (see :meth:`_locomotion_delta_for`). Same
+        # presence-gated optional-collaborator idiom as ``ecl_mode`` /
+        # ``individual_layer``. Boolean causal-wiring only — measurement 非 authorize.
+        self._two_phase_knob = two_phase_knob
 
     async def step(  # noqa: PLR0915 — central cognition orchestrator; +1 stmt for the saturation snapshot capture (ADR section 2.1)
         self,
@@ -685,18 +696,16 @@ class CognitionCycle:
             flag_on=flag_on, beliefs=beliefs, agent_state=agent_state
         )
 
-        # Step 5-6: build prompts and call the LLM. The M13-ES3 locomotion delta
-        # is the third additive term; ``locomotion=None`` makes
-        # ``locomotion_delta`` return the all-zero delta, so an agent without the
-        # locomotion channel composes bit-identically to the pre-ES3 path.
+        # Step 5-6: build prompts and call the LLM. The locomotion delta is the
+        # third additive term. ``two_phase_knob=None`` (default) keeps the frozen
+        # M13-ES3 ``locomotion_delta`` (divergence-only), so an agent without the
+        # channel — and every existing sealed golden — composes bit-identically to
+        # the pre-Phase-4 path; an injected ``TwoPhaseKnob`` makes the term
+        # phase-signed (aha!/DMN-ECN Phase 4, see :meth:`_locomotion_delta_for`).
         sampling = compose_sampling(
             persona.default_sampling,
             agent_state.erre.sampling_overrides,
-            locomotion_delta(
-                agent_state.locomotion,
-                gain_t=DEFAULT_LOCO_GAIN_T,
-                gain_p=DEFAULT_LOCO_GAIN_P,
-            ),
+            self._locomotion_delta_for(agent_state),
         )
         system_prompt = build_system_prompt(persona, agent_state)
         user_prompt = build_user_prompt(
@@ -943,6 +952,33 @@ class CognitionCycle:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    def _locomotion_delta_for(self, agent_state: AgentState) -> SamplingDelta:
+        """Phase 4 knob-gated locomotion sampling delta.
+
+        ``two_phase_knob is None`` (the default) → the frozen ES-3
+        ``locomotion_delta`` (fixed-sign, divergence-only), byte-identical to the
+        pre-Phase-4 live path and to every existing sealed golden. When a
+        :class:`~erre_sandbox.erre.two_phase.TwoPhaseKnob` is injected the delta
+        becomes **phase-signed** via ``two_phase_delta``, with the phase projected
+        from the current ERRE mode (``phase_of_mode``): the same |λ| biases
+        divergence in the generation phase and convergence in the evaluation phase
+        (Phase 4 impl-design ADR §(3)). Construction-only — no effect is measured.
+        """
+        knob = self._two_phase_knob
+        if knob is None:
+            return locomotion_delta(
+                agent_state.locomotion,
+                gain_t=DEFAULT_LOCO_GAIN_T,
+                gain_p=DEFAULT_LOCO_GAIN_P,
+            )
+        return two_phase_delta(
+            agent_state.locomotion,
+            phase_of_mode(agent_state.erre.name),
+            gain_t=knob.gain_t,
+            gain_p=knob.gain_p,
+            gain_r=knob.gain_r,
+        )
 
     async def _write_observations(
         self,
