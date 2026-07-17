@@ -75,7 +75,7 @@ from erre_sandbox.integration.embodied.loop import (
     ecl_trace_checksum,
 )
 from erre_sandbox.memory import Retriever
-from erre_sandbox.schemas import ERREMode, ERREModeName, LocomotionState
+from erre_sandbox.schemas import ERREMode, ERREModeName, LocomotionState, Zone
 from erre_sandbox.world import ManualClock, WorldRuntime
 
 if TYPE_CHECKING:
@@ -183,7 +183,9 @@ async def run_two_phase_capture(
     :func:`~erre_sandbox.integration.embodied.loop.run_ecl_loop` that differs by a
     **single line** — the ``two_phase_knob=two_phase_knob`` argument to the
     :class:`CognitionCycle` it builds. ``two_phase_knob=None`` reproduces
-    ``run_ecl_loop`` byte-for-byte (the fidelity contract); a
+    ``run_ecl_loop`` byte-for-byte **given identical arguments** (the fidelity
+    contract; note the default ``n_cognition_ticks`` here is 32 vs ``run_ecl_loop``'s
+    8, so the fidelity test passes explicit matching params — Codex TASK-POST LOW). A
     :class:`~erre_sandbox.erre.two_phase.TwoPhaseKnob` makes the cycle's locomotion
     sampling term phase-signed. The knob carries no gains — the modulation always
     uses the pinned ``two_phase`` module constants, so injecting it is a presence
@@ -227,7 +229,7 @@ async def run_two_phase_capture(
         z: float,
         yaw: float,
         pitch: float,
-        zone: Any,
+        zone: Zone,
     ) -> None:
         md = ctx.move
         rows.append(
