@@ -94,7 +94,13 @@ from erre_sandbox.erre.locomotion_sampling import (
     advance_lambda,
     locomotion_delta,
 )
-from erre_sandbox.erre.two_phase import phase_of_mode, two_phase_delta
+from erre_sandbox.erre.two_phase import (
+    TWO_PHASE_GAIN_P,
+    TWO_PHASE_GAIN_R,
+    TWO_PHASE_GAIN_T,
+    phase_of_mode,
+    two_phase_delta,
+)
 from erre_sandbox.inference import (
     ChatMessage,
     OllamaChatClient,
@@ -963,10 +969,11 @@ class CognitionCycle:
         becomes **phase-signed** via ``two_phase_delta``, with the phase projected
         from the current ERRE mode (``phase_of_mode``): the same |λ| biases
         divergence in the generation phase and convergence in the evaluation phase
-        (Phase 4 impl-design ADR §(3)). Construction-only — no effect is measured.
+        (Phase 4 impl-design ADR §(3)). The gains are always the pinned module
+        constants — injecting the knob is a presence marker, never a per-run tuning
+        surface (Codex TASK-POST HIGH). Construction-only — no effect is measured.
         """
-        knob = self._two_phase_knob
-        if knob is None:
+        if self._two_phase_knob is None:
             return locomotion_delta(
                 agent_state.locomotion,
                 gain_t=DEFAULT_LOCO_GAIN_T,
@@ -975,9 +982,9 @@ class CognitionCycle:
         return two_phase_delta(
             agent_state.locomotion,
             phase_of_mode(agent_state.erre.name),
-            gain_t=knob.gain_t,
-            gain_p=knob.gain_p,
-            gain_r=knob.gain_r,
+            gain_t=TWO_PHASE_GAIN_T,
+            gain_p=TWO_PHASE_GAIN_P,
+            gain_r=TWO_PHASE_GAIN_R,
         )
 
     async def _write_observations(

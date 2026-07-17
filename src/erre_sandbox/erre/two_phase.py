@@ -112,18 +112,17 @@ if not GENERATION_MODES.isdisjoint(EVALUATION_MODES) or set(ERREModeName) != (
 
 @dataclass(frozen=True, slots=True)
 class TwoPhaseKnob:
-    """Presence-gated two-phase locomotion knob (``self_other``-style idiom).
+    """Presence-only marker that activates the two-phase locomotion knob.
 
-    Inject into ``CognitionCycle(two_phase_knob=...)`` to activate the phase-signed
-    locomotion modulation; ``None`` (the cycle default) keeps the byte-identical
-    ``locomotion_delta`` path. The gains default to the pinned module constants —
-    they are constructor arguments only so tests can exercise the ablation identity
-    (all gains 0 → all-zero delta), never a production tuning surface.
+    Inject ``CognitionCycle(two_phase_knob=TwoPhaseKnob())`` to activate the
+    phase-signed locomotion modulation; ``None`` (the cycle default) keeps the
+    byte-identical ``locomotion_delta`` path. It deliberately **carries no gains**:
+    the live modulation always uses the pinned module constants
+    (:data:`TWO_PHASE_GAIN_T` / :data:`TWO_PHASE_GAIN_P` / :data:`TWO_PHASE_GAIN_R`),
+    so injecting a knob is *not* a per-run tuning / clamp-escape surface (Codex
+    TASK-POST HIGH — a marker, not a parameter bag). The ablation identity is
+    exercised directly against the pure ``two_phase_delta`` helper in tests.
     """
-
-    gain_t: float = TWO_PHASE_GAIN_T
-    gain_p: float = TWO_PHASE_GAIN_P
-    gain_r: float = TWO_PHASE_GAIN_R
 
 
 def phase_of_mode(mode: ERREModeName) -> TwoPhase:

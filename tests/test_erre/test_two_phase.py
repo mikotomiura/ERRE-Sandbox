@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import ast
 import inspect
-from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -147,17 +146,19 @@ def test_gains_are_pinned() -> None:
     assert TWO_PHASE_GAIN_R == 0.1
 
 
-def test_knob_defaults_reference_pinned_constants() -> None:
+def test_knob_is_a_marker_with_no_tunable_gains() -> None:
+    # Presence-only marker: the live modulation always uses the pinned module
+    # constants, so a knob carries no per-injection gain override surface (Codex
+    # TASK-POST HIGH). tune-to-pass / clamp-escape via the knob is impossible.
     knob = TwoPhaseKnob()
-    assert knob.gain_t == TWO_PHASE_GAIN_T
-    assert knob.gain_p == TWO_PHASE_GAIN_P
-    assert knob.gain_r == TWO_PHASE_GAIN_R
+    for attr in ("gain_t", "gain_p", "gain_r"):
+        assert not hasattr(knob, attr)
 
 
-def test_knob_is_frozen() -> None:
-    knob = TwoPhaseKnob()
-    with pytest.raises(FrozenInstanceError):
-        knob.gain_t = 0.9  # type: ignore[misc]
+def test_knob_rejects_gain_arguments() -> None:
+    # The exact attack: constructing with a gain kwarg must fail (no override channel).
+    with pytest.raises(TypeError):
+        TwoPhaseKnob(gain_r=999.0)  # type: ignore[call-arg]
 
 
 def test_full_lam_stays_within_sampling_delta_bounds() -> None:
