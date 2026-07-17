@@ -1,0 +1,495 @@
+{
+  "phase": "evaluation",
+  "n_ticks": 32,
+  "per_tick": [
+    {
+      "agent_tick": 0,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 1,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 2,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 3,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 4,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 5,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 6,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 7,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 8,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 9,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 10,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 11,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 12,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 13,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 14,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 15,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 16,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 17,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 18,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 19,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 20,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 21,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 22,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 23,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 24,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 25,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 26,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 27,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 28,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 29,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 30,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    },
+    {
+      "agent_tick": 31,
+      "phase": "evaluation",
+      "knob_on_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "knob_off_sampling": [
+        0.7,
+        0.9,
+        1.0
+      ],
+      "sign_inverted": false
+    }
+  ],
+  "evaluation_phase_sign_inversion_fired": false,
+  "witness_tick_count": 0,
+  "eligible_tick_count": 0,
+  "fail_mode": "no_eligible_tick",
+  "checksums_match": true,
+  "record_knob_on_pinned": true,
+  "hard_gate": false,
+  "verdict": null,
+  "note": "construction firing witness (non-gate, side file, outside the checksum/SHA/Done set): pure boolean/count of the knob-on-vs-knob-off recomposed per-tick sampling (SamplingSpy). The bias's detectability (whether it changes zone/behaviour/aha) is the frozen second link and is NOT measured here (firing vs detectability 分離)."
+}
