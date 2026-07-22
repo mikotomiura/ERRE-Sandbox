@@ -982,6 +982,29 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   詳細 = `.steering/20260717-jlens-scoping-spike/` (design-final / decisions / design-v1/v2/comparison / codex-review
   verbatim)。次工程 = Phase 3 (観察器 = **text trace のみ**、J-lens fold なし)。
 
+- **aha!/DMN-ECN forward — 評価指標 well-posedness + Qwen3 feasibility spike (2026-07-22、doc-only・非 spend・J-lens 非実行・
+  Qwen3 probe 非実走・measurement 非 authorize)**: Phase 3 think=True 稼働検証 (PR #83) → Phase 4 λ↔二相 knob 建設 (PR #84) →
+  Phase 4b construction validation 実走 (PR #85、firing GO) を承け、**honest = firing witness ≈ 恒等式・deliberation の配線
+  確認で aha でない**ゆえ fork を再定位。**真の分岐 = 「②壁2 (非循環な評価指標) が well-posed に解けるか」の 1 点**。user 着想
+  (2026-07-18) = 評価指標を **aha 単独でなく個性化(individuation) 統合**で扱い、**J-lens を観測器具でなく評価指標そのもの
+  (J-space を estimand 測定空間に格上げ) + Qwen3 版**で ②壁2 を溶かせるか。**核心 finding (一次公式で確定) = サンプリング
+  knob ⊥ Jacobian** (`J_ℓ=E[∂h_final/∂h_ℓ]` は重みのみの関数で decode-sampling と独立、固定 averaged lens 前提)。**判定 =
+  split verdict**: **(aha) → (c) close / valid FAIL / 決着** — J-space では aha を非循環化できない (Reason A: 現行 sampling-knob
+  estimand に J-space signal 無し ＋ Reason B: weight/活性側 aha 機構は scorer=②壁2 循環でブロック、construct は
+  Jacobian-jump=aSTG=aha の比喩写像で破綻)。over-claim 回避 = 「aha 一般が永久に測定不能」とは主張しない。aha 作業は **M13
+  situated-3D-substrate 建設へ pivot**。**(個性化) → conditional-DEFER** — LoRA が weight-space ゆえ J-space は coherent な
+  非循環測定空間 (`J-dist(base,LoRA'd)` + 事前登録 named-concept、circularity テスト pass、C-proper behavioral floor 回避し得る)
+  だが well-posedness は 3 条件 (①construct validity from-scratch 確立 + null control で「distance>0 は noise」排除 ②Qwen3-8B
+  J-lens feasibility probe PASS ③superseding 測定 ADR + user 裁定 + real spend) に条件付き = **唯一生存する door-open 候補を
+  条件明示で defer、本 spike は door を開けない**。process = Plan mode + reimagine (v1 統一/対称 意図破棄 → v2 機構分割 first、
+  **2 案非収束 = 再審査 trigger**、tie-break = 機構 first が feasibility より上位) + user 裁定 (split verdict / probe defer) +
+  Codex (gpt-5.5/xhigh) Verdict = **Adopt-with-changes** (HIGH2 = aha close 射程限定・over-claim 回避 / MEDIUM3 = 固定 lens
+  前提明記 + per-token Jacobian 間接依存の脚注封じ、全反映)。**claim 境界 = fork の *判定 pre-register* であって door を開ける・
+  measurement を authorize する行為ではない** (door② UNMET / door CLOSED / R-budget=0 / holding / measurement-line CLOSE 不変、
+  close 確定・door-open は **user 裁定**)。詳細 = `.steering/20260722-jlens-metric-wellposedness-spike/` (design-final /
+  decisions / design-v1/v2/comparison / codex-review verbatim)。次工程 = user 裁定 ((A) aha=close 確定で M13 substrate 建設へ /
+  (B) 個性化 door を追うなら from-scratch construct ADR + feasibility probe を別セッションで)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
