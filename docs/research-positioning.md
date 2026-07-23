@@ -1005,6 +1005,57 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   decisions / design-v1/v2/comparison / codex-review verbatim)。次工程 = user 裁定 ((A) aha=close 確定で M13 substrate 建設へ /
   (B) 個性化 door を追うなら from-scratch construct ADR + feasibility probe を別セッションで)。
 
+- **M13 aha-substrate-embodiment — locomotion-driven traversal 建設 (2026-07-23、construction・Ollama-free scripted・
+  real qwen3 spend でない)**: 評価指標 well-posedness spike (aha=close 確定) を承けた M13 situated-3D-substrate 建設 entry。
+  Plan mode + reimagine (design-v1 plan-puppet 意図破棄 → design-v2 world-stimulus ゼロ再生成) + user 裁定 + Codex
+  independent review (gpt-5.5/xhigh、Verdict=Adopt-with-changes) で FROZEN。**grill 診断**: プロンプト当初の entry
+  想定 (a)「real embedding → multi-zone rendering」は**誤診**と確定 (`contracts/geometry.reflect_clamp` が
+  `locate_zone(target)==destination_zone` を常に保証=embedding は zone routing に無関係、M4 golden 36/36 で経験確認、
+  collapse の真因は embedding でなく agent の settle) → 真の梃子は **(b) locomotion-driven traversal**
+  (`erre/locomotion_sampling.advance_lambda` の λ を zone 横断で earn させ、二相 knob を embodied 発火させる)。
+  **I1 (`traversal_live.py` 新設)**: 凍結 5-leg itinerary (`peripatos→agora→garden→chashitsu→study→peripatos`)
+  を scripted planner (waypoint observation を消費し `destination_zone` を返す、Ollama-free) で歩かせる決定論
+  traversal harness。既存 `two_phase_live.run_two_phase_capture` を plan-source 差し替えのみで再利用 (organ 6ファイル
+  無改変、sibling driver 系譜)。**W1 route replay fidelity** = `extract_visit_sequence` (end-of-cognition-tick 物理
+  zone) が凍結 route と exact match。calibration finding (tune-to-pass 閉塞): 「zone 到達」(緩い閾値、~1000 tick 未満で
+  全 leg 到達) と「position full-snap/trace byte-stability」(厳しい閾値、1500 tick で収束) を区別し、
+  `TRAVERSAL_HORIZON=5` / `TRAVERSAL_PHYSICS_TICKS_PER_COGNITION=2000` を確定 (厳しい方の閾値+余裕を pin)。
+  **I2**: **W2 λ update-path** = `expected_move_ticks`/`expected_positive_lambda_ticks` を frozen route から純粋導出
+  (byte-pin、tick0 は seed λ=0 で非発火・tick1 から発火が run で実測確認)、SamplingSpy の実測 eligible-tick と完全一致
+  (計算値と operational proxy の整合=強い witness)。**W3 knob algebra** = `sign_inversion_fired` を traversal が
+  **自身の zone 横断で earn した** λ>0 evaluation tick に適用 (Phase 4b の λ₀ seed 依存をここで解消)、generation-phase
+  control (knob-on≡off) を「λ>0 tick で非発火」の non-vacuous 形で pin、record-knob-on pin 確認。**I3**: `--capture`/
+  `--verify` Ollama-free 決定論 script (`scripts/aha_traversal_live_capture.py`) + 委託 golden
+  (`tests/fixtures/aha_traversal_golden/`、decisions/ecl_trace/envelope_stream/manifest の 4-artifact 単一エージェント
+  shape、`handoff.render_golden`/`decisions_to_jsonl` 経由で envelope_provenance も含め 6 桁量子化・JSONL round-trip
+  必須=I2 review の in-memory shortcut 教訓を継承) + **W4 二層 fidelity anchor** (A: `run_two_phase_capture(knob=None)`
+  ≡ `run_ecl_loop` を traversal 固有入力で再確認 / B: knob-on vs knob=None の decision diff が sampling 3 field
+  allowlist の外に漏れないことを exact leaf-diff で pin)。**claim 境界 = construction (scripted traversal harness で
+  二相 knob が traversal 自身が earn した λ>0 tick で embodied 発火する舞台を建てた) であって emergent traversal でも
+  aha 実在測定でもない** (firing ≈ 恒等式・符号確認のみ、over-read 禁止、5 機序分離継承、door② UNMET・door CLOSED・
+  R-budget=0・holding 不可侵)。**known-limitation (user 裁定 DA-9)**: Win/WSL byte-parity は M4/phase4b/ECL v0 と同一の
+  量子化パイプライン (`canonical_dumps` 6桁量子化 + provenance 再量子化) を無改変で継承しており **byte-parity-ready**
+  だが、WSL checkout の 261-commit divergence (OSS 公開 cleanup の履歴 force-update 由来、`integration/embodied/`
+  package 自体が未到達) により **物理再 bake は本タスクでは未実施** (follow-up developer step として持ち越し、成績合わせ
+  での省略でなく disclosure)。詳細 = `.steering/20260723-m13-aha-substrate-embodiment/` (design-final、witness 事前登録
+  + calibration finding 追記) + `loop/20260723-m13-aha-substrate-embodiment/` (issues 001-003)。次工程 = Win/WSL
+  byte-parity 実測の developer procedure 継続 + user 裁定 (real qwen3 sealed 実走・Godot rendering 連携は別 spend)。
+
+  **追補 (I4、2026-07-23、real qwen3 + real embedding channel exercise = code path のみ・**real 実走は未実施
+  (BLOCKED、I4-G1 実行ゲート = user spend ratify 未取得)**)**: `scripts/aha_traversal_live_capture.py` に
+  `--real` mode（real `OllamaChatClient` を `run_traversal_capture` の新設 `inner_chat` 注入点で action-LLM に、
+  real `EmbeddingClient`（nomic-embed-text、既存 apparatus）を新設 `EmbeddingRecordReplayClient` 経由で embedding
+  channel に接続）を追加。**scripted itinerary をなぞらせない** — real qwen3 は waypoint stimulus に emergent に
+  応答する想定で、応答が settle（λ=0、空振り）する可能性を前提に、honest count annotation
+  (`traversal_channel_exercise_summary`、distinct-zone/move-tick、非 gate) で結果をそのまま記録する設計。
+  **本タスクでは real Ollama を一度も起動していない**（code path のみ land、mock 化 unit
+  `test_traversal_real_mode_replay_determinism` で record→replay 決定論を確認、httpx MockTransport のみで real
+  Ollama 非接触）。`experiments/20260723-aha-traversal-real/`（env.md/run.ps1/repro.ps1/repro.sh）を用意したが
+  `artifacts/` は意図的に未作成（fabricate しない）。**「real-LLM emergent traversal が効く」「real embedding が
+  multi-zone を生む」とは主張しない**（embedding ⊥ zone routing、DA-1/DA-7、Codex HIGH-2 defer 継承）。次工程 =
+  user spend ratify 取得後、別セッションで `run.ps1` 実行 → sealed capture → `repro.ps1`/`repro.sh` byte-parity
+  実測（空振りなら 1 回まで pre-register 再走、結果選別しない、Phase 4b run1 と同型）。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
