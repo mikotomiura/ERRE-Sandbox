@@ -45,6 +45,7 @@ Codex HIGH-1 / MEDIUM-2 reflected:
 from __future__ import annotations
 
 import ast
+import json
 import re
 from pathlib import Path
 from typing import Final
@@ -180,13 +181,27 @@ def _m4_geometry_python() -> list[Path]:
     return sorted(p for p in root.glob("export_*.py") if p.name not in legacy)
 
 
-def _m4_gdscript() -> list[Path]:
-    """M4-new GDScript (the ``SocietyReplayViewer`` + any ``Society*`` helper).
+def _traversal_render_python() -> list[Path]:
+    """M13 traversal-rendering ``.py`` (derivation tool + witness module).
 
-    Pinned to the M4 ``Society*`` prefix so the frozen ``EclReplayPlayer.gd`` /
-    ``FixturePlayer.gd`` (read-only apparatus) are never scanned."""
+    Same full identifier ban as the M4 layout/parser/test tier: neither file has
+    any legitimate geometry-vocabulary reason to carry a bare ``floor``."""
+    return _existing(
+        [
+            _REPO_ROOT / "scripts" / "aha_traversal_render_derive.py",
+            _REPO_ROOT / "tests" / "test_integration" / "test_traversal_render.py",
+        ]
+    )
+
+
+def _m4_gdscript() -> list[Path]:
+    """Dev GDScript this and the M13 traversal-rendering task add.
+
+    Pinned to the M4 ``Society*`` prefix plus the M13 ``Traversal*`` prefix so
+    the frozen ``EclReplayPlayer.gd`` / ``FixturePlayer.gd`` (read-only
+    apparatus) are never scanned."""
     dev = _REPO_ROOT / "godot_project" / "scripts" / "dev"
-    return sorted(dev.glob("Society*.gd"))
+    return sorted([*dev.glob("Society*.gd"), *dev.glob("Traversal*.gd")])
 
 
 # --------------------------------------------------------------------------- #
@@ -361,7 +376,7 @@ def test_m4_viz_no_measurement_import_or_emit() -> None:
     """AC I1-G1: every M4-new ``.py`` file (layout/parser/test tier = full ban,
     geometry exporter tier = reduced ban) carries no measurement import /
     identifier / aggregation / emitted-key surface — executable AST only."""
-    for path in _m4_layout_and_test_python():
+    for path in (*_m4_layout_and_test_python(), *_traversal_render_python()):
         assert_no_measurement_surface_py(
             _parse(path), identifier_tokens=_IDENTIFIER_BAN_FULL
         )
@@ -537,3 +552,90 @@ def render_scene() -> str:
         )
     with pytest.raises(AssertionError):
         assert_no_measurement_in_gdscript("var scorer = 1\n")
+
+
+# --------------------------------------------------------------------------- #
+# I1-G5 — emitted-schema backstop (Codex MEDIUM-2, M13 traversal-rendering ADR
+# §5(d)): a filename/text scan can miss a measurement field that only appears in
+# what an artifact actually EMITS, so the committed render derivatives' own key
+# sets are checked too.
+# --------------------------------------------------------------------------- #
+
+_SCHEMA_BANNED_KEY_SUBSTR: Final[tuple[str, ...]] = (
+    "effect",
+    "divergence",
+    "floor",
+    "verdict",
+    "scorer",
+    "landscape",
+    "spdm",
+    "runningness",
+    "detectability",
+    "aha_proxy",
+    "d_loco",
+)
+"""Substrings banned from any emitted artifact's field name (behaviour axis)."""
+
+_RENDER_FIXTURE_DIR: Final = _REPO_ROOT / "tests" / "fixtures" / "aha_traversal_render"
+_RENDER_DUMP_PATH: Final = _RENDER_FIXTURE_DIR / "expected_keyframe_dump.jsonl"
+_RENDER_MANIFEST_PATH: Final = _RENDER_FIXTURE_DIR / "render_manifest.json"
+
+_RENDER_DUMP_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "kind",
+        "physics_tick_index",
+        "agent_tick",
+        "order_slot",
+        "zone",
+        "x",
+        "y",
+        "z",
+        "yaw",
+    }
+)
+"""The exact key set a render keyframe row may carry (pose echo + clock only)."""
+
+
+def assert_no_measurement_in_emitted_schema(keys: list[str]) -> None:
+    """No emitted field name carries a measurement token."""
+    for key in keys:
+        low = key.lower()
+        assert not any(tok in low for tok in _SCHEMA_BANNED_KEY_SUBSTR), key
+
+
+def test_traversal_render_emitted_schema_has_no_measurement_field() -> None:
+    """AC5 (schema backstop): every key the committed render derivatives emit is
+    a pose/clock/provenance field — no measurement surface, and the keyframe rows
+    carry exactly the pinned key set (a new field cannot slip in unnoticed)."""
+    if not _RENDER_DUMP_PATH.is_file():  # not yet landed — nothing to scan
+        pytest.skip("render fixtures absent")
+
+    for line in _RENDER_DUMP_PATH.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        keys = list(json.loads(stripped))
+        assert_no_measurement_in_emitted_schema(keys)
+        assert set(keys) == _RENDER_DUMP_KEYS
+
+    manifest = json.loads(_RENDER_MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert_no_measurement_in_emitted_schema(list(manifest))
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        ["kind", "verdict"],
+        ["x", "divergence"],
+        ["aha_proxy_value"],
+        ["detectability"],
+        ["d_loco"],
+        ["structural_floor"],
+    ],
+)
+def test_traversal_render_schema_guard_catches_negative_fixture(
+    keys: list[str],
+) -> None:
+    """AC5 efficacy: each planted measurement field name trips the schema guard."""
+    with pytest.raises(AssertionError):
+        assert_no_measurement_in_emitted_schema(keys)
