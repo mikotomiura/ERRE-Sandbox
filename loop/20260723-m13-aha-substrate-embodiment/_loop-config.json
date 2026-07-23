@@ -1,0 +1,15 @@
+{
+  "task": "20260723-m13-aha-substrate-embodiment",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "shared-tree-sequential",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260723-m13-aha-substrate-embodiment/_loop-events.jsonl",
+  "env": {},
+  "notes": "M13 aha-substrate-embodiment traversal harness 実コード。binding = FROZEN ADR .steering/20260723-m13-aha-substrate-embodiment/design-final.md（Plan 承認 + Codex Adopt-with-changes 反映、witness W1-W4 = exact/checksum 系）+ decisions.md DA-1〜6。construction であって measurement でない（effect/divergence/floor/aha proxy/verdict 非 emit、R-budget=0 不変、holding 不可侵、over-read 禁止、firing⇔detectability 混同禁止、checksum/route/λ-sequence は再現性 witness であって metric でない）。organ 6ファイル無改変（loop/cycle/handoff/two_phase/embodiment/geometry）= Option A sibling driver、要改変なら Stop→superseding ADR→user 裁定→Codex。real qwen3+embedding sealed 実走は本タスク非対象（別 spend ratify）、golden は Ollama-free 決定論。実行 = subagent-per-issue（shared feature tree feat/m13-aha-substrate-embodiment-traversal、依存チェーン 001→002→003→004 ゆえ sequential、parallel=1）。実装=Sonnet / review=Opus(code-reviewer) / 各 attempt 検証=Haiku(test-runner→loop-watchdog、verify_level=recheck で独立再走)。CI parity = pwsh scripts/dev/pre-push-check.ps1 4 段 + WSL byte-parity。GPL src/ import 禁止・cloud LLM API 必須依存禁止・think=false。有界自律（DA-8）: 品質ゲート緑なら逐一承認なしで自動連続実装、hard gate（004 real qwen3+embedding sealed 実走 spend ratify / organ 改変 / 最終 merge / Stop 条件）でのみ停止し user 裁定。Issue 004 = real qwen3 + real embedding(nomic-embed-text) fully-real channel exercise、code path 本タスク・実走 ratify ゲート（DA-7）。"
+}
