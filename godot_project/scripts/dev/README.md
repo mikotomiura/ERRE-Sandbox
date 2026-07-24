@@ -24,6 +24,35 @@
        --stream=<abs>/envelope_stream.jsonl --dump=<abs>/placement_dump.jsonl
   ```
 
+- `TraversalReplayViewer.gd` — M13 traversal-rendering viewer (`extends
+  SceneTree`). Replays the committed aha-traversal golden as a **single** agent
+  walking the pre-registered itinerary `peripatos → agora → garden → chashitsu →
+  study → peripatos` across the 5 zones. What it shows is a **scripted golden
+  traversal replay** — a recorded walk played back; it is not emergence, not an
+  "aha", and nothing is measured. Its input is not the raw 5.1 MB 30 Hz
+  `ecl_trace.jsonl` but the keyframe stream
+  `scripts/aha_traversal_render_derive.py` decimates out of it (each pose echoed
+  from a raw row, never recomputed); the viewer lerp-interpolates between
+  keyframes for display only. Two modes: headless dump for the CI witness
+  (`--dump=<abs>`) and interactive playback. The whole-view wrapper scene is
+  `scenes/dev/TraversalReplayScene.tscn` (single `Avatar0`, separate identity
+  from `SocietyReplayScene.tscn`). Boot path:
+
+  ```
+  # 1. derive the keyframe stream (pure Python, no Godot)
+  python scripts/aha_traversal_render_derive.py --emit /tmp/render_keyframes.jsonl
+
+  # 2a. headless dump (CI witness lane)
+  godot --headless --path godot_project \
+    --script res://scripts/dev/TraversalReplayViewer.gd \
+    -- --keyframes=/tmp/render_keyframes.jsonl --dump=/tmp/keyframe_dump.jsonl
+
+  # 2b. interactive 観察 (drag = orbit, wheel = zoom, WASD = pan)
+  godot --path godot_project \
+    --script res://scripts/dev/TraversalReplayViewer.gd \
+    -- --keyframes=/tmp/render_keyframes.jsonl
+  ```
+
 ## Rules
 
 1. **Never import from `dev/` in production scripts.** The production
