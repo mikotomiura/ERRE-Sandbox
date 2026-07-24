@@ -1405,6 +1405,70 @@ ControlEnvelope: TypeAlias = Annotated[
 
 
 # =============================================================================
+# §7.x InboundEnvelope (client -> server only, separate from ControlEnvelope)
+# =============================================================================
+
+
+class WorldPerturbationMsg(_EnvelopeBase):
+    """Bounded inbound world stimulus from Godot (client -> server only).
+
+    Deliberately **not** a member of :data:`ControlEnvelope` (HIGH-3,
+    ``design-final.md`` DA-2) — see :data:`InboundEnvelope` for why. Carries
+    a *world stimulus* that the gateway's inbound sink maps to a
+    :class:`PerceptionEvent` (``integration.inbound.world_perturbation_to_perception``);
+    it is never a direct knob/mode/destination override, so a client cannot
+    use it to bypass the cognition loop.
+
+    ``correlation_id`` is owned here — not added to :class:`PerceptionEvent`
+    — so the closure's reachability witness can trace a perturbation across
+    seams (perturbation -> perception -> capture -> emitted envelope)
+    without widening any existing observation/outbound schema (grill G2).
+    Empty string (the default) means "the inbound sink assigns one on
+    enqueue"; a client may also supply its own.
+    """
+
+    kind: Literal["world_perturbation"] = "world_perturbation"
+    target_agent_id: str = Field(
+        ...,
+        description=(
+            "The agent this stimulus is aimed at. Existence against the "
+            "live agent registry is validated by the gateway/loop wiring "
+            "(a later issue), not by this schema."
+        ),
+    )
+    modality: Literal["sight", "sound", "smell", "touch", "proprioception"]
+    source_zone: Zone
+    content: str = Field(..., max_length=512)
+    intensity: _Unit = 0.5
+    correlation_id: str = Field(default="", max_length=64)
+
+
+InboundEnvelope: TypeAlias = WorldPerturbationMsg
+"""Client -> server inbound union — a separate system from :data:`ControlEnvelope`.
+
+Deliberately kept out of ``ControlEnvelope`` (HIGH-3, ``design-final.md``
+DA-2): that union is outbound-only (server -> client, 13 kinds) and
+``test_envelope_kind_sync.py`` pins its kind set 1:1 against
+``EnvelopeRouter.gd``'s hand-coded ``match`` block. Folding an inbound kind
+into it would force a Godot-side receive branch for a message Godot only
+ever *sends*, plus a wire-protocol / ``SCHEMA_VERSION`` review this closure
+does not need (outbound protocol is unchanged).
+
+Only one member today, so this is a plain alias rather than
+``Annotated[X | Y, Field(discriminator=...)]`` — pydantic's discriminated
+union needs an actual multi-member ``Union`` to dispatch on, and there is
+nothing to discriminate between yet. ``pydantic.TypeAdapter(InboundEnvelope)``
+still validates and rejects correctly today: a plain alias resolves to
+``TypeAdapter(WorldPerturbationMsg)``, whose inherited
+``model_config = ConfigDict(extra="forbid")`` (from ``_EnvelopeBase``)
+already rejects any payload that isn't a well-formed
+``WorldPerturbationMsg`` — including one tagged with an outbound ``kind``
+such as ``"move"``. When a second inbound kind is added, promote this alias
+to the ``Annotated`` discriminated-union form.
+"""
+
+
+# =============================================================================
 # §7.5 DialogScheduler (interface only, M4 foundation)
 # =============================================================================
 
@@ -1575,6 +1639,7 @@ __all__ = [
     "ErrorMsg",
     "HabitFlag",
     "HandshakeMsg",
+    "InboundEnvelope",
     "InternalEvent",
     "LocomotionState",
     "MemoryEntry",
@@ -1606,6 +1671,7 @@ __all__ = [
     "TimeOfDay",
     "TriggerEventTag",
     "WorldLayoutMsg",
+    "WorldPerturbationMsg",
     "WorldTickMsg",
     "Zone",
     "ZoneLayout",

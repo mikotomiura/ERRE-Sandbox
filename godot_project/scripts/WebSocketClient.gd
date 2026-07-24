@@ -1,4 +1,5 @@
-# WebSocketClient — T16 godot-ws-client (T19 live: client handshake added)
+# WebSocketClient — T16 godot-ws-client (T19 live: client handshake added;
+# M13 live-loop-closure Issue 005: send_perturbation added)
 #
 # Thin WebSocket client. Responsibilities:
 #   1. Maintain a connection to the G-GEAR gateway at ``ws_url``
@@ -7,6 +8,9 @@
 #   3. Auto-reconnect every ``RECONNECT_DELAY`` seconds on disconnect
 #   4. Parse each incoming UTF-8 JSON frame into a Dictionary
 #   5. Emit ``envelope_received`` / ``connection_status_changed``
+#   6. Send bounded ``WorldPerturbationMsg`` frames on request
+#      (``send_perturbation`` — client -> server only, this client never
+#      receives ``world_perturbation`` back)
 #
 # This script intentionally knows nothing about ControlEnvelope kinds or
 # downstream dispatch. ``EnvelopeRouter.gd`` handles kind-based routing,
@@ -78,6 +82,42 @@ func _send_client_handshake() -> void:
 	else:
 		_handshake_sent = true
 		print("[WS] client HandshakeMsg sent")
+
+
+## Send a bounded ``WorldPerturbationMsg`` frame (client -> server only, M13
+## live-loop-closure Issue 005). Mirrors ``schemas.py``'s ``WorldPerturbationMsg``
+## field-for-field (``_EnvelopeBase`` header + inbound-only body) — see
+## ``tests/test_integration/test_inbound_gdscript_contract.py`` for the pinned
+## key-set contract. This is a **wiring** call: it sends one bounded world
+## stimulus for the gateway's inbound sink to map onto a ``PerceptionEvent``
+## (``integration/inbound.py``); it never carries a knob/mode/destination
+## override, and this client never receives ``world_perturbation`` back
+## (inbound-only, LOW-2 — ``EnvelopeRouter.gd`` has no matching branch).
+func send_perturbation(
+	target_agent_id: String,
+	modality: String,
+	source_zone: String,
+	content: String,
+	intensity: float,
+	correlation_id: String = "",
+) -> void:
+	var payload := {
+		"kind": "world_perturbation",
+		"schema_version": CLIENT_SCHEMA_VERSION,
+		"tick": 0,
+		"sent_at": Time.get_datetime_string_from_system(true) + "Z",
+		"target_agent_id": target_agent_id,
+		"modality": modality,
+		"source_zone": source_zone,
+		"content": content,
+		"intensity": intensity,
+		"correlation_id": correlation_id,
+	}
+	var err := _ws.send_text(JSON.stringify(payload))
+	if err != OK:
+		push_warning("[WS] world_perturbation send failed: %s" % error_string(err))
+	else:
+		print("[WS] world_perturbation sent (target=%s modality=%s)" % [target_agent_id, modality])
 
 
 func _schedule_reconnect() -> void:

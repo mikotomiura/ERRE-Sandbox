@@ -47,6 +47,7 @@ from erre_sandbox.schemas import (
     DialogTurnMsg,
     ErrorMsg,
     HandshakeMsg,
+    InboundEnvelope,
     MoveMsg,
     SpeechMsg,
     WorldLayoutMsg,
@@ -55,6 +56,8 @@ from erre_sandbox.schemas import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from erre_sandbox.integration.inbound import InboundSink
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +70,28 @@ _ENVELOPE_ADAPTER: Final[TypeAdapter[ControlEnvelope]] = TypeAdapter(ControlEnve
 
 Instantiating a :class:`TypeAdapter` is non-trivial (introspects Pydantic
 models), so it is created once at import time and reused.
+"""
+
+_INBOUND_ADAPTER: Final[TypeAdapter[InboundEnvelope]] = TypeAdapter(
+    InboundEnvelope,
+)
+"""Cached TypeAdapter for the separate inbound-only envelope system (Issue 002).
+
+Mirrors :data:`_ENVELOPE_ADAPTER`'s "create once at import time" rationale.
+:data:`~erre_sandbox.schemas.InboundEnvelope` is a structurally distinct
+system from :data:`ControlEnvelope` (design-final.md DA-2 / HIGH-3) — a
+frame that validates here is never dispatched through the outbound
+:class:`ControlEnvelope` path and vice versa.
+
+Annotated ``TypeAdapter[InboundEnvelope]`` (Opus TASK-POST MED-1), not the
+concrete ``TypeAdapter[WorldPerturbationMsg]`` it happens to resolve to
+today: :data:`~erre_sandbox.schemas.InboundEnvelope` is currently a plain
+``TypeAlias`` (single member, no discriminator yet — see its docstring), but
+the moment a second inbound kind is added it is promoted to a discriminated
+``Annotated[X | Y, Field(discriminator=...)]`` union, at which point a
+hard-coded ``WorldPerturbationMsg`` annotation here would silently stop
+matching the alias it is supposed to track. Runtime behaviour is unchanged
+either way — ``TypeAdapter(InboundEnvelope)`` resolves identically today.
 """
 
 _MAX_RAW_FRAME_BYTES: Final[int] = 64 * 1024
@@ -460,6 +485,31 @@ def _parse_envelope(raw: str) -> ControlEnvelope | None:
         return None
 
 
+def _parse_inbound(raw: str) -> InboundEnvelope | None:
+    """Parse a client frame into an :data:`InboundEnvelope` or return ``None``.
+
+    Only called when the WS session has a non-``None`` ``inbound_sink``
+    (Issue 002, ``_recv_loop``) — the opt-in inbound path this frame-size
+    guard and :data:`_INBOUND_ADAPTER` gate. Mirrors :func:`_parse_envelope`'s
+    two-stage char/byte frame-size check exactly, applied before validation
+    against the separate :data:`InboundEnvelope` system (design-final.md
+    DA-2). Returns ``None`` on oversize frame or validation failure; callers
+    fall through to the existing :func:`_parse_envelope` /
+    :class:`ControlEnvelope` path on ``None`` rather than surfacing an error
+    directly — an inbound-parse failure is not necessarily a *protocol*
+    failure (e.g. a genuine ``ControlEnvelope`` frame a client sent for some
+    other reason).
+    """
+    if len(raw) > _MAX_RAW_FRAME_BYTES:
+        return None
+    if len(raw.encode("utf-8")) > _MAX_RAW_FRAME_BYTES:
+        return None
+    try:
+        return _INBOUND_ADAPTER.validate_json(raw)
+    except ValidationError:
+        return None
+
+
 # =============================================================================
 # I/O helpers
 # =============================================================================
@@ -481,7 +531,7 @@ async def _send_error(ws: WebSocket, *, code: str, detail: str) -> None:
 # =============================================================================
 
 
-async def _recv_loop(ws: WebSocket) -> None:
+async def _recv_loop(ws: WebSocket, *, inbound_sink: InboundSink | None = None) -> None:
     """Drain client → server frames and enforce idle-disconnect.
 
     The idle timer is expressed as a nested :func:`asyncio.timeout` around
@@ -493,6 +543,20 @@ async def _recv_loop(ws: WebSocket) -> None:
     consumed before ACTIVE). Other parsed envelopes are logged as a
     warning but otherwise ignored; unparsable frames trigger a one-shot
     ``invalid_envelope`` warning without closing.
+
+    **Issue 002 opt-in inbound branch (design-final.md DA-2 / MEDIUM-1)**:
+    when ``inbound_sink`` is ``None`` (production ``bootstrap()``), this
+    function never calls :func:`_parse_inbound` at all — the branch below is
+    skipped entirely, so the loop is observationally identical to the pre-
+    Issue-002 code (same close code / response / log / timeout behaviour on
+    any frame, including one that happens to parse as
+    :class:`WorldPerturbationMsg`). When ``inbound_sink`` is not ``None``
+    (the closure composition root only), each frame is tried against the
+    separate :class:`InboundEnvelope` system first; a successful parse is
+    pushed to the sink and the loop continues without falling through
+    to the :class:`ControlEnvelope` path. A frame that fails inbound parsing
+    (or the ``None`` case) falls through unchanged to the existing
+    :func:`_parse_envelope` / ``invalid_envelope`` / "ignored in M2" logic.
     """
     while True:
         try:
@@ -517,12 +581,34 @@ async def _recv_loop(ws: WebSocket) -> None:
                 getattr(exc, "code", "unknown"),
             )
             raise _GracefulCloseError from exc
+        if inbound_sink is not None:
+            inbound_msg = _parse_inbound(raw)
+            if inbound_msg is not None:
+                enqueued = inbound_sink.push(inbound_msg)
+                logger.debug(
+                    "session inbound: enqueued world_perturbation (agent=%s, corr=%s)",
+                    enqueued.target_agent_id,
+                    enqueued.correlation_id,
+                )
+                continue
         env = _parse_envelope(raw)
         if env is None:
+            # Opus TASK-POST MED-2: when inbound_sink is not None we already
+            # know (by construction — the branch above only falls through on
+            # a None inbound_msg) that _parse_inbound ALSO failed on this
+            # same raw frame, so the accurate detail names both systems.
+            # The inbound_sink is None path — production bootstrap() — is
+            # left byte-identical to pre-Issue-002 (MEDIUM-1 observational
+            # identity; _parse_inbound was never even called in that case).
+            detail = (
+                "frame failed both InboundEnvelope and ControlEnvelope validation"
+                if inbound_sink is not None
+                else "frame too large or failed ControlEnvelope validation"
+            )
             await _send_error(
                 ws,
                 code="invalid_envelope",
-                detail="frame too large or failed ControlEnvelope validation",
+                detail=detail,
             )
             continue
         if env.kind == "handshake":
@@ -788,9 +874,17 @@ async def ws_observe(  # noqa: C901, PLR0911, PLR0912, PLR0915 — protocol stat
             with contextlib.suppress(Exception):
                 await ws.close(code=1013)
             return
+        # Issue 002: opt-in inbound wiring. ``None`` in production
+        # (``bootstrap()`` never sets ``app.state.inbound_sink``) keeps
+        # ``_recv_loop`` observationally identical to pre-Issue-002 behaviour;
+        # only the closure composition root passes a real :class:`InboundSink`.
+        inbound_sink: InboundSink | None = ws.app.state.inbound_sink
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(_recv_loop(ws), name=f"recv-{session_id}")
+                tg.create_task(
+                    _recv_loop(ws, inbound_sink=inbound_sink),
+                    name=f"recv-{session_id}",
+                )
                 tg.create_task(
                     _send_loop(ws, out_queue),
                     name=f"send-{session_id}",
@@ -886,6 +980,7 @@ def make_app(
     runtime: _RuntimeLike | None = None,
     *,
     auth_config: WSAuthConfig | None = None,
+    inbound_sink: InboundSink | None = None,
 ) -> FastAPI:
     """ASGI factory — the canonical entry point.
 
@@ -897,12 +992,19 @@ def make_app(
     yields :class:`WSAuthConfig` defaults (back-compat: no Origin / no
     token / cap=8) so existing tests and the standalone debug entry stay
     unaffected.
+
+    Issue 002: ``inbound_sink`` is opt-in and defaults to ``None`` —
+    production ``bootstrap()`` never passes one, which keeps ``_recv_loop``
+    observationally identical to the pre-Issue-002 parse-and-ignore
+    behaviour (MEDIUM-1). Only the live-loop closure composition root (a
+    later issue) constructs an :class:`InboundSink` and passes it here.
     """
     app = FastAPI(lifespan=_lifespan)
     app.state.runtime = runtime if runtime is not None else _NullRuntime()
     cfg = auth_config if auth_config is not None else WSAuthConfig()
     app.state.ws_auth = cfg
     app.state.registry = Registry(max_sessions=cfg.max_sessions)
+    app.state.inbound_sink = inbound_sink
 
     async def health_endpoint() -> dict[str, object]:
         return await _health(app)
