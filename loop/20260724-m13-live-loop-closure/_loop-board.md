@@ -22,4 +22,5 @@ shared-tree-sequential（parallel=1）。
 - 統合フル CI parity: ✅ 全 4 段 PASS（pytest 3863 passed, 52 skipped pre-existing）。
 - cross-review: Codex(gpt-5.5) **Adopt-with-changes**（HIGH2/MED2）+ code-reviewer(Opus) **Approve**（MED2/LOW3）。
 - 採用 7 件反映済（Codex HIGH×2 の honest-framing 絞り込み含む）→ 再 CI 全 4 段 PASS。
-- 残: push / PR 作成（outward-facing = user 確認）、最終 merge・real spend(I7)・WSL byte-parity 実測 = **user 裁定**。
+- push 済 + **draft PR #89** (https://github.com/mikotomiura/ERRE-Sandbox/pull/89)。
+- 残: PR ready化 / 最終 merge / real spend(I7) / WSL byte-parity 実測 / I5 headless-godot 実効 = **user 裁定**。
