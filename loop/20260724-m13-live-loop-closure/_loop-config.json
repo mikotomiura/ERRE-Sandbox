@@ -1,0 +1,17 @@
+{
+  "task": "20260724-m13-live-loop-closure",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "shared-tree-sequential",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260724-m13-live-loop-closure/_loop-events.jsonl",
+  "base_branch": "origin/main",
+  "feature_branch": "feat/m13-live-loop-closure",
+  "env": {},
+  "notes": "M13 live 双方向ループ閉包 実コード。binding = FROZEN ADR .steering/20260724-m13-live-loop-closure/design-final.md（Plan 承認 + /reimagine(v2) + Codex Adopt-with-changes: HIGH3/MED4/LOW2 全反映）+ decisions.md + grill.md(G1-G4)。honest = 配線であって aha/emergence/effect でない（door② UNMET・計測 CLOSE・R-budget=0・holding 不変、UI/README/PR で caused/effect/emergence 禁止、許容='wiring reached each seam'/'production bootstrap unchanged; live-loop root only'）。無改変境界(ADR §4 Allowed Files) = organ(loop/two_phase_live/traversal_live/cycle/handoff/two_phase/locomotion_sampling/geometry) / production(bootstrap.py observational identity / world/tick.py 既存 public seam のみ) / 既存 ControlEnvelope outbound(HIGH-3, InboundEnvelope 別 union) / 既存 golden。要改変なら Stop→superseding ADR→user 裁定。HIGH-1 = driven ループは outbound を再 inject しない(_consume_result 単一 enqueue、二重送出検出 acceptance)。HIGH-2 = W-live は correlation-id 各 seam 到達性のみ(effect でない)。実行 = subagent-per-issue（shared feature tree feat/m13-live-loop-closure、依存 I1→{I2,I5}→I3→{I4,I6} ゆえ sequential、parallel=1）。実装=Sonnet / review=Opus(code-reviewer) / 各 attempt 検証=Haiku(test-runner→loop-watchdog、verify_level=recheck で独立再走)。CI parity = pwsh scripts/dev/pre-push-check.ps1 4 段。GPL src/ import 禁止・cloud LLM API 必須依存禁止・think=false。I7(real qwen3 sealed 実走) は code-path のみ・実走は spend ratify で別ゲート。I5 headless-godot live send は環境 gate(本機 godot 無し、CI -m 'not godot'、G3)、CI 検証部=test_envelope_kind_sync 緑維持 + 純 Python inbound 契約 guard。最終 merge / real spend / WSL byte-parity 実測は user 裁定。subagent spawn は user 明示承認ゲート(feedback_subagent_delegation_explicit_only)。"
+}
