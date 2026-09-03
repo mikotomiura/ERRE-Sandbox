@@ -39,7 +39,7 @@ from __future__ import annotations
 import ast
 import json
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, cast
 
 import pytest
 from scripts.m13_live_loop_capture import (
@@ -113,6 +113,29 @@ _LIVE_LOOP_BANNED_EXACT: Final[frozenset[str]] = frozenset(
         "score",
     }
 )
+
+
+_ENV_SNAPSHOT_PINS: Final[frozenset[str]] = frozenset({"python", "packages"})
+"""The ``env_pins`` keys that record *which machine baked this bundle*.
+
+``handoff.capture_env_pins`` calls itself "provenance, not determinism": these
+are the running interpreter's version and the installed pydantic/httpx
+versions. They are meant to differ between machines -- that is the whole point
+of pinning them -- so a cross-machine re-bake comparison excludes them and
+compares everything else. Deliberately NOT excluded: ``ERRE_ZONE_BIAS_P``
+(a real non-determinism source the run's behaviour depends on), ``godot``
+(a constant), and every I7 pin (clock, channel SHAs, gains, capture mode)."""
+
+
+def _without_env_snapshot(manifest_text: str) -> dict[str, Any]:
+    """Parse a manifest with the per-machine env snapshot removed."""
+    manifest = json.loads(manifest_text)
+    manifest["env_pins"] = {
+        key: value
+        for key, value in manifest["env_pins"].items()
+        if key not in _ENV_SNAPSHOT_PINS
+    }
+    return cast("dict[str, Any]", manifest)
 
 
 async def _capture_bundle(out_dir: Path) -> dict[str, str]:
@@ -248,8 +271,22 @@ async def test_committed_rehearsal_bundle_verifies(tmp_path: Path) -> None:
 async def test_committed_rehearsal_is_rebakeable() -> None:
     """The committed rehearsal is a deterministic function of the harness, not
     a stale one-off copy: baking it again from scratch reproduces every
-    artifact byte-for-byte (which is also what makes the manifest's SHA-256
-    pins meaningful)."""
+    artifact byte-for-byte (which is what makes the manifest's SHA-256 pins
+    meaningful).
+
+    ``manifest.json`` is compared with :data:`_ENV_SNAPSHOT_PINS` removed.
+    Those two pins are ``handoff.capture_env_pins``' interpreter/package
+    snapshot -- "provenance, not determinism" in its own words -- so they
+    record *the machine that baked this bundle* and are supposed to differ
+    between a Windows dev box and a Linux CI runner. Demanding they match
+    would be asserting that two different machines are the same machine, not
+    that the harness is deterministic. Every determinism-bearing pin
+    (``ERRE_ZONE_BIAS_P``, the two-phase gains, the clock, both channel SHAs,
+    the run config) stays in the comparison, and the replay-side check --
+    :func:`test_committed_rehearsal_bundle_verifies`, which re-renders from
+    the *committed* env_pins -- is fully platform-independent and covers the
+    manifest bytes end-to-end.
+    """
     _result, rendered = await capture(
         run_id="m13-live-loop-i7-rehearsal",
         seed=LIVE_LOOP_SEED,
@@ -259,6 +296,12 @@ async def test_committed_rehearsal_is_rebakeable() -> None:
     )
     for name, text in rendered.items():
         committed = (_REHEARSAL_DIR / name).read_text(encoding="utf-8")
+        if name == "manifest.json":
+            assert _without_env_snapshot(text) == _without_env_snapshot(committed), (
+                "manifest.json drifted from the committed rehearsal beyond the "
+                "per-machine environment snapshot"
+            )
+            continue
         assert text == committed, f"{name} drifted from the committed rehearsal"
 
 
