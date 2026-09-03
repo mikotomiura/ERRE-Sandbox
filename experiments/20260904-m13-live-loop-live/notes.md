@@ -67,6 +67,7 @@ bash experiments/20260904-m13-live-loop-live/repro.sh --real
 | Plane L 再駆動 | Plane G と同一 checksum |
 | artifact SHA-256 | 4 artifact + 2 side file 全一致、manifest 再 render byte 一致 |
 | envelope | 96 通 schema 準拠 |
+| request conformance | LLM 32/32 prompt・embedding 97/97 (kind, text) が committed record と一致 |
 | reachability (非 gate) | 全 32 corr-id が全 seam 到達 / `no_double_send=True` / mismatch 0 |
 | firing (非 gate) | `fired=True` / witness 31 / eligible 31 / `record_knob_on_pinned=True` |
 

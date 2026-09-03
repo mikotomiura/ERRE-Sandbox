@@ -45,7 +45,7 @@ R-budget=0・holding 不変。
 - **ollama version**: TBD / **think**: False (`ThinkOffChatClient` 経由、`cognition/cycle.py` 無改変)
 - **embed model**: `nomic-embed-text` (768d、Ollama-local)
 - **VRAM**: RTX 5060 Ti 16GB
-- **uv.lock sha256**: TBD (`--uv-lock-sha256` で pin)
+- **uv.lock sha256**: harness が checkout の `uv.lock` から自動導出 (`--uv-lock-sha256` は override 用)
 - **replay_checksum**: TBD (実走後追記)
 - **rehearsal replay_checksum**: `2ad3a39db14262a5c206f3d7930bd1f48bff59deb17f56d898c72d440aa48ecb`
 
@@ -68,6 +68,25 @@ R-budget=0・holding 不変。
   - `two_phase_firing_annotation.json` — 本 run 自身の λ>0 tick における evaluation-phase 符号反転。
     **settle (no_eligible_tick、λ が 0 のまま) は正当な結果として正直に記録し、発火するまで再走しない**
 - **verdict なし** (`verdict: null` を明示 emit)。
+
+## apparatus 側で強制しているゲート (Codex independent review 反映、2026-09-04)
+
+事前登録を「規約」でなく **apparatus が強制**する。詳細と採否は
+`.steering/20260904-m13-live-loop-i7-real-run/decisions.md` / `codex-review.md` (verbatim)。
+
+- **spend ratify**: `--confirm-spend` 無しの real は client 構築前に拒否。ゲートは
+  `capture()` 自体に置いてあるので CLI を迂回した Python 直呼びも同様に拒否 (H-1)。
+- **provenance pin**: digest / ollama version / VRAM が未指定なら real を拒否
+  (監査不能な sealed artifact を作らない)。uv.lock の SHA は checkout から自動導出 (H-2)。
+- **sealed bundle 上書き禁止**: real の出力先が非空なら spend 前に拒否。`--force` は
+  明示 + 理由記録が前提 (settle を握り潰す tune-to-pass の経路を塞ぐ、H-3)。
+- **事前登録パラメータ固定**: real は model / embed / seed / N / physics が
+  pre-registration と一致しないと拒否 (observables の固定文言が嘘にならないように、M-2)。
+- **annotation は検証対象**: committed side annotation は byte 比較し、drift なら fail。
+  更新は `--update-annotations` を明示 (H-4)。
+- **request conformance**: organ の replay client は ordinal (質問を照合しない) ので、
+  verify 層で prompt / (kind, text) を committed record と照合する (H-5)。
+  organ 自体への strict replay 導入は ADR §4 (organ 無改変) ゆえ defer (`blockers.md` B-1)。
 
 ## 決定論 (Codex MED-5 踏襲)
 

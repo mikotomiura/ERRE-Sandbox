@@ -28,12 +28,18 @@ Modes
     :class:`~erre_sandbox.inference.ollama_adapter.OllamaChatClient` (``qwen3:8b``,
     ``think=False`` via the organ's own ``ThinkOffChatClient``) plus a real
     :class:`~erre_sandbox.memory.embedding.EmbeddingClient` (``nomic-embed-text``)
-    wrapped in ``EmbeddingRecordReplayClient`` (record mode). ``--confirm-spend``
-    is mandatory: importing or running this module without it never opens a live
-    connection (spend ratify is a hard gate, not a convention).
+    wrapped in ``EmbeddingRecordReplayClient`` (record mode).
+    :func:`assert_sealed_real_run` gates it **before any client is
+    constructed** and refuses three ways: an unratified spend
+    (``--confirm-spend`` missing), parameters that deviate from the frozen
+    pre-registration, and unpinned provenance that would leave the sealed
+    artifact unauditable. A non-empty destination is refused separately
+    (:func:`assert_bundle_dir_writable`) so a sealed bundle is never silently
+    overwritten. The gates live on the functions themselves, not on the CLI, so
+    a Python caller cannot walk around them.
 ``--verify`` (**Ollama-free**, one path for both bundle shapes)
-    Replays the committed bundle twice and writes two side annotations — see
-    "Verify" below.
+    Replays the committed bundle twice and checks (or, when absent, writes) two
+    side annotations — see "Verify" below.
 
 Because both modes render the *same* artifact set through the *same* code, a
 green rehearsal ``--verify`` is real evidence that the sealed bundle's
@@ -57,15 +63,26 @@ Verify
 ------
 * **Plane G (W-golden, regression guard)** — the committed decisions + embedding
   record replay through the **unmodified** ``two_phase_live.run_two_phase_capture``
-  (observation feed rebuilt from the committed ledger) and must reproduce the
-  committed ``replay_checksum`` byte-for-byte with ``inner_invocations == 0`` on
-  both channels, every artifact SHA-256 matching, manifest re-render identical.
+  (observation feed rebuilt from the committed ledger, clocks read from the
+  committed manifest) and must reproduce the committed ``replay_checksum``
+  byte-for-byte with ``inner_invocations == 0`` on both channels, every artifact
+  SHA-256 matching, manifest re-render identical.
+* **Request conformance** — both organ replay clients are *ordinal*: they serve
+  ``recorded[i]`` without ever comparing what was asked for. The two
+  ``RequestConformance*`` spies here record what the cognition cycle actually
+  composed during the replay, so a drift in the prompts or the embedded
+  observation text fails a check instead of replaying green against answers
+  recorded for different questions.
 * **Plane L (W-live, reachability witness)** — the same committed channels
   re-drive ``run_live_loop_capture`` Ollama-free; its checksum must equal Plane
   G's, and ``live_loop.wiring_reachability_summary`` (**unmodified**, imported) is
   written to ``wiring_reachability.json`` as a side annotation.
 * ``two_phase_firing_annotation.json`` — the knob-on/knob-off ``SamplingSpy``
   replay pair reduced by the **unmodified** ``two_phase_firing_summary``.
+
+Both annotations are *checked inputs* when already committed: a drifted
+annotation fails the run rather than being silently refreshed
+(``--update-annotations`` is the explicit way to refresh one).
 
 Honest framing (binding, design-final.md §2 — do not weaken)
 ------------------------------------------------------------
@@ -165,6 +182,47 @@ LIVE_LOOP_MAX_DRAIN_PER_TICK: Final[int] = 1
 whole plan up front, so push order == tick order and perturbation *i* lands on
 tick *i* — the same 1:1 alignment ``tests/test_integration/test_live_loop_golden.py``
 relies on, which is what makes the injected ledger a faithful replay source."""
+
+LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION: Final[int] = DEFAULT_PHYSICS_TICKS_PER_COGNITION
+"""Sealed physics-per-cognition ratio (20) — Phase 4b's own sealed value."""
+
+LIVE_LOOP_SEED: Final[int] = 0
+"""Sealed RNG seed. ``SEED`` in the experiment directory carries the same value."""
+
+
+class SpendNotRatifiedError(RuntimeError):
+    """A real (spending) capture was requested without an explicit ratification.
+
+    Codex independent review H-1: the CLI's ``--confirm-spend`` gate only
+    guarded ``main()``, so a Python caller (a test, a notebook, a future
+    sibling script) could reach a live backend through ``capture(real=True)``
+    with nothing stopping it. The gate belongs on the function that actually
+    constructs the clients, not on one of its callers.
+    """
+
+
+class SealedParameterError(RuntimeError):
+    """A real capture deviated from the pre-registered sealed parameters.
+
+    Codex independent review M-2 / H-2: :data:`LIVE_LOOP_OBSERVABLES` is a
+    frozen sealed-run-before text that names the model, the backend and the
+    horizon. A real run driven with different ones would make that text a
+    false description of the bundle it is attached to, and an unpinned
+    provenance field ("unknown" digest / 0.0 VRAM) would make the artifact
+    unauditable after the fact. Both are refused **before** anything is spent.
+    """
+
+
+class SealedBundleExistsError(RuntimeError):
+    """A real capture would overwrite an existing sealed bundle.
+
+    Codex independent review H-3: silently overwriting ``artifacts/`` is
+    exactly the mechanism a tune-to-pass re-run would use, and the
+    pre-registration explicitly says a settled run is reported as such and
+    never retried until it fires. Overwriting therefore requires an explicit
+    ``--force`` plus a human note about why (Phase 4b kept its first,
+    no-eligible-tick run at ``run1-no-eligible/`` rather than overwriting it).
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -455,6 +513,105 @@ def ledger_observation_factory(
 # --------------------------------------------------------------------------- #
 
 
+def uv_lock_sha256() -> str:
+    """SHA-256 of the repo's ``uv.lock`` (reproducibility-discipline "env 固定").
+
+    Derived rather than hand-passed: a provenance pin a human has to remember
+    to supply is a provenance pin that ends up as ``"unknown"`` in the one
+    artifact that mattered (Codex H-2). Reading the file is deterministic and
+    opens no connection.
+    """
+    lock_path = _REPO_ROOT / "uv.lock"
+    if not lock_path.exists():  # pragma: no cover — the repo always ships one
+        msg = f"uv.lock not found at {lock_path}; pass --uv-lock-sha256 explicitly"
+        raise SealedParameterError(msg)
+    return hashlib.sha256(lock_path.read_bytes()).hexdigest()
+
+
+def assert_sealed_real_run(
+    *,
+    confirm_spend: bool,
+    model: str,
+    embed_model: str,
+    seed: int,
+    n_cognition_ticks: int,
+    physics_ticks_per_cognition: int,
+    qwen3_model_digest: str,
+    ollama_version: str,
+    vram_gb: float,
+) -> None:
+    """Gate a real capture **before** any client is constructed (H-1/H-2/M-2).
+
+    Three refusals, in the order a reader would want them:
+
+    1. **Not ratified** — ``confirm_spend`` is the ratified-spend gate; without
+       it nothing opens (:class:`SpendNotRatifiedError`).
+    2. **Off the pre-registration** — a real run must use the sealed model,
+       embedding backend, seed and horizon, because
+       :data:`LIVE_LOOP_OBSERVABLES` (frozen, sealed-run-before) names them. An
+       exploratory sweep is a legitimate thing to want, but it is not this
+       bundle and must not inherit this bundle's observables text.
+    3. **Unpinned provenance** — a sealed artifact whose ``qwen3_model_digest``
+       is ``"unknown"`` cannot be audited later, so the spend is refused rather
+       than producing an unauditable record.
+
+    Raises :class:`SealedParameterError` for (2) and (3),
+    :class:`SpendNotRatifiedError` for (1). Returns ``None`` when the run is
+    cleared to spend.
+    """
+    if not confirm_spend:
+        msg = (
+            "real capture requires an explicitly ratified spend "
+            "(confirm_spend=True / --confirm-spend). design-final.md Issue 007 "
+            "makes the real run a separate, user-ratified gate."
+        )
+        raise SpendNotRatifiedError(msg)
+
+    sealed: tuple[tuple[str, object, object], ...] = (
+        ("model", model, LIVE_MODEL),
+        ("embed_model", embed_model, LIVE_LOOP_EMBED_MODEL),
+        ("seed", seed, LIVE_LOOP_SEED),
+        ("n_cognition_ticks", n_cognition_ticks, LIVE_LOOP_N_COGNITION_TICKS),
+        (
+            "physics_ticks_per_cognition",
+            physics_ticks_per_cognition,
+            LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
+        ),
+    )
+    off_plan = [
+        f"{name}={value!r} (pre-registered: {expected!r})"
+        for name, value, expected in sealed
+        if value != expected
+    ]
+    if off_plan:
+        msg = (
+            "real capture deviates from the sealed pre-registration: "
+            + "; ".join(off_plan)
+            + ". LIVE_LOOP_OBSERVABLES is frozen sealed-run-before text that "
+            "names these values; a run with different ones needs its own "
+            "pre-registration, not this one's."
+        )
+        raise SealedParameterError(msg)
+
+    unpinned = [
+        name
+        for name, unpinned_value in (
+            ("qwen3_model_digest", qwen3_model_digest == "unknown"),
+            ("ollama_version", ollama_version == "unknown"),
+            ("vram_gb", vram_gb <= 0.0),
+        )
+        if unpinned_value
+    ]
+    if unpinned:
+        msg = (
+            "real capture would produce an unauditable sealed artifact — "
+            f"unpinned provenance: {', '.join(unpinned)}. Supply them "
+            "(run.ps1 / run.sh read them from the environment and fail fast "
+            "when unset)."
+        )
+        raise SealedParameterError(msg)
+
+
 def build_live_loop_env_pins(
     *,
     decisions_sha256: str,
@@ -517,23 +674,43 @@ async def capture(
     n_cognition_ticks: int,
     physics_ticks_per_cognition: int,
     real: bool,
+    confirm_spend: bool = False,
     model: str = LIVE_MODEL,
     embed_model: str = LIVE_LOOP_EMBED_MODEL,
     qwen3_model_digest: str = "unknown",
     ollama_version: str = "unknown",
     vram_gb: float = 0.0,
-    uv_lock_sha256: str = "unknown",
+    uv_lock_pin: str | None = None,
 ) -> tuple[live_loop.LiveLoopCaptureResult, dict[str, str]]:
     """Drive one knob-on live-loop capture and render the bundle (writes nothing).
 
     ``real=False`` (the default) uses the scripted chat + mock embedding, opening
     no connection at all; ``real=True`` constructs a real ``OllamaChatClient``
     (``think=False`` through the organ's ``ThinkOffChatClient``) and a real
-    ``EmbeddingClient``. Everything downstream of those two objects — the record
-    wrappers, the closure root, the perturbation plan, the artifact rendering —
-    is byte-for-byte the same code in both modes, which is what makes the
-    rehearsal a genuine rehearsal.
+    ``EmbeddingClient`` — but only after :func:`assert_sealed_real_run` clears
+    the spend (Codex H-1: the gate lives here, on the function that builds the
+    clients, not only on the CLI). Everything downstream of those two objects —
+    the record wrappers, the closure root, the perturbation plan, the artifact
+    rendering — is byte-for-byte the same code in both modes, which is what
+    makes the rehearsal a genuine rehearsal.
+
+    ``uv_lock_pin`` defaults to ``None`` = derive it from the repo's ``uv.lock``
+    (:func:`uv_lock_sha256`); pass a string only to pin a lock this checkout
+    does not hold.
     """
+    if real:
+        assert_sealed_real_run(
+            confirm_spend=confirm_spend,
+            model=model,
+            embed_model=embed_model,
+            seed=seed,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=physics_ticks_per_cognition,
+            qwen3_model_digest=qwen3_model_digest,
+            ollama_version=ollama_version,
+            vram_gb=vram_gb,
+        )
+
     if real:
         from erre_sandbox.inference.ollama_adapter import OllamaChatClient
 
@@ -598,7 +775,7 @@ async def capture(
         qwen3_model_digest=qwen3_model_digest,
         ollama_version=ollama_version,
         vram_gb=vram_gb,
-        uv_lock_sha256=uv_lock_sha256,
+        uv_lock_sha256=uv_lock_pin if uv_lock_pin is not None else uv_lock_sha256(),
     )
     run_config = {
         "seed": seed,
@@ -619,8 +796,34 @@ async def capture(
     return result, rendered
 
 
-def write_bundle(out_dir: Path, rendered: dict[str, str]) -> None:
+def assert_bundle_dir_writable(out_dir: Path, *, refuse_non_empty: bool) -> None:
+    """Refuse to overwrite an existing sealed bundle (Codex H-3).
+
+    Called **before** the spend as well as before the write, so a real run that
+    would clobber ``artifacts/`` fails while it is still free to fail. Only
+    ``refuse_non_empty`` (real mode without ``--force``) refuses; the rehearsal
+    directory stays freely re-bakeable, which is what the determinism tests
+    depend on.
+    """
+    if not refuse_non_empty or not out_dir.exists():
+        return
+    existing = sorted(p.name for p in out_dir.iterdir() if p.is_file())
+    if existing:
+        msg = (
+            f"{out_dir} already holds a sealed bundle ({', '.join(existing)}). "
+            "Overwriting it is how a tune-to-pass re-run would happen, and the "
+            "pre-registration says a settled run is reported as such, never "
+            "retried until it fires. Keep the first run (Phase 4b kept its own "
+            "at run1-no-eligible/) and pass --force only with a recorded reason."
+        )
+        raise SealedBundleExistsError(msg)
+
+
+def write_bundle(
+    out_dir: Path, rendered: dict[str, str], *, refuse_non_empty: bool = False
+) -> None:
     """Write every rendered artifact into ``out_dir`` (the only side effect)."""
+    assert_bundle_dir_writable(out_dir, refuse_non_empty=refuse_non_empty)
     out_dir.mkdir(parents=True, exist_ok=True)
     for filename, text in rendered.items():
         (out_dir / filename).write_text(text, encoding="utf-8", newline="\n")
@@ -631,28 +834,217 @@ def write_bundle(out_dir: Path, rendered: dict[str, str]) -> None:
 # --------------------------------------------------------------------------- #
 
 
+class RequestConformanceChatClient:
+    """Replay-side spy that pins the *request* against the committed record.
+
+    Codex independent review H-5: both organ replay clients are **ordinal** —
+    they serve ``recorded[i]`` for the *i*-th call without ever comparing what
+    the caller actually asked for. That is deliberate on their side (the replay
+    key is position, not prompt text), but it means an apparatus drift that
+    silently changed the prompt the cognition cycle composes would still replay
+    to a green checksum: the recorded answers would be re-served against
+    questions nobody checked.
+
+    Fixing that inside the organ is out of this task's scope (``design-final.md``
+    §4 binds ``loop.py`` / ``traversal_live.py`` to import-only). Closing it at
+    the *verify* layer needs no organ change at all: this wrapper records the
+    ``(system_prompt, user_prompt)`` the cycle hands the client — extracted the
+    same way ``RecordReplayChatClient.chat`` extracts them — so
+    :func:`verify` can compare them against the committed
+    :class:`RecordedLlmCall` stream and report a mismatch as a failed check.
+
+    ``used`` / ``inner_invocations`` / ``is_replay`` delegate to the wrapped
+    client, mirroring ``live_v1.SamplingSpyChatClient``'s drop-in contract.
+    """
+
+    def __init__(self, inner: RecordReplayChatClient) -> None:
+        self._inner = inner
+        self._requests: list[tuple[str, str]] = []
+
+    async def chat(
+        self,
+        messages: Sequence[Any],
+        *,
+        sampling: Any,
+        model: str | None = None,
+        options: dict[str, Any] | None = None,
+        think: bool | None = None,
+    ) -> Any:
+        system_prompt = next((m.content for m in messages if m.role == "system"), "")
+        user_prompt = next((m.content for m in messages if m.role == "user"), "")
+        self._requests.append((system_prompt, user_prompt))
+        return await self._inner.chat(
+            messages,
+            sampling=sampling,
+            model=model,
+            options=options,
+            think=think,
+        )
+
+    @property
+    def requests(self) -> tuple[tuple[str, str], ...]:
+        """The ``(system_prompt, user_prompt)`` pairs actually composed, in order."""
+        return tuple(self._requests)
+
+    @property
+    def used(self) -> tuple[Any, ...]:
+        return self._inner.used
+
+    @property
+    def inner_invocations(self) -> int:
+        return self._inner.inner_invocations
+
+    @property
+    def is_replay(self) -> bool:
+        return self._inner.is_replay
+
+
+class RequestConformanceEmbeddingClient:
+    """The embedding-channel half of the same request-conformance pin (H-5).
+
+    ``EmbeddingRecordReplayClient`` replays by position without comparing the
+    requested ``(kind, text)``, so an observation-text drift would replay
+    green against vectors recorded for different text. This wrapper records
+    what was actually asked for; :func:`verify` compares it to the committed
+    stream. Duck-typed to the same surface the wrapped client exposes, and
+    every method delegates — it changes no behaviour, it only observes.
+    """
+
+    def __init__(self, inner: EmbeddingRecordReplayClient) -> None:
+        self._inner = inner
+        self._requests: list[tuple[str, str]] = []
+
+    @property
+    def requests(self) -> tuple[tuple[str, str], ...]:
+        """The ``(kind, text)`` pairs actually requested, in order."""
+        return tuple(self._requests)
+
+    @property
+    def used(self) -> tuple[RecordedEmbeddingCall, ...]:
+        return self._inner.used
+
+    @property
+    def inner_invocations(self) -> int:
+        return self._inner.inner_invocations
+
+    async def close(self) -> None:
+        await self._inner.close()
+
+    async def embed(self, text: str) -> list[float]:
+        self._requests.append(("embed", text))
+        return await self._inner.embed(text)
+
+    async def embed_query(self, text: str) -> list[float]:
+        self._requests.append(("embed_query", text))
+        return await self._inner.embed_query(text)
+
+    async def embed_document(self, text: str) -> list[float]:
+        self._requests.append(("embed_document", text))
+        return await self._inner.embed_document(text)
+
+    async def embed_many(
+        self, texts: Sequence[str], *, kind: str
+    ) -> list[list[float]]:
+        call_kind = "embed_query" if kind == "query" else "embed_document"
+        self._requests.extend((call_kind, text) for text in texts)
+        return await self._inner.embed_many(texts, kind=cast("Any", kind))
+
+
+def _request_conformance_checks(
+    *,
+    llm_requests: Sequence[tuple[str, str]],
+    embedding_requests: Sequence[tuple[str, str]],
+    recorded_llm: Sequence[RecordedLlmCall],
+    recorded_embedding: Sequence[RecordedEmbeddingCall],
+) -> list[tuple[bool, str]]:
+    """Compare the replay's recomposed requests against the committed records (H-5)."""
+    llm_expected = [(c.system_prompt, c.user_prompt) for c in recorded_llm]
+    llm_match = list(llm_requests) == llm_expected
+    llm_first_bad = next(
+        (
+            i
+            for i, (actual, wanted) in enumerate(
+                zip(llm_requests, llm_expected, strict=False)
+            )
+            if actual != wanted
+        ),
+        None,
+    )
+    embedding_expected = [(c.kind, c.text) for c in recorded_embedding]
+    embedding_match = list(embedding_requests) == embedding_expected
+    embedding_first_bad = next(
+        (
+            i
+            for i, (actual, wanted) in enumerate(
+                zip(embedding_requests, embedding_expected, strict=False)
+            )
+            if actual != wanted
+        ),
+        None,
+    )
+    return [
+        (
+            llm_match,
+            "[verify] LLM request conformance "
+            f"{len(llm_requests)}/{len(llm_expected)} prompts match the committed "
+            f"record{'' if llm_first_bad is None else f' (first drift at call {llm_first_bad})'}",
+        ),
+        (
+            embedding_match,
+            "[verify] embedding request conformance "
+            f"{len(embedding_requests)}/{len(embedding_expected)} (kind, text) pairs "
+            "match the committed record"
+            f"{'' if embedding_first_bad is None else f' (first drift at call {embedding_first_bad})'}",
+        ),
+    ]
+
+
+def _clock_from(run_config: dict[str, Any], key: str) -> datetime:
+    """Read a timestamp out of the committed manifest (Codex M-1).
+
+    ``verify`` used to hardcode ``handoff.GOLDEN_TS`` for both clocks while
+    *reading* ``run_config`` for everything else — so a manifest could claim any
+    ``base_ts`` / ``retrieval_now`` it liked and still replay green, making that
+    part of the provenance unfalsifiable. Driving the replay from the committed
+    value instead means a manifest that lies about its clocks fails the
+    checksum.
+    """
+    return datetime.fromisoformat(str(run_config[key]))
+
+
 async def _plane_g_replay(
     *,
     recorded_llm: Sequence[RecordedLlmCall],
     recorded_embedding: Sequence[RecordedEmbeddingCall],
     ledger: Sequence[tuple[int, WorldPerturbationMsg]],
     run_config: dict[str, Any],
-) -> tuple[EclRunResult, RecordReplayChatClient, EmbeddingRecordReplayClient]:
-    """Replay both committed Plane-1 channels through the UNMODIFIED organ driver."""
+) -> tuple[
+    EclRunResult,
+    RequestConformanceChatClient,
+    RequestConformanceEmbeddingClient,
+]:
+    """Replay both committed Plane-1 channels through the UNMODIFIED organ driver.
+
+    Both channels run behind the request-conformance spies (H-5), so this
+    replay pins not only "the same answers reproduce the checksum" but also
+    "the questions asked were the committed ones".
+    """
     store = MemoryStore(db_path=":memory:")
     store.create_schema()
-    llm = RecordReplayChatClient(recorded=recorded_llm)
-    embedding_client = EmbeddingRecordReplayClient(recorded=recorded_embedding)
+    llm = RequestConformanceChatClient(RecordReplayChatClient(recorded=recorded_llm))
+    embedding_client = RequestConformanceEmbeddingClient(
+        EmbeddingRecordReplayClient(recorded=recorded_embedding)
+    )
     try:
         result = await run_two_phase_capture(
             run_id=str(run_config["run_id"]),
             store=store,
             embedding=cast("EmbeddingClient", embedding_client),
-            llm=llm,
+            llm=cast("RecordReplayChatClient", llm),
             agent_state=evaluation_seeded_agent_state(),
             persona=handoff.golden_persona(),
-            retrieval_now=handoff.GOLDEN_TS,
-            base_ts=handoff.GOLDEN_TS,
+            retrieval_now=_clock_from(run_config, "retrieval_now"),
+            base_ts=_clock_from(run_config, "base_ts"),
             two_phase_knob=TwoPhaseKnob(),
             seed=int(run_config["seed"]),
             n_cognition_ticks=int(run_config["cognition_ticks"]),
@@ -693,8 +1085,8 @@ async def _plane_l_redrive(
             llm=llm,
             agent_state=evaluation_seeded_agent_state(),
             persona=handoff.golden_persona(),
-            retrieval_now=handoff.GOLDEN_TS,
-            base_ts=handoff.GOLDEN_TS,
+            retrieval_now=_clock_from(run_config, "retrieval_now"),
+            base_ts=_clock_from(run_config, "base_ts"),
             two_phase_knob=TwoPhaseKnob(),
             seed=int(run_config["seed"]),
             k_ecl=int(run_config["k_ecl"]),
@@ -744,8 +1136,8 @@ async def _spied_replay(
             llm=cast("RecordReplayChatClient", spy),
             agent_state=evaluation_seeded_agent_state(),
             persona=handoff.golden_persona(),
-            retrieval_now=handoff.GOLDEN_TS,
-            base_ts=handoff.GOLDEN_TS,
+            retrieval_now=_clock_from(run_config, "retrieval_now"),
+            base_ts=_clock_from(run_config, "base_ts"),
             two_phase_knob=knob,
             seed=int(run_config["seed"]),
             n_cognition_ticks=int(run_config["cognition_ticks"]),
@@ -802,13 +1194,48 @@ def _check_bytes(
     return True, f"[verify] {name} sha256 {actual_sha}"
 
 
-async def verify(artifact_dir: Path, *, annotation_dir: Path | None = None) -> bool:
+def _check_or_write_annotation(
+    path: Path, *, text: str, update: bool
+) -> tuple[bool, str]:
+    """Verify a committed side annotation, or write it when absent (Codex H-4).
+
+    ``verify`` used to *overwrite* the annotations unconditionally, so a
+    committed annotation that had drifted from what the bundle actually
+    replays to would be silently replaced by a fresh one and the run reported
+    green — the annotation was an output, never a checked input. Now: an
+    existing file is compared byte-for-byte (mismatch = failed check), a
+    missing one is written, and ``update`` is the explicit way to refresh a
+    committed annotation on purpose.
+    """
+    if path.exists() and not update:
+        committed = path.read_text(encoding="utf-8")
+        if committed == text:
+            return True, f"[verify] {path.name} matches the committed annotation"
+        return False, f"[verify] {path.name} DRIFTED from the committed annotation"
+    path.write_text(text, encoding="utf-8", newline="\n")
+    action = "updated" if path.exists() and update else "wrote"
+    return True, f"[verify] {action} {path.name}"
+
+
+async def verify(
+    artifact_dir: Path,
+    *,
+    annotation_dir: Path | None = None,
+    update_annotations: bool = False,
+) -> bool:
     """Ollama-free replay-verify of a committed I7 bundle (both planes).
 
     Never opens a connection: every backend is a replay client over the
-    committed records. Writes the two side annotations into ``annotation_dir``
-    (default: ``artifact_dir``) — both outside the manifest SHA set, so writing
-    them can never change the bundle's integrity hashes.
+    committed records. The two side annotations live outside the manifest SHA
+    set, so producing them can never change the bundle's integrity hashes.
+
+    **Annotations are verified, not merely rewritten (Codex H-4)**: an existing
+    side file in ``annotation_dir`` (default: ``artifact_dir``) has its
+    committed bytes compared against the freshly derived ones, and a mismatch
+    is a failed check. Only a missing file is written, unless
+    ``update_annotations`` is set — which is how an intentional refresh stays
+    distinguishable from a silent overwrite that would let a drifted
+    annotation pass as green.
     """
     write_dir = annotation_dir if annotation_dir is not None else artifact_dir
     manifest_text = (artifact_dir / "manifest.json").read_text(encoding="utf-8")
@@ -863,6 +1290,17 @@ async def verify(artifact_dir: Path, *, annotation_dir: Path | None = None) -> b
             f"{manifest['replay_checksum']}",
         )
     )
+    # Codex H-5: an ordinal replay serves recorded answers without ever checking
+    # the questions. These two pin that the prompts / embedding requests the
+    # cognition cycle recomposed during THIS replay are the committed ones.
+    checks.extend(
+        _request_conformance_checks(
+            llm_requests=plane_g_llm.requests,
+            embedding_requests=plane_g_embedding.requests,
+            recorded_llm=recorded_llm,
+            recorded_embedding=recorded_embedding,
+        )
+    )
 
     # --- Artifact re-render: per-file SHA-256 + byte identity.
     rendered = handoff.render_golden(plane_g, run_config=run_config, env_pins=env_pins)
@@ -894,6 +1332,16 @@ async def verify(artifact_dir: Path, *, annotation_dir: Path | None = None) -> b
             actual_text=injected_ledger_roundtrip(ledger_text),
             committed_text=ledger_text,
             expected_sha=env_pins["inbound_perturbations_sha256"],
+        )
+    )
+    # Codex M-3: decisions.jsonl is hashed twice — in manifest["artifacts"]
+    # (checked above) and again in env_pins (carried there by the Phase 4b pin
+    # builder). The second copy was never compared to anything, so the two could
+    # disagree while the bundle still verified. Pin them against each other.
+    checks.append(
+        (
+            env_pins["decisions_sha256"] == _sha256(decisions_text),
+            "[verify] env_pins decisions_sha256 agrees with decisions.jsonl",
         )
     )
     rerendered_manifest = (
@@ -938,16 +1386,17 @@ async def verify(artifact_dir: Path, *, annotation_dir: Path | None = None) -> b
         broadcast_envelope_kinds=broadcast_kinds,
     )
     write_dir.mkdir(parents=True, exist_ok=True)
-    (write_dir / REACHABILITY_FILENAME).write_text(
-        handoff.canonical_dumps(reachability) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    (write_dir / FIRING_ANNOTATION_FILENAME).write_text(
-        handoff.canonical_dumps(firing) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
+    for name, derived in (
+        (REACHABILITY_FILENAME, reachability),
+        (FIRING_ANNOTATION_FILENAME, firing),
+    ):
+        checks.append(
+            _check_or_write_annotation(
+                write_dir / name,
+                text=handoff.canonical_dumps(derived) + "\n",
+                update=update_annotations,
+            )
+        )
 
     for passed, message in checks:
         print(f"{message} {'OK' if passed else 'FAIL'}")
@@ -1034,6 +1483,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="required alongside --capture --real: the ratified-spend gate",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "allow a real capture to overwrite an existing sealed bundle. Only "
+            "with a recorded reason: overwriting is how a tune-to-pass re-run "
+            "would happen, and a settled run is meant to be kept, not retried."
+        ),
+    )
+    parser.add_argument(
+        "--update-annotations",
+        action="store_true",
+        help=(
+            "--verify only: refresh the committed side annotations instead of "
+            "checking the freshly derived ones against them"
+        ),
+    )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--artifact-dir", type=Path, default=None)
     parser.add_argument("--annotation-dir", type=Path, default=None)
@@ -1052,43 +1518,61 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--qwen3-model-digest", default="unknown")
     parser.add_argument("--ollama-version", default="unknown")
     parser.add_argument("--vram-gb", type=float, default=0.0)
-    parser.add_argument("--uv-lock-sha256", default="unknown")
+    parser.add_argument(
+        "--uv-lock-sha256",
+        default=None,
+        help="override the uv.lock hash (default: derive it from this checkout)",
+    )
     args = parser.parse_args(argv)
 
     default_dir = _DEFAULT_REAL_DIR if args.real else _DEFAULT_REHEARSAL_DIR
     default_run_id = _REAL_RUN_ID if args.real else _REHEARSAL_RUN_ID
 
     if args.verify:
-        artifact_dir = args.artifact_dir if args.artifact_dir is not None else default_dir
-        ok = asyncio.run(verify(artifact_dir, annotation_dir=args.annotation_dir))
-        return 0 if ok else 1
-
-    if args.real and not args.confirm_spend:
-        print(
-            "[capture] REFUSED: --real spends a live qwen3:8b + embedding "
-            "session. Pass --confirm-spend only after the spend has been "
-            "explicitly ratified (design-final.md Issue 007 gate)."
+        artifact_dir = (
+            args.artifact_dir if args.artifact_dir is not None else default_dir
         )
-        return 2
+        ok = asyncio.run(
+            verify(
+                artifact_dir,
+                annotation_dir=args.annotation_dir,
+                update_annotations=args.update_annotations,
+            )
+        )
+        return 0 if ok else 1
 
     out_dir = args.out_dir if args.out_dir is not None else default_dir
     run_id = args.run_id if args.run_id is not None else default_run_id
-    result, rendered = asyncio.run(
-        capture(
-            run_id=run_id,
-            seed=args.seed,
-            n_cognition_ticks=args.n_cognition_ticks,
-            physics_ticks_per_cognition=args.physics_ticks_per_cognition,
-            real=args.real,
-            model=args.model,
-            embed_model=args.embed_model,
-            qwen3_model_digest=args.qwen3_model_digest,
-            ollama_version=args.ollama_version,
-            vram_gb=args.vram_gb,
-            uv_lock_sha256=args.uv_lock_sha256,
+    refuse_non_empty = args.real and not args.force
+    try:
+        # Check the destination BEFORE the spend, not just before the write:
+        # a real run that would clobber a sealed bundle should fail while it is
+        # still free to fail (Codex H-3).
+        assert_bundle_dir_writable(out_dir, refuse_non_empty=refuse_non_empty)
+        result, rendered = asyncio.run(
+            capture(
+                run_id=run_id,
+                seed=args.seed,
+                n_cognition_ticks=args.n_cognition_ticks,
+                physics_ticks_per_cognition=args.physics_ticks_per_cognition,
+                real=args.real,
+                confirm_spend=args.confirm_spend,
+                model=args.model,
+                embed_model=args.embed_model,
+                qwen3_model_digest=args.qwen3_model_digest,
+                ollama_version=args.ollama_version,
+                vram_gb=args.vram_gb,
+                uv_lock_pin=args.uv_lock_sha256,
+            )
         )
-    )
-    write_bundle(out_dir, rendered)
+    except (
+        SpendNotRatifiedError,
+        SealedParameterError,
+        SealedBundleExistsError,
+    ) as exc:
+        print(f"[capture] REFUSED: {exc}")
+        return 2
+    write_bundle(out_dir, rendered, refuse_non_empty=refuse_non_empty)
     print(f"[capture] mode = {'real' if args.real else 'scripted-rehearsal'}")
     print(f"[capture] wrote {len(rendered)} artifacts to {out_dir}")
     print(f"[capture] replay_checksum = {result.checksum}")

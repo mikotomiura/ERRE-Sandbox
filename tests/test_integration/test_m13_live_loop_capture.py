@@ -41,22 +41,33 @@ import json
 from pathlib import Path
 from typing import Final
 
+import pytest
 from scripts.m13_live_loop_capture import (
     EMBEDDING_RECORD_FILENAME,
     FIRING_ANNOTATION_FILENAME,
     INBOUND_LEDGER_FILENAME,
     LIVE_LOOP_DONE_FORMULA,
+    LIVE_LOOP_EMBED_MODEL,
     LIVE_LOOP_MAX_DRAIN_PER_TICK,
     LIVE_LOOP_N_COGNITION_TICKS,
     LIVE_LOOP_OBSERVABLES,
+    LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
+    LIVE_LOOP_SEED,
     REACHABILITY_FILENAME,
+    SealedBundleExistsError,
+    SealedParameterError,
+    SpendNotRatifiedError,
+    assert_bundle_dir_writable,
+    assert_sealed_real_run,
     capture,
     live_loop_perturbation_plan,
     main,
+    uv_lock_sha256,
     write_bundle,
 )
 from scripts.m13_live_loop_capture import verify as harness_verify
 
+from erre_sandbox.integration.embodied.live import LIVE_MODEL
 from tests.test_integration._measurement_guard import assert_no_measurement_surface_v1
 
 _THIS_FILE = Path(__file__)
@@ -241,9 +252,9 @@ async def test_committed_rehearsal_is_rebakeable() -> None:
     pins meaningful)."""
     _result, rendered = await capture(
         run_id="m13-live-loop-i7-rehearsal",
-        seed=0,
+        seed=LIVE_LOOP_SEED,
         n_cognition_ticks=LIVE_LOOP_N_COGNITION_TICKS,
-        physics_ticks_per_cognition=20,
+        physics_ticks_per_cognition=LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
         real=False,
     )
     for name, text in rendered.items():
@@ -361,6 +372,128 @@ def test_real_capture_refuses_without_confirm_spend(capsys) -> None:
     exit_code = main(["--capture", "--real"])
     assert exit_code == 2
     assert "REFUSED" in capsys.readouterr().out
+
+
+async def test_capture_api_refuses_real_without_confirm_spend() -> None:
+    """Codex H-1: the gate lives on ``capture`` itself, not only on the CLI.
+
+    A Python caller (a test, a notebook, a future sibling script) that reaches
+    for ``capture(real=True)`` must be refused too -- otherwise the CLI flag is
+    a speed bump around a wide-open function."""
+    with pytest.raises(SpendNotRatifiedError):
+        await capture(
+            run_id="never-runs",
+            seed=LIVE_LOOP_SEED,
+            n_cognition_ticks=LIVE_LOOP_N_COGNITION_TICKS,
+            physics_ticks_per_cognition=LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
+            real=True,
+        )
+
+
+def test_sealed_real_run_gate_rejects_off_plan_parameters() -> None:
+    """Codex M-2: a real run must use the pre-registered model / backend /
+    seed / horizon, because ``LIVE_LOOP_OBSERVABLES`` is frozen text that names
+    them. An exploratory sweep needs its own pre-registration, not this one's."""
+    sealed = {
+        "confirm_spend": True,
+        "model": LIVE_MODEL,
+        "embed_model": LIVE_LOOP_EMBED_MODEL,
+        "seed": LIVE_LOOP_SEED,
+        "n_cognition_ticks": LIVE_LOOP_N_COGNITION_TICKS,
+        "physics_ticks_per_cognition": LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
+        "qwen3_model_digest": "deadbeef",
+        "ollama_version": "0.32.0",
+        "vram_gb": 16.0,
+    }
+    # The sealed shape itself is accepted.
+    assert_sealed_real_run(**sealed)
+
+    for field, off_plan in (
+        ("model", "llama3:8b"),
+        ("embed_model", "some-other-embed"),
+        ("seed", 1),
+        ("n_cognition_ticks", 8),
+        ("physics_ticks_per_cognition", 5),
+    ):
+        with pytest.raises(SealedParameterError):
+            assert_sealed_real_run(**{**sealed, field: off_plan})
+
+
+def test_sealed_real_run_gate_rejects_unpinned_provenance() -> None:
+    """Codex H-2: a sealed artifact whose digest / Ollama version / VRAM are
+    unpinned cannot be audited afterwards, so the spend is refused rather than
+    producing an unauditable record."""
+    sealed = {
+        "confirm_spend": True,
+        "model": LIVE_MODEL,
+        "embed_model": LIVE_LOOP_EMBED_MODEL,
+        "seed": LIVE_LOOP_SEED,
+        "n_cognition_ticks": LIVE_LOOP_N_COGNITION_TICKS,
+        "physics_ticks_per_cognition": LIVE_LOOP_PHYSICS_TICKS_PER_COGNITION,
+        "qwen3_model_digest": "deadbeef",
+        "ollama_version": "0.32.0",
+        "vram_gb": 16.0,
+    }
+    for field, unpinned in (
+        ("qwen3_model_digest", "unknown"),
+        ("ollama_version", "unknown"),
+        ("vram_gb", 0.0),
+    ):
+        with pytest.raises(SealedParameterError):
+            assert_sealed_real_run(**{**sealed, field: unpinned})
+
+
+def test_uv_lock_pin_is_derived_not_defaulted() -> None:
+    """Codex H-2: the ``uv.lock`` pin is computed from this checkout, so it can
+    never silently seal as ``"unknown"`` because a flag was forgotten."""
+    derived = uv_lock_sha256()
+    assert len(derived) == 64
+    assert derived == uv_lock_sha256(), "the pin must be a pure function of the file"
+
+
+def test_sealed_bundle_is_not_silently_overwritten(tmp_path: Path) -> None:
+    """Codex H-3: overwriting a sealed bundle is the mechanism a tune-to-pass
+    re-run would use, so a non-empty real destination is refused unless the
+    caller explicitly forces it. The rehearsal directory stays re-bakeable."""
+    (tmp_path / "manifest.json").write_text("{}", encoding="utf-8")
+
+    with pytest.raises(SealedBundleExistsError):
+        assert_bundle_dir_writable(tmp_path, refuse_non_empty=True)
+    # --force (and every rehearsal write) passes straight through.
+    assert_bundle_dir_writable(tmp_path, refuse_non_empty=False)
+
+
+async def test_drifted_annotation_fails_verify(tmp_path: Path) -> None:
+    """Codex H-4: a committed side annotation is a *checked input*, not just an
+    output -- one that has drifted from what the bundle replays to fails the
+    run instead of being silently overwritten with a fresh copy."""
+    await _capture_bundle(tmp_path)
+    assert await harness_verify(tmp_path) is True  # writes the annotations
+
+    annotation = tmp_path / REACHABILITY_FILENAME
+    annotation.write_text('{"all_correlation_ids_reach_all_seams": true}\n', "utf-8")
+    assert await harness_verify(tmp_path) is False
+
+
+async def test_request_conformance_is_checked(tmp_path: Path) -> None:
+    """Codex H-5: the organ's replay clients are ordinal -- they serve
+    ``recorded[i]`` without comparing what was asked for. The harness closes
+    that at the verify layer, so a committed record whose prompts no longer
+    match what the cycle recomposes fails instead of replaying green.
+
+    Driven here by rewriting one committed ``system_prompt``: the recorded
+    *answers* still replay to the same checksum (that is precisely the hole),
+    so only the conformance check can catch it."""
+    await _capture_bundle(tmp_path)
+    decisions_path = tmp_path / "decisions.jsonl"
+    lines = decisions_path.read_text(encoding="utf-8").splitlines()
+    first = json.loads(lines[0])
+    first["call"]["system_prompt"] = "a prompt this run never composed"
+    lines[0] = json.dumps(first, sort_keys=True, separators=(",", ":"))
+    decisions_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+    ok = await harness_verify(tmp_path, annotation_dir=tmp_path / "ann")
+    assert ok is False
 
 
 # --------------------------------------------------------------------------- #
