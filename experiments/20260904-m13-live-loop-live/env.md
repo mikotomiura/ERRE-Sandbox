@@ -39,7 +39,9 @@ R-budget=0・holding 不変。
   `--real` は `--confirm-spend` 無しでは exit 2 で拒否する (規約でなく apparatus が強制)。
 - **L3 の WSL 直接実測は本機では引き続き不可** (WSL 側に project venv が無い。
   `/root/erre-sandbox/.venv` 不在・system python3 に pydantic 無しを本セッションで再確認)。
-  → Linux CI 経由で実測する (下記「L3」)。
+  → **Linux CI 経由で実測し PASS** (下記「L3」)。
+- **Done = L1∧L2∧L3 は 3 つとも PASS**。ただし Done は reproducibility のみを意味し、
+  effect / aha / emergence は依然として非測定・非主張である。
 
 ## 実走環境 (封印前 pre-register 固定・実走後 tuning ゼロ、実走後に追記)
 
@@ -90,7 +92,7 @@ committed bundle (`artifacts/`) + `repro.ps1 -Real` であって log ではな�
 |---|---|---|
 | **L1** 完走 | **PASS** | exit 0、real qwen3:8b (think=False) + real nomic-embed-text で 32×20 tick 完走、6 artifact 出力、injected perturbations = 32、所要 89 秒 |
 | **L2** 決定論 replay | **PASS** | Plane G checksum `43eb904d…2888eb` = manifest 一致 / 両チャネル `inner_invocations=0` / embedding 97/97 消費 / request conformance LLM 32/32・embedding 97/97 / 5 artifact SHA-256 全一致 / `manifest.json` 再 render byte 一致 / envelope 96 通 schema 準拠 / **Plane L 再駆動が Plane G と同一 checksum** |
-| **L3** cross-platform | **Linux CI で実測** | 本機 WSL に project venv が無く直接実測は不可 (再確認済)。代わりに `test_committed_sealed_real_bundle_verifies` を追加し、**committed real bundle の verify を Linux CI (glibc) に実行させる**。rehearsal で同手が通った実績あり。**CI 結果は下記に追記** |
+| **L3** cross-platform | **PASS** | 本機 WSL に project venv が無く直接実測は不可 (再確認済) → **Linux CI (glibc) で committed real bundle を verify**。PR #91 CI run `34002303463` job `101403225525` (ubuntu、3648 passed / 50 skipped) で `test_m13_live_loop_capture.py` が **24/24 pass・skip 0**、すなわち `test_committed_sealed_real_bundle_verifies` / `test_committed_sealed_real_bundle_is_a_real_capture` が **skip されず実行されて緑**。UCRT で bake した bundle が glibc replay で同一 checksum・同一 SHA |
 
 **L3 が測っているものの正確な範囲**: Windows (UCRT) で bake した bundle の committed bytes が、
 Linux (glibc) 上の replay で同一 checksum / 同一 SHA になること。**Linux 上で capture を再 bake

@@ -96,7 +96,7 @@ bash experiments/20260904-m13-live-loop-live/repro.sh --real
 | request conformance | LLM 32/32 prompt・embedding 97/97 (kind, text) が committed record と一致 |
 | reachability (非 gate) | 全 32 corr-id が全 seam 到達 / `no_double_send=True` / mismatch 0 / kind 各 32 |
 | firing (非 gate) | `fired=True` / witness 29 / eligible 29 / `record_knob_on_pinned=True` / `fail_mode=None` |
-| L3 cross-platform | 本機 WSL は project venv 不在ゆえ直接実測不可 → Linux CI で committed real bundle を verify (`test_committed_sealed_real_bundle_verifies`) |
+| L3 cross-platform | **PASS** — Linux CI (glibc) で committed real bundle を verify。PR #91 run `34002303463` job `101403225525` で `test_m13_live_loop_capture.py` 24/24 pass・skip 0 (= 追加 2 test が skip されず実行されて緑) |
 
 **settle しなかった (firing した)**。ただし tick 0-2 の 3 tick は λ=0 で非 eligible
 (λ を earn するまでの settle 区間)、tick 3 以降 29 tick が eligible。rehearsal は非 eligible が
