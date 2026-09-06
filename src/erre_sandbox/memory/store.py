@@ -363,7 +363,24 @@ class MemoryStore:
         if self._conn is not None:
             conn = self._conn
             self._conn = None
-            await asyncio.to_thread(conn.close)
+
+            def _close_under_lock() -> None:
+                # Work handed to ``asyncio.to_thread`` keeps running after the
+                # coroutine awaiting it is cancelled — cancelling the awaiting
+                # task never stops the worker thread. So a read cancelled
+                # mid-flight (e.g. a driven loop aborted by a sibling task's
+                # exception) can still be inside ``conn.execute`` when a caller
+                # reaches ``close``. Closing the sqlite connection out from
+                # under a live statement is a use-after-free inside the C
+                # extension, observed as a hard SIGSEGV (exit 139) on Linux CI
+                # while the same ordering happened to survive on Windows.
+                # Taking the same lock every ``*_sync`` operation holds makes
+                # ``close`` wait for the in-flight statement to finish instead
+                # of racing it.
+                with self._conn_lock:
+                    conn.close()
+
+            await asyncio.to_thread(_close_under_lock)
 
     # ------------------------------------------------------------------
     # Write operations
