@@ -21,6 +21,11 @@ Acceptance coverage (``.steering/20260904-m13-live-loop-i7-real-run/requirement.
   Done set claims nothing causal -> :func:`test_observables_are_frozen_preregistration`.
 * AC5 — measurement-line non-re-entry (AST guard)
   -> :func:`test_live_loop_capture_measurement_guard`.
+* L3 — the committed *sealed real* bundle replays green on whatever platform
+  runs the suite (on the Linux CI runner that is the cross-platform
+  measurement) -> :func:`test_committed_sealed_real_bundle_verifies` /
+  :func:`test_committed_sealed_real_bundle_is_a_real_capture`. Both skip when
+  the bundle is absent.
 
 Plus the two gates the honest framing depends on being *enforced*, not merely
 documented: the real-spend refusal
@@ -76,6 +81,7 @@ _SCRIPT_SRC = _REPO_ROOT / "scripts" / "m13_live_loop_capture.py"
 _REHEARSAL_DIR = (
     _REPO_ROOT / "experiments" / "20260904-m13-live-loop-live" / "rehearsal"
 )
+_REAL_DIR = _REPO_ROOT / "experiments" / "20260904-m13-live-loop-live" / "artifacts"
 
 # Small drive shape for the round-trip tests -- the committed rehearsal bundle
 # carries the full 32 x 20 sealed shape, so these only need to prove the code
@@ -354,6 +360,55 @@ def test_committed_rehearsal_firing_annotation_is_non_gate() -> None:
     assert annotation["verdict"] is None
     assert annotation["n_ticks"] == LIVE_LOOP_N_COGNITION_TICKS
     assert isinstance(annotation["evaluation_phase_sign_inversion_fired"], bool)
+
+
+# --------------------------------------------------------------------------- #
+# L3 -- the committed *sealed real* bundle, verified wherever the suite runs
+# --------------------------------------------------------------------------- #
+
+
+async def test_committed_sealed_real_bundle_verifies(tmp_path: Path) -> None:
+    """L3: the committed **real qwen3** bytes replay green on whatever platform
+    runs this suite. On the Linux CI runner that is the cross-platform (UCRT
+    bake / glibc replay) measurement itself -- the same move that already
+    proved the rehearsal bundle byte-identical across the two libms, since the
+    6-digit quantisation absorbs the drift
+    (memory ``feedback_golden_crossplatform_float_drift``).
+
+    Skips when ``artifacts/`` is absent so a checkout without the sealed bundle
+    (or one taken before the ratified run) still has a green suite. Opens no
+    connection: ``verify`` is Ollama-free by construction, and both committed
+    annotations are re-derived into ``tmp_path`` and compared byte-for-byte
+    rather than rewritten in place.
+    """
+    if not (_REAL_DIR / "manifest.json").exists():
+        pytest.skip("sealed real bundle not present in this checkout")
+    assert await harness_verify(_REAL_DIR, annotation_dir=tmp_path) is True
+    for name in (REACHABILITY_FILENAME, FIRING_ANNOTATION_FILENAME):
+        fresh = (tmp_path / name).read_text(encoding="utf-8")
+        committed = (_REAL_DIR / name).read_text(encoding="utf-8")
+        assert fresh == committed, f"{name} drifted from the committed annotation"
+
+
+def test_committed_sealed_real_bundle_is_a_real_capture() -> None:
+    """The sealed bundle is pinned as a *real* capture at the pre-registered
+    shape, with auditable provenance -- so it can never be quietly replaced by
+    a rehearsal re-bake. Skips when the bundle is absent."""
+    manifest_path = _REAL_DIR / "manifest.json"
+    if not manifest_path.exists():
+        pytest.skip("sealed real bundle not present in this checkout")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    pins = manifest["env_pins"]
+    assert pins["capture_mode"] == "real"
+    assert pins["model"] == LIVE_MODEL
+    assert pins["embed_model"] == LIVE_LOOP_EMBED_MODEL
+    for pin in ("qwen3_model_digest", "ollama_version"):
+        assert pins[pin] not in ("", "unknown"), pin
+    assert manifest["observables"]["verdict"] is None
+    ledger = (
+        (_REAL_DIR / INBOUND_LEDGER_FILENAME).read_text(encoding="utf-8").splitlines()
+    )
+    assert len(ledger) == LIVE_LOOP_N_COGNITION_TICKS
 
 
 # --------------------------------------------------------------------------- #
