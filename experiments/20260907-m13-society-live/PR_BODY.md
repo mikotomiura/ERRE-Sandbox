@@ -110,6 +110,31 @@ LOW 5 件は `blockers.md` に defer 理由付きで持ち越し。
   session 中 `ollama` 未実行、`run.ps1` の env ゲートが python 起動より前、
   spend gate が `capture()` 本体にあり `OllamaChatClient` の import より前（AST で pin）
 
+## CI が炙り出した pre-existing bug（DA-SLC-10、意図的な scope 拡張）
+
+初回 push の **Linux CI が `pytest (non-godot)` で exit 139 (SIGSEGV)** クラッシュした
+（Windows の pre-push 4 段は緑。他 4 job は pass）。
+
+**原因**: `MemoryStore.close()` が `self._conn_lock` (`threading.RLock`) を**取らずに** `conn.close()` する
+一方、`_list_by_agent_sync` 等は**ロック下で** `conn.execute()` している。
+`asyncio.to_thread` に渡した仕事は **待っている task を cancel しても worker スレッドでは走り続ける**ので、
+TaskGroup が sibling の例外で drive task を cancel した直後は in-flight のクエリが残る。
+そこへ `close()` が来ると生きた statement の下で sqlite 接続が閉じられ、C 拡張で use-after-free になる。
+
+**これは pre-existing の latent bug**で、TASK-POST の Codex M-A 反映で追加した例外経路 test が
+**初めて露出させた**（既存 test は「drive を mid-flight で cancel してから store を閉じる」経路を
+持っていなかった）。
+
+**修正**: `close()` の `conn.close()` を worker スレッド内で `_conn_lock` 下に置く
+（イベントループはブロックしない、`self._conn = None` の順序は不変）。
+
+**scope note**: `src/erre_sandbox/memory/store.py` は ADR §4 の「触らない」列挙に**含まれていない**
+（= Stop S2 非該当）が、**共有 production モジュール**なので**意図的な scope 拡張として明示記録**する。
+test 側だけを直すと latent bug が残るため、露出させた側が塞ぐ判断をした。
+
+修正後、**GitHub Actions run 34051730783 が conclusion=success（全 5 job pass）**。
+Linux 側の確証は CI でのみ取れた（WSL に sqlite-vec 入りの venv が無くローカル再現は不能だった）。
+
 ## 残る hard gate（**いずれも user 裁定**）
 
 - **最終 merge**
