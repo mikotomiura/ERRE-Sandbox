@@ -92,6 +92,25 @@ memory 幾何の上で実行する統合器官 (実装-design ADR FROZEN 2026-07
 | competing-destination cue | competing-destination cue | zone-pick を LLM 本体が選ぶ (parse.py:63) 前提で、その prompt cue (affordance/zone_transition observation/persona) を競合 zone 集合 Z_comp に構造同型で対称構築した lever。memory location/zone は LLM 不可視ゆえ memory 幾何 lever (v1) は category error で破棄 | B impl-design ADR §I1.1、DA-BIMPL-1 |
 | T3 materiality | T3 materiality criterion | 反復 bank それ自体は再入 candidate でなく基質改変必須、を担保する 4 点基準 (canonical inputs のみ編集 / bank-density 非根拠 / source-organic + bounded mutation / stimulus 判定=T3 fail→line-close)。criterion 4 = 機械 test 不能な human desk-audit gate | B impl-design ADR §I7、Codex HIGH-3/DA-BIMPL-9 |
 
+## M13 live-loop closure / society-live 用語
+
+PR #89/#90/#91 で land した live 双方向ループ閉包と、その follow-on である案 B
+(ミラー/society Layer2 の live 化、FROZEN ADR `.steering/20260906-m13-society-live-closure/`) の用語。
+**すべて construction (配線) の語彙であって measurement の語彙ではない**。
+
+| 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
+|---|---|---|---|
+| live 平面 | Plane L (live plane) | 本番 phase-wheel を使わず tick-synchronous な driven ループで摂動→cognition→movement を回す非計測の観察平面。**wall-clock real-time session ではない** (byte-parity のため ManualClock 固定) | live-loop closure ADR DA-1、live_loop.py |
+| golden 平面 | Plane G (golden plane) | Plane L が吐いた capture を**無改変**の record-mode driver へ replay し 6 桁量子化 checksum の byte-parity を確認する regression guard。「ループが閉じた証明」ではない | live-loop closure ADR DA-4 W-golden |
+| 到達性 witness | wiring reachability witness | 摂動の correlation-id が各 seam を通過したことだけを boolean で述べる witness。**reachability is not causation**。seam 粒度は非一様で、outbound 側 2 seam は tick-level co-occurrence | PR #89 HIGH-2、wiring_reachability_summary |
+| runtime readiness barrier | runtime readiness barrier (`on_runtime_ready`) | driver が構築した `WorldRuntime` を、**最初の observation drain より前**に外部 (gateway 組み立て) へ渡し、await して起動完了を待つ additive な construction seam。`None` で byte-identical | 案 B ADR §4、Codex H-1/L-3 |
+| construction exposure | construction exposure | runtime を外へ出す目的が gateway の `recv_envelope` / `layout_snapshot` に限られ、**hook は runtime を mutate しない**という契約。mutability surface を doc/test で縛る | 案 B ADR §4、Codex M-5 |
+| consume 側 ledger | consume-side envelope ledger | outbound witness を `drain_envelopes()` の事後観測でなく **gateway が実際に fan-out したものの記録**から取る規約。broadcaster が同じ queue を消費するため事後観測は race-dependent になる | 案 B ADR §6 W-N3、Codex H-2 |
+| cognition kind | cognition-kind envelope set | outbound 単一 owner 性を検査する対象 kind 集合 = `move` / `speech` / `animation` / `agent_update`。`dialog_*` は society 内部の第二の正当な生産者ゆえ gate から除外し plain count annotation に置く | 案 B ADR §6 W-N3、Codex H-3 |
+| inbound routing ledger | inbound routing ledger | inbound 摂動を `pushed` / `dropped` (overflow) / `drained` / `injected` / `rejected` (unknown target) の 5 状態に分けて記録する台帳。到達性の母集団は **injected のみ** | 案 B ADR §5-6、Codex M-2 |
+| prompt-level self-other context | prompt-level self-other context | M2 Layer2 ミラー・シムの user-facing 呼称。他 agent の直前 window の観測可能な振る舞いから作った transient prompt segment であって、心の理論でも内部状態の推定でもない | 案 B ADR §2、Codex L-1、M2 Layer2 mirror-sim |
+| request conformance | request conformance | replay 側 spy が再構成した `(agent_id, window, system_prompt, user_prompt)` を committed record と照合する検査。replay の `used` は committed call なので prompt 一致は恒真になり、spy 無しでは prompt drift を検出できない。**`sampling` は照合対象外** (knob-on capture を knob-off replay するため) | 案 B ADR §6 W-N4、Codex H-4、I7 RequestConformance* |
+
 ## 略語
 
 | 略語 | 正式名称 | 意味 |

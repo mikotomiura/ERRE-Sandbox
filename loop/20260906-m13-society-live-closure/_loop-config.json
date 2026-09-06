@@ -1,0 +1,17 @@
+{
+  "task": "20260906-m13-society-live-closure",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests scripts"
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "shared-tree-sequential",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 1 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260906-m13-society-live-closure/_loop-events.jsonl",
+  "base_branch": "origin/main",
+  "feature_branch": "feat/m13-society-live-closure",
+  "env": {},
+  "notes": "M13 案 B = ミラー/society Layer2 を live 閉包経路へ。binding = FROZEN ADR .steering/20260906-m13-society-live-closure/design-final.md（Plan 承認 + /reimagine(v1 破棄→v2 再生成→2 案収束→第三案 B) + user 裁定 2026-09-06 + Codex gpt-5.5/xhigh Adopt-with-changes: HIGH4/MED5/LOW3 全反映）+ decisions.md（DA-SLC-1..3 + grilling 出力 G1-G7 + Done D1∧D2∧D3 / Stop S1-S5）。honest = 配線/construction であって aha/emergence/effect でない（door② UNMET・計測 CLOSE・R-budget=0・holding 不変、caused/effect/emergence 禁止、許容='wiring reached each seam'、ミラーは prompt-level self-other context であって心の理論でない、M4 の memory_centroid collapse は未解決）。採用経路 = society.py に additive kwarg 2 本のみ（two_phase_knob / on_runtime_ready）。3 本目が要るなら Stop→superseding ADR（S1）。無改変境界 = organ(cycle/tick/loop/two_phase_live/traversal_live/handoff/two_phase/locomotion_sampling/geometry/evidence) / production bootstrap.py / gateway.py / inbound.py / live_loop.py / society_live.py / ControlEnvelope / 既存 golden。W-N3 は cognition kind 限定（move/speech/animation/agent_update）で dialog_* は annotation（Codex H-3、完全版=dialog_envelope_sink は別 ADR）。broadcast ledger は consume 側記録から取る（Codex H-2、drain_envelopes 事後観測は race）。Plane G は replay 側 spy の request conformance で prompt drift を検出し sampling は照合対象外（Codex H-4）。事前登録定数 = N=3(a_kant/a_nietzsche/a_rikyu) / n_cognition_ticks=12 / 摂動 36 通。実行 = subagent-per-issue（shared feature tree、依存 {I1,I2}→I3→{I4,I5,I6}→I7 ゆえ sequential、parallel=1）。実装=Sonnet / review=Opus(code-reviewer) / 各 attempt 検証=Haiku(test-runner→loop-watchdog、verify_level=recheck で独立再走)。CI parity = pwsh scripts/dev/pre-push-check.ps1 4 段。GPL src/ import 禁止・cloud LLM API 必須依存禁止・think=false。I7(real qwen3 sealed 実走) は code-path のみ・実走は spend ratify で別ゲート。実 Godot end-to-end は MacBook 必須ゆえ Out。最終 merge / real spend / WSL byte-parity 実測は user 裁定。subagent spawn は user 明示承認ゲート(feedback_subagent_delegation_explicit_only)。"
+}

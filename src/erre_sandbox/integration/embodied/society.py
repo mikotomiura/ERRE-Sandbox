@@ -65,6 +65,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Awaitable
 from dataclasses import asdict, dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any, Final, cast
@@ -100,6 +101,7 @@ if TYPE_CHECKING:
     from erre_sandbox.cognition import CycleResult, LLMPlan
     from erre_sandbox.cognition.embodiment import EclDestination
     from erre_sandbox.cognition.reflection import Reflector
+    from erre_sandbox.erre.two_phase import TwoPhaseKnob
     from erre_sandbox.inference.ollama_adapter import ChatMessage, ChatResponse
     from erre_sandbox.inference.sampling import ResolvedSampling
     from erre_sandbox.schemas import AgentState, Observation, PersonaSpec
@@ -1015,6 +1017,29 @@ class SocietyRunResult:
         }
 
 
+async def _invoke_runtime_ready_hook(
+    on_runtime_ready: Callable[[WorldRuntime], Awaitable[None] | None] | None,
+    world: WorldRuntime,
+) -> None:
+    """Call the readiness-barrier hook once, awaiting it if awaitable (§Codex H-1/L-3).
+
+    ``None`` (every existing caller) is a no-op, keeping the driver
+    byte-identical to before this kwarg's addition. This is a
+    **construction exposure** access point only (Codex M-5): the hook must
+    not mutate ``world``, it may only read it / attach its own consumers.
+    Extracted into its own function (rather than inlined branches in
+    :func:`run_society_loop`) to keep that driver's own cyclomatic
+    complexity from growing — mirrors this module's existing convention of
+    extracting the additive Layer2 seam into small helpers
+    (:func:`_build_window_self_other_contexts`, :func:`_capture_window_behaviour`).
+    """
+    if on_runtime_ready is None:
+        return
+    maybe_awaitable = on_runtime_ready(world)
+    if isinstance(maybe_awaitable, Awaitable):
+        await maybe_awaitable
+
+
 def _validate_agents(
     agent_ids: list[str],
     llms: Mapping[str, RecordReplayChatClient],
@@ -1221,6 +1246,8 @@ async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent drive
     observation_factories: Mapping[str, Callable[[int], Sequence[Observation]]]
     | None = None,
     self_other_enabled: bool = False,
+    two_phase_knob: TwoPhaseKnob | None = None,
+    on_runtime_ready: Callable[[WorldRuntime], Awaitable[None] | None] | None = None,
 ) -> SocietyRunResult:
     """Drive N agents' embodiment loop deterministically (Layer1, §M3/§M4).
 
@@ -1249,6 +1276,35 @@ async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent drive
     ``None``, and the slot stays ``None`` (Layer1-equivalent, §L8). NOT a
     structural-floor verdict; verdict は holding — the slot proves reproducibility
     / causal wiring, never a floor / magnitude.
+
+    ``two_phase_knob`` (live-closure ADR, additive, default ``None``): passed
+    straight through to the driver's single shared :class:`CognitionCycle`
+    (``CognitionCycle(two_phase_knob=...)``, unmodified organ seam). ``None``
+    keeps the frozen ES-3 ``locomotion_delta`` (divergence-only) sampling
+    composition, byte-identical to every existing caller and sealed golden. An
+    injected :class:`~erre_sandbox.erre.two_phase.TwoPhaseKnob` only modulates
+    the *sampling* term the cycle composes for its next LLM call — it never
+    touches the geometry this driver computes (destination/zone resolution is
+    driven by the recorded/replayed ``LLMPlan``, not by sampling), so
+    ``checksum`` (geometry) is unchanged either way; the knob is a
+    presence-only marker (no gains carried here), not a per-run tuning surface.
+
+    ``on_runtime_ready`` (live-closure ADR, additive, default ``None``): an
+    optional **construction exposure** hook — a readiness barrier for a driver
+    (e.g. a gateway composition root) that needs the concrete
+    :class:`WorldRuntime` this function constructs (for
+    ``recv_envelope``/``layout_snapshot``-shaped consumers) before this run's
+    first observation drain. Called **exactly once**, after the dialog
+    scheduler/generator are attached and before the first cognition window's
+    ``inject_observation`` calls; a synchronous callable is invoked directly
+    and an async callable's returned awaitable is ``await``-ed in place (an
+    awaitable readiness barrier, not a fire-and-forget callback), so a
+    supervisor that spins up other consumers of ``world`` inside the hook is
+    guaranteed to finish before this driver's loop body starts reading/writing
+    ``world``. **The hook must not mutate the runtime it receives** — it is a
+    read/attach access point only, never a second construction site; passing
+    ``None`` (every existing caller) never invokes it, and the sequential
+    scheduler loop is byte-identical to before this kwarg's addition.
     """
     agent_ids = [s.agent_id for s in agent_states]
     _validate_agents(agent_ids, llms, personas)
@@ -1282,6 +1338,7 @@ async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent drive
         ecl_mode=ecl_mode,
         bias_sink=bias_sink,
         reflector=reflector,
+        two_phase_knob=two_phase_knob,
     )
     clock = ManualClock(start=0.0)
     ctxs: dict[str, _SocietySinkContext] = {a: _SocietySinkContext() for a in agent_ids}
@@ -1342,6 +1399,15 @@ async def run_society_loop(  # noqa: PLR0915 — large record-mode N-agent drive
     dialog_generator = _DeterministicDialogTurnGenerator(on_turn=dialog_events.append)
     world.attach_dialog_scheduler(dialog_scheduler)
     world.attach_dialog_generator(dialog_generator)
+
+    # Live-closure ADR (additive, default None): an awaitable readiness
+    # barrier for a construction-exposure consumer of this driver's concrete
+    # WorldRuntime (gateway-shaped recv_envelope/layout_snapshot access), called
+    # exactly once here — after dialog attach, before this run's first
+    # observation drain below — so any consumer the hook spins up sees a fully
+    # dialog-wired world before this driver starts stepping it. ``None`` (every
+    # existing caller) never invokes this, keeping the loop byte-identical.
+    await _invoke_runtime_ready_hook(on_runtime_ready, world)
 
     obs_factories: dict[str, Callable[[int], Sequence[Observation]]] = dict(
         observation_factories
