@@ -36,20 +36,25 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import dataclasses
 import inspect
 import json
 from collections import Counter
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 import pytest
 
+from erre_sandbox.cognition.embodiment import K_ECL
 from erre_sandbox.erre.two_phase import TwoPhaseKnob
 from erre_sandbox.inference.ollama_adapter import ChatResponse
 from erre_sandbox.integration.embodied import society, society_live_loop
 from erre_sandbox.integration.embodied.live import ThinkOffChatClient
-from erre_sandbox.integration.embodied.loop import RecordReplayChatClient
+from erre_sandbox.integration.embodied.loop import (
+    RecordedLlmCall,
+    RecordReplayChatClient,
+)
 from erre_sandbox.integration.embodied.society import SocietyRunResult, run_society_loop
 from erre_sandbox.integration.embodied.society_live import (
     SOCIETY_LIVE_AGENT_IDS,
@@ -57,20 +62,48 @@ from erre_sandbox.integration.embodied.society_live import (
 )
 from erre_sandbox.integration.embodied.society_live_loop import (
     COGNITION_ENVELOPE_KINDS,
+    CONFORMANCE_COMPARED_FIELDS,
+    CONFORMANCE_EXCLUDED_FIELDS,
+    CONFORMANCE_SAMPLING_EXCLUSION_REASON,
     DIALOG_ENVELOPE_KINDS,
     EXCLUDED_ENVELOPE_KINDS,
     LIVE_ROOT_MODULE,
     RECORD_MODE_WALL_CLOCK,
+    NondeterminismFinding,
     SocietyBroadcastLedger,
     SocietyInboundRouter,
     SocietyInjectedPerturbation,
+    SocietyLedgerEntry,
+    SocietyPlaneGReplay,
     build_society_live_world,
+    committed_self_other_segments,
+    ledger_observation_factories,
+    live_root_nondeterminism_findings,
+    live_root_source,
+    recorded_llm_from_capture,
+    replay_society_plane_g,
     run_society_live_loop,
+    scan_nondeterminism_sources,
+    self_other_segment_marker,
+    society_embedding_record_from_jsonl,
+    society_firing_annotation,
+    society_injected_ledger_from_jsonl,
+    society_ledger_entries,
     society_live_gateway_lifespan_serve,
     society_live_loop_perturbation_plan,
+    society_mirror_wiring_summary,
+    society_plane_g_bundle,
+    society_plane_g_parity,
+    society_plane_g_pins,
+    society_recorded_llm_from_jsonl,
+    society_request_conformance,
     society_wiring_reachability_summary,
     spy_inject_envelope_callers,
     supervise_society_live_loop,
+)
+from erre_sandbox.integration.embodied.traversal_live import (
+    EmbeddingRecordReplayClient,
+    RecordedEmbeddingCall,
 )
 from erre_sandbox.integration.inbound import InboundSink
 from erre_sandbox.memory import EmbeddingClient, MemoryStore
@@ -1528,3 +1561,1175 @@ async def test_tick_level_seams_are_shared_within_a_tick(
         if injected.agent_tick == first_tick
     }
     assert routed == set(agent_ids)
+
+
+# =============================================================================
+# Issue 005 — W-N2 mirror (prompt-level self-other context) wiring witness
+# =============================================================================
+#
+# ``loop/20260906-m13-society-live-closure/issues/005.md``: Ollama-free, record
+# mode, scripted inner-chat doubles. The mirror is NOT re-implemented by the
+# live root -- ``run_society_loop(self_other_enabled=True)`` builds it through
+# ``society.py``'s own ``build_self_other_context``, and every assertion below
+# reads the COMMITTED record back out (``RecordedLlmCall.user_prompt``).
+#
+# **Every witness below carries a breaking negative** (DA-SLC-8's lesson: an
+# orchestrator-specified seam equality turned out to be tautological, so
+# non-tautology must be demanded by the AC rather than left to the implementer):
+# AC1 is falsified by a ``self_other_enabled=False`` control, AC2/AC3/AC5 by
+# doctored committed records that the SAME witness function must report as
+# ``False``. Nothing here grades the segment's content (Stop condition S4) and
+# nothing reads whether the segment changed any behaviour (frozen second link).
+
+
+class _EchoingInner:
+    """Adversarial inner chat: echoes the self-other marker into its own output.
+
+    Design-copy of ``test_m2_society_selfother.py::_EchoingChat`` (this suite's
+    convention for small private doubles), with one deliberate difference: it
+    echoes the WHOLE marker (society's own framing line) rather than an ASCII
+    head of it, and serialises with ``ensure_ascii=False`` so the marker's em
+    dash survives verbatim into ``RecordedLlmCall.raw_response``. That is what
+    makes the Codex L-2 discrimination non-vacuous: the marker genuinely appears
+    in the LLM's own output, and the witness must still report the
+    observation-derived memory field as clean.
+    """
+
+    def __init__(self, marker: str) -> None:
+        self._marker = marker
+        self.echoed = False
+
+    async def chat(self, messages, *, sampling, model=None, options=None, think=None):  # noqa: ARG002
+        user = next((m.content for m in messages if m.role == "user"), "")
+        has_segment = self._marker in user
+        self.echoed = self.echoed or has_segment
+        payload = {
+            "thought": self._marker if has_segment else "no self-other segment",
+            "utterance": self._marker if has_segment else "散歩へ",
+            "destination_zone": "peripatos",
+            "animation": "walk",
+        }
+        return ChatResponse(
+            content=json.dumps(payload, ensure_ascii=False),
+            model="qwen3:8b",
+            eval_count=1,
+            total_duration_ms=0.0,
+        )
+
+
+async def _drive_mirror(
+    *,
+    run_id: str,
+    n_cognition_ticks: int = 3,
+    self_other_enabled: bool = True,
+    inner_chats: Mapping[str, Any] | None = None,
+) -> SocietyRunResult:
+    """One sealed-roster (N=3) drive, Layer2 on or off, otherwise identical.
+
+    ``self_other_enabled=True`` goes through the live closure root itself
+    (:func:`run_society_live_loop`). ``False`` is the ablation control: it
+    reproduces that function's own ``run_society_loop`` call field-for-field
+    except the flag (and the runtime-capture hook, which only reads the runtime
+    and never touches cognition), so an on/off comparison differs in the mirror
+    and in nothing else -- the AC4 call-budget equality is then a real
+    measurement of the flag's cost, not a comparison of two identical configs.
+
+    The frozen perturbation plan is pushed into the sink so every window has
+    real inbound observations, and therefore real observation-derived episodic
+    memory rows for the AC3 disjointness check to be non-vacuous about.
+    """
+    agent_ids = tuple(SOCIETY_LIVE_AGENT_IDS)
+    store, embedding = _fresh_store_and_embedding()
+    sink = InboundSink()
+    chats = (
+        {aid: _ScriptedInner(_PLAN_JSON) for aid in agent_ids}
+        if inner_chats is None
+        else dict(inner_chats)
+    )
+    world = build_society_live_world(
+        inner_chats=chats,
+        store=store,
+        embedding=embedding,
+        inbound_sink=sink,
+        max_drain_per_tick=len(agent_ids),
+    )
+    for msg in society_live_loop_perturbation_plan(
+        agent_ids=agent_ids, n_ticks=n_cognition_ticks
+    ):
+        sink.push(msg)
+    try:
+        if self_other_enabled:
+            run = await run_society_live_loop(
+                world,
+                run_id=run_id,
+                retrieval_now=_FIXED,
+                base_ts=_FIXED,
+                n_cognition_ticks=n_cognition_ticks,
+                physics_ticks_per_cognition=2,
+            )
+            return run.result
+        return await run_society_loop(
+            run_id=run_id,
+            store=world.store,
+            embedding=world.embedding,
+            llms=world.llms,
+            agent_states=world.agent_states,
+            personas=world.personas,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            seed=0,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=2,
+            observation_factories=world.router.observation_factories(agent_ids),
+            self_other_enabled=False,
+            two_phase_knob=world.knob,
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+
+
+def _replace_decisions(
+    result: SocietyRunResult,
+    decisions: Mapping[str, tuple[Any, ...]],
+) -> SocietyRunResult:
+    """A doctored copy of a committed result (negative fixtures only)."""
+    return dataclasses.replace(result, decisions=dict(decisions))
+
+
+def _nested_keys(summary: Mapping[str, Any]) -> set[str]:
+    """Every key name in ``summary``, at any nesting depth."""
+    keys: set[str] = set()
+    stack: list[Any] = [summary]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            keys |= set(map(str, node))
+            stack.extend(node.values())
+        elif isinstance(node, (list, tuple)):
+            stack.extend(node)
+    return keys
+
+
+# --------------------------------------------------------------------------- #
+# AC1 — a non-empty self-other segment rode in a committed live cognition call
+# (+ the flag-off control that must NOT detect one: the witness is not
+# tautologically true)
+# --------------------------------------------------------------------------- #
+
+
+async def test_self_other_segment_present_in_committed_prompt() -> None:
+    marker = self_other_segment_marker()
+    assert marker, "society's public builder rendered no framing line"
+
+    on_result = await _drive_mirror(run_id="i5-ac1-on")
+    on_summary = society_mirror_wiring_summary(on_result)
+
+    assert on_summary["segment_marker"] == marker
+    assert on_summary["any_agent_window_has_segment"] is True
+    assert on_summary["segment_present_count"] >= 1
+    # The segment really is in the committed prompt, not only in the witness.
+    carried = [
+        (segment.agent_id, segment.window)
+        for segment in committed_self_other_segments(on_result)
+    ]
+    assert carried, "no committed call carried a self-other segment"
+    for agent_id, window in carried:
+        assert marker in on_result.decisions[agent_id][window].call.user_prompt
+
+    # Breaking negative (non-tautology): the identical drive with Layer2 off
+    # must be reported by the SAME witness as carrying no segment at all.
+    off_result = await _drive_mirror(run_id="i5-ac1-off", self_other_enabled=False)
+    off_summary = society_mirror_wiring_summary(off_result)
+
+    assert off_summary["any_agent_window_has_segment"] is False
+    assert off_summary["segment_present_count"] == 0
+    assert not committed_self_other_segments(off_result)
+
+
+# --------------------------------------------------------------------------- #
+# AC2 — window 0 carries no segment (strict prefix filter's observable
+# consequence: no prior window, and never the observer itself)
+# --------------------------------------------------------------------------- #
+
+
+async def test_self_other_segment_empty_at_window_zero() -> None:
+    result = await _drive_mirror(run_id="i5-ac2")
+    summary = society_mirror_wiring_summary(result)
+
+    assert summary["window_zero_segment_absent"] is True
+    for windows in summary["segment_present_windows_per_agent"].values():
+        assert all(window >= 1 for window in windows)
+    # Non-vacuous: some window >= 1 DID carry a segment, so "absent at 0" is a
+    # real filter result rather than "absent everywhere".
+    assert summary["segment_present_count"] >= 1
+    # Self never leaks into its own observer's segment, and the render contract
+    # was genuinely parsed (an empty parse would flip the second boolean).
+    assert summary["segment_never_names_observer"] is True
+    assert summary["every_nonempty_segment_names_a_roster_agent"] is True
+    assert summary["roster_ids_prefix_free"] is True
+
+    # Breaking negative (non-tautology): doctor window 0's committed prompt so
+    # it DOES carry a segment; the same witness must report False.
+    agent_id = sorted(result.decisions)[0]
+    other_id = sorted(result.decisions)[1]
+    records = list(result.decisions[agent_id])
+    forged = f"{summary['segment_marker']}\n- {other_id}: zone=study"
+    records[0] = dataclasses.replace(
+        records[0],
+        call=dataclasses.replace(
+            records[0].call,
+            user_prompt=f"{records[0].call.user_prompt}\n\n{forged}\n\n",
+        ),
+    )
+    doctored = _replace_decisions(
+        result, {**result.decisions, agent_id: tuple(records)}
+    )
+    doctored_summary = society_mirror_wiring_summary(doctored)
+
+    assert doctored_summary["window_zero_segment_absent"] is False
+    assert 0 in doctored_summary["segment_present_windows_per_agent"][agent_id]
+
+
+# --------------------------------------------------------------------------- #
+# AC3 — disjointness, scoped to the observation-derived memory field (Codex
+# L-2), made non-vacuous by an echoing adversary mock
+# --------------------------------------------------------------------------- #
+
+
+async def test_self_other_segment_disjoint_from_observation_memory() -> None:
+    marker = self_other_segment_marker()
+    echoers = {aid: _EchoingInner(marker) for aid in SOCIETY_LIVE_AGENT_IDS}
+    result = await _drive_mirror(run_id="i5-ac3", inner_chats=echoers)
+    summary = society_mirror_wiring_summary(result)
+
+    # Non-vacuous adversary: at least one agent actually saw AND echoed it.
+    assert any(inner.echoed for inner in echoers.values()), (
+        "the echoing mock never saw the self-other segment -- vacuous adversary"
+    )
+    assert summary["llm_output_segment_echo_count"] > 0
+    # Non-vacuous sink: observation-derived episodic rows were really written.
+    assert summary["observation_memory_row_count"] > 0
+    assert summary["observation_memory_kinds"] == {
+        "episodic": summary["observation_memory_row_count"]
+    }
+    # Non-vacuous seam: the segment really was on the live prompts this run.
+    assert summary["segment_present_count"] >= 1
+
+    # Codex L-2: the LLM echoing the marker into its OWN raw response is not a
+    # disjointness violation -- the inspected field is the observation-derived
+    # memory content, which must stay clean even under that adversary.
+    assert summary["segment_absent_from_observation_memory"] is True
+    assert summary["observation_memory_rows_carrying_segment"] == []
+    echoing_calls = [
+        record
+        for records in result.decisions.values()
+        for record in records
+        if marker in record.call.raw_response
+    ]
+    assert echoing_calls, "adversary never reached the committed record"
+
+    # Breaking negative (non-tautology): a committed run whose observation
+    # memory DID carry the segment must be reported as not disjoint.
+    leaked_from = result.memory_mutations[0]
+    leaked = dataclasses.replace(
+        leaked_from,
+        memory_id="leaked-observation-row",
+        content=f"{leaked_from.content} {marker}",
+    )
+    doctored = dataclasses.replace(
+        result, memory_mutations=(*result.memory_mutations, leaked)
+    )
+    doctored_summary = society_mirror_wiring_summary(doctored)
+
+    assert doctored_summary["segment_absent_from_observation_memory"] is False
+    assert doctored_summary["observation_memory_rows_carrying_segment"] == [
+        "leaked-observation-row"
+    ]
+
+    # A partial leak (one observed-other bullet line, no framing header) is
+    # caught too -- the needle set is not just the header.
+    body_line = committed_self_other_segments(result)[0].text.splitlines()[1]
+    partial = dataclasses.replace(
+        leaked_from, memory_id="partial-leak-row", content=body_line
+    )
+    partial_summary = society_mirror_wiring_summary(
+        dataclasses.replace(
+            result, memory_mutations=(*result.memory_mutations, partial)
+        )
+    )
+    assert partial_summary["segment_absent_from_observation_memory"] is False
+
+
+# --------------------------------------------------------------------------- #
+# AC4 — the mirror adds no LLM call: N x ticks, identical with the flag on/off
+# (Codex M-4)
+# --------------------------------------------------------------------------- #
+
+
+async def test_llm_call_count_is_n_agents_times_ticks() -> None:
+    n_agents = len(SOCIETY_LIVE_AGENT_IDS)
+    ticks = SOCIETY_LIVE_N_COGNITION_TICKS
+
+    on_result = await _drive_mirror(run_id="i5-ac4-on", n_cognition_ticks=ticks)
+    off_result = await _drive_mirror(
+        run_id="i5-ac4-off", n_cognition_ticks=ticks, self_other_enabled=False
+    )
+    on_summary = society_mirror_wiring_summary(on_result)
+    off_summary = society_mirror_wiring_summary(off_result)
+
+    assert on_summary["llm_call_count"] == n_agents * ticks == 36
+    assert on_summary["llm_call_count"] == off_summary["llm_call_count"]
+    assert on_summary["llm_call_count_equals_agents_times_windows"] is True
+    assert off_summary["llm_call_count_equals_agents_times_windows"] is True
+    assert on_summary["windows_per_agent"] == off_summary["windows_per_agent"]
+    assert set(on_summary["windows_per_agent"].values()) == {ticks}
+
+    # The two runs really did differ in the mirror -- otherwise the equality
+    # above would be comparing two identical configurations.
+    assert on_summary["segment_present_count"] > 0
+    assert off_summary["segment_present_count"] == 0
+
+    # Breaking negative: a run that HAD added a call per segment would not
+    # satisfy the pin, and the same witness reports that.
+    agent_id = sorted(on_result.decisions)[0]
+    inflated = _replace_decisions(
+        on_result,
+        {
+            **on_result.decisions,
+            agent_id: (
+                *on_result.decisions[agent_id],
+                on_result.decisions[agent_id][0],
+            ),
+        },
+    )
+    inflated_summary = society_mirror_wiring_summary(inflated)
+    assert inflated_summary["llm_call_count"] == n_agents * ticks + 1
+    assert inflated_summary["llm_call_count_equals_agents_times_windows"] is False
+
+
+# --------------------------------------------------------------------------- #
+# AC5 — per-agent call attribution is unique (Codex M-4)
+# --------------------------------------------------------------------------- #
+
+
+async def test_per_agent_call_attribution_is_unique() -> None:
+    result = await _drive_mirror(run_id="i5-ac5")
+    summary = society_mirror_wiring_summary(result)
+
+    assert summary["agent_ids"] == sorted(SOCIETY_LIVE_AGENT_IDS)
+    assert summary["agent_window_pairs_unique"] is True
+    assert summary["agent_windows_complete"] is True
+    # A call filed under the wrong observer would name that observer in its own
+    # segment; it does not.
+    assert summary["segment_never_names_observer"] is True
+    assert summary["every_nonempty_segment_names_a_roster_agent"] is True
+    # The driver's own step order agrees: sorted roster, once per window.
+    assert list(result.cognition_step_order[: len(summary["agent_ids"])]) == sorted(
+        SOCIETY_LIVE_AGENT_IDS
+    )
+
+    # Breaking negative A (mis-attribution): swap two agents' committed call
+    # streams. Each now carries segments naming its own key -> witness False.
+    first, second = sorted(result.decisions)[:2]
+    swapped = _replace_decisions(
+        result,
+        {
+            **result.decisions,
+            first: result.decisions[second],
+            second: result.decisions[first],
+        },
+    )
+    swapped_summary = society_mirror_wiring_summary(swapped)
+    assert swapped_summary["segment_never_names_observer"] is False
+    assert swapped_summary["agent_window_pairs_unique"] is True  # still a bijection
+
+    # Breaking negative B (duplicate attribution): the same (agent, window) twice.
+    duplicated = _replace_decisions(
+        result,
+        {
+            **result.decisions,
+            first: (*result.decisions[first], result.decisions[first][0]),
+        },
+    )
+    duplicated_summary = society_mirror_wiring_summary(duplicated)
+    assert duplicated_summary["agent_window_pairs_unique"] is False
+    assert duplicated_summary["agent_windows_complete"] is False
+
+
+# --------------------------------------------------------------------------- #
+# AC6 — verdict is an explicit None; no effect / detectability / divergence /
+# floor / scorer key at any nesting level (measurement non-reentry)
+# --------------------------------------------------------------------------- #
+
+
+async def test_mirror_witness_has_no_verdict() -> None:
+    result = await _drive_mirror(run_id="i5-ac6")
+    summary = society_mirror_wiring_summary(result)
+
+    assert "verdict" in summary
+    assert summary["verdict"] is None
+
+    forbidden_names = {
+        "effect",
+        "divergence",
+        "floor",
+        "score",
+        "scorer",
+        "detectability",
+        "magnitude",
+        "aha",
+    }
+    forbidden_substrings = (
+        "effect",
+        "diverg",
+        "floor",
+        "scor",
+        "detect",
+        "magnitude",
+        "aha",
+    )
+    all_keys = _nested_keys(summary)
+    assert all_keys.isdisjoint(forbidden_names)
+    for key in all_keys:
+        for banned in forbidden_substrings:
+            assert banned not in key.lower(), f"{key} names a measurement claim"
+
+    # Honest framing is carried by the artifact, not only by this test
+    # (Codex L-1: no "simulate ... inner state" vocabulary of this module's own;
+    # the marker VALUE quotes society's render verbatim, the note does not).
+    note = summary["note"].lower()
+    assert "construction wiring" in note
+    assert "not a theory of mind" in note
+    assert "not an estimate of any agent's inner state" in note
+    assert "not a measurement" in note
+    assert "simulate" not in note
+    assert "observation-derived memory field" in note
+
+
+# --------------------------------------------------------------------------- #
+# Issue 006 — Plane G byte-parity + request conformance (design-final.md §6 W-N4)
+#
+# Ollama-free throughout: a record-mode capture and its replay run in the SAME
+# process, both over scripted doubles. Every assertion is a checksum identity, a
+# boolean or a count -- never a floor / verdict / scorer / divergence
+# (``design-final.md`` §2 honest framing).
+#
+# **Non-vacuity is the point (``decisions.md`` DA-SLC-8)**: AC4 / AC6 / AC7 each
+# carry a negative fixture that makes the guard FAIL, so none of them can be
+# "an inspection that only ever returns True". AC1's Plane G parity carries its
+# own: the drift fixture in AC4 shows the geometry checksum stays green while
+# conformance goes red, which is exactly the failure mode an ordinal replay
+# hides and the reason Codex H-4 required a replay-side spy at all.
+# --------------------------------------------------------------------------- #
+
+_PLANE_G_TICKS = 3
+_PLANE_G_PHYSICS = 2
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _PlaneGCapture:
+    """One committed record-mode society capture plus its replay inputs."""
+
+    result: SocietyRunResult
+    ledger: tuple[SocietyLedgerEntry, ...]
+    recorded_llm: Mapping[str, tuple[RecordedLlmCall, ...]]
+    recorded_embedding: tuple[RecordedEmbeddingCall, ...]
+    agent_states: list[AgentState]
+    personas: dict[str, PersonaSpec]
+
+    @property
+    def committed_embedding_requests(self) -> list[tuple[str, str]]:
+        return [(call.kind, call.text) for call in self.recorded_embedding]
+
+
+async def _capture_for_plane_g(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+    *,
+    run_id: str,
+    agent_ids: Sequence[str] = SOCIETY_LIVE_AGENT_IDS,
+    n_cognition_ticks: int = _PLANE_G_TICKS,
+) -> _PlaneGCapture:
+    """Drive one knob-ON live capture and collect everything a replay needs.
+
+    Knob-on on purpose: Plane G's whole claim is that a knob-ON capture replays
+    byte-identically through a knob-OFF unmodified ``run_society_loop``, so a
+    knob-off capture would make the test vacuous on the very property it pins.
+    """
+    states, personas = _roster(make_agent_state, make_persona_spec, list(agent_ids))
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    inner_embedding = _embed_client()
+    recorder = EmbeddingRecordReplayClient(inner=inner_embedding)
+    sink = InboundSink()
+    world = build_society_live_world(
+        inner_chats={state.agent_id: _ScriptedInner(_PLAN_JSON) for state in states},
+        store=store,
+        embedding=cast("EmbeddingClient", recorder),
+        inbound_sink=sink,
+        knob=TwoPhaseKnob(),
+        agent_states=states,
+        personas=personas,
+        max_drain_per_tick=len(states),
+    )
+    for msg in society_live_loop_perturbation_plan(
+        agent_ids=list(agent_ids), n_ticks=n_cognition_ticks
+    ):
+        sink.push(msg)
+    try:
+        run = await run_society_live_loop(
+            world,
+            run_id=run_id,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=_PLANE_G_PHYSICS,
+        )
+    finally:
+        await inner_embedding.close()
+        await store.close()
+    return _PlaneGCapture(
+        result=run.result,
+        ledger=society_ledger_entries(run.ledger.injected),
+        recorded_llm=recorded_llm_from_capture(run.result),
+        recorded_embedding=tuple(recorder.used),
+        agent_states=states,
+        personas=personas,
+    )
+
+
+async def _replay_plane_g(
+    capture: _PlaneGCapture,
+    *,
+    run_id: str,
+    ledger: Sequence[SocietyLedgerEntry] | None = None,
+    two_phase_knob: TwoPhaseKnob | None = None,
+    n_cognition_ticks: int = _PLANE_G_TICKS,
+) -> SocietyPlaneGReplay:
+    """Replay ``capture`` through the UNMODIFIED driver on a fresh store."""
+    store = MemoryStore(db_path=":memory:")
+    store.create_schema()
+    try:
+        return await replay_society_plane_g(
+            recorded_llm=capture.recorded_llm,
+            recorded_embedding=capture.recorded_embedding,
+            ledger=capture.ledger if ledger is None else ledger,
+            store=store,
+            agent_states=capture.agent_states,
+            personas=capture.personas,
+            run_id=run_id,
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            n_cognition_ticks=n_cognition_ticks,
+            physics_ticks_per_cognition=_PLANE_G_PHYSICS,
+            two_phase_knob=two_phase_knob,
+        )
+    finally:
+        await store.close()
+
+
+def _plane_g_run_config() -> dict[str, Any]:
+    return {
+        "seed": 0,
+        "physics_ticks_per_cognition": _PLANE_G_PHYSICS,
+        "k_ecl": K_ECL,
+        "base_ts": _FIXED.isoformat(),
+        "retrieval_now": _FIXED.isoformat(),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# AC1 — the committed capture replays byte-identically through the UNMODIFIED
+# ``run_society_loop`` (knob-on capture -> knob-off replay)
+# --------------------------------------------------------------------------- #
+
+
+async def test_plane_g_replay_checksums_byte_identical(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """``ecl_trace_checksum`` AND ``event_log_checksum`` both byte-match.
+
+    Plane G (``design-final.md`` §5): committed inbound ledger ->
+    :func:`ledger_observation_factories` -> unmodified ``run_society_loop``
+    (replay clients, ``self_other_enabled=True``, knob-off) -> the same two
+    checksums the knob-on live capture produced.
+
+    Scope (Codex M-3, binding): this parity is over the SCRIPTED in-process
+    perturbation sequence only. It is not a wall-clock real-time session, and
+    real Godot / WS arrival times / LLM latency are outside the replay set.
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac1"
+    )
+    replay = await _replay_plane_g(capture, run_id="i6-ac1")
+    parity = society_plane_g_parity(
+        pins=society_plane_g_pins(capture.result), replay=replay
+    )
+
+    assert replay.result.checksum == capture.result.checksum
+    assert replay.result.event_log_checksum == capture.result.event_log_checksum
+    assert parity["geometry_checksum_match"] is True
+    assert parity["event_log_checksum_match"] is True
+    assert parity["cognition_step_order_match"] is True
+    assert parity["verdict"] is None
+
+    # Non-vacuity: the checksums are real digests of a real N-agent run, not
+    # two empty strings agreeing with each other.
+    assert len(capture.result.checksum) == 64
+    assert len(capture.result.event_log_checksum) == 64
+    assert capture.result.checksum != capture.result.event_log_checksum
+    assert len(capture.result.decisions) == len(SOCIETY_LIVE_AGENT_IDS)
+    assert len(capture.ledger) == len(SOCIETY_LIVE_AGENT_IDS) * _PLANE_G_TICKS
+
+
+async def test_ledger_factories_group_by_routed_agent_id(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """The replay feed keys on ``routed_agent_id``, never ``target_agent_id``.
+
+    ``decisions.md`` DA-SLC-8, restated as a negative fixture: a mis-bucketed
+    row (routed to an agent other than the one it was aimed at) must follow the
+    bucket it actually landed in. A factory table keyed on the message's
+    ``target_agent_id`` — or on ``observation.agent_id``, which ``inbound.py``
+    copies from it unconditionally — would put it in the wrong agent's window
+    and this assertion would fail.
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac1-routing"
+    )
+    row = capture.ledger[0]
+    other_agent_id = next(
+        agent_id
+        for agent_id in SOCIETY_LIVE_AGENT_IDS
+        if agent_id != row.routed_agent_id
+    )
+    mis_bucketed = SocietyLedgerEntry(
+        agent_tick=row.agent_tick,
+        correlation_id=row.correlation_id,
+        routed_agent_id=other_agent_id,
+        msg=row.msg,
+    )
+
+    factories = ledger_observation_factories(
+        [mis_bucketed], agent_ids=SOCIETY_LIVE_AGENT_IDS
+    )
+    assert len(factories[other_agent_id](row.agent_tick)) == 1
+    assert factories[row.routed_agent_id](row.agent_tick) == ()
+    # The observation still NAMES the intended agent -- which is exactly why
+    # grouping on that field would be a tautology.
+    assert (
+        factories[other_agent_id](row.agent_tick)[0].agent_id == row.msg.target_agent_id
+    )
+    assert row.msg.target_agent_id != other_agent_id
+
+
+# --------------------------------------------------------------------------- #
+# AC2 — the replay reached no backend at all
+# --------------------------------------------------------------------------- #
+
+
+async def test_plane_g_replay_touches_no_llm(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Every replay channel's ``inner_invocations`` is 0 (both planes)."""
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac2"
+    )
+    replay = await _replay_plane_g(capture, run_id="i6-ac2")
+
+    assert set(replay.llm_inner_invocations) == set(SOCIETY_LIVE_AGENT_IDS)
+    for agent_id in sorted(replay.llm_inner_invocations):
+        assert replay.llm_inner_invocations[agent_id] == 0
+    assert replay.embedding_inner_invocations == 0
+
+    parity = society_plane_g_parity(
+        pins=society_plane_g_pins(capture.result), replay=replay
+    )
+    assert parity["replay_touched_no_llm"] is True
+
+    # Non-vacuity: the replay really did serve calls -- a run that made no call
+    # at all would also report 0 inner invocations.
+    assert len(replay.llm_requests) == len(SOCIETY_LIVE_AGENT_IDS) * _PLANE_G_TICKS
+    assert replay.embedding_requests
+    assert tuple(replay.embedding_used) == capture.recorded_embedding
+
+
+# --------------------------------------------------------------------------- #
+# AC3 — request conformance on (agent_id, window, system_prompt, user_prompt),
+# with ``sampling`` explicitly excluded (Codex H-4)
+# --------------------------------------------------------------------------- #
+
+
+async def test_request_conformance_prompts_match_excluding_sampling(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """The recomposed requests match the committed record; sampling is out.
+
+    The exclusion is not an undocumented omission: it is a named module
+    constant, it is carried in the artifact this function returns, and the
+    spy *does* observe the sampling — it just keeps it in a separate channel
+    (:attr:`samplings`) so the conformance comparison can never include it.
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac3"
+    )
+    replay = await _replay_plane_g(capture, run_id="i6-ac3")
+    summary = society_request_conformance(
+        replay=replay,
+        recorded_llm=capture.recorded_llm,
+        committed_embedding_requests=capture.committed_embedding_requests,
+    )
+
+    assert summary["llm_requests_match"] is True
+    assert summary["llm_first_drift"] is None
+    assert summary["embedding_requests_match"] is True
+    assert summary["embedding_first_drift"] is None
+    assert summary["verdict"] is None
+
+    # The exclusion is explicit, in the API surface and in the artifact.
+    assert "sampling" not in CONFORMANCE_COMPARED_FIELDS
+    assert CONFORMANCE_EXCLUDED_FIELDS == ("sampling",)
+    assert summary["compared_fields"] == [
+        "agent_id",
+        "window",
+        "system_prompt",
+        "user_prompt",
+    ]
+    assert summary["excluded_fields"] == ["sampling"]
+    assert summary["excluded_fields_reason"] == CONFORMANCE_SAMPLING_EXCLUSION_REASON
+    assert "knob-off" in summary["excluded_fields_reason"]
+    assert "record_knob_on_pinned" in summary["excluded_fields_reason"]
+
+    # The excluded field is genuinely observed, not simply unavailable.
+    for agent_id in sorted(replay.samplings_per_agent):
+        assert len(replay.samplings_per_agent[agent_id]) == _PLANE_G_TICKS
+
+    # The self-other segment is read through society's own render contract
+    # (``self_other_segment_contract``), never a literal copied into this test.
+    assert summary["self_other_segment_marker"] == self_other_segment_marker()
+    assert summary["self_other_segment_present_count_committed"] > 0
+    assert summary["self_other_segments_match"] is True
+
+
+# --------------------------------------------------------------------------- #
+# AC4 — a one-character prompt drift makes conformance FAIL (non-vacuous)
+# --------------------------------------------------------------------------- #
+
+
+async def test_request_conformance_detects_prompt_drift(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """Two independent negative fixtures; the check is not tautological.
+
+    **(a) committed-side drift** — one character changed in one committed
+    ``user_prompt`` turns ``llm_requests_match`` ``False`` and the drift record
+    names the exact ``(agent_id, window, field)``.
+
+    **(b) replay-side drift (the Codex H-4 scenario proper)** — one character
+    changed in one committed *observation*, so the cognition cycle recomposes a
+    different prompt on replay. The ordinal replay client still serves the same
+    recorded answers, so **the geometry checksum stays byte-identical and green**
+    — and conformance is the only thing that catches it. That is the whole
+    reason a replay-side spy exists rather than a comparison of
+    ``result.decisions[*].call`` against the record (which would compare the
+    committed record with itself).
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac4"
+    )
+    replay = await _replay_plane_g(capture, run_id="i6-ac4")
+
+    # (a) committed-side: mutate ONE character of ONE committed user_prompt.
+    drifted_agent_id = sorted(capture.recorded_llm)[1]
+    drifted_calls = list(capture.recorded_llm[drifted_agent_id])
+    original = drifted_calls[1]
+    drifted_calls[1] = dataclasses.replace(
+        original, user_prompt=original.user_prompt + "X"
+    )
+    drifted_record = dict(capture.recorded_llm)
+    drifted_record[drifted_agent_id] = tuple(drifted_calls)
+
+    committed_drift = society_request_conformance(
+        replay=replay,
+        recorded_llm=drifted_record,
+        committed_embedding_requests=capture.committed_embedding_requests,
+    )
+    assert committed_drift["llm_requests_match"] is False
+    drift = committed_drift["llm_first_drift"]
+    assert drift is not None
+    assert drift["agent_id"] == drifted_agent_id
+    assert drift["window"] == 1
+    assert drift["fields"] == ["user_prompt"]
+
+    # An embedding-side drift is caught by its own half of the check.
+    mutated_embedding = list(capture.committed_embedding_requests)
+    kind, text = mutated_embedding[0]
+    mutated_embedding[0] = (kind, text + "X")
+    embedding_drift = society_request_conformance(
+        replay=replay,
+        recorded_llm=capture.recorded_llm,
+        committed_embedding_requests=mutated_embedding,
+    )
+    assert embedding_drift["embedding_requests_match"] is False
+    assert embedding_drift["embedding_first_drift"] == {
+        "index": 0,
+        "reason": "field_mismatch",
+        "kind_matches": True,
+    }
+
+    # (b) replay-side: one character changed in one committed observation.
+    first = capture.ledger[0]
+    apparatus_drift_ledger = (
+        SocietyLedgerEntry(
+            agent_tick=first.agent_tick,
+            correlation_id=first.correlation_id,
+            routed_agent_id=first.routed_agent_id,
+            msg=first.msg.model_copy(update={"content": first.msg.content + "X"}),
+        ),
+        *capture.ledger[1:],
+    )
+    drifted_replay = await _replay_plane_g(
+        capture, run_id="i6-ac4", ledger=apparatus_drift_ledger
+    )
+    assert drifted_replay.result.checksum == capture.result.checksum  # still green
+    apparatus_conformance = society_request_conformance(
+        replay=drifted_replay,
+        recorded_llm=capture.recorded_llm,
+        committed_embedding_requests=capture.committed_embedding_requests,
+    )
+    assert apparatus_conformance["llm_requests_match"] is False
+    assert apparatus_conformance["llm_first_drift"] is not None
+    assert apparatus_conformance["llm_first_drift"]["fields"] == ["user_prompt"]
+
+
+# --------------------------------------------------------------------------- #
+# AC5 — the run-level self-other slot survives the replay unchanged
+# --------------------------------------------------------------------------- #
+
+
+async def test_self_other_slot_reproduced_on_replay(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """``self_other_observation_input`` is identical live vs replayed.
+
+    Non-vacuous by construction: the slot is asserted **populated** first, so
+    the equality is not two ``None``s agreeing (which is what a Layer2-off run
+    would produce).
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac5"
+    )
+    replay = await _replay_plane_g(capture, run_id="i6-ac5")
+
+    assert capture.result.self_other_observation_input is not None
+    assert (
+        replay.result.self_other_observation_input
+        == capture.result.self_other_observation_input
+    )
+    parity = society_plane_g_parity(
+        pins=society_plane_g_pins(capture.result), replay=replay
+    )
+    assert parity["self_other_slot_present"] is True
+    assert parity["self_other_slot_match"] is True
+
+    # A doctored pin (slot removed) must make the same witness go False --
+    # otherwise the boolean would be reporting nothing.
+    blank_pins = dataclasses.replace(
+        society_plane_g_pins(capture.result), self_other_observation_input=None
+    )
+    assert (
+        society_plane_g_parity(pins=blank_pins, replay=replay)["self_other_slot_match"]
+        is False
+    )
+
+
+# --------------------------------------------------------------------------- #
+# AC6 — no new non-determinism source in the live root (AST guard + negatives)
+# --------------------------------------------------------------------------- #
+
+_NONDETERMINISM_NEGATIVE_FIXTURE = '''
+"""A live root that leaks -- the guard must flag every line below."""
+import uuid
+from datetime import datetime
+
+
+def leaky(mapping, pairs):
+    dialog_id = uuid.uuid4()
+    stamp = datetime.now()
+    for key in mapping.keys():
+        print(key)
+    for agent_id in set(pairs):
+        print(agent_id)
+    return [value for value in mapping.values()], dialog_id, stamp
+'''
+
+_NONDETERMINISM_CLEAN_FIXTURE = '''
+"""The same module written the way the live root is."""
+from datetime import UTC, datetime
+
+PINNED = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def tidy(mapping, pairs):
+    for key in sorted(mapping):
+        print(key)
+    for agent_id in sorted(set(pairs)):
+        print(agent_id)
+    return [mapping[key] for key in sorted(mapping)], PINNED
+'''
+
+
+def test_no_new_nondeterminism_sources() -> None:
+    """The live root carries no uuid4 / ``datetime.now()`` / unsorted iteration.
+
+    ``design-final.md`` §5's determinism table, enforced mechanically rather
+    than by review: :func:`scan_nondeterminism_sources` parses the module's own
+    source and flags forbidden calls and order-unstable iteration.
+
+    The negative fixture is what makes the empty result meaningful — it proves
+    the scanner is capable of returning findings, so "no findings on the live
+    root" is a result rather than the only thing it can say. The clean fixture
+    closes the other side: the guard does not simply flag everything.
+    """
+    assert live_root_nondeterminism_findings() == ()
+    assert "society_live_loop" in LIVE_ROOT_MODULE
+    assert "def scan_nondeterminism_sources" in live_root_source()
+
+    findings = scan_nondeterminism_sources(_NONDETERMINISM_NEGATIVE_FIXTURE)
+    assert findings, "the guard must be able to fail"
+    by_name = {finding.name for finding in findings}
+    kinds = {finding.kind for finding in findings}
+    assert "uuid4" in by_name
+    assert "now" in by_name
+    assert ".keys()" in by_name
+    assert ".values()" in by_name
+    assert "set()" in by_name
+    assert kinds == {"nondeterministic_call", "unsorted_iteration"}
+    assert all(isinstance(finding, NondeterminismFinding) for finding in findings)
+    assert all(finding.lineno > 0 for finding in findings)
+    # Deterministic output order (the guard is itself part of the live root).
+    assert list(findings) == sorted(findings, key=lambda f: (f.lineno, f.kind, f.name))
+
+    assert scan_nondeterminism_sources(_NONDETERMINISM_CLEAN_FIXTURE) == ()
+
+
+# --------------------------------------------------------------------------- #
+# AC7 — floats inside embedded serialised JSON go through the 6-decimal
+# re-quantisation at the projection boundary
+# --------------------------------------------------------------------------- #
+
+
+def _float_leaves(node: Any) -> list[float]:
+    """Every float leaf in a parsed JSON payload."""
+    if isinstance(node, bool):
+        return []
+    if isinstance(node, float):
+        return [node]
+    if isinstance(node, dict):
+        return [leaf for key in sorted(node) for leaf in _float_leaves(node[key])]
+    if isinstance(node, list):
+        return [leaf for item in node for leaf in _float_leaves(item)]
+    return []
+
+
+def _shift_first_physical_float(
+    capture: SocietyRunResult, *, field: str, delta: float
+) -> SocietyRunResult:
+    """Nudge one float **inside** a pre-serialised ``envelope_provenance`` entry.
+
+    The mutated value lives in a ``model_dump_json`` string, i.e. as TEXT — the
+    exact place the surrounding canonicaliser's blanket float rule cannot see
+    and where ``handoff``'s ``_quantize_embedded_json`` is the only thing
+    standing between a Windows bake and a Linux one
+    (``feedback_golden_crossplatform_float_drift``, PR #55/#76).
+    """
+    agent_id = sorted(capture.decisions)[0]
+    records = list(capture.decisions[agent_id])
+    envelopes = list(records[0].envelope_provenance)
+    index = next(i for i, env in enumerate(envelopes) if f'"{field}"' in env)
+    payload = json.loads(envelopes[index])
+    physical = payload["agent_state"]["physical"]
+    physical[field] = physical[field] + delta
+    envelopes[index] = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    records[0] = dataclasses.replace(records[0], envelope_provenance=tuple(envelopes))
+    decisions = dict(capture.decisions)
+    decisions[agent_id] = tuple(records)
+    return _replace_decisions(capture, decisions)
+
+
+def _event_log_checksum_of(result: SocietyRunResult) -> str:
+    return society.event_log_checksum(
+        rows=result.rows,
+        decisions=result.decisions,
+        pair_events=result.pair_events,
+        dialog_events=result.dialog_events,
+        affinity_deltas=result.affinity_deltas,
+        memory_mutations=result.memory_mutations,
+        self_other_observation_input=result.self_other_observation_input,
+    )
+
+
+async def test_embedded_json_floats_are_requantised(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """The bundle projection re-quantises floats inside embedded JSON strings.
+
+    Positive: no float inside any projected ``envelope_provenance`` entry keeps
+    more than six decimals.
+
+    Negative fixture 1 (the guard is load-bearing): the RAW pre-projection
+    strings do carry longer floats, and a naive ``json.dumps`` pass-through
+    keeps them verbatim — so the quantised output is the projection's doing,
+    not an accident of the data already being short.
+
+    Negative fixture 2 (non-vacuous in BOTH directions): a sub-quantum nudge
+    (below half of 1e-6, i.e. the cross-platform ``libm`` drift this rule
+    exists to absorb) leaves the projected bytes and the event-log checksum
+    byte-identical, while a supra-quantum nudge changes both. A projection that
+    quantised everything to a constant, or one that quantised nothing, would
+    fail one of those two.
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac7"
+    )
+    field = "sleep_quality"
+    bundle = society_plane_g_bundle(
+        capture.result,
+        ledger=capture.ledger,
+        recorded_embedding=capture.recorded_embedding,
+        run_config=_plane_g_run_config(),
+        env_pins={"society_event_log_checksum": capture.result.event_log_checksum},
+    )
+
+    projected_floats: list[float] = []
+    for line in bundle["decisions.jsonl"].splitlines():
+        for envelope_json in json.loads(line)["decision"]["envelope_provenance"]:
+            projected_floats.extend(_float_leaves(json.loads(envelope_json)))
+    assert projected_floats
+    for value in projected_floats:
+        assert round(value, 6) == value, f"{value} escaped the 6-decimal rule"
+
+    # Negative fixture 1: the raw record really does carry longer floats.
+    raw_floats: list[float] = []
+    for agent_id in sorted(capture.result.decisions):
+        for record in capture.result.decisions[agent_id]:
+            for envelope_json in record.envelope_provenance:
+                raw_floats.extend(_float_leaves(json.loads(envelope_json)))
+    assert any(round(value, 6) != value for value in raw_floats)
+    naive = json.dumps(
+        {
+            "envelope_provenance": list(
+                capture.result.decisions[sorted(capture.result.decisions)[0]][
+                    0
+                ].envelope_provenance
+            )
+        }
+    )
+    assert any(str(value) in naive for value in raw_floats if round(value, 6) != value)
+
+    # Negative fixture 2: sub-quantum absorbed, supra-quantum not.
+    sub_quantum = _shift_first_physical_float(capture.result, field=field, delta=4e-10)
+    supra_quantum = _shift_first_physical_float(capture.result, field=field, delta=1e-3)
+
+    def _decisions_text(result: SocietyRunResult) -> str:
+        return society_plane_g_bundle(
+            result,
+            ledger=capture.ledger,
+            recorded_embedding=capture.recorded_embedding,
+            run_config=_plane_g_run_config(),
+            env_pins={"society_event_log_checksum": "pin"},
+        )["decisions.jsonl"]
+
+    base_text = _decisions_text(capture.result)
+    sub_text = _decisions_text(sub_quantum)
+    supra_text = _decisions_text(supra_quantum)
+    assert sub_text == base_text
+    assert supra_text != base_text
+    assert _event_log_checksum_of(sub_quantum) == _event_log_checksum_of(capture.result)
+    assert _event_log_checksum_of(supra_quantum) != _event_log_checksum_of(
+        capture.result
+    )
+
+    # The two replay-input side files round-trip through their own projections.
+    assert (
+        society_injected_ledger_from_jsonl(bundle["inbound_ledger.jsonl"])
+        == capture.ledger
+    )
+    assert (
+        society_embedding_record_from_jsonl(bundle["embedding_record.jsonl"])
+        == capture.recorded_embedding
+    )
+    assert society_recorded_llm_from_jsonl(bundle["decisions.jsonl"]) == dict(
+        capture.recorded_llm
+    )
+
+
+# --------------------------------------------------------------------------- #
+# AC8 — the per-agent firing annotation is NOT a gate
+# --------------------------------------------------------------------------- #
+
+
+async def test_firing_annotation_is_non_gate(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """``verdict`` is ``None``; ``eligible`` / ``witness`` are plain counts.
+
+    The summary itself is the **unmodified**
+    ``two_phase_live.two_phase_firing_summary`` applied per agent — this module
+    contributes the per-agent dispatch and the honest framing, never a new
+    statistic. firing ≠ detectability: nothing here claims a behaviour changed.
+    """
+    capture = await _capture_for_plane_g(
+        make_agent_state, make_persona_spec, run_id="i6-ac8"
+    )
+    knob_on = await _replay_plane_g(
+        capture, run_id="i6-ac8", two_phase_knob=TwoPhaseKnob()
+    )
+    knob_off = await _replay_plane_g(capture, run_id="i6-ac8")
+    annotation = society_firing_annotation(
+        knob_on=knob_on, knob_off=knob_off, recorded_llm=capture.recorded_llm
+    )
+
+    assert annotation["verdict"] is None
+    assert annotation["hard_gate"] is False
+    assert annotation["agent_ids"] == sorted(SOCIETY_LIVE_AGENT_IDS)
+    assert isinstance(annotation["eligible_tick_count"], int)
+    assert isinstance(annotation["witness_tick_count"], int)
+    assert annotation["eligible_tick_count"] >= 0
+    assert annotation["witness_tick_count"] >= 0
+    for agent_id in annotation["agent_ids"]:
+        per_agent = annotation["per_agent"][agent_id]
+        assert per_agent["verdict"] is None
+        assert per_agent["hard_gate"] is False
+        assert per_agent["n_ticks"] == _PLANE_G_TICKS
+        assert isinstance(per_agent["eligible_tick_count"], int)
+        assert isinstance(per_agent["witness_tick_count"], int)
+        # The committed capture genuinely ran knob-ON: the knob-on replay's
+        # recomposed sampling reproduces the committed call sampling.
+        assert per_agent["record_knob_on_pinned"] is True
+        assert per_agent["checksums_match"] is True
+
+    forbidden_substrings = (
+        "effect",
+        "diverg",
+        "floor",
+        "scor",
+        "detect",
+        "magnitude",
+        "aha",
+    )
+    for key in _nested_keys(annotation):
+        for banned in forbidden_substrings:
+            assert banned not in key.lower(), f"{key} names a measurement claim"
+
+    assert "firing != detectability" in annotation["note"]
+    assert "NON-GATE" in annotation["note"]
