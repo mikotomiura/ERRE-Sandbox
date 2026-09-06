@@ -29,6 +29,11 @@ data/eval/**/*.yml      text eol=lf
 *.md                    text eol=lf
 *.toml                  text eol=lf
 *.json                  text eol=lf diff=json
+# .jsonl は record/replay bundle の一次資料 (ecl_trace / decisions /
+# envelope_stream / embedding_record / inbound_perturbations)。checkout 時に
+# CRLF へ変換されると committed SHA-256 と byte 突合が壊れるので LF 強制
+# (M13 live-loop I7 の L3 cross-platform 観測が前提にする、2026-09-04)。
+*.jsonl                 text eol=lf
 *.yaml                  text eol=lf
 *.yml                   text eol=lf
 
