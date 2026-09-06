@@ -258,14 +258,22 @@ _PLAN_JSON: Final[str] = json.dumps(
 
 SOCIETY_LIVE_CLOSURE_ANNOTATIONS: Final[dict[str, Any]] = {
     "L1": (
-        "N=3 agents x 12 cognition windows x 20 physics ticks completed "
-        "through the society live-closure root (build_society_live_world + "
+        "holds ONLY for a bundle whose own env_pins record capture_mode == "
+        "'real' and real_backend is True (Codex TASK-POST M-1: this text is "
+        "shared verbatim by every bundle this harness renders, real or "
+        "rehearsal, so the condition is stated up front rather than left "
+        "implicit -- check real_run_status for what THIS bundle actually "
+        "is before citing this sentence on its own): N=3 agents x 12 "
+        "cognition windows x 20 physics ticks completed through the society "
+        "live-closure root (build_society_live_world + "
         "run_society_live_loop driving the UNMODIFIED run_society_loop, "
         "TwoPhaseKnob injected, self_other_enabled=True) against a live "
         "qwen3:8b (think=False) action-LLM and a live nomic-embed-text "
         "embedding backend, with the pre-registered 36-message bounded "
         "perturbation plan injected via InboundSink, no exception (exit 0), "
-        "and the full artifact set written"
+        "and the full artifact set written. A capture_mode == "
+        "'scripted-rehearsal' bundle (real_backend is False) does NOT "
+        "satisfy this condition"
     ),
     "L2": (
         "replaying the committed decisions.jsonl + embedding_record.jsonl "

@@ -1113,6 +1113,15 @@ def society_wiring_reachability_summary(
 
       * ``perturbation`` — the ledger row's ``msg.correlation_id`` matches the
         row's own ``correlation_id`` (this row IS the drained message).
+        **Honest detection-scope caveat (Codex TASK-POST M-3)**: this is
+        near-tautological by construction — :class:`SocietyInboundRouter`
+        assigns both fields from the same drained message when it builds
+        this row, so a bug would have to corrupt the row's own
+        ``correlation_id`` and ``msg.correlation_id`` differently to be
+        caught here. It is not an independent per-message detector; real
+        detection is carried by ``target_agent_routing`` below and, over a
+        full session, Plane G byte-parity
+        (:func:`society_plane_g_parity`).
       * ``perception`` — re-applying the same unmodified pure mapping
         (:func:`~erre_sandbox.integration.inbound.world_perturbation_to_perception`)
         to ``(msg, agent_tick)`` reproduces the recorded observation exactly.
@@ -1122,6 +1131,17 @@ def society_wiring_reachability_summary(
         identical events built microseconds apart would otherwise never
         compare equal (the ``exclude={"wall_clock"}`` precedent
         ``live_loop.wiring_reachability_summary`` already sets).
+        **Honest detection-scope caveat (Codex TASK-POST M-3)**: this
+        re-applies the identical pure function to the SAME ``msg`` this row
+        already carries, so the only skew it can actually catch is a bad
+        ``agent_tick`` on this row (demonstrated, not just asserted, by
+        ``test_reachability_per_correlation_seams_all_true``'s
+        ``agent_tick``-mutation fixture). A corruption of ``msg`` or
+        ``observation`` that fed the SAME corrupted value into both sides
+        would still compare equal here; it is not an independent detector
+        of those. Real per-message detection is carried by
+        ``target_agent_routing`` and Plane G byte-parity, same as
+        ``perturbation`` above.
       * ``target_agent_routing`` — **the N-body seam** (AC1): the observation
         was injected into the window of the agent the message was aimed at.
         Deliberately a two-part check —
@@ -1328,7 +1348,7 @@ async def supervise_society_live_loop(
     **``broadcast_ledger`` (Issue 004, optional, default ``None`` = every
     pre-Issue-004 call is unaffected)**: when supplied, this supervisor owns
     the two moments a consume-side outbound record needs and a caller cannot
-    reach on its own —
+    reach on its own, plus one cleanup step —
 
     1. :meth:`SocietyBroadcastLedger.attach` is called on the freshly built
        ``app`` **inside** the readiness hook, i.e. strictly before
@@ -1341,6 +1361,11 @@ async def supervise_society_live_loop(
        window's envelopes are still in flight when the drive's own coroutine
        returns. Cancelling first would truncate the record; draining the
        runtime queue instead would be exactly the race Codex H-2 rejected.
+    3. :meth:`SocietyBroadcastLedger.detach` is called immediately after
+       ``quiesce`` (Codex TASK-POST M-5) — releasing the reserved
+       ``Registry`` session slot only once the record is provably complete;
+       calling it any earlier could miss an in-flight fan-out the same way
+       cancelling the serve task early would.
 
     A genuine exception from either the drive or ``gateway_serve`` still
     propagates as an ``ExceptionGroup`` (``TaskGroup`` semantics unchanged);
@@ -1399,6 +1424,13 @@ async def supervise_society_live_loop(
             # window's envelopes BEFORE the serve task (and with it the
             # lifespan's broadcaster) is torn down.
             await broadcast_ledger.quiesce()
+            # Codex TASK-POST M-5: release the session slot this supervisor
+            # reserved in ``_on_runtime_ready`` above -- MUST come after
+            # ``quiesce`` (never before), otherwise a still-in-flight fan-out
+            # could be missed from the record. Matches the class docstring's
+            # own "attach, quiesce, then read" lifecycle, which already
+            # promised this third step.
+            broadcast_ledger.detach()
         if serve_task_box:
             serve_task_box[0].cancel()
 

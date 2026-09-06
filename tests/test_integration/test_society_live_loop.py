@@ -116,6 +116,7 @@ from erre_sandbox.schemas import (
     Zone,
 )
 from erre_sandbox.world import WorldRuntime
+from tests.test_integration._measurement_guard import assert_no_measurement_surface_v1
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -1077,6 +1078,83 @@ async def test_gateway_and_driver_share_same_runtime_instance(
     assert isinstance(result.runtime, WorldRuntime)
 
 
+# --------------------------------------------------------------------------- #
+# Codex TASK-POST M-5 — SocietyBroadcastLedger.detach() actually releases the
+# reserved Registry session slot (previously dead code: 0 callers, 0 tests).
+# --------------------------------------------------------------------------- #
+
+
+async def test_supervisor_detaches_broadcast_ledger_registry_slot(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """``SocietyBroadcastLedger.attach`` reserves a session slot on the app's
+    ``Registry`` exactly like a real peer would (SH-2 cap enforcement); this
+    pins that ``supervise_society_live_loop`` actually releases it again once
+    the record is complete, rather than holding the slot for the app's whole
+    lifetime with no caller ever able to reach ``detach`` (the shape TASK-POST
+    M-5 flagged as dead code).
+
+    Uses the same minimal stub-``gateway_serve`` pattern as
+    ``test_gateway_and_driver_share_same_runtime_instance`` (no real lifespan
+    needed to observe registry bookkeeping): ``SocietyBroadcastLedger.attach``/
+    ``detach`` only touch ``Registry.reserve_slot``/``release_slot``, neither
+    of which depends on the ``_broadcaster`` task actually running.
+    """
+    agent_state = make_agent_state(agent_id="a_one", persona_id="kant")
+    persona = make_persona_spec(persona_id="kant")
+    store, embedding = _fresh_store_and_embedding()
+    sink = InboundSink()
+    world = build_society_live_world(
+        inner_chats={agent_state.agent_id: _ScriptedInner(_PLAN_JSON)},
+        store=store,
+        embedding=embedding,
+        inbound_sink=sink,
+        agent_states=[agent_state],
+        personas={agent_state.agent_id: persona},
+    )
+    apps: list[Any] = []
+
+    async def gateway_serve(app: Any) -> None:
+        apps.append(app)
+        await asyncio.Event().wait()
+
+    mid_drive_session_counts: list[int] = []
+
+    def on_tasks_scheduled(
+        serve_task: asyncio.Task[None], driven_task: asyncio.Task[None]
+    ) -> None:
+        del serve_task, driven_task
+        # Fires (readiness-barrier docstring, above) strictly after ``attach``
+        # and strictly before the drive's first cognition window -- a
+        # mid-flight snapshot proving the slot really was reserved, so the
+        # post-call ``== 0`` below cannot pass for the wrong reason (a dead
+        # ``attach`` that never reserved anything in the first place).
+        mid_drive_session_counts.append(len(apps[0].state.registry))
+
+    ledger = SocietyBroadcastLedger()
+    try:
+        await supervise_society_live_loop(
+            world=world,
+            gateway_serve=gateway_serve,
+            run_id="m5-detach",
+            retrieval_now=_FIXED,
+            base_ts=_FIXED,
+            n_cognition_ticks=1,
+            physics_ticks_per_cognition=2,
+            broadcast_ledger=ledger,
+            on_tasks_scheduled=on_tasks_scheduled,
+        )
+    finally:
+        await embedding.close()
+        await store.close()
+
+    assert len(apps) == 1
+    assert mid_drive_session_counts == [1], "attach() did not reserve the slot"
+    registry = apps[0].state.registry
+    assert len(registry) == 0, "detach() did not release the reserved slot"
+
+
 # =============================================================================
 # Issue 004 — W-N1 reachability witness + W-N3 outbound-ownership witness
 # =============================================================================
@@ -1212,6 +1290,57 @@ async def test_reachability_per_correlation_seams_all_true(
     )
     assert mis_routed.msg.target_agent_id == mis_routed.observation.agent_id
     assert mis_routed.msg.target_agent_id != mis_routed.routed_agent_id
+
+    # TASK-POST HIGH-1: the tautology check above, on its own, only proves a
+    # fact about the FIXTURE's own fields -- it never fed the mis-bucketed
+    # row back through the witness function real callers read, so deleting
+    # ``target_agent_routing``'s second comparison
+    # (``... and injected.msg.target_agent_id == injected.routed_agent_id``)
+    # in ``society_wiring_reachability_summary`` left this whole test suite
+    # green (mutation-tested below and in this session's report). Splice the
+    # mis-bucketed row into a REAL drive's ledger with ``dataclasses.replace``
+    # (both dataclasses are frozen; this never mutates ``result`` itself) and
+    # run it through the same witness a caller would.
+    mis_routed_ledger = dataclasses.replace(
+        result.ledger, injected=(mis_routed, *result.ledger.injected[1:])
+    )
+    mis_routed_result = dataclasses.replace(result, ledger=mis_routed_ledger)
+    mis_routed_summary = society_wiring_reachability_summary(
+        mis_routed_result, broadcast_envelope_kinds=ledger.envelope_kinds
+    )
+    mis_routed_seams = mis_routed_summary["per_correlation_id"][
+        mis_routed.correlation_id
+    ]
+    assert mis_routed_seams["target_agent_routing"] is False
+    assert mis_routed_seams["all_seams_reached"] is False
+    assert mis_routed_summary["all_correlation_ids_reach_all_seams"] is False
+    # This is a targeted single-field corruption, not a general one: every
+    # other per-correlation seam on this same row is untouched.
+    assert mis_routed_seams["perturbation"] is True
+    assert mis_routed_seams["perception"] is True
+
+    # Codex M-3 (piggybacked on the same real-ledger splice above): a
+    # DIFFERENT single-field corruption -- ``agent_tick`` moved to a window
+    # this 2-tick drive never reaches -- demonstrates (rather than merely
+    # documents) what ``perception`` / ``capture`` / the tick-level seams
+    # actually detect. Routing itself is untouched, so
+    # ``target_agent_routing`` stays true here; it is exactly the
+    # complementary failure mode to the routing-bucket flip above.
+    mis_tick = dataclasses.replace(injected, agent_tick=999)
+    mis_tick_ledger = dataclasses.replace(
+        result.ledger, injected=(mis_tick, *result.ledger.injected[1:])
+    )
+    mis_tick_result = dataclasses.replace(result, ledger=mis_tick_ledger)
+    mis_tick_summary = society_wiring_reachability_summary(
+        mis_tick_result, broadcast_envelope_kinds=ledger.envelope_kinds
+    )
+    mis_tick_seams = mis_tick_summary["per_correlation_id"][mis_tick.correlation_id]
+    assert mis_tick_seams["perception"] is False
+    assert mis_tick_seams["capture"] is False
+    assert mis_tick_seams["same_tick_cognition_stepped"] is False
+    assert mis_tick_seams["same_tick_envelope_observed"] is False
+    assert mis_tick_seams["target_agent_routing"] is True
+    assert mis_tick_seams["all_seams_reached"] is False
 
 
 # --------------------------------------------------------------------------- #
@@ -2518,6 +2647,41 @@ def test_no_new_nondeterminism_sources() -> None:
     assert list(findings) == sorted(findings, key=lambda f: (f.lineno, f.kind, f.name))
 
     assert scan_nondeterminism_sources(_NONDETERMINISM_CLEAN_FIXTURE) == ()
+
+
+# --------------------------------------------------------------------------- #
+# Codex TASK-POST M-2 — shared ECL v1 measurement-line guard, applied to the
+# module that actually EMITS the five W-N1/W-N3 witnesses (society_live_loop.py
+# itself), not just to the capture harness and its test. ``_measurement_guard.py``
+# is unmodified (shared file, binding); this only adds a caller.
+# --------------------------------------------------------------------------- #
+
+
+def test_live_root_has_no_measurement_surface() -> None:
+    """``society_live_loop.py`` carries no banned import / identifier / dict
+    key / ``.json(l)`` filename token, ``scan_strings=True`` included.
+
+    Prior to this test, :func:`~tests.test_integration._measurement_guard.
+    assert_no_measurement_surface_v1` was only wired to
+    ``scripts/m13_society_live_capture.py`` (the harness) and its own test --
+    never to this module, even though this module is the one that actually
+    *emits* all five witnesses (:func:`society_wiring_reachability_summary`,
+    :func:`society_mirror_wiring_summary`, :func:`society_plane_g_parity`,
+    :func:`society_request_conformance`, :func:`society_firing_annotation`).
+    It happens to PASS with ``scan_strings=True`` today -- this test locks
+    that in mechanically rather than by review, the same way
+    :func:`test_no_new_nondeterminism_sources` locks in the determinism
+    table above.
+
+    ``society.py`` (the frozen ADR §1 core this module wraps, unmodified by
+    this task) also happens to pass the same scan, so it is pinned here too
+    -- the shared guard file itself stays untouched either way.
+    """
+    tree = ast.parse(live_root_source())
+    assert_no_measurement_surface_v1(tree, scan_strings=True)
+
+    society_tree = ast.parse(inspect.getsource(society))
+    assert_no_measurement_surface_v1(society_tree, scan_strings=True)
 
 
 # --------------------------------------------------------------------------- #
