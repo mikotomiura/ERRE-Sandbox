@@ -56,6 +56,12 @@ $env:QWEN3_DIGEST = (ollama show qwen3:8b --json | ConvertFrom-Json).digest  # �
 bash experiments/20260904-m13-live-loop-live/repro.sh --real
 ```
 
+> **G-GEAR では 3) が動かない**: WSL 側に project venv が無い (`/root/erre-sandbox/.venv` 不在、
+> system python3 に pydantic 無し、2026-09-06 再確認)。本機では代わりに
+> `tests/test_integration/test_m13_live_loop_capture.py::test_committed_sealed_real_bundle_verifies`
+> が committed real bundle を verify するので、**Linux CI が L3 の実測を兼ねる**。
+> この test は bundle が無い checkout では skip する。
+
 ## 結果 (実走後に追記)
 
 ### rehearsal (Ollama-free、2026-09-04)
@@ -73,6 +79,31 @@ bash experiments/20260904-m13-live-loop-live/repro.sh --real
 
 **これは配線とリハーサル apparatus の緑であって、real qwen3 の実走結果ではない。**
 
-### sealed real run
+### sealed real run (real qwen3:8b + real nomic-embed-text、2026-09-06)
 
-TBD (user の spend ratify 待ち、hard STOP)。
+`run.ps1` を **1 回のみ** 実行 (09:29:11〜09:30:40 JST、89 秒)。再走・パラメータ変更・
+`--force` なし。verify は `repro.ps1 -Real` (Ollama-free)。
+
+| 観測 | 値 |
+|---|---|
+| capture_mode | `real` (qwen3:8b think=False / nomic-embed-text、digest は `env.md` に pin) |
+| L1 完走 | exit 0 / 32 cognition × 20 physics tick / 6 artifact / injected perturbations 32 |
+| replay_checksum | `43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb` |
+| Plane G replay | byte 一致 / 両チャネル `inner_invocations=0` / embedding 97/97 消費 |
+| Plane L 再駆動 | Plane G と同一 checksum |
+| artifact SHA-256 | 5 artifact 全一致、`manifest.json` 再 render byte 一致 |
+| envelope | 96 通 schema 準拠 |
+| request conformance | LLM 32/32 prompt・embedding 97/97 (kind, text) が committed record と一致 |
+| reachability (非 gate) | 全 32 corr-id が全 seam 到達 / `no_double_send=True` / mismatch 0 / kind 各 32 |
+| firing (非 gate) | `fired=True` / witness 29 / eligible 29 / `record_knob_on_pinned=True` / `fail_mode=None` |
+| L3 cross-platform | **PASS** — Linux CI (glibc) で committed real bundle を verify。PR #91 run `34002303463` job `101403225525` で `test_m13_live_loop_capture.py` 24/24 pass・skip 0 (= 追加 2 test が skip されず実行されて緑) |
+
+**settle しなかった (firing した)**。ただし tick 0-2 の 3 tick は λ=0 で非 eligible
+(λ を earn するまでの settle 区間)、tick 3 以降 29 tick が eligible。rehearsal は非 eligible が
+tick 0 のみだったので **real の方が settle が 2 tick 長い** — 配線の失敗ではなく、real LLM の
+行動列が scripted rehearsal と異なるという当然の帰結。
+
+**これは配線が real backend 越しに各 seam へ届いたという boolean 観察であって、
+aha / emergence / effect ではない。** firing ≠ detectability (bias が zone / 行動 / aha を
+変えるかは凍結第2リンク、本 run は非測定)。real なのは cognition 面のみ (摂動は scripted 列を
+`InboundSink` 直投入、live Godot 不使用) で、`ManualClock(start=0.0)` ゆえ real-time でもない。
