@@ -1155,6 +1155,139 @@ async def test_supervisor_detaches_broadcast_ledger_registry_slot(
     assert len(registry) == 0, "detach() did not release the reserved slot"
 
 
+# --------------------------------------------------------------------------- #
+# Codex TASK-POST M-A — detach() must run on the EXCEPTION path too, not only
+# the success path. Before this fix, `broadcast_ledger.detach()` sat only in
+# the success-path body after `quiesce()`; a genuine exception from the drive
+# or from `gateway_serve` made the failing `await` jump straight past it, so
+# the reserved `Registry` session slot leaked past this function's return
+# under the raised `ExceptionGroup`. Both witnesses below assert the same
+# thing two different exception origins: an `ExceptionGroup` still
+# propagates (existing TaskGroup semantics, unchanged) AND
+# `len(registry) == 0` afterwards (the new guarantee).
+# --------------------------------------------------------------------------- #
+
+
+async def test_supervisor_detaches_ledger_when_gateway_serve_raises(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """M-A witness 1: ``gateway_serve`` (a sibling task, never directly
+    ``await``ed by the supervisor body) raises -- the ``ExceptionGroup`` this
+    already propagated before Codex TASK-POST M-5 landed ``detach`` at all,
+    but nothing previously asserted the reserved slot was released on this
+    path."""
+    agent_state = make_agent_state(agent_id="a_one", persona_id="kant")
+    persona = make_persona_spec(persona_id="kant")
+    store, embedding = _fresh_store_and_embedding()
+    sink = InboundSink()
+    world = build_society_live_world(
+        inner_chats={agent_state.agent_id: _ScriptedInner(_PLAN_JSON)},
+        store=store,
+        embedding=embedding,
+        inbound_sink=sink,
+        agent_states=[agent_state],
+        personas={agent_state.agent_id: persona},
+    )
+    apps: list[Any] = []
+
+    class _GatewayBoomError(Exception):
+        pass
+
+    async def gateway_serve_boom(app: Any) -> None:
+        apps.append(app)
+        msg = "gateway exploded (M-A)"
+        raise _GatewayBoomError(msg)
+
+    ledger = SocietyBroadcastLedger()
+    try:
+        with pytest.raises(ExceptionGroup) as excinfo:
+            await supervise_society_live_loop(
+                world=world,
+                gateway_serve=gateway_serve_boom,
+                run_id="m-a-gateway-boom",
+                retrieval_now=_FIXED,
+                base_ts=_FIXED,
+                n_cognition_ticks=1,
+                physics_ticks_per_cognition=2,
+                broadcast_ledger=ledger,
+            )
+    finally:
+        await embedding.close()
+        await store.close()
+
+    assert any(isinstance(exc, _GatewayBoomError) for exc in excinfo.value.exceptions)
+    assert len(apps) == 1, "attach() must have run for this to be a real witness"
+    assert len(apps[0].state.registry) == 0, (
+        "detach() did not release the reserved slot on the gateway_serve exception path"
+    )
+
+
+async def test_supervisor_detaches_ledger_when_drive_raises(
+    make_agent_state: Callable[..., AgentState],
+    make_persona_spec: Callable[..., PersonaSpec],
+) -> None:
+    """M-A witness 2: the DRIVE side raises (via ``on_tasks_scheduled``,
+    called synchronously from inside the readiness hook strictly after
+    ``attach()``) -- the exception surfaces through ``await driven_task``
+    itself rather than through a sibling task, a different code path through
+    the same ``finally`` than witness 1 above."""
+    agent_state = make_agent_state(agent_id="a_one", persona_id="kant")
+    persona = make_persona_spec(persona_id="kant")
+    store, embedding = _fresh_store_and_embedding()
+    sink = InboundSink()
+    world = build_society_live_world(
+        inner_chats={agent_state.agent_id: _ScriptedInner(_PLAN_JSON)},
+        store=store,
+        embedding=embedding,
+        inbound_sink=sink,
+        agent_states=[agent_state],
+        personas={agent_state.agent_id: persona},
+    )
+    apps: list[Any] = []
+
+    async def gateway_serve(app: Any) -> None:
+        apps.append(app)
+        await asyncio.Event().wait()
+
+    class _DriveBoomError(Exception):
+        pass
+
+    def on_tasks_scheduled(
+        serve_task: asyncio.Task[None], driven_task: asyncio.Task[None]
+    ) -> None:
+        del serve_task, driven_task
+        # Fires strictly after attach() (readiness-barrier docstring) --
+        # exactly the ordering a real drive-side failure after attach would
+        # have.
+        msg = "drive exploded after attach (M-A)"
+        raise _DriveBoomError(msg)
+
+    ledger = SocietyBroadcastLedger()
+    try:
+        with pytest.raises(ExceptionGroup) as excinfo:
+            await supervise_society_live_loop(
+                world=world,
+                gateway_serve=gateway_serve,
+                run_id="m-a-drive-boom",
+                retrieval_now=_FIXED,
+                base_ts=_FIXED,
+                n_cognition_ticks=1,
+                physics_ticks_per_cognition=2,
+                broadcast_ledger=ledger,
+                on_tasks_scheduled=on_tasks_scheduled,
+            )
+    finally:
+        await embedding.close()
+        await store.close()
+
+    assert any(isinstance(exc, _DriveBoomError) for exc in excinfo.value.exceptions)
+    assert len(apps) == 1, "attach() must have run for this to be a real witness"
+    assert len(apps[0].state.registry) == 0, (
+        "detach() did not release the reserved slot on the drive exception path"
+    )
+
+
 # =============================================================================
 # Issue 004 — W-N1 reachability witness + W-N3 outbound-ownership witness
 # =============================================================================

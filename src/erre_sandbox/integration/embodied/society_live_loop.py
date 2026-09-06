@@ -1361,8 +1361,8 @@ async def supervise_society_live_loop(
        window's envelopes are still in flight when the drive's own coroutine
        returns. Cancelling first would truncate the record; draining the
        runtime queue instead would be exactly the race Codex H-2 rejected.
-    3. :meth:`SocietyBroadcastLedger.detach` is called immediately after
-       ``quiesce`` (Codex TASK-POST M-5) — releasing the reserved
+    3. :meth:`SocietyBroadcastLedger.detach` is called after ``quiesce`` on
+       the success path (Codex TASK-POST M-5) — releasing the reserved
        ``Registry`` session slot only once the record is provably complete;
        calling it any earlier could miss an in-flight fan-out the same way
        cancelling the serve task early would.
@@ -1370,13 +1370,23 @@ async def supervise_society_live_loop(
     A genuine exception from either the drive or ``gateway_serve`` still
     propagates as an ``ExceptionGroup`` (``TaskGroup`` semantics unchanged);
     only ``asyncio.CancelledError`` from the deliberate shutdown-cancel below
-    is suppressed.
+    is suppressed. **Codex TASK-POST M-A**: on that exception path the
+    success-path body above (``quiesce`` / ``detach`` / cancel) is never
+    reached — the failing ``await`` jumps straight past it — so ``detach``
+    is *also* called from a ``finally`` wrapped around the whole
+    ``TaskGroup`` block, guarded by a local ``attached`` flag set the instant
+    :meth:`SocietyBroadcastLedger.attach` returns. That guarantees the
+    reserved session slot is released even when the drive or
+    ``gateway_serve`` blows up, instead of leaking past this function's
+    return under the raised ``ExceptionGroup``.
     """
     result_box: list[SocietyLiveRunResult] = []
     serve_task_box: list[asyncio.Task[None]] = []
     driven_task_box: list[asyncio.Task[None]] = []
+    attached = False
 
     async def _on_runtime_ready(runtime: WorldRuntime) -> None:
+        nonlocal attached
         # Construction exposure only (Codex M-5): make_app READS runtime (a
         # constructor keyword), it never calls a mutating method on it.
         app = make_app(runtime=runtime, inbound_sink=world.inbound_sink)
@@ -1384,6 +1394,7 @@ async def supervise_society_live_loop(
             # Registered BEFORE the serve task exists, so no fan-out can
             # precede the record (Codex H-2 consume-side ledger).
             broadcast_ledger.attach(app)
+            attached = True
 
         async def _serve_until_cancelled() -> None:
             with contextlib.suppress(asyncio.CancelledError):
@@ -1415,24 +1426,37 @@ async def supervise_society_live_loop(
             )
         )
 
-    async with asyncio.TaskGroup() as tg:
-        driven_task = tg.create_task(_driven(), name="society-live-driven")
-        driven_task_box.append(driven_task)
-        await driven_task
-        if broadcast_ledger is not None:
-            # Let the still-running broadcaster finish fanning out the last
-            # window's envelopes BEFORE the serve task (and with it the
-            # lifespan's broadcaster) is torn down.
-            await broadcast_ledger.quiesce()
-            # Codex TASK-POST M-5: release the session slot this supervisor
-            # reserved in ``_on_runtime_ready`` above -- MUST come after
-            # ``quiesce`` (never before), otherwise a still-in-flight fan-out
-            # could be missed from the record. Matches the class docstring's
-            # own "attach, quiesce, then read" lifecycle, which already
-            # promised this third step.
+    try:
+        async with asyncio.TaskGroup() as tg:
+            driven_task = tg.create_task(_driven(), name="society-live-driven")
+            driven_task_box.append(driven_task)
+            await driven_task
+            if broadcast_ledger is not None:
+                # Let the still-running broadcaster finish fanning out the
+                # last window's envelopes BEFORE the serve task (and with it
+                # the lifespan's broadcaster) is torn down.
+                await broadcast_ledger.quiesce()
+                # Codex TASK-POST M-5: release the session slot this
+                # supervisor reserved in ``_on_runtime_ready`` above -- MUST
+                # come after ``quiesce`` (never before), otherwise a
+                # still-in-flight fan-out could be missed from the record.
+                # Matches the class docstring's own "attach, quiesce, then
+                # read" lifecycle, which already promised this third step.
+                broadcast_ledger.detach()
+                attached = False
+            if serve_task_box:
+                serve_task_box[0].cancel()
+    finally:
+        # Codex TASK-POST M-A: the success path above already detached right
+        # after ``quiesce`` (and cleared the flag). This is the
+        # exception-path safety net -- when the drive or ``gateway_serve``
+        # raises before that line is ever reached, the failing ``await``
+        # jumps straight to this ``finally`` instead, and the reserved
+        # ``Registry`` session slot must still be released so it never
+        # leaks past this function's return under the raised
+        # ``ExceptionGroup``.
+        if attached and broadcast_ledger is not None:
             broadcast_ledger.detach()
-        if serve_task_box:
-            serve_task_box[0].cancel()
 
     return result_box[0]
 

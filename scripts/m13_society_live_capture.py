@@ -71,6 +71,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -154,6 +155,15 @@ SIDE_ANNOTATION_FILENAMES: Final[tuple[str, ...]] = (
 )
 """Derived side files, deliberately OUTSIDE the manifest SHA set: producing
 them can never change the bundle's integrity hashes."""
+
+FORCE_REASON_LOG_FILENAME: Final[str] = "force_overwrite_reason.log"
+"""Codex TASK-POST M-C: ``--force``'s help/error text has always said
+'overwriting requires ... a recorded reason', but no CLI surface took one and
+nothing persisted it. This is that surface's recorded destination -- a plain
+append-only audit log, OUTSIDE the manifest SHA set exactly like the side
+annotations above, so recording a reason can never change the bundle's
+integrity hashes. Appended, never truncated, so a history of forced
+overwrites survives across runs."""
 
 
 # --------------------------------------------------------------------------- #
@@ -298,8 +308,14 @@ SOCIETY_LIVE_CLOSURE_ANNOTATIONS: Final[dict[str, Any]] = {
         "plane_g_parity.json / request_conformance.json / "
         "firing_annotation.json are derived side files written OUTSIDE the "
         "manifest SHA set, so producing them can never change the bundle's "
-        "integrity hashes. They are checked byte-for-byte against the "
-        "committed copies on every verify"
+        "integrity hashes. Each is write-or-check on every verify (Codex "
+        "TASK-POST L-A: this text used to claim an unconditional byte "
+        "comparison, which over-stated what _check_or_write_annotation "
+        "actually does) -- an existing committed copy is compared "
+        "byte-for-byte and a mismatch FAILS verify, but a missing one is "
+        "written rather than checked. A first verify therefore seeds the "
+        "three files; only every verify after that is a real drift check "
+        "against a committed copy"
     ),
     "firing_annotation": (
         "construction witness, NON-GATE and outside the Done formula: the "
@@ -309,13 +325,23 @@ SOCIETY_LIVE_CLOSURE_ANNOTATIONS: Final[dict[str, Any]] = {
         "never retried until it fires"
     ),
     "scope_boundary": (
-        "construction wiring only. A green run means 'the wiring reached each "
-        "seam (live, real qwen3)' and never aha, emergence, or an effect. "
-        "Cognition-side real only: the perturbations are a scripted "
-        "in-process bounded plan pushed straight into InboundSink and NO live "
-        "Godot client is involved (this host has no godot binary). "
-        "run_society_loop's internal ManualClock(start=0.0) is what gives "
-        "byte-parity, so this is not a wall-clock real-time session either"
+        "construction wiring only, never aha, emergence, or an effect. A "
+        "green run means 'the wiring reached each seam' -- and that reaches "
+        "a live, real qwen3 ONLY for a bundle whose own env_pins record "
+        "capture_mode == 'real' and real_backend is True (Codex TASK-POST "
+        "HIGH-1: this annotation is shared verbatim by every bundle this "
+        "harness renders, real or rehearsal, so the condition is stated up "
+        "front rather than left implicit -- check real_run_status for what "
+        "THIS bundle actually is before citing this sentence on its own). A "
+        "capture_mode == 'scripted-rehearsal' bundle (real_backend is False) "
+        "verifies the identical code path / identical verify path but never "
+        "opened a real backend, and does NOT satisfy the real-qwen3 half of "
+        "this sentence. Cognition-side real only when real_backend is True: "
+        "the perturbations are a scripted in-process bounded plan pushed "
+        "straight into InboundSink and NO live Godot client is involved "
+        "(this host has no godot binary). run_society_loop's internal "
+        "ManualClock(start=0.0) is what gives byte-parity, so this is not a "
+        "wall-clock real-time session either"
     ),
     "real_run_status": (
         "NOT RUN as of Issue 007. This harness is code-path only: "
@@ -485,6 +511,18 @@ def render_bundle(
 # Spend / pre-registration / overwrite gates (enforced, not documented)
 # --------------------------------------------------------------------------- #
 
+_QWEN3_DIGEST_RE: Final[re.Pattern[str]] = re.compile(r"^(sha256:)?[0-9a-fA-F]{64}$")
+"""An Ollama model digest is either bare 64 hex chars or ``sha256:<64 hex>``
+(``ollama show <model> --json | jq -r .digest`` emits the bare form; some
+Ollama versions / registries prefix it). Codex TASK-POST M-B: ``"abc"`` or
+``"not-a-sha"`` previously passed this gate as long as they were non-empty and
+not the literal string ``"unknown"`` -- a sealed artifact's audit pin is worth
+nothing if any non-empty string satisfies it."""
+
+_UV_LOCK_SHA256_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9a-fA-F]{64}$")
+"""``uv_lock_sha256()`` always emits a bare ``hashlib.sha256(...).hexdigest()``
+(64 hex chars, no ``sha256:`` prefix) -- see that function below."""
+
 
 def assert_sealed_real_run(
     *,
@@ -560,22 +598,36 @@ def assert_sealed_real_run(
         )
         raise SealedParameterError(msg)
 
+    qwen3_model_digest_stripped = qwen3_model_digest.strip()
+    uv_lock_pin_stripped = uv_lock_pin.strip()
     unpinned = [
         name
         for name, is_unpinned in (
-            ("qwen3_model_digest", qwen3_model_digest.strip() in ("", "unknown")),
+            (
+                "qwen3_model_digest",
+                qwen3_model_digest_stripped in ("", "unknown")
+                or _QWEN3_DIGEST_RE.match(qwen3_model_digest_stripped) is None,
+            ),
             ("ollama_version", ollama_version.strip() in ("", "unknown")),
             ("vram_gb", vram_gb <= 0.0),
-            ("uv_lock_sha256", uv_lock_pin.strip() in ("", "unknown")),
+            (
+                "uv_lock_sha256",
+                uv_lock_pin_stripped in ("", "unknown")
+                or _UV_LOCK_SHA256_RE.match(uv_lock_pin_stripped) is None,
+            ),
         )
         if is_unpinned
     ]
     if unpinned:
         msg = (
             "real capture would produce an unauditable artifact — unpinned "
-            f"provenance: {', '.join(unpinned)}. Supply them (run.ps1 reads "
-            "them from the environment and fails fast when unset); the "
-            "uv.lock hash is derived from this checkout automatically."
+            f"or malformed provenance: {', '.join(unpinned)}. "
+            "qwen3_model_digest must be 64 hex chars or 'sha256:<64 hex>' "
+            "(Codex TASK-POST M-B: a non-empty placeholder like 'abc' used to "
+            "pass this gate); uv_lock_sha256 must be 64 hex chars. Supply "
+            "them (run.ps1 reads them from the environment and fails fast "
+            "when unset); the uv.lock hash is derived from this checkout "
+            "automatically."
         )
         raise SealedParameterError(msg)
 
@@ -803,6 +855,26 @@ def write_bundle(
     out_dir.mkdir(parents=True, exist_ok=True)
     for filename, text in rendered.items():
         (out_dir / filename).write_text(text, encoding="utf-8", newline="\n")
+
+
+def record_force_reason(out_dir: Path, *, reason: str) -> None:
+    """Append one audit line recording why ``--force`` overwrote ``out_dir``.
+
+    Codex TASK-POST M-C: this is the surface + destination the CLI's own
+    ``--force`` help text has always promised ("only with a recorded
+    reason") but never actually provided. Called from ``_capture_main`` after
+    a forced real overwrite has already succeeded; the caller supplies a
+    non-blank ``reason`` (``main`` requires ``--force-reason`` whenever
+    ``--force`` is passed, so this function itself does not re-validate
+    blankness -- one place owns that check).
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(UTC).isoformat()
+    line = f"{timestamp} --force-reason: {reason}\n"
+    with (out_dir / FORCE_REASON_LOG_FILENAME).open(
+        "a", encoding="utf-8", newline="\n"
+    ) as handle:
+        handle.write(line)
 
 
 # --------------------------------------------------------------------------- #
@@ -1077,6 +1149,20 @@ async def verify(
 
 
 def _capture_main(args: argparse.Namespace) -> int:
+    # Codex TASK-POST M-C: --force's own help/error text has always said
+    # "only with a recorded reason", but neither a surface to supply one nor
+    # a place to record it existed -- --force-reason is that surface, and
+    # record_force_reason() (called below, once the forced write actually
+    # succeeds) is that destination. Checked first, before the destination
+    # check or the spend, so a caller who forgets the reason never reaches
+    # either.
+    if bool(args.force) and not (args.force_reason and str(args.force_reason).strip()):
+        print(
+            "[capture] REFUSED: --force requires --force-reason (a recorded "
+            "reason for the overwrite -- overwriting is how a tune-to-pass "
+            "re-run would happen)"
+        )
+        return 2
     out_dir = (
         args.out_dir
         if args.out_dir is not None
@@ -1108,6 +1194,10 @@ def _capture_main(args: argparse.Namespace) -> int:
         print(f"[capture] REFUSED: {exc}")
         return 2
     write_bundle(out_dir, rendered, refuse_non_empty=refuse_non_empty)
+    if args.force:
+        record_force_reason(out_dir, reason=str(args.force_reason).strip())
+        force_log_path = out_dir / FORCE_REASON_LOG_FILENAME
+        print(f"[capture] recorded --force-reason to {force_log_path}")
     for filename in sorted(rendered):
         print(f"[capture] wrote {out_dir / filename}")
     print(f"[capture] mode = {'real' if args.real else 'scripted-rehearsal'}")
@@ -1167,8 +1257,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help=(
             "allow a real capture to overwrite an existing sealed bundle. "
-            "Only with a recorded reason: overwriting is how a tune-to-pass "
+            "Requires --force-reason: overwriting is how a tune-to-pass "
             "re-run would happen, and a settled run is meant to be kept."
+        ),
+    )
+    parser.add_argument(
+        "--force-reason",
+        default=None,
+        help=(
+            "required alongside --force: a human-readable reason, recorded "
+            "verbatim (with a timestamp) to the bundle directory's "
+            f"{FORCE_REASON_LOG_FILENAME!r} audit log. --force without this "
+            "is refused before anything else runs (Codex TASK-POST M-C)."
         ),
     )
     parser.add_argument("--out-dir", type=Path, default=None)

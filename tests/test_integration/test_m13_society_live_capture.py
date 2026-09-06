@@ -60,6 +60,7 @@ import pytest
 from scripts.m13_society_live_capture import (
     CONFORMANCE_FILENAME,
     FIRING_ANNOTATION_FILENAME,
+    FORCE_REASON_LOG_FILENAME,
     PARITY_FILENAME,
     REHEARSAL_RUN_ID,
     SIDE_ANNOTATION_FILENAMES,
@@ -81,6 +82,7 @@ from scripts.m13_society_live_capture import (
     attach_society_live_annotations,
     capture,
     main,
+    record_force_reason,
     uv_lock_sha256,
     write_bundle,
 )
@@ -374,6 +376,50 @@ def test_unpinned_provenance_is_rejected() -> None:
             assert_sealed_real_run(**{**_SEALED_ARGS, field: unpinned})
 
 
+# --------------------------------------------------------------------------- #
+# AC3 (Codex TASK-POST M-B) -- digest / lock-hash FORMAT is validated, not
+# just non-emptiness. Before this fix a non-empty placeholder like "abc"
+# satisfied the gate; each case below is a malformed value that must now be
+# refused on its own, one field/shape at a time.
+# --------------------------------------------------------------------------- #
+
+
+def test_malformed_qwen3_digest_is_rejected() -> None:
+    """AC3/M-B: ``qwen3_model_digest`` must be 64 hex chars or
+    ``sha256:<64 hex>`` -- a real Ollama digest shape -- not merely non-empty."""
+    for malformed in (
+        "abc",
+        "not-a-sha",
+        "0" * 63,  # one hex char short
+        "0" * 65,  # one hex char long
+        "g" * 64,  # right length, non-hex characters
+        "sha256:" + "0" * 63,  # prefixed but short
+        "sha256:" + "g" * 64,  # prefixed but non-hex
+    ):
+        with pytest.raises(SealedParameterError):
+            assert_sealed_real_run(**{**_SEALED_ARGS, "qwen3_model_digest": malformed})
+
+    # Positive: the prefixed Ollama shape is accepted, not just the bare one.
+    assert_sealed_real_run(
+        **{**_SEALED_ARGS, "qwen3_model_digest": "sha256:" + "0" * 64}
+    )
+
+
+def test_malformed_uv_lock_pin_is_rejected() -> None:
+    """AC3/M-B: ``uv_lock_pin`` must be exactly 64 hex chars (the shape
+    ``hashlib.sha256(...).hexdigest()`` always produces), not merely
+    non-empty."""
+    for malformed in (
+        "abc",
+        "not-a-sha",
+        "0" * 63,
+        "0" * 65,
+        "g" * 64,
+    ):
+        with pytest.raises(SealedParameterError):
+            assert_sealed_real_run(**{**_SEALED_ARGS, "uv_lock_pin": malformed})
+
+
 def test_uv_lock_pin_is_derived_not_defaulted() -> None:
     """AC3: the ``uv.lock`` hash is computed from this checkout, so it can never
     silently seal as ``"unknown"`` because a flag was forgotten."""
@@ -432,6 +478,100 @@ def test_sealed_bundle_overwrite_is_refused(
     assert exit_code == 2
     assert "REFUSED" in capsys.readouterr().out
     assert (tmp_path / "manifest.json").read_text(encoding="utf-8") == "{}"
+
+
+# --------------------------------------------------------------------------- #
+# AC4 (Codex TASK-POST M-C) -- --force requires a RECORDED --force-reason,
+# not just a flag: --force's own help text has always said "only with a
+# recorded reason" but nothing enforced or persisted one until this fix.
+# --------------------------------------------------------------------------- #
+
+
+def test_force_without_reason_is_refused(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """M-C: ``--force`` without ``--force-reason`` is refused before
+    ``capture()`` is ever reached (the same "cannot reach a backend even if
+    the ordering regressed" witness as :func:`test_sealed_bundle_overwrite_is_refused`),
+    and a blank/whitespace-only reason is refused the same way as a missing one."""
+    import scripts.m13_society_live_capture as harness
+
+    def _never_called(**_kwargs: Any) -> None:
+        msg = "capture() must not be reached when --force-reason is missing"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(harness, "capture", _never_called)
+
+    base_argv = [
+        "--capture",
+        "--real",
+        "--confirm-spend",
+        "--force",
+        "--qwen3-model-digest",
+        "0" * 64,
+        "--ollama-version",
+        "0.32.12",
+        "--vram-gb",
+        "16",
+        "--out-dir",
+        str(tmp_path),
+    ]
+    exit_code = main(base_argv)
+    assert exit_code == 2
+    captured = capsys.readouterr().out
+    assert "REFUSED" in captured
+    assert "--force-reason" in captured
+
+    exit_code = main([*base_argv, "--force-reason", "   "])
+    assert exit_code == 2
+    assert "REFUSED" in capsys.readouterr().out
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_force_reason_is_recorded_on_successful_capture(tmp_path: Path) -> None:
+    """M-C: a successful ``--force`` capture actually persists the reason to
+    the bundle directory's audit log -- not merely accepts the flag.
+
+    Ollama-free: ``--real`` is deliberately NOT passed (``--force`` is a
+    no-op without it, refuse_non_empty stays False either way), so this
+    exercises the CLI-level requirement + the recording end-to-end without
+    ever touching a real backend. A plain ``def`` (not ``async def``) for the
+    same "no event loop already running" reason documented on
+    :func:`test_spend_gate_rejects_direct_call_without_ratify`.
+    """
+    reason = "re-baking the committed rehearsal after the M-A/M-B/M-C fix"
+    exit_code = main(
+        [
+            "--capture",
+            "--force",
+            "--force-reason",
+            reason,
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+    assert exit_code == 0
+    log_path = tmp_path / FORCE_REASON_LOG_FILENAME
+    assert log_path.exists()
+    logged = log_path.read_text(encoding="utf-8")
+    assert reason in logged
+    assert logged.count("\n") == 1, "one audit line for one forced capture"
+
+
+def test_record_force_reason_appends_not_truncates(tmp_path: Path) -> None:
+    """M-C: repeated forced overwrites keep a HISTORY of reasons -- the audit
+    log is append-only, never truncated to just the latest one."""
+    record_force_reason(tmp_path, reason="first forced overwrite")
+    record_force_reason(tmp_path, reason="second forced overwrite")
+
+    lines = (
+        (tmp_path / FORCE_REASON_LOG_FILENAME).read_text(encoding="utf-8").splitlines()
+    )
+    assert len(lines) == 2
+    assert "first forced overwrite" in lines[0]
+    assert "second forced overwrite" in lines[1]
 
 
 async def test_drifted_annotation_fails_verify(tmp_path: Path) -> None:
