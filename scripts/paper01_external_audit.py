@@ -2225,6 +2225,7 @@ def run_cambridge_audit(
 
     result: dict[str, Any] = {
         "corpus": "cambridge",
+        "status": "ok",
         "source_audit": {
             obj: cambridge_id_diagnostics(rows) for obj, rows in rows_by_object.items()
         },
@@ -2674,6 +2675,38 @@ def run_ocsai_audit(
 
 # --- combined, corpus-keyed output (design-final.md §6/DA-G1-12) -----------
 
+CORPUS_KEYS: Final[tuple[str, ...]] = ("cambridge", "ocsai")
+"""The two corpus blocks :func:`run_external_audit` returns, in the order
+G2's availability gate checks them (design-final.md §6 / issue 008,
+orchestrator disposition DA-G1-28)."""
+
+
+def both_corpora_available(result: Mapping[str, Any]) -> bool:
+    """G2 gate: True iff **every** corpus block's ``status`` is ``"ok"``.
+
+    Symmetrisation (issue 008, DA-G1-28): before this issue, only the Ocsai
+    block ever carried a ``status`` key (``"ok"`` or
+    ``"source_unavailable"``); the Cambridge block had none at all. Both
+    blocks now always carry ``status`` (see :func:`run_cambridge_audit` /
+    :func:`run_ocsai_audit`), so this is a plain symmetric check over
+    :data:`CORPUS_KEYS` -- never a special case for either corpus.
+
+    ``"source_unavailable"`` is a Gate-0 **incomplete status**, not a §6
+    :data:`VERDICT_ENUM` member (Codex HIGH-4) -- this function never reads
+    or compares against ``VERDICT_ENUM``; it only ever compares against the
+    literal string ``"ok"``, so it cannot be satisfied by any verdict word
+    accidentally aliasing an availability status.
+
+    A corpus key missing from ``result`` entirely (not just missing
+    ``status``) also counts as unavailable, via ``.get(..., {})``.
+    """
+    return all(
+        # mutation target (1): this comparison forced to always-True would
+        # let a G2-incomplete run report exit 0.
+        result.get(corpus, {}).get("status") == "ok"
+        for corpus in CORPUS_KEYS
+    )
+
 
 def run_external_audit() -> dict[str, Any]:
     """Both corpora, corpus-keyed, with **no combined verdict**.
@@ -3023,12 +3056,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     ``--fidelity`` runs the design-final.md §2 fidelity pin (C4 fast + C0
     heavy) and returns a non-zero exit code on any mismatch (issue 007 Stop
     Condition: "不一致なら exit != 0"). ``--audit`` runs
-    :func:`write_external_audit` (Cambridge + Ocsai, corpus-keyed).
-    ``--write-config`` writes ``SEED`` / ``config.json`` / ``env.md`` -- the
-    pre-I-007 behaviour, and stays the default when *no* flag is given at
-    all (issue 007: "引数なしのときの既定動作は既存互換を保つこと"). Flags
-    may combine; each one set runs at most once, in the order
-    fidelity -> audit -> write-config.
+    :func:`write_external_audit` (Cambridge + Ocsai, corpus-keyed) and
+    returns a non-zero exit code when :func:`both_corpora_available` is
+    False on the result (issue 008 AC 008-7 / Codex HIGH-4: G2 is not met
+    with only one corpus available). ``--audit-out`` overrides where
+    ``--audit`` writes (default :data:`EXTERNAL_AUDIT_PATH`) -- issue 008's
+    ``run.sh`` uses this to send a second run to a scratch path for the
+    byte-identity comparison (AC 008-4) without disturbing the first run's
+    committed artifact. ``--write-config`` writes ``SEED`` / ``config.json``
+    / ``env.md`` -- the pre-I-007 behaviour, and stays the default when *no*
+    flag is given at all (issue 007: "引数なしのときの既定動作は既存互換を
+    保つこと"). Flags may combine; each one set runs at most once, in the
+    order fidelity -> audit -> write-config.
     """
     parser = argparse.ArgumentParser(description="paper01 G1 external audit CLI")
     parser.add_argument(
@@ -3040,6 +3079,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--audit",
         action="store_true",
         help="run the external audit (Cambridge + Ocsai); write external-audit.json",
+    )
+    parser.add_argument(
+        "--audit-out",
+        type=Path,
+        default=EXTERNAL_AUDIT_PATH,
+        help=(
+            "output path for --audit (default: results/external-audit.json);"
+            " issue 008's run.sh points a second run here to diff against"
+            " the first"
+        ),
     )
     parser.add_argument(
         "--write-config",
@@ -3062,8 +3111,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             exit_code = 1
 
     if args.audit:
-        write_external_audit()
-        sys.stdout.write(f"[paper01-external-audit] wrote {EXTERNAL_AUDIT_PATH}\n")
+        audit_result = write_external_audit(path=args.audit_out)
+        sys.stdout.write(f"[paper01-external-audit] wrote {args.audit_out}\n")
+        if not both_corpora_available(audit_result):
+            statuses = {
+                corpus: audit_result.get(corpus, {}).get("status")
+                for corpus in CORPUS_KEYS
+            }
+            sys.stderr.write(
+                "[paper01-external-audit] G2 NOT MET -- both corpora must"
+                f" report status=ok, got {statuses}\n"
+            )
+            exit_code = 1
 
     if args.write_config or not ran_anything:
         write_seed_file()

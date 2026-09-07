@@ -548,3 +548,108 @@ PYTHONHASHSEED=20260907 HF_HUB_OFFLINE=1 \
 git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scripts/paper01_fetch_sources.py experiments/20260701-es4-scorer-diag  # 空
 PYTHONHASHSEED=20260907 HF_HUB_OFFLINE=1 .venv/Scripts/python.exe scripts/paper01_external_audit.py --fidelity  # exit 0, all_match=true
 ```
+
+## I-008 mutation testing — run.sh 一括再現の新規判定 (corpus status 対称化 / SHA-256 byte-identity / notes.md Limitations / completion marker)
+
+- **対象ファイル**:
+  - `scripts/paper01_external_audit.py` (issue 008 で新規追加した `both_corpora_available()` /
+    `CORPUS_KEYS` / `main` の `--audit` 分岐、`run_cambridge_audit` への `"status": "ok"` 追加)。
+  - `experiments/20260907-paper01-g1/run_gate.py` (issue 008 で新規作成。
+    `hashes_match` / `notes_has_required_limitations` / `REQUIRED_LIMITATIONS` /
+    `run_sh_has_completion_marker`)。
+- **対象外 (issue 008 の Allowed Files 制約)**: `src/erre_sandbox/evidence/**` /
+  `scripts/es4_scorer_diag.py` / `scripts/paper01_fetch_sources.py` は touch していない
+  (mutation testing も含め無変更、下記 `git status --porcelain` で pin)。
+- **手順**: I-003〜I-007 と同一 (`mutate_i008.py` — scratchpad 常設の小スクリプトで
+  `assert old in text` (対象文字列の実在確認) → `assert mutated != text` (置換が実際に
+  適用され no-op でないことの確認) → 置換適用 →
+  `.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"` を実行 →
+  exit code と落ちた test 名を記録 → I-008 実装完了直後のバックアップへ `cp` で復元 →
+  `diff` で byte 一致を確認。1 つずつ直列に実施し、都度 diff 空を確認してから次へ進んだ。
+- **バックアップ**: I-008 実装完了 (mutation 前) の
+  `scripts/paper01_external_audit.py` / `experiments/20260907-paper01-g1/run_gate.py` を
+  scratchpad へ `cp` で保持 (`paper01_external_audit.py.bak` / `run_gate.py.bak`)。
+- **既知の無関係な失敗**: `test_committed_external_audit_has_status_ok_for_both_corpora`
+  (このセッションの `run.sh` 実走が完了する前は、`results/external-audit.json` に
+  まだ `"status": "ok"` が無い旧世代の committed artifact を読むため
+  `KeyError: 'status'` で落ちる) は**4 件すべての mutation 前後で恒常的に失敗**しており、
+  どの mutation の kill 判定にも数えていない (`run.sh` 完走後は解消する想定。
+  下記「run.sh 完走後の再検証」参照)。
+
+### issue が指定した最低 4 種 (issue 008 プロンプトの番号どおり)
+
+| # | 対象 | 元のコード | 変更後 |
+|---|---|---|---|
+| ① `status` チェックを常に真にする | `scripts/paper01_external_audit.py` の `both_corpora_available()` | `return all(result.get(corpus, {}).get("status") == "ok" for corpus in CORPUS_KEYS)` | `return True  # MUTATED-1` |
+| ② 2 回実行の SHA-256 比較を常に一致扱いにする | `run_gate.py` の `hashes_match()` | `return hash_a == hash_b` | `return True  # MUTATED-2` |
+| ③ Limitations の必須項目数を減らす | `run_gate.py` の `REQUIRED_LIMITATIONS` (6 件目 `narrow-object-set` を削除) | `"LIMITATION:narrow-object-set",\n)` | `)  # MUTATED-3 (narrow-object-set entry dropped)` (5 件に縮小) |
+| ④ completion marker の検査を外す | `run_gate.py` の `run_sh_has_completion_marker()` | `return marker in text` | `return True  # MUTATED-4` |
+
+### 結果
+
+| # | pytest exit code | 落ちた test (既知の無関係な失敗 1 件を除く) | 復元後 diff |
+|---|---|---|---|
+| ① | **1** | `test_both_corpora_available_requires_ok_status_on_both` / `test_run_sh_fails_when_a_corpus_is_unavailable` — 計 2 件 | 空 (バックアップと byte 一致) |
+| ② | **1** | `test_hashes_match_detects_mismatch` / `test_sha256_of_file_reflects_content` / `test_run_gate_check_hashes_cli_exit_code` — 計 3 件 | 空 |
+| ③ | **1** | `test_required_limitations_has_six_entries` — 1 件のみ。**`test_notes_has_required_limitations` /
+  `test_notes_missing_one_limitation_marker_fails` は落ちなかった** (残り 5 件のマーカーは
+  notes.md に全て存在するため、`all(marker in text for marker in required)` は 5 要素でも
+  真になる — 「必須数そのもの」を独立に確認する `test_required_limitations_has_six_entries`
+  が無いと**この mutation は生存していた**) | 空 |
+| ④ | **1** | `test_run_sh_missing_completion_marker_fails` のみ。**`test_run_sh_emits_completion_marker`
+  は落ちなかった** (実 run.sh の文面には marker 文字列が実在するため、`return True` へ
+  常真化した mutant でも「本物のテキストに対しては」正しい答え `True` を返し続ける ——
+  **witness test (marker を除去した文字列に対して `False` を要求する負例) だけがこの
+  mutation を検出できた**) | 空 |
+
+**4/4 が初回で kill (生存 mutant ゼロ)。4/4 とも復元後 `diff` が空 (バックアップと byte 一致)。**
+
+### 落とし穴の実例 (③・④: 恒真化 mutation は「存在確認」の正例テストだけでは捕まらない)
+
+I-007 retrospective で得た教訓 (「境界値をピンポイントで突く test を最初から書く」) を
+実地で再確認した。③・④ はどちらも「述語を `True` に恒真化する」mutation であり、
+**元のテキストが既に条件を満たしている場合、恒真化しても表面上の挙動は変わらない**
+(6 件全部揃っている notes.md に対して `all(...)` は元々 `True`。marker が実在する
+run.sh に対して `marker in text` は元々 `True`)。したがって:
+
+- ③ は「6 件揃っているか」という**カウント**を独立に assert する test
+  (`test_required_limitations_has_six_entries`) が無いと mutation が生存する。
+- ④ は「除去したら `False` になるか」という**負例**を通す test
+  (`test_run_sh_missing_completion_marker_fails`) が無いと mutation が生存する。
+
+**この issue のテスト設計では両方とも実装当初から用意していた**ため 4/4 とも初回 kill と
+なったが、①・②のような「向きを反転する」mutation (真偽が反転して初めて壊れる) と、
+③・④のような「恒真化する」mutation (負例がないと検出できない) は**別の失敗モード**であり、
+今後同種の boundary predicate を書くときは**恒真化 mutation 用の負例を必ず別途用意する**
+ことを明示しておく (`feedback_witness_needs_mutation_testing.md` の教訓の具体的な適用形)。
+
+### 検証コマンド (mutation 完了後、復元込みで確認)
+
+```
+.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"        # 105 passed, 1 failed (既知の無関係な失敗のみ), 4 deselected
+.venv/Scripts/python.exe -m ruff format --check scripts/paper01_external_audit.py tests/test_paper01_g1 experiments/20260907-paper01-g1/run_gate.py experiments/20260907-paper01-g1/build_metrics.py
+.venv/Scripts/python.exe -m ruff check scripts/paper01_external_audit.py tests/test_paper01_g1 experiments/20260907-paper01-g1/run_gate.py experiments/20260907-paper01-g1/build_metrics.py
+.venv/Scripts/python.exe -m mypy src
+git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scripts/paper01_fetch_sources.py experiments/20260701-es4-scorer-diag  # 空
+```
+
+### run.sh 完走後の再検証 (追記予定)
+
+`run.sh` の実走 (バックグラウンド起動、PID 生存 + `results/run.log` 末尾の completion marker
+で監視中) が完了し次第、`test_committed_external_audit_has_status_ok_for_both_corpora` が
+green に転じることと、`bash experiments/20260907-paper01-g1/run.sh` の 2 回目実行込みの
+byte 一致 (exit 0) を本ファイル下部に追記する。
+
+## 独立 mutation — I-008 (main オーケストレータ、2026-09-08)
+
+`run.sh` が守るべき 4 つのゲートを main が独立に壊した。**全件 kill、生存ゼロ。**
+
+| # | 壊した内容 | 対象 | exit | 落ちた test |
+|---|---|---|---|---|
+| A | 2 回実行の SHA-256 比較を常に一致扱い (`hash_a == hash_b` → `True`) | `run_gate.py` | 1 | `test_hashes_match_detects_mismatch` / `test_sha256_of_file_reflects_content` / `test_run_gate_check_hashes_cli_exit_code` |
+| B | completion marker 検査を常に真 | `run_gate.py` | 1 | `test_run_sh_missing_completion_marker_fails` |
+| C | corpus status ゲートを常に真 (`status == "ok"` → `True or ...`) | `paper01_external_audit.py` | 1 | `test_both_corpora_available_requires_ok_status_on_both` / `test_run_sh_fails_when_a_corpus_is_unavailable` |
+| D | Limitations 必須項目検査を常に真 | `run_gate.py` | 1 | `test_notes_missing_one_limitation_marker_fails` |
+
+置換は `assert old in s` + `assert new != old` の二重確認つき。復元後は 2 ファイルとも
+バックアップと byte 一致 (`diff -q` で確認)、`pytest -m "not eval"` が 106 passed に復帰。

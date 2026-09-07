@@ -1,0 +1,12 @@
+[run.sh] ① PYTHON=.venv/Scripts/python.exe PYTHONHASHSEED=20260907 HF_HUB_OFFLINE=1
+[run.sh] ② --fidelity (design-final.md §2, exits != 0 on mismatch)
+[paper01-external-audit] wrote C:\ERRE-Sand_Box\experiments\20260907-paper01-g1\results\fidelity.json
+[run.sh] ③ --audit, run 1 -> experiments/20260907-paper01-g1/results/external-audit.json
+[paper01-external-audit] wrote C:\ERRE-Sand_Box\experiments\20260907-paper01-g1\results\external-audit.json
+[run.sh] ④ --audit, run 2 (scratch path) + SHA-256 byte-identity gate
+[paper01-external-audit] wrote C:\Users\johnd\AppData\Local\Temp\tmp.ItmOduVCMt\external-audit-repeat.json
+[run_gate] hashes match: d96bc4e6bacb7be5b3b01e7502412aa019f608579b6b9bf3dc035b6feee0ad1e
+[run.sh] ⑤ metrics.json (build_metrics.py, read-only distillation)
+[build_metrics] wrote C:\ERRE-Sand_Box\experiments\20260907-paper01-g1\results\metrics.json
+[run.sh] ⑥ done
+{"event": "PAPER01_G1_RUN_COMPLETE", "status": "ok"}
