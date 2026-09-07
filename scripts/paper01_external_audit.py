@@ -621,9 +621,11 @@ ENV_MD_TEXT: Final[str] = """# 実行環境 (paper01 G1 外部監査)
 
 - Windows: `.venv/Scripts/python.exe`
 - WSL2 / Linux: `.venv/bin/python`
-- I-003 以降で encoder を使う実走は WSL2 GPU 経由が既定
-  (`reference_g_gear_gpu_training_via_wsl.md`)。cross-platform float drift
-  (libm 1-ULP) があるため、量子化した上で照合する
+- **本監査は CPU のみで完結する** (Gate 1 実測、2026-09-07)。encoder 4 種は
+  HF キャッシュから `HF_HUB_OFFLINE=1` で load でき、GPU も sglang の
+  phase-flip も不要。WSL2 GPU 経路は使わない。
+- cross-platform float drift (libm 1-ULP) はあるため、JSON へ emit する
+  float は量子化した上で照合する
   (`feedback_golden_crossplatform_float_drift.md` の教訓を踏襲)。
 
 ## encoder (I-003 以降で使用、本 issue では未使用)
