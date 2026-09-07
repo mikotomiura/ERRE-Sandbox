@@ -1,5 +1,12 @@
 # M13 society live-closure Issue 007 — notes
 
+> **現在の状態（2026-09-07 更新）**: sealed real run は **実施済**
+> (`.steering/20260907-m13-society-live-real-run/`、user の明示 spend ratify 後に 1 回のみ)。
+> **本ファイルの「Issue 007」と書かれた記述は Issue 007 時点（ハーネス land 時）のもの**で、
+> 当時の事実として残してある。実走の実測値は下の
+> 「sealed real run（real qwen3:8b + real nomic-embed-text）— 2026-09-07 実施済」節、
+> および `env.md`「sealed real run 実測」節（SSOT）を見ること。
+
 ## 検証する仮説 / 位置づけ
 
 これは **仮説検証 (measurement) ではない**。`docs/research-positioning.md` §5 の H に対する
@@ -53,7 +60,10 @@ python scripts/m13_society_live_capture.py --capture   # rehearsal/ を bake（�
 .\experiments\20260907-m13-society-live\repro.ps1       # committed bytes を verify
 
 # 2) sealed real run（user の spend ratify 後にのみ、別セッション）
-$env:QWEN3_DIGEST = (ollama show qwen3:8b --json | ConvertFrom-Json).digest  # 例
+# ollama 0.32.12 には `show --json` が無い (実測: Error: unknown flag: --json)。
+# /api/tags の digest を使う (ollama list の ID の 64 hex 全長):
+$env:QWEN3_DIGEST = ((Invoke-RestMethod http://localhost:11434/api/tags).models `
+  | Where-Object { $_.name -eq "qwen3:8b" }).digest
 $env:OLLAMA_VERSION = (ollama --version)
 $env:VRAM_GB = "16"
 .\experiments\20260907-m13-society-live\run.ps1
@@ -63,7 +73,9 @@ $env:VRAM_GB = "16"
 bash experiments/20260907-m13-society-live/repro.sh
 ```
 
-> **Issue 007 では 1) のみを実行済み。2) は一度も実行していない**
+> **Issue 007 では 1) のみを実行。2) は 2026-09-07 の別セッション
+> (`.steering/20260907-m13-society-live-real-run/`) で user の明示 spend ratify 後に 1 回だけ実行済み。**
+> 以下は Issue 007 時点の記述:
 > (`run.ps1` / `run.sh` は将来の ratified session のために用意した、ドキュメント化された
 > 起動スクリプト — 実行には `--confirm-spend` に加えて `QWEN3_DIGEST` /
 > `OLLAMA_VERSION` / `VRAM_GB` の明示設定が要る。このセッションはいずれも設定していない)。
@@ -88,21 +100,46 @@ bash experiments/20260907-m13-society-live/repro.sh
 **これは配線とリハーサル apparatus の緑であって、real qwen3 の実走結果ではない。**
 `real_run_status` は manifest の `annotations` に `"NOT RUN as of Issue 007"` として明示している。
 
-### sealed real run（real qwen3:8b + real nomic-embed-text）
+### sealed real run（real qwen3:8b + real nomic-embed-text）— **2026-09-07 実施済**
 
-**未実行。** 本 issue のスコープは `--capture --real --confirm-spend` の**コードパスを実装し
-テストで防御すること**であって、実行することではない
-(`assert_sealed_real_run` が `confirm_spend` 無しの直呼びも CLI 経由も同様に拒否することを
-`tests/test_integration/test_m13_society_live_capture.py::test_spend_gate_rejects_direct_call_without_ratify`
-で確認済み)。real 実走が起きたら、この節と `env.md` の「sealed real run」節を実測値で
-更新する。
+user の明示 spend ratify 後に `run.ps1` を **1 回だけ**実行。**再走・調整なし**。
+provenance pin と全実測値は `env.md`「sealed real run 実測」節が SSOT。
+
+| 観測 | 値 |
+|---|---|
+| L1 (`run.ps1`) | **exit 0**。`artifacts/` に 6 artifact を bake |
+| replay_checksum | `8ee022197ae8959ea5092f027a2c5f2412bd4d669ee4a4f6b944d55876c12dd3` |
+| capture_mode / real_backend / think | `real` / `True` / `False` |
+| L2 (`repro.ps1 -Real`) | **exit 0**。Plane G byte 一致 / 両チャネル `inner_invocations=0` |
+| request conformance | LLM 36/36・embedding 112/112 が committed record と一致（`sampling` 除外） |
+| LLM call 結果 | `llm_status=ok` 36/36、`llm_fell_back=False` 36/36（fallback ゼロ） |
+| firing annotation（非 gate） | `eligible_tick_count=0` / `witness_tick_count=0`（全 agent `no_eligible_tick`） |
+| dialog envelope count | `0` |
+| distinct zone | 3（`study` 1 / `peripatos` 34 / `chashitsu` 1、speech envelope 36 件中） |
+| L3 (cross-platform) | committed real bundle を Linux CI が同一 verify 経路で検証 |
+
+**settle は事前登録上の正当な結果**として封印した（firing するまで再走しない、が事前登録）。
+上記 annotation は **plain count のまま**であり、解釈は足していない。
+
+> **erratum**: この real bundle の `manifest.json` の `annotations.real_run_status` は
+> `"NOT RUN as of Issue 007..."` のまま（凍結定数を real / rehearsal で共有する設計）。
+> real 判別の正しい根拠は `env_pins.capture_mode == "real"` / `real_backend == true`。
+> 詳細と非修正の理由は `env.md`「erratum」節 / `blockers.md`。
 
 ## 結果が主張できること / できないこと（不可侵）
 
 - **言える**: 「Ollama-free rehearsal が configured shape (N=3×12×20、36 perturbations) で
   完走し、決定論的に committed bytes から再構成できた」「real 実走の spend gate / provenance
   gate / overwrite gate は、いずれも実際に発火する負例で検証済み」。
-- **言えない**: 「real qwen3 で wiring が各 seam に届いた」（real 実走が起きていないため、
-  I7 の "wiring reached each seam (live, real qwen3)" に相当する主張はまだできない）。
-  aha / emergence / effect / caused / divergence / detectability は当然言えない。
-  door② UNMET・計測ライン CLOSE・R-budget=0・holding は**すべて不変**。
+- **2026-09-07 の sealed real run 後に追加で言えるようになったこと**:
+  「**real qwen3:8b + real nomic-embed-text を挿した状態で、事前登録した形状
+  (N=3 × 12 cognition window × 20 physics tick、36 摂動、knob=on、self_other=True) が
+  例外なく完走し (exit 0)、その bundle が Ollama-free replay で byte 一致で再構成できた**」
+  = **配線が各 seam に届いたことの boolean**。
+- **それでも言えない**: aha / emergence / effect / caused / divergence / detectability。
+  **firing は settle した** (`eligible_tick_count=0`) ので、二相 knob が実 sampling を
+  変えたことすら本走では観測していない（firing は非 gate であり、これは失敗ではなく
+  事前登録上の正当な結果）。**wall-clock real-time session でもない**（`ManualClock`、
+  摂動は scripted in-process 列、live Godot client なし）。ミラーは **prompt-level
+  self-other context** であって心の理論ではない。**M4 の `memory_centroid` collapse は
+  解決していない**。door② UNMET・計測ライン CLOSE・R-budget=0・holding は**すべて不変**。
