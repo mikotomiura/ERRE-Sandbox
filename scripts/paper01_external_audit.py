@@ -52,6 +52,8 @@ import json
 import math
 import re
 import sys
+import urllib.error
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -2038,21 +2040,30 @@ def run_cambridge_split(
     vmaps: Mapping[str, Mapping[str, np.ndarray]],
     *,
     corpus: str = "cambridge",
+    objects: Sequence[str] = CAMBRIDGE_OBJECTS,
 ) -> dict[str, Any]:
-    """One SPLIT-BLOCK or SPLIT-PARITY pass over Cambridge (bowl + paperclip).
+    """One SPLIT-BLOCK or SPLIT-PARITY pass over one corpus's object battery.
 
     ARM-A (200 draws, feeds the §6 verdict for the embedding family) plus
     ARM-B / ARM-D / NC-1 / NC-2 (single-draw, report-only -- design-final.md
     §DA-G1-23: bootstrap is reserved for ARM-A x EMBEDDING_FAMILY_EXT x
     split only).
+
+    ``objects`` defaults to :data:`CAMBRIDGE_OBJECTS` (bowl + paperclip) so
+    every pre-I-006 call site is byte-identical; Loop I-006 passes
+    :data:`OCSAI_PRIMARY_OBJECTS` / :data:`OCSAI_SENSITIVITY_OBJECTS`
+    instead to reuse this whole orchestration for the Ocsai corpus
+    (design-final.md "Cambridge adapter ... をできる限り一般化して再利用する") --
+    this is the only edit Loop I-006 makes inside the Cambridge section
+    itself; everything else it needs is additive, below.
     """
     mpnet_vmap = vmaps.get("mpnet", {})
     contexts = {
         obj: build_object_split_context(obj, rows_by_object[obj], scheme, mpnet_vmap)
-        for obj in CAMBRIDGE_OBJECTS
+        for obj in objects
     }
-    dropped_objects = [o for o in CAMBRIDGE_OBJECTS if contexts[o].dropped]
-    active_objects = [o for o in CAMBRIDGE_OBJECTS if o not in dropped_objects]
+    dropped_objects = [o for o in objects if contexts[o].dropped]
+    active_objects = [o for o in objects if o not in dropped_objects]
     all_scored_rows = tuple(r for o in active_objects for r in contexts[o].split1)
     class_sizes = cambridge_class_sizes([contexts[o] for o in active_objects])
     idf_by_object = {
@@ -2138,7 +2149,7 @@ def run_cambridge_split(
     arm_d_anchor = {o: arm_d_texts(contexts[o], mpnet_vmap) for o in active_objects}
     nc1_anchor: dict[str, tuple[str, ...]] = {}
     for o in active_objects:
-        partner = nc1_partner_object(CAMBRIDGE_OBJECTS, o)
+        partner = nc1_partner_object(objects, o)
         if partner in active_objects:
             nc1_anchor[o] = nc1_texts(contexts[partner], corpus=corpus, scheme=scheme)
     nc2_anchor = {
@@ -2168,7 +2179,7 @@ def run_cambridge_split(
                 "draw_k": draw_size(len(contexts[o].dedup_common_pool)),
                 "draws_effective": draws_effective(len(contexts[o].dedup_common_pool)),
             }
-            for o in CAMBRIDGE_OBJECTS
+            for o in objects
         },
         "candidates": candidates_out,
         "verdict": dataclasses.asdict(verdict),
@@ -2226,6 +2237,470 @@ def run_cambridge_audit(
 def write_cambridge_audit(path: Path = EXTERNAL_AUDIT_PATH) -> dict[str, Any]:
     """Run :func:`run_cambridge_audit` and write it to ``path`` deterministically."""
     result = run_cambridge_audit()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return result
+
+
+# --- Ocsai adapter (Loop I-006) ---------------------------------------------
+#
+# design-final.md §3 / §4 is the single source of truth for this section.
+# Reuses the Cambridge adapter's row/pool/arm machinery wherever the two
+# corpora share structure ("Cambridge adapter ... をできる限り一般化して
+# 再利用する"):
+#
+# * Ocsai rows are stamped into the *same* :class:`CambridgeRow` dataclass
+#   (``row_id`` here holds the 0-origin concatenated-scan-order index,
+#   design-final.md §3.1/§3.4/DA-G1-14, not a spreadsheet ``id`` cell).
+#   That is what lets :func:`split_cambridge_rows`, :func:`frozen_scan_order`,
+#   :func:`pool_by_category`, :func:`build_object_split_context`,
+#   :func:`arm_a_draw_texts`, :func:`arm_b_texts`, :func:`arm_d_texts`,
+#   :func:`nc1_texts`, :func:`nc2_texts`, :func:`nc1_partner_object`,
+#   :func:`score_rows_for_draw`, :func:`cambridge_class_sizes`, and (via the
+#   ``objects`` parameter added to :func:`run_cambridge_split` above -- the
+#   *only* edit this issue makes inside the Cambridge section itself) the
+#   entire ARM-A/B/D/NC-1/NC-2/§6-verdict orchestration run over Ocsai data
+#   completely unmodified.
+# * Genuinely Ocsai-only, and therefore new below: the jsonl parse/concat
+#   (§3.1/§3.2), the per-object gold-class-insufficiency reporting gate
+#   (§3.5), ARM-C (§4.1, the (A1 union A2) recipe analog, AC 006-4), and
+#   the paperclip-only source-crossed ARM-X (§4.2, Codex HIGH-1, AC 006-8).
+
+_OCSAI_GOOD_CATEGORY: Final[str] = "good"
+_OCSAI_COMMON_CATEGORY: Final[str] = "common_use_only"
+
+
+def parse_ocsai_records(
+    splits_data: Mapping[str, bytes],
+) -> tuple[tuple[int, str, str, int], ...]:
+    r"""Parse every Ocsai record across the fixed OCSAI_CONCAT_ORDER.
+
+    Concatenation order is ``train`` -> ``val`` -> ``test``
+    (design-final.md §3.1, DA-G1-14). Returns ``(row_index, object,
+    response, score)`` tuples. ``row_index``
+    is a 0-origin index assigned only to records whose JSON line and AUT
+    prompt template parse successfully (reusing
+    ``paper01_fetch_sources.parse_ocsai_prompt`` unmodified), counted over
+    the *entire* concatenated stream in :data:`OCSAI_CONCAT_ORDER` order --
+    the canonical scan order design-final.md §3.1/§3.4 use for
+    SPLIT-BLOCK/SPLIT-PARITY and greedy dedupe. A line that fails to parse
+    (bad JSON or template mismatch) does not consume an index; in the real,
+    pinned data ``EXPECTED_OCSAI_PARSE_FAILURES == 0``
+    (``paper01_fetch_sources.py``), so this convention is never actually
+    exercised in production -- it only matters for making synthetic-jsonl
+    unit tests unambiguous.
+
+    ``OCSAI_CONCAT_ORDER`` is read from the module global on every call
+    (never cached), so a ``monkeypatch.setattr(mod, "OCSAI_CONCAT_ORDER",
+    ...)`` moves this function's output on the very next call.
+    """
+    out: list[tuple[int, str, str, int]] = []
+    idx = 0
+    # mutation target (1): OCSAI_CONCAT_ORDER の並び順 -- the sole gate that
+    # fixes train -> val -> test as the canonical scan order.
+    for split_name in OCSAI_CONCAT_ORDER:
+        raw = splits_data[split_name]
+        for line in raw.decode("utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            parsed = _fetch.parse_ocsai_prompt(
+                obj.get("prompt", ""), obj.get("completion", "")
+            )
+            if parsed is None:
+                continue
+            object_name, response, score = parsed
+            out.append((idx, object_name, response, score))
+            idx += 1
+    return tuple(out)
+
+
+def load_ocsai_rows(splits_data: Mapping[str, bytes]) -> tuple[CambridgeRow, ...]:
+    """Parse + gold-binarise every Ocsai record into :class:`CambridgeRow`.
+
+    Reuses ``parse_ocsai_prompt`` (via :func:`parse_ocsai_records`) and
+    ``paper01_fetch_sources.ocsai_gold_label`` (I-001, unmodified, §3.3:
+    encoded ``== 10`` -> common, ``>= 40`` -> good, ``11-39`` excluded). A
+    row stamped here reuses the Cambridge dataclass verbatim: ``row_id`` =
+    the concatenated scan-order index (:func:`parse_ocsai_records`),
+    ``object``/``text`` normalised the same way :func:`load_cambridge_rows`
+    normalises the response cell.
+    """
+    rows: list[CambridgeRow] = []
+    for idx, object_name, response, score in parse_ocsai_records(splits_data):
+        label = _fetch.ocsai_gold_label(score)
+        if label is None:
+            continue
+        category = _OCSAI_GOOD_CATEGORY if label == "good" else _OCSAI_COMMON_CATEGORY
+        rows.append(
+            CambridgeRow(
+                row_id=idx,
+                object=normalise(object_name),
+                text=normalise(response),
+                category=category,
+            )
+        )
+    return tuple(rows)
+
+
+# --- §3.5 per-object drop gate, second half ("gold クラス不足") -------------
+#
+# build_object_split_context.dropped already covers the "|R_o| < N_R_MIN"
+# half of design-final.md §3.5's drop condition. This covers the other half.
+
+
+def object_has_both_gold_classes(ctx: ObjectSplitContext) -> bool:
+    """The object's ``split1`` scored pool has >= 1 item in *both* gold classes.
+
+    An object failing this check contributes weight 0 to every draw's
+    ``auc_stratified`` call regardless (:func:`auc_stratified` already
+    skips any object missing a class), so this gate never changes a
+    verdict number -- it only turns a silent zero-weight into an explicit,
+    counted, reported exclusion (AC 006-7).
+    """
+    n_good = sum(1 for r in ctx.split1 if r.category == _OCSAI_GOOD_CATEGORY)
+    n_common = sum(1 for r in ctx.split1 if r.category == _OCSAI_COMMON_CATEGORY)
+    # mutation target (6): the gold-class half of the object-exclusion gate.
+    return n_good >= 1 and n_common >= 1
+
+
+# --- §4.1 ARM-C (Ocsai only): the (A1 union A2) recipe analog ---------------
+
+
+def ocsai_high_frequency_texts(
+    split0_rows: Sequence[CambridgeRow], *, min_support: int = EXT_A2_MIN_SUPPORT
+) -> tuple[str, ...]:
+    """§4.1 ARM-C's A2: normalised texts occurring >= ``min_support`` times.
+
+    Counted across the object's *entire* ``split0`` pool (every category,
+    not just common) -- the external analog of the internal recipe's
+    second, generation-frequency anchor stage (issue 006 background: Ocsai
+    has a frequency structure Cambridge lacks). Frozen scan order (first-
+    occurrence order within ``split0``), duplicates collapsed. Returns
+    ``()`` when no text in ``split0`` clears ``min_support`` -- AC 006-4's
+    "A2 missing support" case.
+    """
+    texts_in_order = [r.text for r in split0_rows]
+    counts = Counter(texts_in_order)
+    seen: set[str] = set()
+    out: list[str] = []
+    for text in texts_in_order:
+        # mutation target (3): EXT_A2_MIN_SUPPORT boundary (>= 2, not > 2 / >= 1).
+        if counts[text] >= min_support and text not in seen:
+            seen.add(text)
+            out.append(text)
+    return tuple(out)
+
+
+def arm_c_texts(
+    ctx: ObjectSplitContext,
+    mpnet_vmap: Mapping[str, np.ndarray],
+    *,
+    min_support: int = EXT_A2_MIN_SUPPORT,
+) -> tuple[tuple[str, ...], bool]:
+    """§4.1 ARM-C: ``(A1 union A2)`` dedup'd to ``k = min(N_R_MAX, |pool|)``.
+
+    A1 = the object's ``split0`` common-pool texts (:attr:`ObjectSplitContext.
+    dedup_common_pool`, the same source :func:`arm_a_draw_texts`/
+    :func:`arm_b_texts` draw from). A2 = :func:`ocsai_high_frequency_texts`
+    over the object's *whole* ``split0`` (can introduce texts A1 never
+    contains, since A1 is common-only and A2 is not). Returns ``(texts,
+    a2_missing_support)``; ``a2_missing_support`` is ``True`` (AC 006-4)
+    when A2 is empty for this object -- recorded as a diagnostic, never
+    silently folded into "ARM-C == ARM-A".
+    """
+    a1_texts = [r.text for r in ctx.dedup_common_pool]
+    a2_texts = list(ocsai_high_frequency_texts(ctx.split0, min_support=min_support))
+    seen: set[str] = set()
+    union_ordered: list[str] = []
+    for text in [*a1_texts, *a2_texts]:
+        if text not in seen:
+            seen.add(text)
+            union_ordered.append(text)
+    a2_missing_support = len(a2_texts) == 0
+    if not union_ordered:
+        return (), a2_missing_support
+    embeddings = np.asarray([mpnet_vmap[t] for t in union_ordered], dtype=float)
+    k = draw_size(len(union_ordered))
+    idx = greedy_dedupe_indices(embeddings, cap=k)
+    return tuple(union_ordered[i] for i in idx), a2_missing_support
+
+
+# --- §4.2 ARM-X (paperclip only, source-crossed) ----------------------------
+
+
+def arm_x_scored_candidates(
+    cambridge_paperclip_rows: Sequence[CambridgeRow],
+    ocsai_paperclip_ctx: ObjectSplitContext,
+    scheme: str,
+    vmaps: Mapping[str, Mapping[str, np.ndarray]],
+) -> dict[str, Any]:
+    """§4.2 ARM-X: anchor = Cambridge paperclip, gold/scored = Ocsai paperclip.
+
+    The only arm where anchor provenance is genuinely independent of the
+    scored gold (Codex HIGH-1). Report-only: never bootstrapped, never
+    enters :func:`decide_external`'s ``reports`` (AC 006-9).
+
+    ``vmaps`` must already embed *both* corpora's paperclip texts under the
+    same encoders (the caller merges both rows sets through
+    :func:`embed_all_texts` before calling here) -- embedding is a pure
+    per-text function, so batching both corpora's texts together before
+    encoding produces vectors identical to encoding each separately.
+    """
+    # mutation target (4): anchor source -- this must stay Cambridge, never
+    # ocsai_paperclip_ctx. build_object_split_context on the *Cambridge*
+    # rows, then arm_b_texts (the whole dedup'd pool, uncapped) is the
+    # anchor; scoring happens against ocsai_paperclip_ctx.split1 (Ocsai's
+    # own gold), never Cambridge's.
+    cambridge_ctx = build_object_split_context(
+        "paperclip", cambridge_paperclip_rows, scheme, vmaps.get("mpnet", {})
+    )
+    anchor_texts_by_object = {"paperclip": arm_b_texts(cambridge_ctx)}
+    idf_by_object = {
+        "paperclip": (ocsai_paperclip_ctx.idf, ocsai_paperclip_ctx.default_idf)
+    }
+    scored = score_rows_for_draw(
+        ocsai_paperclip_ctx.split1,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps=vmaps,
+        idf_by_object=idf_by_object,
+    )
+    return {
+        key: dataclasses.asdict(
+            aggregate_candidate_draws([draw_result_from_items(items)])
+        )
+        for key, items in scored.items()
+    }
+
+
+# --- Ocsai per-split orchestration ------------------------------------------
+
+
+def run_ocsai_split(
+    rows_by_object: Mapping[str, Sequence[CambridgeRow]],
+    scheme: str,
+    vmaps: Mapping[str, Mapping[str, np.ndarray]],
+    *,
+    corpus: str = "ocsai",
+    objects: Sequence[str] = OCSAI_PRIMARY_OBJECTS,
+    cambridge_paperclip_rows: Sequence[CambridgeRow] = (),
+    arm_x_vmaps: Mapping[str, Mapping[str, np.ndarray]] | None = None,
+) -> dict[str, Any]:
+    """One SPLIT-BLOCK or SPLIT-PARITY pass over Ocsai.
+
+    Delegates ARM-A (verdict) / ARM-B / ARM-D / NC-1 / NC-2 / the §6
+    decision to :func:`run_cambridge_split` wholesale (via its ``objects``
+    parameter). Adds ARM-C (:func:`arm_c_texts`) and, ``paperclip``-only,
+    ARM-X (:func:`arm_x_scored_candidates`); also re-surfaces
+    ``active_objects``/``dropped_objects`` after applying
+    :func:`object_has_both_gold_classes` on top of ``run_cambridge_split``'s
+    own pool-size gate (AC 006-7) -- this never changes the verdict
+    ``run_cambridge_split`` returns (zero-weight objects already do not
+    move ``auc_stratified``), it only makes the exclusion explicit and
+    counted.
+    """
+    base = run_cambridge_split(
+        rows_by_object, scheme, vmaps, corpus=corpus, objects=objects
+    )
+
+    mpnet_vmap = vmaps.get("mpnet", {})
+    active = base["active_objects"]
+    contexts = {
+        obj: build_object_split_context(obj, rows_by_object[obj], scheme, mpnet_vmap)
+        for obj in active
+    }
+    idf_by_object = {o: (contexts[o].idf, contexts[o].default_idf) for o in active}
+
+    gold_deficient = sorted(
+        o for o in active if not object_has_both_gold_classes(contexts[o])
+    )
+    final_active = [o for o in active if o not in gold_deficient]
+    all_dropped = sorted({*base["dropped_objects"], *gold_deficient})
+
+    # --- ARM-C ---------------------------------------------------------
+    arm_c_pools = {o: arm_c_texts(contexts[o], mpnet_vmap) for o in final_active}
+    a2_missing_support = sorted(
+        o for o, (_texts, missing) in arm_c_pools.items() if missing
+    )
+    arm_c_anchor = {o: texts for o, (texts, _missing) in arm_c_pools.items()}
+    arm_c_rows = tuple(r for o in arm_c_anchor for r in contexts[o].split1)
+    arm_c_scored = score_rows_for_draw(
+        arm_c_rows,
+        anchor_texts_by_object=arm_c_anchor,
+        vmaps=vmaps,
+        idf_by_object=idf_by_object,
+    )
+    arm_c_report = {
+        key: dataclasses.asdict(
+            aggregate_candidate_draws([draw_result_from_items(items)])
+        )
+        for key, items in arm_c_scored.items()
+    }
+
+    result: dict[str, Any] = dict(base)
+    result["active_objects"] = final_active
+    result["dropped_objects"] = all_dropped
+    result["dropped_object_count"] = len(all_dropped)
+    result["gold_class_deficient_objects"] = gold_deficient
+    # mutation target (5): reports_for_verdict / decide_external (inside
+    # `base`, computed by run_cambridge_split) must never see arm_c_report --
+    # ARM-C is attached to the *result* dict only, after the verdict above
+    # is already frozen inside `base["verdict"]`.
+    result["arm_c"] = {
+        "candidates": arm_c_report,
+        "a2_missing_support_objects": a2_missing_support,
+    }
+
+    # --- ARM-X (paperclip only, source-crossed) -------------------------
+    if (
+        "paperclip" in final_active
+        and cambridge_paperclip_rows
+        and arm_x_vmaps is not None
+    ):
+        result["arm_x"] = arm_x_scored_candidates(
+            cambridge_paperclip_rows, contexts["paperclip"], scheme, arm_x_vmaps
+        )
+    else:
+        result["arm_x"] = {}
+
+    return result
+
+
+# --- Ocsai end-to-end orchestration ------------------------------------------
+
+
+def load_ocsai_raw_bytes() -> dict[str, bytes] | None:
+    """Fetch the three Ocsai splits in memory (never written to the repo).
+
+    Reuses ``paper01_fetch_sources._fetch_ocsai_splits`` (I-001) verbatim.
+    Returns ``None`` -- never raises -- on any network/IO failure, matching
+    ``paper01_fetch_sources._audit_ocsai``'s own catch set, so the caller
+    can record ``source_unavailable`` and still report the Cambridge
+    verdict (design-final.md §6, Codex HIGH-4; issue 006 Stop Conditions:
+    Ocsai unreachable is explicitly not a stop condition).
+    """
+    try:
+        return _fetch._fetch_ocsai_splits()  # noqa: SLF001
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+
+def run_ocsai_audit(
+    cambridge_rows_by_object: Mapping[str, Sequence[CambridgeRow]] | None = None,
+    ocsai_splits_data: Mapping[str, bytes] | None = None,
+) -> dict[str, Any]:
+    """End-to-end Ocsai audit: jsonl -> gold binarisation -> verdict (§3/§4).
+
+    ``ocsai_splits_data`` defaults to a live fetch via
+    :func:`load_ocsai_raw_bytes`; unreachable there (``None``) makes this
+    return ``{"corpus": "ocsai", "status": "source_unavailable"}`` -- never
+    a §6 :data:`VERDICT_ENUM` member, never raises, so the caller's
+    Cambridge verdict is unaffected (AC 006-6). ``cambridge_rows_by_object``
+    supplies ARM-X's Cambridge paperclip anchor (§4.2); omitted, ARM-X is
+    simply empty in every split (report-only, never a stop condition).
+
+    Both split schemes and both object batteries
+    (:data:`OCSAI_PRIMARY_OBJECTS` -- verdict-bearing -- and
+    :data:`OCSAI_SENSITIVITY_OBJECTS`, report-only, design-final.md §3.5)
+    are run and returned.
+    """
+    splits_data = (
+        ocsai_splits_data if ocsai_splits_data is not None else load_ocsai_raw_bytes()
+    )
+    if splits_data is None:
+        return {"corpus": "ocsai", "status": "source_unavailable"}
+
+    rows = load_ocsai_rows(splits_data)
+    rows_by_object: dict[str, tuple[CambridgeRow, ...]] = {
+        obj: tuple(r for r in rows if r.object == obj) for obj in OCSAI_PRIMARY_OBJECTS
+    }
+
+    encoders = build_available_encoders()
+    if not encoders:
+        msg = "no embedding encoder available offline; cannot score the external audit"
+        raise RuntimeError(msg)
+    vmaps = embed_all_texts(rows_by_object, encoders)
+
+    cambridge_paperclip_rows: tuple[CambridgeRow, ...] = (
+        tuple(cambridge_rows_by_object.get("paperclip", ()))
+        if cambridge_rows_by_object is not None
+        else ()
+    )
+
+    splits: dict[str, Any] = {}
+    sensitivity_splits: dict[str, Any] = {}
+    for scheme in SPLIT_SCHEMES:
+        arm_x_vmaps: dict[str, dict[str, np.ndarray]] | None = None
+        if cambridge_paperclip_rows:
+            ocsai_paperclip_rows = rows_by_object.get("paperclip", ())
+            combined = {"paperclip": cambridge_paperclip_rows + ocsai_paperclip_rows}
+            arm_x_vmaps = embed_all_texts(combined, encoders)
+        splits[scheme.key] = run_ocsai_split(
+            rows_by_object,
+            scheme.key,
+            vmaps,
+            objects=OCSAI_PRIMARY_OBJECTS,
+            cambridge_paperclip_rows=cambridge_paperclip_rows,
+            arm_x_vmaps=arm_x_vmaps,
+        )
+        sensitivity_splits[scheme.key] = run_ocsai_split(
+            rows_by_object,
+            scheme.key,
+            vmaps,
+            objects=OCSAI_SENSITIVITY_OBJECTS,
+            cambridge_paperclip_rows=cambridge_paperclip_rows,
+            arm_x_vmaps=arm_x_vmaps,
+        )
+
+    result: dict[str, Any] = {
+        "corpus": "ocsai",
+        "status": "ok",
+        "encoders_available": sorted(encoders),
+        "primary_split": "SPLIT-BLOCK",
+        "object_battery_primary": list(OCSAI_PRIMARY_OBJECTS),
+        "object_battery_sensitivity": list(OCSAI_SENSITIVITY_OBJECTS),
+        "splits": splits,
+        "sensitivity_object_battery_splits": sensitivity_splits,
+    }
+    return _quantize_json(result)
+
+
+# --- combined, corpus-keyed output (design-final.md §6/DA-G1-12) -----------
+
+
+def run_external_audit() -> dict[str, Any]:
+    """Both corpora, corpus-keyed, with **no combined verdict**.
+
+    design-final.md §6/DA-G1-12: "統合 verdict は作らない" (Codex HIGH-4).
+    Cambridge's own verdict is entirely unaffected by Ocsai's availability
+    (AC 006-6); each corpus's ``verdict``/``status`` is read independently
+    by callers. Cambridge's own :func:`run_cambridge_audit` output is
+    embedded unmodified -- its own tests already pin that shape.
+    """
+    cambridge_raw = load_cambridge_raw_bytes()
+    cambridge_rows_by_object = {
+        obj: load_cambridge_rows(obj, data) for obj, data in cambridge_raw.items()
+    }
+    return {
+        "cambridge": run_cambridge_audit(cambridge_raw),
+        "ocsai": run_ocsai_audit(cambridge_rows_by_object),
+    }
+
+
+def write_external_audit(path: Path = EXTERNAL_AUDIT_PATH) -> dict[str, Any]:
+    """Run :func:`run_external_audit` and write it to ``path`` deterministically.
+
+    Not wired into :func:`main` by this issue (I-007 owns ``main``/
+    ``--fidelity``) -- callers invoke this directly when they want the
+    corpus-keyed persisted artifact.
+    """
+    result = run_external_audit()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n",

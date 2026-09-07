@@ -346,3 +346,109 @@ design-final §5.1 は「崩落抽出割合 / `median_b(drop)` / draw の 5-95 �
 **mutation testing はコードの内部整合しか見ない。** この 2 件はどちらも
 「全 test が緑・全 mutant が kill」の状態で残っていた欠落であり、
 **出力 JSON を実際に読んで数字の意味を突き合わせる**ことでしか出てこなかった。
+
+## I-006 mutation testing — Ocsai adapter (jsonl parse / ARM-C / ARM-X / object drop gate)
+
+- **対象ファイル**: `scripts/paper01_external_audit.py` (I-006 で新規追加した Ocsai
+  adapter 節: `parse_ocsai_records` / `load_ocsai_rows` / `object_has_both_gold_classes` /
+  `ocsai_high_frequency_texts` / `arm_c_texts` / `arm_x_scored_candidates` /
+  `run_ocsai_split`) と `scripts/paper01_fetch_sources.py` (I-001 の凍結
+  `ocsai_gold_label`。**指示②の二値化境界は I-001 の既存コードだが、issue から
+  「最低限」と明示指定されたため、一時 mutate → test → 復元 → diff byte一致確認の
+  同一手順で検査した。恒久的な改変は一切なし**)。
+- **手順**: I-003〜I-005 と同一 (`mutate.py` で `assert old in text` (対象文字列の実在確認) →
+  `assert mutated != text` (置換が実際に適用され no-op でないことの確認) → 置換適用 →
+  `.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"` を実行 →
+  exit code と落ちた test 名を記録 → I-006 実装完了直後のバックアップへ `cp` で復元 →
+  `diff` で byte 一致を確認。1 つずつ直列に実施し、都度 diff 空を確認してから次へ進んだ。
+- **バックアップ**: I-006 実装完了・ruff/mypy/test (`-m "not eval"`) 全緑を確認した直後の
+  `scripts/paper01_external_audit.py` と `scripts/paper01_fetch_sources.py` を
+  それぞれ scratchpad へ `cp` で保持 (`paper01_external_audit.py.bak` /
+  `paper01_fetch_sources.py.bak`)。
+
+### 指定された 6 種 (① 連結順 ② 二値化境界 ③ EXT_A2_MIN_SUPPORT 境界 ④ ARM-X anchor 出自
+⑤ verdict への ARM-C 混入 ⑥ 物体除外ゲート境界) — 総当たり (①②③⑥は境界を複数パターン実施)
+
+| # | 壊した内容 | 元のコード | 変更後 | 1 回目 exit code | 落ちた test |
+|---|---|---|---|---|---|
+| ① | `OCSAI_CONCAT_ORDER` の並び順を反転 (連結順の入れ替え) | `("train", "val", "test")` | `("test", "val", "train")` | **1** | `test_ocsai_concat_order_is_fixed` (006-1) / `test_preregistration_constants_match_config` (I-002 側、bonus) |
+| ②a | `ocsai_gold_label` (paper01_fetch_sources.py, 凍結・一時 mutate): `score == 10` → `score <= 10` | `if score == _OCSAI_COMMON_SCORE:` | `if score <= _OCSAI_COMMON_SCORE:` | **1 回目 = 0 (生存)** → test 追加後 **1** | (生存時は無し) → `test_ocsai_binarisation_bands` (006-3、`resp 9` ケース追加後) |
+| ②b | 同ファイル: `score >= 40` → `score > 40` | `if score >= _OCSAI_GOOD_MIN_SCORE:` | `if score > _OCSAI_GOOD_MIN_SCORE:` | **1** | `test_ocsai_binarisation_bands` (006-3、`resp 40` が `KeyError` で脱落) |
+| ③a | `EXT_A2_MIN_SUPPORT` 境界: `>=` → `>` (支持 2 を 3 に事実上厳格化) | `if counts[text] >= min_support and ...` | `if counts[text] > min_support and ...` | **1** | `test_arm_c_missing_support_is_recorded` (006-4) |
+| ③b | 同ゲート: `min_support` を無視して `>= 1` に緩和 (実質フィルタ撤去) | `if counts[text] >= min_support and ...` | `if counts[text] >= 1 and ...` | **1** | `test_arm_c_missing_support_is_recorded` (006-4、"brick" の support=1 ケースが誤って A2 に混入) |
+| ④ | ARM-X の anchor 出自を Cambridge から Ocsai (`ocsai_paperclip_ctx`) にすり替え | `cambridge_ctx = build_object_split_context("paperclip", cambridge_paperclip_rows, scheme, vmaps.get("mpnet", {}))` | `cambridge_ctx = ocsai_paperclip_ctx` | **1 回目 = 0 (生存)** → test 再設計後 **1** | (生存時は無し) → `test_arm_x_is_source_crossed` (006-8、spy ベースに再設計後) |
+| ⑤ | `arm_c_report` が非空なら `result["verdict"]` を強制上書き (ARM-C を verdict に混入) | `result["arm_c"] = {...}` の直後 | 同上 + `if arm_c_report: result["verdict"] = {"verdict": "PASS", "mutated": True}` | **1** | `test_verdict_comes_from_arm_a_only` (006-5、`run_cambridge_split` 直接呼び出しとの oracle 比較で検出) |
+| ⑥a | `object_has_both_gold_classes`: 両条件を `>= 0` に緩和 (ゲート全撤去) | `return n_good >= 1 and n_common >= 1` | `return n_good >= 0 and n_common >= 0` | **1 回目 = 0 (生存)** → test 追加後 **1** | (生存時は無し) → `test_dropped_objects_are_reported` (006-7、"commonpoor" 追加後) |
+| ⑥b | 同ゲート: `n_common` 連言を削除 (good 側の条件だけ残す) | `return n_good >= 1 and n_common >= 1` | `return n_good >= 1` | **1 回目 = 0 (生存)** → 同上 test 追加後 **1** | (生存時は無し) → `test_dropped_objects_are_reported` (006-7) |
+
+**9/9 (①②a②b③a③b④⑤⑥a⑥b) が最終的に kill、9/9 とも復元後 `diff` が byte 一致
+(`paper01_external_audit.py` / `paper01_fetch_sources.py` とも)。うち 3 件 (②a/④/⑥a・⑥b)
+が初回 survive → test を追加/再設計して kill (下記詳細)。**
+
+### 生存した mutant と対処 (3 件)
+
+**②a (`score == 10` → `score <= 10`)**: 当初の `test_ocsai_binarisation_bands`
+(006-3) は 10/11/39/40 の 4 点しか検査しておらず、**10 未満のスコアを一切構成して
+いなかった**ため `<=10` に緩めても common 側の判定結果 (`resp 10` のみ common) が
+偶然一致し、`pytest -q tests/test_paper01_g1 -m "not eval"` は **79 passed** の
+まま緑だった (exit code 0 = 生存)。design-final.md §8 は score スケールを
+10-50 と事前登録しており 10 未満は実データに現れないが、**境界の頑健性は別**
+(I-005 retrospective の教訓「境界値をピンポイントで突く test を最初から書く」が
+ここでも再発)。**対処**: `resp 9` (score=9) を追加し `"resp 9" not in by_text`
+を assert。再実施で確実に kill (`KeyError` 相当ではなく `common_use_only` へ
+誤分類されて assert 失敗) を確認した。
+
+**④ (ARM-X anchor を Cambridge → Ocsai にすり替え)**: 当初の
+`test_arm_x_is_source_crossed` (006-8) は `arm_x_scored_candidates` の返す
+**AUC ベースの集約統計** (`DrawAggregate`) を比較していたが、この単体テストの
+stub encoder は good/common を **半空間で完全分離**するため、good 側のスコアは
+使うアンカー集合に関わらず常に rarity=1.0 (直交ゆえ cos=0)、common 側同士も
+判別方向自体は崩れず、**AUC (および AUC 由来の集約統計) がアンカーの出自に
+依らず一致してしまう** (raw score は実際に違う値になっていたが、rank/AUC は
+偶然不変だった)。`pytest -q tests/test_paper01_g1 -m "not eval"` は
+**79 passed** のまま緑 (exit code 0 = 生存)。**対処**: AUC 比較をやめ、
+`mod.build_object_split_context` に `monkeypatch` で spy を仕込み、
+`arm_x_scored_candidates` 内部でアンカー構築に実際に渡された `rows` 引数を
+直接捕捉して `cambridge_rows` と一致すること (`ocsai_rows` とは不一致であること)
+を assert する形に再設計した。この mutation は `cambridge_ctx` を
+`ocsai_paperclip_ctx` に直接エイリアスして `build_object_split_context` の
+呼び出し自体をスキップするため、spy が一度も発火せず `captured_rows == []`
+という形で確実に検出できることも確認した。**教訓**: 「クリーンに分離された
+合成 embedding」は判別力を測る目的には有用だが、**「どの参照集合を使ったか」
+という配線の正しさを検査する目的には不向き** (AUC が飽和して不変になる)。
+配線を検査したいときは統計量でなく生の呼び出し引数を spy で直接見るべき、
+という一般則を得た。
+
+**⑥a/⑥b (`object_has_both_gold_classes` の両境界)**: 当初の
+`test_dropped_objects_are_reported` (006-7) は "toosmall" (プールサイズゲートで
+落ちる)・"goldpoor" (`n_good=0`)・"boundarygood" (`n_good=1`、境界) の 3 種類しか
+構成しておらず、**`n_common` 側の欠乏ケースを一度も構成していなかった**ため、
+`n_good >= 0 and n_common >= 0` (ゲート全撤去) と `n_good >= 1` (`n_common` 連言
+削除) の両方とも `79 passed` のまま緑だった (exit code 0 = 生存、2 件とも)。
+**対処**: `_rows_common_then_good` (common を低 row_id・good を高 row_id に置く
+既存ヘルパ) を使い、split1 (採点対象プール) には good だけが残り
+common が 0 件になる "commonpoor" (`n_common=20, n_good=20`) を追加。プールサイズ
+ゲート (split0 の common プールは 20 件 >= N_R_MIN なので pool-size では落ちない)
+と gold-class ゲートの `n_common` 半分だけを狙い撃ちする構成にした。再実施で
+⑥a/⑥b とも確実に kill (`dropped_objects` に `commonpoor` が欠落) を確認した。
+
+### 検証コマンド (mutation 完了後、全て緑)
+
+```
+.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"        # 79 passed, 2 deselected
+.venv/Scripts/python.exe -m ruff format --check scripts/paper01_external_audit.py tests/test_paper01_g1  # 9 files already formatted
+.venv/Scripts/python.exe -m ruff check scripts/paper01_external_audit.py tests/test_paper01_g1            # All checks passed!
+.venv/Scripts/python.exe -m mypy src                                        # Success: no issues found in 247 source files
+git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scripts/paper01_fetch_sources.py  # 空
+```
+
+### 教訓 (I-006 retrospective へ持ち越す)
+
+**I-004/I-005 で繰り返し確認された「境界値をピンポイントで突く test を最初から
+書かないと mutant が生存する」というパターンが I-006 でも 3/9 (33%) で再発した。**
+今回新たに得た教訓は、**「AUC/verdict のような集約統計は、配線ミス (どの入力を
+使ったか) を検出する目的には不十分な場合がある」**という点 (④ の生存)。
+生の統計量が偶然不変になりうる合成データでは、配線の正しさは統計量でなく
+**関数呼び出しの引数そのものを spy で直接検査する**方が確実であり、この教訓は
+今後 source-crossed / cross-corpus な配線を検査する mutation test 全般に
+持ち越す価値がある。
