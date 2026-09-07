@@ -99,6 +99,7 @@ denylist, per design-final.md §M8's "allowlist（society が import してよ�
 
 _ALLOWED_ERRE_PREFIXES: Final[tuple[str, ...]] = (
     "erre_sandbox.cognition",
+    "erre_sandbox.erre.two_phase",
     "erre_sandbox.integration.dialog",
     "erre_sandbox.integration.embodied.loop",
     "erre_sandbox.integration.embodied.handoff",
@@ -117,7 +118,17 @@ re-implemented, so ``event_log_checksum`` and rendered ``decisions.jsonl``
 stay on the same envelope_provenance serializer). Deliberately excludes
 ``erre_sandbox.evidence`` and every sibling measurement-line package
 (§M1/§M8 binding); ``handoff`` itself carries the same construction-only
-scope guard, so this is not a measurement-line door."""
+scope guard, so this is not a measurement-line door.
+
+``erre_sandbox.erre.two_phase`` (society live-closure ADR, ``.steering/
+20260906-m13-society-live-closure/decisions.md`` DA-SLC-4) is admitted for the
+same reason: (a) it is construction/sampling modulation, not measurement —
+``TwoPhaseKnob`` is a presence-only marker carrying no gain; (b) society.py
+only threads it straight through to ``CognitionCycle``, it holds no knob
+semantics of its own; (c) the untouchable organ module
+``cognition/cycle.py`` already imports this exact type from this exact
+module; (d) the allowlist stays a closed enumeration and the denylist above
+is unchanged."""
 
 _DENIED_IMPORT_SUBSTRINGS: Final[tuple[str, ...]] = (
     "evidence",
