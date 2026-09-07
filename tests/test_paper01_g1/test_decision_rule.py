@@ -41,10 +41,10 @@ def _report(
     eligible: bool = True,
     engaged: bool = True,
     ci: tuple[float, float] = _SURVIVOR_CI,
-    potency_median: float = 0.2,
-    auc_full_median: float = 0.9,
-    auc_lao_median: float = 0.9,
-    drop_median: float = 0.0,
+    potency_at_median_draw: float = 0.2,
+    auc_full_at_median_draw: float = 0.9,
+    auc_lao_at_median_draw: float = 0.9,
+    drop_at_median_draw: float = 0.0,
 ) -> mod.CandidateExternalReport:
     """Build one candidate report with a single-draw flag history.
 
@@ -64,10 +64,10 @@ def _report(
         collapsed_flags=(collapsed_b,),
         auc_lao_ci_lower=ci_lower,
         auc_lao_ci_upper=ci_upper,
-        potency_median=potency_median,
-        auc_full_median=auc_full_median,
-        auc_lao_median=auc_lao_median,
-        drop_median=drop_median,
+        potency_at_median_draw=potency_at_median_draw,
+        auc_full_at_median_draw=auc_full_at_median_draw,
+        auc_lao_at_median_draw=auc_lao_at_median_draw,
+        drop_at_median_draw=drop_at_median_draw,
         audit_not_engaged=not engaged,
     )
 
@@ -218,10 +218,10 @@ def test_zero_potency_candidate_does_not_grant_pass() -> None:
             eligible=True,
             engaged=False,
             ci=_SURVIVOR_CI,  # identity: auc_lao == auc_full >= floor
-            potency_median=0.0,
-            auc_full_median=0.92,
-            auc_lao_median=0.92,
-            drop_median=0.0,
+            potency_at_median_draw=0.0,
+            auc_full_at_median_draw=0.92,
+            auc_lao_at_median_draw=0.92,
+            drop_at_median_draw=0.0,
         ),
     ]
     result = mod.decide_external(reports, class_sizes=_OK_CLASS_SIZES)

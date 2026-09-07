@@ -46,7 +46,10 @@ variant would just duplicate ``X0`` (see the comment above
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import importlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -56,9 +59,43 @@ import numpy as np
 
 from erre_sandbox.evidence.es4_actuator import constants as _c
 from erre_sandbox.evidence.es4_actuator import controls
+from erre_sandbox.evidence.es4_actuator.battery import AdversarialItem
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
+    from types import ModuleType
+
+# --- two-path import helper (design-final.md §7, DA-6) --------------------
+
+
+def resolve_sibling_script(package_qualname: str, flat_name: str) -> ModuleType:
+    """Import one frozen sibling script under either layout this tooling runs in.
+
+    - ERRE-Sandbox layout: importable as ``scripts.<flat_name>`` because the
+      repository root sits on ``sys.path`` (``scripts/`` is a namespace
+      package -- no ``scripts/__init__.py``).
+    - paper-repo layout: ``paper01_fetch_sources.py`` and
+      ``es4_scorer_diag.py`` sit flat in ``analysis/scripts/`` with no
+      enclosing package, so ``scripts.<flat_name>`` never resolves there.
+      ``package_qualname`` failing with :class:`ModuleNotFoundError` falls
+      back to a flat ``import <flat_name>`` with *this file's own
+      directory* pushed onto ``sys.path`` -- the sibling script is always
+      co-located with this file in both layouts, so that fallback resolves
+      in a real paper-repo checkout exactly as it does here.
+    """
+    try:
+        return importlib.import_module(package_qualname)
+    except ModuleNotFoundError:
+        this_dir = str(Path(__file__).resolve().parent)
+        if this_dir not in sys.path:
+            sys.path.insert(0, this_dir)
+        return importlib.import_module(flat_name)
+
+
+_fetch = resolve_sibling_script(
+    "scripts.paper01_fetch_sources", "paper01_fetch_sources"
+)
+_diag = resolve_sibling_script("scripts.es4_scorer_diag", "es4_scorer_diag")
 
 # --- paths ---------------------------------------------------------------
 
@@ -68,6 +105,13 @@ SEED_PATH: Final[Path] = EXPERIMENT_DIR / "SEED"
 CONFIG_PATH: Final[Path] = EXPERIMENT_DIR / "config.json"
 ENV_MD_PATH: Final[Path] = EXPERIMENT_DIR / "env.md"
 SOURCE_AUDIT_PATH: Final[Path] = EXPERIMENT_DIR / "data" / "source-audit.json"
+CAMBRIDGE_RAW_DIR: Final[Path] = EXPERIMENT_DIR / "data" / "raw"
+CAMBRIDGE_FILENAMES: Final[dict[str, str]] = {
+    "bowl": "bowl AUT dataset.xlsx",
+    "paperclip": "paperclip AUT dataset.xlsx",
+}
+RESULTS_DIR: Final[Path] = EXPERIMENT_DIR / "results"
+EXTERNAL_AUDIT_PATH: Final[Path] = RESULTS_DIR / "external-audit.json"
 
 # --- external-only constants (design-final.md §9, this ADR) --------------
 
@@ -718,10 +762,10 @@ class CandidateExternalReport:
     collapsed_flags: tuple[bool, ...]
     auc_lao_ci_lower: float
     auc_lao_ci_upper: float
-    potency_median: float
-    auc_full_median: float
-    auc_lao_median: float
-    drop_median: float
+    potency_at_median_draw: float
+    auc_full_at_median_draw: float
+    auc_lao_at_median_draw: float
+    drop_at_median_draw: float
     audit_not_engaged: bool
 
 
@@ -1281,9 +1325,19 @@ class CandidateStatisticalSummary:
     design-final.md §5.2/§5.4. ``permutation_p`` is the §5.3 representative
     permutation p-value (exploratory only, never fed into
     ``decide_external``).
+
+    ``aggregate`` carries §5.1's *required* reporting statistics -- the
+    collapsed-draw share, ``median_b(drop)`` and the 5-95 percentile band
+    over draws. These are genuine across-draw summaries, unlike the
+    ``*_at_median_draw`` fields on ``report``, which are the single
+    median-by-drop draw's values. The two can disagree, because the
+    median draw is picked by ``drop``: on Cambridge SPLIT-PARITY, X0 has
+    ``auc_full_at_median_draw`` 0.8156 while only 32.5% of draws clear
+    the floor. Distinct names stop that being read as ``median_b(.)``.
     """
 
     report: CandidateExternalReport
+    aggregate: DrawAggregate
     bootstrap: BootstrapDropResult
     permutation_p: float
     median_draw_index: int
@@ -1349,18 +1403,835 @@ def build_candidate_report(
         collapsed_flags=collapsed_flags,
         auc_lao_ci_lower=bootstrap.auc_lao_ci[0],
         auc_lao_ci_upper=bootstrap.auc_lao_ci[1],
-        potency_median=median_result.potency,
-        auc_full_median=median_result.auc_full,
-        auc_lao_median=median_result.auc_lao,
-        drop_median=median_result.drop,
+        potency_at_median_draw=median_result.potency,
+        auc_full_at_median_draw=median_result.auc_full,
+        auc_lao_at_median_draw=median_result.auc_lao,
+        drop_at_median_draw=median_result.drop,
         audit_not_engaged=not aggregate_draws(engaged_flags),
     )
     return CandidateStatisticalSummary(
         report=report,
+        aggregate=aggregate_candidate_draws(results),
         bootstrap=bootstrap,
         permutation_p=perm_p,
         median_draw_index=idx,
     )
+
+
+# --- Cambridge adapter (Loop I-005) -----------------------------------------
+#
+# design-final.md §3 / §4 is the single source of truth for this section.
+# Reuses (never modifies) two frozen sibling scripts via
+# :func:`resolve_sibling_script`:
+#
+# * ``paper01_fetch_sources`` (I-001) -- ``load_cambridge_table`` (the
+#   stdlib ``.xlsx`` reader) and ``cambridge_gold_label`` (§3.3 gold
+#   binarisation).
+# * ``es4_scorer_diag`` (frozen, S4 boundary) -- ``make_encoder`` /
+#   ``embed_map`` / ``embed_rarity`` / ``jaccard_rarity`` / ``build_idf`` /
+#   ``tfidf_rarity`` / ``_length_controlled`` / ``Candidate``.
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CambridgeRow:
+    """One Cambridge-AUT-dataset row surviving gold binarisation (§3.3).
+
+    ``category`` already uses the :class:`AdversarialItem`-compatible
+    vocabulary (``"good"`` / ``"common_use_only"``) so
+    :func:`to_adversarial_items` is a pure reshape, never a remap.
+    """
+
+    row_id: int
+    object: str
+    text: str
+    category: str
+
+
+def load_cambridge_rows(object_key: str, data: bytes) -> tuple[CambridgeRow, ...]:
+    """Parse one Cambridge ``.xlsx`` file's bytes into gold-binarised rows.
+
+    Reuses ``paper01_fetch_sources.load_cambridge_table`` (I-001) for the
+    raw parse and ``paper01_fetch_sources.cambridge_gold_label`` (I-001,
+    §3.3) for binarisation -- neither is reimplemented here. A row is
+    dropped when binarisation excludes it (a 0 among rated values, a 2, a
+    band-crossing mix, a missing ``Responses`` cell) or its ``id`` cell is
+    not numeric.
+    """
+    header, body = _fetch.load_cambridge_table(data)
+    id_idx = header.index("id")
+    responses_idx = header.index("Responses")
+    rater_idxs = [header.index(f"rater{n}") for n in (1, 2, 3) if f"rater{n}" in header]
+
+    rows: list[CambridgeRow] = []
+    for raw in body:
+        label = _fetch.cambridge_gold_label(
+            raw, responses_idx=responses_idx, rater_idxs=rater_idxs
+        )
+        if label is None:
+            continue
+        id_raw = raw[id_idx] if id_idx < len(raw) else ""
+        try:
+            row_id = int(float(id_raw))
+        except ValueError:
+            continue
+        category = "good" if label == "good" else "common_use_only"
+        rows.append(
+            CambridgeRow(
+                row_id=row_id,
+                object=object_key,
+                text=normalise(raw[responses_idx]),
+                category=category,
+            )
+        )
+    return tuple(rows)
+
+
+def cambridge_id_diagnostics(rows: Sequence[CambridgeRow]) -> dict[str, Any]:
+    """§3.4 (Opus LOW-6): ``id`` type / contiguity / row-order bookkeeping.
+
+    Recorded per object as a ``source-audit.json``-style item in the
+    result JSON, never used to change behaviour.
+    """
+    ids = [r.row_id for r in rows]
+    if not ids:
+        return {
+            "n": 0,
+            "min_id": None,
+            "max_id": None,
+            "distinct_ids": 0,
+            "sorted_as_read_order": True,
+            "contiguous_run": False,
+        }
+    distinct = len(set(ids))
+    return {
+        "n": len(ids),
+        "min_id": min(ids),
+        "max_id": max(ids),
+        "distinct_ids": distinct,
+        "sorted_as_read_order": ids == sorted(ids),
+        "contiguous_run": (max(ids) - min(ids) + 1) == distinct,
+    }
+
+
+def split_cambridge_rows(
+    rows: Sequence[CambridgeRow], scheme: str
+) -> tuple[tuple[CambridgeRow, ...], tuple[CambridgeRow, ...]]:
+    """§3.4: partition ``rows`` into ``(split0, split1)``.
+
+    ``SPLIT-BLOCK`` (primary): ``id`` ascending, first half / second half.
+    ``SPLIT-PARITY`` (sensitivity): ``id`` even / odd. Both are pre-
+    registered and reported (design-final.md §3.4, Opus HIGH-7).
+    """
+    if scheme == "SPLIT-BLOCK":
+        ordered = sorted(rows, key=lambda r: r.row_id)
+        mid = len(ordered) // 2
+        return tuple(ordered[:mid]), tuple(ordered[mid:])
+    if scheme == "SPLIT-PARITY":
+        split0 = tuple(r for r in rows if r.row_id % 2 == 0)
+        split1 = tuple(r for r in rows if r.row_id % 2 == 1)
+        return split0, split1
+    msg = f"unknown split scheme {scheme!r}"
+    raise ValueError(msg)
+
+
+def frozen_scan_order(rows: Sequence[CambridgeRow]) -> tuple[CambridgeRow, ...]:
+    """§4.1: the frozen greedy-dedupe scan order (``id`` ascending)."""
+    return tuple(sorted(rows, key=lambda r: r.row_id))
+
+
+def pool_by_category(
+    rows: Sequence[CambridgeRow], category: str
+) -> tuple[CambridgeRow, ...]:
+    """The frozen-scan-order (``id`` ascending) subset of ``rows``.
+
+    ``category`` is ``"good"`` or ``"common_use_only"``.
+    """
+    return frozen_scan_order([r for r in rows if r.category == category])
+
+
+def to_adversarial_items(rows: Sequence[CambridgeRow]) -> tuple[AdversarialItem, ...]:
+    """AdversarialItem-shaped view of ``rows``.
+
+    ``.object`` is stamped with the same object-id string used as the
+    anchor dict key throughout this module (design-final.md §7, Opus
+    LOW-2 / AC 005-16): a mismatch here would silently zero every rarity
+    (``ref_by_object.get(object_id)`` misses -> ``0.0`` -> AUC 0.5), so
+    every caller that builds an anchor dict keys it with exactly the
+    string this function stamps.
+    """
+    return tuple(
+        AdversarialItem(
+            text=r.text, object=r.object, label="appropriate", category=r.category
+        )
+        for r in rows
+    )
+
+
+# --- §4.1 pool construction: greedy dedupe / centroid / seeded draws -------
+
+
+def greedy_dedupe_indices(embeddings: np.ndarray, *, cap: int) -> list[int]:
+    """§4.1 frozen-scan-order greedy near-dup merge (cosine >= ``REF_DEDUP``).
+
+    ``embeddings`` must already be unit-normalised and in the caller's
+    frozen scan order (``id`` ascending); the result is a subsequence of
+    that order, capped at ``cap`` entries (``ARM-B`` passes
+    ``cap=len(pool)`` for the uncapped variant, ``ARM-A``/``ARM-D`` pass
+    ``N_R_MAX``).
+    """
+    kept: list[int] = []
+    for i in range(embeddings.shape[0]):
+        if len(kept) >= cap:
+            break
+        if not kept:
+            kept.append(i)
+            continue
+        cos = embeddings[i] @ embeddings[np.asarray(kept)].T
+        if float(cos.max()) < _c.REF_DEDUP:
+            kept.append(i)
+    return kept
+
+
+def centroid_nearest_indices(embeddings: np.ndarray, k: int) -> list[int]:
+    """§4.1 ARM-D: the ``k`` items nearest the pool centroid (deterministic)."""
+    if embeddings.shape[0] == 0 or k <= 0:
+        return []
+    centroid = embeddings.mean(axis=0)
+    norm = float(np.linalg.norm(centroid))
+    if norm > 0.0:
+        centroid = centroid / norm
+    sims = embeddings @ centroid
+    order = np.argsort(-sims, kind="stable")
+    return order[: min(k, embeddings.shape[0])].tolist()
+
+
+def derive_seed(*parts: object) -> int:
+    """A deterministic non-negative seed folding the master :data:`SEED`.
+
+    Folds in arbitrary key parts (object / corpus / arm / draw role, ...).
+    Two calls with the same ``SEED`` and the same ``parts`` always agree;
+    changing either changes the derived seed (AC 005-9's "different global
+    seed -> different draws").
+    """
+    h = hashlib.blake2b(digest_size=8)
+    h.update(str(SEED).encode("utf-8"))
+    for part in parts:
+        h.update(b"\x00")
+        h.update(str(part).encode("utf-8"))
+    return int.from_bytes(h.digest(), "big") & ((1 << 63) - 1)
+
+
+def anchor_draw_indices(
+    pool_size: int, k: int, *, seed: int, draw_index: int
+) -> np.ndarray:
+    """One seeded without-replacement draw of ``k`` indices from ``range(pool_size)``.
+
+    §4.1 ARM-A. Deterministic given ``(seed, draw_index)``.
+    """
+    rng = np.random.default_rng((seed, draw_index))
+    return rng.choice(pool_size, size=k, replace=False)
+
+
+def nc1_partner_object(objects: Sequence[str], object_key: str) -> str:
+    """§4.2 NC-1: ``object -> object'`` via a deterministic cyclic shift.
+
+    shift=1 of the frozen ``objects`` order.
+    """
+    ordered = list(objects)
+    idx = ordered.index(object_key)
+    return ordered[(idx + 1) % len(ordered)]
+
+
+# --- §5.4 encoders / candidate ladder ---------------------------------------
+
+_EMBEDDING_MODEL_IDS: Final[dict[str, str]] = {
+    "mpnet": "sentence-transformers/all-mpnet-base-v2",
+    "MiniLM-L6-v2": "sentence-transformers/all-MiniLM-L6-v2",
+    "e5-small-v2": "intfloat/e5-small-v2",
+    "bge-small-en-v1.5": "BAAI/bge-small-en-v1.5",
+}
+
+_CANDIDATE_ENCODER_KEY: Final[dict[str, str]] = {
+    "X0": "mpnet",
+    "X1": "mpnet",
+    "X2": "mpnet",
+    "X3a": "MiniLM-L6-v2",
+    "X3b": "e5-small-v2",
+    "X3c": "bge-small-en-v1.5",
+}
+
+_CANDIDATE_AGG: Final[dict[str, str]] = {
+    "X0": "max",
+    "X1": "mean",
+    "X2": "max",
+    "X3a": "max",
+    "X3b": "max",
+    "X3c": "max",
+}
+
+
+def build_available_encoders() -> dict[str, Callable[[Sequence[str]], np.ndarray]]:
+    """Build every offline-cached encoder in :data:`_EMBEDDING_MODEL_IDS`.
+
+    Reuses ``es4_scorer_diag.make_encoder`` (frozen, unmodified); a model
+    missing from the local HF cache is silently absent from the result
+    (graceful skip, matching the internal apparatus's own behaviour).
+    """
+    out: dict[str, Callable[[Sequence[str]], np.ndarray]] = {}
+    for key, model_id in _EMBEDDING_MODEL_IDS.items():
+        encoder = _diag.make_encoder(model_id)
+        if encoder is not None:
+            out[key] = encoder
+    return out
+
+
+def embed_all_texts(
+    rows_by_object: Mapping[str, Sequence[CambridgeRow]],
+    encoders: Mapping[str, Callable[[Sequence[str]], np.ndarray]],
+) -> dict[str, dict[str, np.ndarray]]:
+    """``encoder_key -> {normalised text: unit vector}``, merged across every object.
+
+    A text is embedded exactly once regardless of which object references
+    it -- required for NC-1's cross-object anchor swap (design-final.md
+    §4.2): the anchor dict for object ``o`` holds object ``o'``'s texts,
+    and those texts must resolve in the same vmap used to embed ``o``'s
+    own scored items.
+    """
+    all_texts = sorted({r.text for rows in rows_by_object.values() for r in rows})
+    return {
+        enc_key: _diag.embed_map(encoder, all_texts)
+        for enc_key, encoder in encoders.items()
+    }
+
+
+def build_object_idf(rows: Sequence[CambridgeRow]) -> tuple[dict[str, float], float]:
+    """X6's per-object IDF background corpus.
+
+    Built once from the object's full split0 pool and reused for every
+    draw/arm -- X6 (``tfidf_rarity``) has no reference-conditioned
+    similarity concept at all (its frozen signature does not even accept a
+    reference set), so it is anchor/draw-independent by construction.
+    """
+    corpus = [r.text for r in rows]
+    idf = _diag.build_idf(corpus)
+    default_idf = math.log((len(corpus) + 1) / 1.0) + 1.0 if corpus else 1.0
+    return idf, default_idf
+
+
+def make_embed_candidate(
+    key: str,
+    description: str,
+    vmap: Mapping[str, np.ndarray],
+    anchor_texts_by_object: Mapping[str, Sequence[str]],
+    *,
+    agg: str,
+) -> Any:
+    """One embedding-rarity :class:`es4_scorer_diag.Candidate`, object-keyed.
+
+    Mirrors ``es4_scorer_diag._make_embed_candidate``'s
+    ``ref_emb.get(object_id)`` lookup pattern (design-final.md §7, Opus
+    LOW-2): a scored item whose ``object_id`` is not a key of
+    ``anchor_texts_by_object`` silently gets rarity ``0.0`` rather than
+    raising -- AC 005-16 pins the two key sets identical.
+    """
+    ref_by_object: dict[str, np.ndarray] = {}
+    for obj, texts in anchor_texts_by_object.items():
+        rows_emb = [vmap[t] for t in texts if t in vmap]
+        ref_by_object[obj] = (
+            np.asarray(rows_emb, dtype=float) if rows_emb else np.zeros((0, 0))
+        )
+
+    def rarity(object_id: str, text: str, *, leave_anchor_out: bool) -> float:
+        ref = ref_by_object.get(object_id)
+        vec = vmap.get(text)
+        if ref is None or ref.size == 0 or vec is None:
+            return 0.0
+        return _diag.embed_rarity(vec, ref, leave_anchor_out=leave_anchor_out, agg=agg)
+
+    return _diag.Candidate(key, description, rarity)
+
+
+def make_jaccard_candidate(
+    key: str, description: str, anchor_texts_by_object: Mapping[str, Sequence[str]]
+) -> Any:
+    """X5: object-keyed lexical Jaccard-novelty candidate."""
+
+    def rarity(object_id: str, text: str, *, leave_anchor_out: bool) -> float:
+        ref_texts = anchor_texts_by_object.get(object_id, ())
+        return _diag.jaccard_rarity(text, ref_texts, drop_dup=leave_anchor_out)
+
+    return _diag.Candidate(key, description, rarity)
+
+
+def make_tfidf_candidate(
+    key: str,
+    description: str,
+    idf_by_object: Mapping[str, tuple[Mapping[str, float], float]],
+) -> Any:
+    """X6: object-keyed TF-IDF self-rarity candidate.
+
+    Anchor-independent; ``leave_anchor_out`` has no effect, matching the
+    frozen internal C6.
+    """
+
+    def rarity(object_id: str, text: str, *, leave_anchor_out: bool) -> float:  # noqa: ARG001
+        entry = idf_by_object.get(object_id)
+        if entry is None:
+            return 0.0
+        idf, default_idf = entry
+        return _diag.tfidf_rarity(text, idf, default_idf)
+
+    return _diag.Candidate(key, description, rarity)
+
+
+def embed_max_similarity_by_object(
+    vmap: Mapping[str, np.ndarray],
+    anchor_texts_by_object: Mapping[str, Sequence[str]],
+    rows: Sequence[CambridgeRow],
+) -> np.ndarray:
+    """§5.4 ``m``: each row's max cosine similarity to its own object's anchor set.
+
+    Object-keyed, same alignment contract as :func:`make_embed_candidate`.
+    """
+    ref_by_object: dict[str, np.ndarray] = {}
+    for obj, texts in anchor_texts_by_object.items():
+        rows_emb = [vmap[t] for t in texts if t in vmap]
+        ref_by_object[obj] = (
+            np.asarray(rows_emb, dtype=float) if rows_emb else np.zeros((0, 0))
+        )
+    out = np.zeros(len(rows), dtype=float)
+    for i, r in enumerate(rows):
+        ref = ref_by_object.get(r.object)
+        vec = vmap.get(r.text)
+        if ref is None or ref.size == 0 or vec is None:
+            continue
+        out[i] = 1.0 - _diag.embed_rarity(vec, ref, leave_anchor_out=False, agg="max")
+    return out
+
+
+def jaccard_max_similarity_by_object(
+    anchor_texts_by_object: Mapping[str, Sequence[str]], rows: Sequence[CambridgeRow]
+) -> np.ndarray:
+    """§5.4 ``m`` for X5.
+
+    Each row's max token-Jaccard similarity to its own object's anchor set.
+    """
+    out = np.zeros(len(rows), dtype=float)
+    for i, r in enumerate(rows):
+        ref_texts = anchor_texts_by_object.get(r.object, ())
+        out[i] = 1.0 - _diag.jaccard_rarity(r.text, ref_texts, drop_dup=False)
+    return out
+
+
+def score_rows_for_draw(
+    rows: Sequence[CambridgeRow],
+    *,
+    anchor_texts_by_object: Mapping[str, Sequence[str]],
+    vmaps: Mapping[str, Mapping[str, np.ndarray]],
+    idf_by_object: Mapping[str, tuple[Mapping[str, float], float]],
+) -> dict[str, DrawItems]:
+    """Score every row for every candidate, for one arm/draw's anchor sets.
+
+    ``rows`` (any mix of objects) may span multiple objects at once
+    (design-final.md §1's primary estimand pools every object into one
+    within-object-weighted AUC); alignment between a row and its anchor
+    set is entirely via ``row.object`` used as the key into
+    ``anchor_texts_by_object`` (AC 005-16). Returns one :class:`DrawItems`
+    per candidate whose encoder is available; a candidate whose encoder
+    could not be loaded offline is simply absent from the result.
+    """
+    labels = tuple(1 if r.category == "good" else 0 for r in rows)
+    objects = tuple(r.object for r in rows)
+    gold_items = to_adversarial_items(rows)
+
+    out: dict[str, DrawItems] = {}
+    for cand in CANDIDATE_LADDER:
+        key = cand.key
+        if key in _CANDIDATE_ENCODER_KEY:
+            enc_key = _CANDIDATE_ENCODER_KEY[key]
+            vmap = vmaps.get(enc_key)
+            if vmap is None:
+                continue
+            if key == "X2":
+                base = make_embed_candidate(
+                    "X0", "base for X2", vmap, anchor_texts_by_object, agg="max"
+                )
+                built = _diag._length_controlled(base, gold_items)  # noqa: SLF001
+            else:
+                built = make_embed_candidate(
+                    key, key, vmap, anchor_texts_by_object, agg=_CANDIDATE_AGG[key]
+                )
+            max_sim = embed_max_similarity_by_object(vmap, anchor_texts_by_object, rows)
+        elif key == "X5":
+            built = make_jaccard_candidate(key, "lexical", anchor_texts_by_object)
+            max_sim = jaccard_max_similarity_by_object(anchor_texts_by_object, rows)
+        else:  # X6
+            built = make_tfidf_candidate(key, "lexical", idf_by_object)
+            max_sim = np.zeros(len(rows), dtype=float)
+
+        scores_full = tuple(
+            built.rarity(r.object, r.text, leave_anchor_out=False) for r in rows
+        )
+        scores_lao = tuple(
+            built.rarity(r.object, r.text, leave_anchor_out=True) for r in rows
+        )
+        potency = potency_and_near_dup(max_sim.tolist(), list(labels)).potency
+
+        out[key] = DrawItems(
+            scores_full=scores_full,
+            scores_lao=scores_lao,
+            labels=labels,
+            objects=objects,
+            potency=potency,
+        )
+    return out
+
+
+# --- per-object-per-split context (pool + dedupe + idf) ---------------------
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ObjectSplitContext:
+    """One object's §3.4/§4.1 pool-construction state for one split scheme."""
+
+    object_key: str
+    split0: tuple[CambridgeRow, ...]
+    split1: tuple[CambridgeRow, ...]
+    common_pool: tuple[CambridgeRow, ...]
+    good_pool: tuple[CambridgeRow, ...]
+    dedup_common_pool: tuple[CambridgeRow, ...]
+    dedup_good_pool: tuple[CambridgeRow, ...]
+    dropped: bool
+    idf: dict[str, float]
+    default_idf: float
+
+
+def build_object_split_context(
+    object_key: str,
+    rows: Sequence[CambridgeRow],
+    scheme: str,
+    mpnet_vmap: Mapping[str, np.ndarray],
+) -> ObjectSplitContext:
+    """Assemble one object's split0/split1 partition and dedup'd pools.
+
+    Includes the drop decision (AC 005-11: ``|R_o| < N_R_MIN``) and X6 IDF.
+    """
+    split0, split1 = split_cambridge_rows(rows, scheme)
+    common_pool = pool_by_category(split0, "common_use_only")
+    good_pool = pool_by_category(split0, "good")
+
+    def _dedup(pool: Sequence[CambridgeRow]) -> tuple[CambridgeRow, ...]:
+        if not pool:
+            return ()
+        emb = np.asarray([mpnet_vmap[r.text] for r in pool], dtype=float)
+        idx = greedy_dedupe_indices(emb, cap=len(pool))
+        return tuple(pool[i] for i in idx)
+
+    dedup_common = _dedup(common_pool)
+    dedup_good = _dedup(good_pool)
+    idf, default_idf = build_object_idf(split0)
+    return ObjectSplitContext(
+        object_key=object_key,
+        split0=split0,
+        split1=split1,
+        common_pool=common_pool,
+        good_pool=good_pool,
+        dedup_common_pool=dedup_common,
+        dedup_good_pool=dedup_good,
+        dropped=len(dedup_common) < _c.N_R_MIN,
+        idf=idf,
+        default_idf=default_idf,
+    )
+
+
+def arm_a_draw_texts(
+    ctx: ObjectSplitContext, draw_index: int, *, corpus: str, scheme: str
+) -> tuple[str, ...]:
+    """§4.1 ARM-A: one seeded draw of ``k = min(N_R_MAX, |pool|)`` texts."""
+    pool = ctx.dedup_common_pool
+    k = draw_size(len(pool))
+    if k == 0:
+        return ()
+    seed = derive_seed(corpus, ctx.object_key, scheme, "ARM-A")
+    idx = anchor_draw_indices(len(pool), k, seed=seed, draw_index=draw_index)
+    return tuple(pool[i].text for i in idx)
+
+
+def arm_b_texts(ctx: ObjectSplitContext) -> tuple[str, ...]:
+    """§4.1 ARM-B: the whole dedup'd pool, uncapped."""
+    return tuple(r.text for r in ctx.dedup_common_pool)
+
+
+def arm_d_texts(
+    ctx: ObjectSplitContext, mpnet_vmap: Mapping[str, np.ndarray]
+) -> tuple[str, ...]:
+    """§4.1 ARM-D: the ``k`` items nearest the pool centroid (deterministic)."""
+    pool = ctx.dedup_common_pool
+    k = draw_size(len(pool))
+    if k == 0:
+        return ()
+    emb = np.asarray([mpnet_vmap[r.text] for r in pool], dtype=float)
+    idx = centroid_nearest_indices(emb, k)
+    return tuple(pool[i].text for i in idx)
+
+
+def nc1_texts(
+    partner_ctx: ObjectSplitContext, *, corpus: str, scheme: str
+) -> tuple[str, ...]:
+    """§4.2 NC-1: one seeded draw from the *partner* object's dedup'd common pool.
+
+    A single representative draw, not the full ANCHOR_DRAWS sweep --
+    NC-1/NC-2 are report-only diagnostics, design-final.md §4.2.
+    """
+    pool = partner_ctx.dedup_common_pool
+    k = draw_size(len(pool))
+    if k == 0:
+        return ()
+    seed = derive_seed(corpus, partner_ctx.object_key, scheme, "NC-1")
+    idx = anchor_draw_indices(len(pool), k, seed=seed, draw_index=0)
+    return tuple(pool[i].text for i in idx)
+
+
+def nc2_texts(ctx: ObjectSplitContext, *, corpus: str, scheme: str) -> tuple[str, ...]:
+    """§4.2 NC-2: one seeded draw from this object's own dedup'd *good* pool."""
+    pool = ctx.dedup_good_pool
+    k = draw_size(len(pool))
+    if k == 0:
+        return ()
+    seed = derive_seed(corpus, ctx.object_key, scheme, "NC-2")
+    idx = anchor_draw_indices(len(pool), k, seed=seed, draw_index=0)
+    return tuple(pool[i].text for i in idx)
+
+
+def cambridge_class_sizes(contexts: Sequence[ObjectSplitContext]) -> dict[str, int]:
+    """§6 ``class_sizes``: pooled split1 gold-class counts across ``contexts``."""
+    good = sum(1 for ctx in contexts for r in ctx.split1 if r.category == "good")
+    common = sum(
+        1 for ctx in contexts for r in ctx.split1 if r.category == "common_use_only"
+    )
+    return {"good": good, "common": common}
+
+
+def _quantize_json(value: Any) -> Any:
+    """Round every float leaf to 6 decimals before JSON serialisation.
+
+    ``feedback_golden_crossplatform_float_drift``: cross-platform libm
+    1-ULP drift must not leak into the committed artifact.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return round(value, 6)
+    if isinstance(value, dict):
+        return {k: _quantize_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_quantize_json(v) for v in value]
+    return value
+
+
+# --- Cambridge orchestration (one split scheme, then both) -----------------
+
+
+def run_cambridge_split(
+    rows_by_object: Mapping[str, Sequence[CambridgeRow]],
+    scheme: str,
+    vmaps: Mapping[str, Mapping[str, np.ndarray]],
+    *,
+    corpus: str = "cambridge",
+) -> dict[str, Any]:
+    """One SPLIT-BLOCK or SPLIT-PARITY pass over Cambridge (bowl + paperclip).
+
+    ARM-A (200 draws, feeds the §6 verdict for the embedding family) plus
+    ARM-B / ARM-D / NC-1 / NC-2 (single-draw, report-only -- design-final.md
+    §DA-G1-23: bootstrap is reserved for ARM-A x EMBEDDING_FAMILY_EXT x
+    split only).
+    """
+    mpnet_vmap = vmaps.get("mpnet", {})
+    contexts = {
+        obj: build_object_split_context(obj, rows_by_object[obj], scheme, mpnet_vmap)
+        for obj in CAMBRIDGE_OBJECTS
+    }
+    dropped_objects = [o for o in CAMBRIDGE_OBJECTS if contexts[o].dropped]
+    active_objects = [o for o in CAMBRIDGE_OBJECTS if o not in dropped_objects]
+    all_scored_rows = tuple(r for o in active_objects for r in contexts[o].split1)
+    class_sizes = cambridge_class_sizes([contexts[o] for o in active_objects])
+    idf_by_object = {
+        o: (contexts[o].idf, contexts[o].default_idf) for o in active_objects
+    }
+
+    # --- ARM-A: ANCHOR_DRAWS seeded draws, every candidate ------------------
+    draws_per_candidate: dict[str, list[DrawItems]] = {
+        c.key: [] for c in CANDIDATE_LADDER
+    }
+    for b in range(ANCHOR_DRAWS):
+        anchor_texts_by_object = {
+            o: arm_a_draw_texts(contexts[o], b, corpus=corpus, scheme=scheme)
+            for o in active_objects
+        }
+        scored = score_rows_for_draw(
+            all_scored_rows,
+            anchor_texts_by_object=anchor_texts_by_object,
+            vmaps=vmaps,
+            idf_by_object=idf_by_object,
+        )
+        for key, items in scored.items():
+            draws_per_candidate[key].append(items)
+
+    candidates_out: dict[str, Any] = {}
+    reports_for_verdict: list[CandidateExternalReport] = []
+    for cand in CANDIDATE_LADDER:
+        draws = draws_per_candidate.get(cand.key, [])
+        if not draws:
+            candidates_out[cand.key] = {"available": False}
+            continue
+        # mutation target (I-005 new): restricting the *bootstrapped, verdict-
+        # eligible* path to EMBEDDING_FAMILY_EXT (DA-G1-23) -- X5/X6 (and any
+        # candidate outside this set) only ever get the cheap aggregate below.
+        if cand.key in EMBEDDING_FAMILY_EXT:
+            summary = build_candidate_report(
+                cand.key,
+                cand.family,
+                draws,
+                bootstrap_seed=derive_seed(corpus, scheme, cand.key, "bootstrap"),
+                permutation_seed=derive_seed(corpus, scheme, cand.key, "permutation"),
+            )
+            reports_for_verdict.append(summary.report)
+            candidates_out[cand.key] = {
+                "available": True,
+                "bootstrapped": True,
+                "report": dataclasses.asdict(summary.report),
+                "aggregate": dataclasses.asdict(summary.aggregate),
+                "bootstrap": dataclasses.asdict(summary.bootstrap),
+                "permutation_p": summary.permutation_p,
+                "median_draw_index": summary.median_draw_index,
+            }
+        else:
+            results = [draw_result_from_items(d) for d in draws]
+            agg = aggregate_candidate_draws(results)
+            candidates_out[cand.key] = {
+                "available": True,
+                "bootstrapped": False,
+                "aggregate": dataclasses.asdict(agg),
+            }
+
+    verdict = decide_external(reports_for_verdict, class_sizes=class_sizes)
+
+    # --- ARM-B / ARM-D / NC-1 / NC-2: single-draw, report-only -------------
+    def _single_arm(
+        anchor_texts_by_object: Mapping[str, Sequence[str]],
+    ) -> dict[str, Any]:
+        rows = tuple(r for o in anchor_texts_by_object for r in contexts[o].split1)
+        scored = score_rows_for_draw(
+            rows,
+            anchor_texts_by_object=anchor_texts_by_object,
+            vmaps=vmaps,
+            idf_by_object=idf_by_object,
+        )
+        return {
+            key: dataclasses.asdict(
+                aggregate_candidate_draws([draw_result_from_items(items)])
+            )
+            for key, items in scored.items()
+        }
+
+    arm_b_anchor = {o: arm_b_texts(contexts[o]) for o in active_objects}
+    arm_d_anchor = {o: arm_d_texts(contexts[o], mpnet_vmap) for o in active_objects}
+    nc1_anchor: dict[str, tuple[str, ...]] = {}
+    for o in active_objects:
+        partner = nc1_partner_object(CAMBRIDGE_OBJECTS, o)
+        if partner in active_objects:
+            nc1_anchor[o] = nc1_texts(contexts[partner], corpus=corpus, scheme=scheme)
+    nc2_anchor = {
+        o: nc2_texts(contexts[o], corpus=corpus, scheme=scheme) for o in active_objects
+    }
+
+    sensitivity = {
+        "ARM-B": _single_arm(arm_b_anchor),
+        "ARM-D": _single_arm(arm_d_anchor),
+    }
+    negative_controls = {
+        "NC-1": _single_arm(nc1_anchor) if nc1_anchor else {},
+        "NC-2": _single_arm(nc2_anchor),
+    }
+
+    return {
+        "scheme": scheme,
+        "dropped_objects": dropped_objects,
+        "active_objects": active_objects,
+        "class_sizes": class_sizes,
+        "pool_sizes": {
+            o: {
+                "common_raw": len(contexts[o].common_pool),
+                "common_dedup": len(contexts[o].dedup_common_pool),
+                "good_raw": len(contexts[o].good_pool),
+                "good_dedup": len(contexts[o].dedup_good_pool),
+                "draw_k": draw_size(len(contexts[o].dedup_common_pool)),
+                "draws_effective": draws_effective(len(contexts[o].dedup_common_pool)),
+            }
+            for o in CAMBRIDGE_OBJECTS
+        },
+        "candidates": candidates_out,
+        "verdict": dataclasses.asdict(verdict),
+        "sensitivity": sensitivity,
+        "negative_controls": negative_controls,
+    }
+
+
+def load_cambridge_raw_bytes(raw_dir: Path = CAMBRIDGE_RAW_DIR) -> dict[str, bytes]:
+    """Read the two already-fetched (I-001) Cambridge ``.xlsx`` files."""
+    return {
+        obj: (raw_dir / filename).read_bytes()
+        for obj, filename in CAMBRIDGE_FILENAMES.items()
+    }
+
+
+def run_cambridge_audit(
+    raw_bytes_by_object: Mapping[str, bytes] | None = None,
+) -> dict[str, Any]:
+    """End-to-end Cambridge audit: xlsx -> gold binarisation -> both verdicts.
+
+    Every float leaf is 6-decimal quantized before return (no wall-clock
+    is ever written).
+    """
+    raw = (
+        raw_bytes_by_object
+        if raw_bytes_by_object is not None
+        else load_cambridge_raw_bytes()
+    )
+    rows_by_object = {obj: load_cambridge_rows(obj, data) for obj, data in raw.items()}
+
+    encoders = build_available_encoders()
+    if not encoders:
+        msg = "no embedding encoder available offline; cannot score the external audit"
+        raise RuntimeError(msg)
+    vmaps = embed_all_texts(rows_by_object, encoders)
+
+    splits = {
+        scheme.key: run_cambridge_split(rows_by_object, scheme.key, vmaps)
+        for scheme in SPLIT_SCHEMES
+    }
+
+    result: dict[str, Any] = {
+        "corpus": "cambridge",
+        "source_audit": {
+            obj: cambridge_id_diagnostics(rows) for obj, rows in rows_by_object.items()
+        },
+        "encoders_available": sorted(encoders),
+        "primary_split": "SPLIT-BLOCK",
+        "splits": splits,
+    }
+    return _quantize_json(result)
+
+
+def write_cambridge_audit(path: Path = EXTERNAL_AUDIT_PATH) -> dict[str, Any]:
+    """Run :func:`run_cambridge_audit` and write it to ``path`` deterministically."""
+    result = run_cambridge_audit()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return result
 
 
 # --- orchestration -----------------------------------------------------

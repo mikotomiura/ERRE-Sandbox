@@ -403,3 +403,58 @@ def test_draw_eligible_boundary_is_inclusive_at_the_floor() -> None:
     floor = _c.AUC_FLOOR
     assert mod.is_draw_eligible(floor, floor=floor) is True
     assert mod.is_draw_eligible(floor - 1e-9, floor=floor) is False
+
+
+def test_median_draw_values_are_not_across_draw_medians() -> None:
+    """``*_at_median_draw`` and §5.1's across-draw summaries are different things.
+
+    The median draw is selected by ``drop``, so the AUC it happens to carry
+    need not be ``median_b(AUC_full)``. This was observed on real data: on
+    Cambridge SPLIT-PARITY, X0 reports ``auc_full_at_median_draw`` 0.8156
+    while only 32.5% of its draws clear the 0.80 floor -- a reader who took
+    the field for ``median_b(AUC_full)`` would call those two numbers
+    contradictory. The names must stay distinct, and both must be emitted.
+    """
+    # Three draws. The middle-by-drop draw is deliberately *not* the
+    # middle-by-AUC_full draw.
+    draws = [
+        mod.DrawResult(auc_full=0.95, auc_lao=0.35, potency=0.5),  # drop 0.60
+        mod.DrawResult(auc_full=0.60, auc_lao=0.30, potency=0.5),  # drop 0.30
+        mod.DrawResult(auc_full=0.70, auc_lao=0.60, potency=0.5),  # drop 0.10
+    ]
+    idx = mod.median_draw_index([d.drop for d in draws])
+    aggregate = mod.aggregate_candidate_draws(draws)
+
+    assert draws[idx].drop == pytest.approx(0.30)  # median by drop
+    assert draws[idx].auc_full == 0.60  # ... but the *lowest* AUC_full
+    assert aggregate.median_drop == pytest.approx(0.30)
+    # The across-draw median of AUC_full is 0.70, which the median draw does
+    # not carry -- so the two quantities genuinely disagree here.
+    assert float(np.median([d.auc_full for d in draws])) == 0.70
+    assert draws[idx].auc_full != float(np.median([d.auc_full for d in draws]))
+
+
+def test_candidate_summary_emits_section_5_1_reporting_block() -> None:
+    """§5.1's required reporting stats travel with every bootstrapped candidate.
+
+    ``collapsed_draw_share`` / ``median_b(drop)`` / the 5-95 percentile band
+    are mandated by design-final.md §5.1 for the reported candidates, not
+    only for the lexical ones that skip the bootstrap.
+    """
+    draws = [
+        mod.DrawItems(
+            scores_full=[0.9, 0.8, 0.2, 0.1],
+            scores_lao=[0.9, 0.8, 0.2, 0.1],
+            labels=[1, 1, 0, 0],
+            objects=["bowl", "clip", "bowl", "clip"],
+            potency=0.25 + 0.01 * i,
+        )
+        for i in range(3)
+    ]
+    summary = mod.build_candidate_report(
+        "X0", "embedding", draws, bootstrap_seed=1, permutation_seed=2
+    )
+    assert isinstance(summary.aggregate, mod.DrawAggregate)
+    assert summary.aggregate.median_draw_index == summary.median_draw_index
+    for field in ("collapsed_draw_share", "median_drop", "drop_p5", "drop_p95"):
+        assert hasattr(summary.aggregate, field)

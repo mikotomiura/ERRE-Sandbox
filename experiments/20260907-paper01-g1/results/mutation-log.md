@@ -210,3 +210,139 @@ per-draw 述語そのもの**であり、覆われていないのは load-bearin
 依存する。** subagent が選んだ 4 行はいずれも kill されたが、**選ばれなかった
 per-draw 述語 3 件は素通りだった**。境界述語 (`>` vs `>=`、連言の各項) は
 機械的に列挙して総当たりする方が漏れない。
+
+## I-005 mutation testing — Cambridge adapter / オーケストレーション新規ロジック
+
+- **対象ファイル**: `scripts/paper01_external_audit.py` (I-005 で新規追加した
+  Cambridge adapter + `run_cambridge_split` オーケストレーション部)
+- **手順**: I-003/I-004 と同一 (`assert old in s` + `assert new != old` の二重確認 →
+  `pytest -q tests/test_paper01_g1 -m "not eval"` → exit code と落ちた test 名を記録 →
+  バックアップから `cp` で復元 → `diff` で byte 一致確認)。1 つずつ直列に実施。
+  `-m "not eval"` を使ったのは `@pytest.mark.eval` の実 xlsx end-to-end (数分かかる)
+  が判定ロジック自体には触れないため — mutation の高速反復に不要な待ち時間を避けた
+  (最終確認では eval 込みの `pytest -q tests/test_paper01_g1` をフルセットで実行し
+  緑を確認、下記「検証コマンド」参照)。
+- **バックアップ**: I-005 実装完了・ruff/mypy/test 全緑を確認した直後の
+  `scripts/paper01_external_audit.py` を都度スクラッチディレクトリへ保持し、
+  各 mutation 後にそこから復元した。
+
+### 指定された 4 行 (① eligible ② collapsed ③ potency>0 ④ EMBEDDING_FAMILY_EXT) について
+
+`is_draw_eligible` (①) / `is_draw_collapsed` (②) / `is_draw_engaged` の
+`potency > 0.0` (③) は **I-004 で導入された関数そのもの**であり、上記 I-004 節
+(「§5.1 draw-level 述語」) で境界述語 (`>` vs `>=`、連言の各項) まで含めて
+総当たり済み・全 kill 確認済み (`test_draw_eligible_boundary_is_inclusive_at_the_floor`
+等)。I-005 はこれらの実装を**一切変更せず**、`build_candidate_report` /
+`score_rows_for_draw` 経由で**呼び出すだけ**なので、I-005 側で再度同じ行を
+壊すのは冗長 mutation になる可能性が高いと予想したが、**実際に境界 mutation を
+再実施して確かめた** (下表「再確認」行)。結果は当初の想定と異なった: **I-005 側
+005-1〜005-7 の新規テストは境界 mutation を検出しなかった** (固定フィクスチャが
+floor から離れた値を使うため)。①②③の境界保護は依然 I-004 の既存 test だけが
+担っており、I-005 はこれらの述語の**正常経路** (境界でない eligible/ineligible)
+を `build_candidate_report` 経由で確認するに留まる。これは「同じ行を守る test が
+複数あるはず」という思い込みを実測が訂正した例であり、**正直に記録する**。
+
+`EMBEDDING_FAMILY_EXT` への限定 (④) は **`decide_external()` 内 (I-003 で mutation
+済み)** と **I-005 の `run_cambridge_split()` 内 (新規)** の**二箇所**に存在する
+別々のゲートである。前者は判定そのもの、後者は「どの候補を高コストな
+bootstrapped 経路 (`build_candidate_report`、DA-G1-23 の計算予算制限) に
+乗せるか」を決める。I-005 では**後者**を対象に mutation した (下表 #4)。
+
+### 結果
+
+| # | 壊した内容 | pytest exit code | 落ちた test | 復元後 diff |
+|---|---|---|---|---|
+| 再確認 | `is_draw_eligible`: `>=` → `>` (I-004 と同一行、I-005 側テストからも到達するか確認) | **1** | `test_draw_eligible_boundary_is_inclusive_at_the_floor` (I-004 側) のみ。**I-005 側 005-1〜005-7 は落ちなかった** — `_report_via_pipeline` の固定フィクスチャ (`_HIGH_SEP_*`≈1.0 / `_LOW_SEP_*`≈0.4-0.5) が floor=0.8 の境界から離れているため、境界 1 mutation は I-005 側テストからは検出不能 (正直に記録: 「I-005 の新規テストが①②③述語に依存する形で書かれている」という当初の想定は境界に関して誤りだった。①②③自体の境界保護は I-004 の既存 test が担い、I-005 側は非境界の値で正常経路のみを確認する設計になっている) | 空 |
+| 1 | `draw_size()`: `min(_c.N_R_MAX, pool_size)` → `max(...)` (k の上下限を逆転 = design-final §4.1 の凍結式) | **1** | `test_arm_a_draw_texts_reproduces_and_diverges_with_seed` / `test_verdict_uses_arm_a_median_only` / `test_negative_controls_do_not_drive_verdict` / `test_both_split_schemes_reported` (numpy が `Cannot take a larger sample than population` で例外) / `test_draw_size_is_min_of_cap_and_pool` (I-002 側) — 計 5 件 | 空 |
+| 2 | `nc1_partner_object()`: `ordered[(idx + 1) % len(ordered)]` → `ordered[idx % len(ordered)]` (巡回シフトを撤去 = 自分自身が partner になる) | **1** | `test_nc1_object_pairing_is_deterministic` (005-12) | 空 |
+| 3a | `build_object_split_context()`: `dropped=len(dedup_common) < _c.N_R_MIN` → `dropped=False` (物体除外ゲートを丸ごと無効化) | **1** | `test_object_dropped_when_pool_too_small` (005-11) | 空 |
+| 3b | 同ゲート: `<` → `<=` (境界のみ 1 個ずらす off-by-one) | **1 回目 = 0 (生存)** → test 追加後 **1 (kill)** | (生存時は無し) → `test_object_at_min_pool_boundary_is_not_dropped` (新規追加) | 空 |
+| 4 | `run_cambridge_split()`: `if cand.key in EMBEDDING_FAMILY_EXT:` → `if True:` (X5/X6 も bootstrapped 経路に乗せる = DA-G1-23 計算予算制限の撤去) | **1** | `test_verdict_uses_arm_a_median_only` (`build_candidate_report` 呼び出し集合が `EMBEDDING_FAMILY_EXT` と一致しない) | 空 |
+
+**5/6 が初回で kill、1/6 (#3b) が生存 → test 追加で kill、6/6 が最終的に kill。
+6/6 とも復元後 `diff` が空 (バックアップと byte 一致)。**
+
+### 生存した mutant (#3b) と対処
+
+`dropped=len(dedup_common) < _c.N_R_MIN` を `<=` に緩めても、既存の 2 test
+(`test_object_dropped_when_pool_too_small` は pool=1 で境界から遠い / 
+`test_active_object_is_not_dropped` は pool=20 でこれも境界から遠い) はどちらも
+**境界値 (pool サイズ == N_R_MIN == 8) を一度も突かない**ため mutant を検出できず、
+`pytest -q tests/test_paper01_g1 -m "not eval"` は **68 passed** のまま緑だった
+(exit code 0 = 生存)。
+
+**対処**: `test_object_at_min_pool_boundary_is_not_dropped`
+(`tests/test_paper01_g1/test_external_audit.py`) を追加。SPLIT-BLOCK は
+`len(rows)//2` を split0 に渡すため、high-dim (16 次元) 乱数ベクトルで
+dedupe による衝突が起きない `common_use_only` 行を `2*N_R_MIN` 件 (→ pool
+ちょうど 8) / `2*N_R_MIN-2` 件 (→ pool ちょうど 7) 用意し、**8 件は non-drop
+/ 7 件は drop** の両側を同一関数 (`build_object_split_context`) に通して assert
+する形にした。追加後に #3b を再実施し、上表のとおり確実に落ちることを確認した
+(exit code 1、落ちた test = `test_object_at_min_pool_boundary_is_not_dropped`)。
+これは `feedback_witness_needs_mutation_testing.md` が警告する「境界を突かない
+負例は何も検査していない」の実例そのものであり、I-004 retrospective の教訓
+(「選ばれなかった per-draw 述語は素通りする」) が I-005 でも再発した
+(今回は per-draw 述語ではなく object-drop 述語だったが同じ構造の穴)。
+
+### 副次的な発見 (#4 の kill 経路について)
+
+#4 (`EMBEDDING_FAMILY_EXT` 限定の撤去) を壊しても **verdict 自体は変化しなかった**
+(`decide_external()` 側の同名ゲートが I-003 で既に凍結されており、X5/X6 の
+report が渡っても判定時点で弾かれるため)。kill したのは
+`test_verdict_uses_arm_a_median_only` の「`build_candidate_report` (高コストな
+bootstrapped 経路) が呼ばれた候補集合」への直接 assert であり、**verdict の
+正しさとは独立に「計算予算を守っているか」を検査する経路**が必要だったことを
+示している。二重防御 (`decide_external` 内の filter が verdict を保護し、
+`run_cambridge_split` 内の filter が計算コストを保護する) は設計として妥当だが、
+**どちらか片方のテストだけでは他方の回帰を検出できない**ことが実測で確認された。
+
+### 検証コマンド (mutation 完了後、全て緑)
+
+```
+.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1                # 全 test (eval 込み)
+.venv/Scripts/python.exe -m ruff format --check scripts/paper01_external_audit.py tests/test_paper01_g1
+.venv/Scripts/python.exe -m ruff check scripts/paper01_external_audit.py tests/test_paper01_g1
+.venv/Scripts/python.exe -m mypy src
+git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scripts/paper01_fetch_sources.py  # 空
+```
+
+## 独立レビュー — I-005 (main オーケストレータ、2026-09-07)
+
+mutation ではなく**結果 JSON の読解**で 2 件の欠落を検出したので記録する。
+
+### 欠落 1: `*_median` という名前が across-draw 中央値ではなかった
+
+`CandidateExternalReport.auc_full_median` などは実際には
+**「drop の中央値 draw」の値** (median-by-drop draw) であって
+`median_b(AUC_full)` ではない。中央値 draw は `drop` で選ばれるので、
+両者は一致しない。
+
+実データで矛盾が見えた: Cambridge SPLIT-PARITY の X0 は
+`auc_full_median = 0.8156` (floor 0.80 を越えている) なのに、
+**floor を越える draw は 200 中 32.5% しかない**。この 2 つを並べた表を
+論文に出すと、読者には内部矛盾に見える。
+
+- **対処**: `auc_full_at_median_draw` / `auc_lao_at_median_draw` /
+  `drop_at_median_draw` / `potency_at_median_draw` に改名した。
+  判定 (`decide_external`) はこれらの値を使わない (使うのは per-draw flags と
+  bootstrap CI) ので、判定規則には影響しない。
+- **pin**: `test_median_draw_values_are_not_across_draw_medians` —
+  中央値-by-drop draw が across-draw 中央値と**実際に食い違う**入力を構成し、
+  両者が別物であることを assert する。
+
+### 欠落 2: §5.1 が要求する報告統計が埋め込み候補側に出ていなかった
+
+design-final §5.1 は「崩落抽出割合 / `median_b(drop)` / draw の 5-95 パーセンタイル」を
+報告項目として要求している。`DrawAggregate` はこれらを計算していたが、
+**JSON へ emit されていたのは lexical 候補 (X5/X6) だけ**で、
+判定対象である埋め込み候補 (X0-X3c) では `report` + `bootstrap` しか出ていなかった。
+
+- **対処**: `CandidateStatisticalSummary` に `aggregate: DrawAggregate` を足し、
+  bootstrapped 経路でも emit する。
+- **pin**: `test_candidate_summary_emits_section_5_1_reporting_block`
+
+### 教訓
+
+**mutation testing はコードの内部整合しか見ない。** この 2 件はどちらも
+「全 test が緑・全 mutant が kill」の状態で残っていた欠落であり、
+**出力 JSON を実際に読んで数字の意味を突き合わせる**ことでしか出てこなかった。
