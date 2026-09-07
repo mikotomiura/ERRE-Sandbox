@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "ERRE-Sandbox を研究で利用した場合は以下を引用してください。"
+title: "ERRE-Sandbox"
+abstract: >-
+  A local-LLM multi-agent research apparatus that re-implements the cognitive habits of
+  historical thinkers as agents in a 3D space, in order to study deliberate inefficiency
+  and embodied return. The system separates a deterministic simulation plane (physics,
+  memory geometry, RNG, clocks, identifiers) from a recorded/replayed LLM-invocation
+  plane, which allows byte-identical reproduction of runs across operating systems even
+  though a non-deterministic language model sits inside the loop.
+type: software
+authors:
+  - family-names: "TODO"          # 姓 (ローマ字表記を決める)
+    given-names: "TODO"           # 名
+    alias: "mikotomiura"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # 取得後に有効化 (corresponding author 必須)
+    # affiliation: "TODO"          # Independent Researcher / 所属 のいずれかに決める
+version: "0.0.1"
+license: "Apache-2.0 OR MIT"
+repository-code: "https://github.com/mikotomiura/ERRE-Sandbox"   # 公開後に正式 URL を確認
+# doi: "TODO"                     # Zenodo で DOI を切ったら記入
+keywords:
+  - LLM agents
+  - multi-agent simulation
+  - reproducibility
+  - deterministic replay
+  - embodied cognition
+  - measurement validity
+# preferred-citation:             # ソフトウェア論文 (JOSS / SoftwareX) が出たらこちらへ
+#   type: article
+#   title: ""
+#   journal: ""
+#   year:
+#   doi: ""

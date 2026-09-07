@@ -37,6 +37,11 @@
 | [24] | arXiv:2504.02956 | Yang, S., Wu, J., Chen, X., Xiao, Y., Yang, X., Wong, D. F. & Wang, D. — *Understanding Aha Moments: from External Observations to Internal Mechanisms* | arXiv:2504.02956, 2025 | docs/literature/20260713-aha-insight-neuroscience.md | active |
 | [25] | URL:https://transformer-circuits.pub/2026/workspace/ | Gurnee, W., Sofroniew, N., Pearce, A. et al. (Anthropic) — *Verbalizable Representations Form a Global Workspace in Language Models* | Transformer Circuits Thread (transformer-circuits.pub), 2026-07-06 | docs/literature/20260717-jlens-jacobian-lens.md; research-positioning §8 | active |
 | [26] | URL:https://github.com/anthropics/jacobian-lens | Anthropic — *jacobian-lens: Companion code for the global workspace interpretability paper* (Apache-2.0, reference implementation) | GitHub, 2026 | docs/literature/20260717-jlens-jacobian-lens.md; research-positioning §8 | active |
+| [27] | arXiv:2607.23002 | Otterson, J. — *Adversarial Test-Hardening for AI-Written Code: An Instrument Autopsy and a Pre-Registered Causal Estimate of the Critic Loop* | arXiv:2607.23002, 2026-07-25 | paper/01-scorer-circularity/refs.md (Related work); paper/03-two-plane-determinism/refs.md | active |
+| [28] | arXiv:2608.15046 | Singh, A. — *Certifying Compressed Language Models: An Audit and a Statistical Toolkit* | arXiv:2608.15046, 2026-08-15 | paper/02-powered-null/refs.md (先行研究・margin 事前宣言の正当化); paper/01-scorer-circularity/refs.md (Related work) | active |
+| [29] | arXiv:2607.19510 | Price, E., Tian, K., Xun, Z. & Zhu, Y. — *Total Variation Distance Estimation in Autoregressive Models* | arXiv:2607.19510, 2026-07-21 | paper/02-powered-null/refs.md (TV 推定の参照点・Limitations) | active |
+| [30] | arXiv:2607.16200 | Mudasiru, R. — *Deterministic Replay for AI Agent Systems* (agrepl) | arXiv:2607.16200, 2026 | paper/03-two-plane-determinism/refs.md (直接競合) | active |
+| [31] | arXiv:2608.27100 | Shulepov, I. — *Mutation Testing for Reproducibility Safeguards in Machine Learning Research Software: An Empirical Study* | arXiv:2608.27100, 2026-08-27 | paper/03-two-plane-determinism/refs.md | active |
 
 ## 追加・撤回ルール
 
@@ -51,6 +56,18 @@
   同一研究の査読版が **Guo, D. et al. — *DeepSeek-R1 incentivizes reasoning in LLMs through reinforcement learning*,
   Nature, 645(8081), 633–638, 2025, DOI:10.1038/s41586-025-09422-z** として出版 (著者表記が団体名 "DeepSeek-AI" → 筆頭個人
   "Guo, D. et al."、タイトル小文字化)。正式公開時はどちらを引くか (arXiv preprint vs Nature peer-reviewed) を用途に応じて選ぶ。
+
+- **使用箇所が `paper/` を指す行について**: `paper/` は **gitignore 済み** (2026-09-07 決定、論文は本 repo とは
+  別成果物として将来独立リポジトリへ分離する想定)。したがって [27]-[31] の「使用箇所」は
+  **版管理外のローカル作業ツリー**を指す。本表 (版管理される書誌 SSOT) 側が正典であり、
+  論文を分離する際もここから `[n]` を引き継ぐ。分離が完了したら使用箇所を新リポジトリの
+  参照へ更新すること。
+
+- **[27]-[31] (2026-09-07 追加)**: いずれも **arXiv abstract を一次ソースで実測確認済** (WebFetch、2026-09-07)。
+  ただし規則6 に従い、**著者順・全著者・所属・版 (v1/v2) は正式引用の前に原典で再確認**すること。
+  特に **[30] Mudasiru に日付の不整合がある**: arXiv ID `2607.*` は 2026-07 を示すが、取得した
+  abstract ページの記載は "Submitted 30 April 2026"。**投稿版・改訂版のどちらを引くかを含め要再確認**
+  (本表では年のみ `2026` として保守的に記載)。
 
 - **[25] J-lens（global workspace）**: Transformer Circuits Thread の web 出版物 (arXiv 版・巻号なし)。著者表記
   (Gurnee, W., Sofroniew, N., Pearce, A. et al.) は WebFetch 由来の recall であり、**正式引用の前に原典で著者順・全著者を
