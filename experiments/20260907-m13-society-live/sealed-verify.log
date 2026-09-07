@@ -1,0 +1,21 @@
+PASS [verify] fixed_constructor_fingerprint matches a fresh constructor call
+PASS [verify] Plane G geometry_checksum_match=True
+PASS [verify] Plane G event_log_checksum_match=True
+PASS [verify] Plane G cognition_step_order_match=True
+PASS [verify] Plane G self_other_slot_match=True
+PASS [verify] Plane G replay_touched_no_llm=True
+PASS [verify] conformance llm_requests_match=True
+PASS [verify] conformance embedding_requests_match=True
+PASS [verify] conformance self_other_segments_match=True
+PASS [verify] ecl_trace.jsonl sha256 0ae05636b48ca50e1bf39016572e1fb843f2d0bdbb2732fa04c2d15d3f5245f8
+PASS [verify] decisions.jsonl sha256 e042a5fb5937751cad58c4153a0ef09186e7e4f4d78a7d5e77e5a73c023f1a70
+PASS [verify] envelope_stream.jsonl sha256 6d32177e38b0eaab318449f068156ce9b4206723c99219accb14daefae7154da
+PASS [verify] inbound_ledger.jsonl sha256 a0cca9f519ebf8dcd77fed59d87f3e6bb0addf19a8f329a59b9c185492001c90
+PASS [verify] embedding_record.jsonl sha256 0de8c8f019aba4fea037391c2f508f000a7439673dfe3d985c3b2ad2aad3c8f1
+PASS [verify] manifest.json re-render byte identity
+PASS [verify] wrote plane_g_parity.json
+PASS [verify] wrote request_conformance.json
+PASS [verify] wrote firing_annotation.json
+[verify] capture_mode=real real_backend=True
+[verify] firing annotation is NON-GATE (firing is not detectability): eligible=0 witness=0
+[verify] scope: SCRIPTED in-process perturbation sequence only -- not a wall-clock real-time session (Codex M-3)

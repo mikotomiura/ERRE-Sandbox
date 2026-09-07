@@ -1,0 +1,9 @@
+[capture] wrote experiments\20260907-m13-society-live\artifacts\decisions.jsonl
+[capture] wrote experiments\20260907-m13-society-live\artifacts\ecl_trace.jsonl
+[capture] wrote experiments\20260907-m13-society-live\artifacts\embedding_record.jsonl
+[capture] wrote experiments\20260907-m13-society-live\artifacts\envelope_stream.jsonl
+[capture] wrote experiments\20260907-m13-society-live\artifacts\inbound_ledger.jsonl
+[capture] wrote experiments\20260907-m13-society-live\artifacts\manifest.json
+[capture] mode = real
+[capture] replay_checksum = 8ee022197ae8959ea5092f027a2c5f2412bd4d669ee4a4f6b944d55876c12dd3
+[capture] injected perturbations = 36

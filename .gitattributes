@@ -45,3 +45,9 @@ data/eval/**/*.yml      text eol=lf
 # Shell / config
 *.sh                    text eol=lf
 *.toml                  text eol=lf
+
+# 実走の生ログ (sealed-run / sealed-verify / pre-push) は forensic 一次資料。
+# verbatim 保存が要件なので eol 変換と whitespace 検査を無効化する
+# (core.autocrlf=input が CRLF を LF に潰すのを防ぐ。
+#  memory feedback_forensic_raw_log_whitespace、M13 案 B real 実走 2026-09-07)。
+experiments/**/*.log    -text -whitespace
