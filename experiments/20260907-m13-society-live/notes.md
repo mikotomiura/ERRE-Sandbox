@@ -116,7 +116,7 @@ provenance pin と全実測値は `env.md`「sealed real run 実測」節が SSO
 | firing annotation（非 gate） | `eligible_tick_count=0` / `witness_tick_count=0`（全 agent `no_eligible_tick`） |
 | dialog envelope count | `0` |
 | distinct zone | 3（`study` 1 / `peripatos` 34 / `chashitsu` 1、speech envelope 36 件中） |
-| L3 (cross-platform) | committed real bundle を Linux CI が同一 verify 経路で検証 |
+| L3 (cross-platform) | **達成**。Linux CI run 34080293087 で `test_m13_society_live_capture.py` 22 passed / 0 skipped (`test_committed_sealed_real_bundle_verifies` が skip されず pass)。CI 全 5 job 緑 |
 
 **settle は事前登録上の正当な結果**として封印した（firing するまで再走しない、が事前登録）。
 上記 annotation は **plain count のまま**であり、解釈は足していない。

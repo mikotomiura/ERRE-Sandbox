@@ -119,6 +119,19 @@
 
 **settle（`no_eligible_tick`）は事前登録上の正当な結果であり、発火するまでの再走は行っていない。**
 
+### L3（cross-platform / D3）— Linux CI 実測
+
+| 観測 | 値 |
+|---|---|
+| CI run / job | [34080293087](https://github.com/mikotomiura/ERRE-Sandbox/actions/runs/34080293087) / job `101614165110` (`pytest (non-godot)`, ubuntu-latest) |
+| 該当 test | `tests/test_integration/test_m13_society_live_capture.py` **22 passed / 0 skipped** |
+| うち real bundle | `test_committed_sealed_real_bundle_verifies` が **skip されず実行され pass** |
+| CI 全 job | 5/5 pass (ruff / mypy / pytest / eval-egress gate / policy gate) |
+
+> **測っている範囲（再掲・不可侵）**: **UCRT (Windows) で bake した bytes が glibc (Linux) の
+> replay で同一**であって、**Linux 上で再 bake したのではない**。real Ollama が CI runner に
+> 無いので原理的に不可。6 桁量子化が libm drift を吸収している。
+
 ### erratum — manifest の `real_run_status` は凍結テキストで更新されない
 
 この real bundle の `manifest.json` の `annotations.real_run_status` は
