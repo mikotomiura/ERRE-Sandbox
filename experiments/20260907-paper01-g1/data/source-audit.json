@@ -1,0 +1,226 @@
+{
+  "cambridge": {
+    "bowl": {
+      "columns": [
+        "id",
+        "Responses",
+        "rater1",
+        "rater2",
+        "rater3",
+        "average"
+      ],
+      "columns_expected": [
+        "id",
+        "Responses",
+        "rater1",
+        "rater2",
+        "rater3",
+        "average"
+      ],
+      "columns_match": true,
+      "filename": "bowl AUT dataset.xlsx",
+      "gold_common": 2082,
+      "gold_common_expected": 2082,
+      "gold_counts_match": true,
+      "gold_good": 32,
+      "gold_good_expected": 32,
+      "license": "CC BY-NC-ND 4.0",
+      "row_count_match": true,
+      "rows": 3380,
+      "rows_expected": 3380,
+      "sha256": "f8caa57cdebe1d8f19257c88e56c5346415f5289897efaa10f4150508341ac2d",
+      "sha256_expected": "f8caa57cdebe1d8f19257c88e56c5346415f5289897efaa10f4150508341ac2d",
+      "sha256_match": true,
+      "source_uri": "https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/bowl%20AUT%20dataset.xlsx"
+    },
+    "paperclip": {
+      "columns": [
+        "id",
+        "Responses",
+        "rater1",
+        "rater2",
+        "rater3",
+        "average"
+      ],
+      "columns_expected": [
+        "id",
+        "Responses",
+        "rater1",
+        "rater2",
+        "rater3",
+        "average"
+      ],
+      "columns_match": true,
+      "filename": "paperclip AUT dataset.xlsx",
+      "gold_common": 2047,
+      "gold_common_expected": 2047,
+      "gold_counts_match": true,
+      "gold_good": 47,
+      "gold_good_expected": 47,
+      "license": "CC BY-NC-ND 4.0",
+      "row_count_match": true,
+      "rows": 3650,
+      "rows_expected": 3650,
+      "sha256": "69e75792d0caa20363bf49a5dd57bbac731f2a19159a6b04753b0617999d7a96",
+      "sha256_expected": "69e75792d0caa20363bf49a5dd57bbac731f2a19159a6b04753b0617999d7a96",
+      "sha256_match": true,
+      "source_uri": "https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/paperclip%20AUT%20dataset.xlsx"
+    }
+  },
+  "generated_at": "2026-09-07T10:27:09.253706+00:00",
+  "mismatches": [],
+  "ocsai": {
+    "by_object": {
+      "backpack": {
+        "common": 0,
+        "good": 9,
+        "total": 34
+      },
+      "ball": {
+        "common": 0,
+        "good": 22,
+        "total": 393
+      },
+      "book": {
+        "common": 15,
+        "good": 49,
+        "total": 487
+      },
+      "bottle": {
+        "common": 59,
+        "good": 67,
+        "total": 839
+      },
+      "box": {
+        "common": 309,
+        "good": 20,
+        "total": 2842
+      },
+      "brick": {
+        "common": 650,
+        "good": 96,
+        "total": 5162
+      },
+      "fork": {
+        "common": 35,
+        "good": 41,
+        "total": 407
+      },
+      "hat": {
+        "common": 0,
+        "good": 21,
+        "total": 380
+      },
+      "knife": {
+        "common": 352,
+        "good": 14,
+        "total": 2163
+      },
+      "lightbulb": {
+        "common": 2,
+        "good": 16,
+        "total": 383
+      },
+      "pants": {
+        "common": 32,
+        "good": 41,
+        "total": 443
+      },
+      "paperclip": {
+        "common": 133,
+        "good": 27,
+        "total": 1385
+      },
+      "pencil": {
+        "common": 0,
+        "good": 28,
+        "total": 384
+      },
+      "rope": {
+        "common": 256,
+        "good": 40,
+        "total": 2080
+      },
+      "shoe": {
+        "common": 34,
+        "good": 51,
+        "total": 382
+      },
+      "shovel": {
+        "common": 34,
+        "good": 28,
+        "total": 339
+      },
+      "sock": {
+        "common": 1,
+        "good": 34,
+        "total": 380
+      },
+      "spoon": {
+        "common": 0,
+        "good": 21,
+        "total": 386
+      },
+      "table": {
+        "common": 40,
+        "good": 52,
+        "total": 461
+      },
+      "tire": {
+        "common": 50,
+        "good": 30,
+        "total": 412
+      },
+      "toothbrush": {
+        "common": 1,
+        "good": 26,
+        "total": 379
+      }
+    },
+    "distinct_objects": 21,
+    "distinct_objects_expected": 21,
+    "distinct_objects_match": true,
+    "gold_counts_match": true,
+    "gold_pool_common": 2003,
+    "gold_pool_common_expected": 2003,
+    "gold_pool_good": 733,
+    "gold_pool_good_expected": 733,
+    "license": "repo MIT (massivetexts/ocsai); underlying MOTES corpus provenance is a grey zone -- see data.md",
+    "parse_failures": 0,
+    "parse_failures_expected": 0,
+    "parse_failures_match": true,
+    "row_count_match": true,
+    "source_uris": [
+      "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_train.jsonl",
+      "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_val.jsonl",
+      "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_test.jsonl"
+    ],
+    "splits": {
+      "test": {
+        "filename": "finetune-gt_main2_prepared_test.jsonl",
+        "rows": 3030,
+        "sha256": "bab9bf8fc28c27113a7d4d55e8f718edbad02214d14d53d98e8c78f07b3a4068",
+        "sha256_expected": "bab9bf8fc28c27113a7d4d55e8f718edbad02214d14d53d98e8c78f07b3a4068",
+        "sha256_match": true
+      },
+      "train": {
+        "filename": "finetune-gt_main2_prepared_train.jsonl",
+        "rows": 16081,
+        "sha256": "7b2ed8fb8a1b3c98dbb86428c222c5806870ab73a280d6e664aee137bf05ddfd",
+        "sha256_expected": "7b2ed8fb8a1b3c98dbb86428c222c5806870ab73a280d6e664aee137bf05ddfd",
+        "sha256_match": true
+      },
+      "val": {
+        "filename": "finetune-gt_main2_prepared_val.jsonl",
+        "rows": 1010,
+        "sha256": "a40bc78a5275ad274baeac7f410f7c1beb37e7913b138f5ef5fcfee8e15ccd9b",
+        "sha256_expected": "a40bc78a5275ad274baeac7f410f7c1beb37e7913b138f5ef5fcfee8e15ccd9b",
+        "sha256_match": true
+      }
+    },
+    "status": "ok",
+    "total_rows": 20121,
+    "total_rows_expected": 20121
+  },
+  "overall_status": "ok"
+}
