@@ -111,11 +111,34 @@ PR #89/#90/#91 で land した live 双方向ループ閉包と、その follow-
 | prompt-level self-other context | prompt-level self-other context | M2 Layer2 ミラー・シムの user-facing 呼称。他 agent の直前 window の観測可能な振る舞いから作った transient prompt segment であって、心の理論でも内部状態の推定でもない | 案 B ADR §2、Codex L-1、M2 Layer2 mirror-sim |
 | request conformance | request conformance | replay 側 spy が再構成した `(agent_id, window, system_prompt, user_prompt)` を committed record と照合する検査。replay の `used` は committed call なので prompt 一致は恒真になり、spy 無しでは prompt drift を検出できない。**`sampling` は照合対象外** (knob-on capture を knob-off replay するため) | 案 B ADR §6 W-N4、Codex H-4、I7 RequestConformance* |
 
+## 論文 01 scorer circularity / G1 外部監査 用語
+
+`scripts/es4_scorer_diag.py` (凍結済み内部監査) と、その外部監査
+(`.steering/20260907-paper01-g1-external-audit/`) で使う語。
+**すべて計測器の妥当性 (measurement validity) の語彙であって、創造性そのものの語彙ではない**。
+
+| 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
+|---|---|---|---|
+| anchor 集合 | anchor set (`R_object`) | 新規性スコアラが「ありふれている」の基準に使う参照テキスト集合。内部では「手 curated な common use 10 件/物体」∪「生成元モデル自身の高頻度 idea」を `cos ≥ REF_DEDUP` で dedupe し上限 `N_R_MAX` で切ったもの | `evidence/es4_actuator/reference.py` |
+| leave-anchor-out 監査 | leave-anchor-out audit (LAO) | rarity を計算する前に、**その項目と近傍複製関係にある anchor** (`cos ≥ REF_DEDUP`) を参照集合から落とす監査操作。スコアラが「anchor 所属を見ているだけ」なら判別力が落ちる | `es4_scorer_diag.embed_rarity(leave_anchor_out=True)` |
+| gold good-vs-common | gold good-vs-common contrast | **どちらも課題として妥当**な回答のうち「創造的 (good)」と「ありふれている (common)」を分ける人手ラベル対比。妥当性 (appropriateness) 軸は judge の担当であり、この対比には含めない | `data/adversarial_labeled.yaml` の `good` / `common_use_only` |
+| 崩落 | collapse | `AUC_full ≥ AUC_FLOOR` かつ `AUC_LAO < AUC_FLOOR`。**見かけの判別力を持っていた候補が LAO で floor を割ること**。単なる AUC 低下ではない | 論文 01 Table 1 |
+| eligibility ガード | eligibility guard | `AUC_full ≥ AUC_FLOOR` を満たす候補**だけ**を崩落判定の対象にする規律。元から判別力の無い候補 (内部の C1=0.555 / C2=0.6575) を「崩落した」と数えない | G1 ADR DA-G1-1 |
+| 監査発火度 | audit potency | 採点対象のうち **`max_r sim(x, r) ≥ REF_DEDUP` を満たす項目の割合**。LAO が実際に何かを落とした割合であり、**0 なら監査は作動していない**。内部の C5-jaccard は実測 **1/41** で、閾値は 1 項目でしか発火せず AUC も動かなかった (potency>0 でも判定は動きうる) | G1 ADR DA-G1-1 / DA-G1-8 |
+| 監査未作動 | `audit_not_engaged` | potency = 0 の候補に付ける印。**「崩落しなかった」でも「妥当だった」でもない**。verdict のどちらの証拠にも数えない | G1 ADR DA-G1-8 |
+| anchor 所属 indicator | anchor-membership indicator | `1[max_r sim(x, r) ≥ REF_DEDUP]` という二値特徴。単独の AUC を記述的共変量として報告する。内部実測は 0.750 で `AUC_full`=0.990 を**説明しきらない**ため、主 estimand には**しない** | G1 ADR DA-G1-1 |
+| 非循環 | free of evaluator-generator dependence | gold ラベルが、**評価対象のスコアラ** (埋め込み距離 / LLM 判定) と独立な出所を持つこと。G1 では外部コーパスの人手 rater が gold を与え、**我々は 1 ラベルも書かない**。**「anchor と gold の provenance が独立」までは主張しない** (下記 cross-fit を参照) | 論文 01 §1、G1 requirement.md |
+| cross-fit | row-level cross-fit within one evaluation system | 同一コーパスを行単位で `split0` (anchor 構築) と `split1` (gold + 採点) に決定論的に分ける手続き。**外部・行分離ではあるが、rater プールは共通**なので **provenance 独立ではない**。この区別を潰さないための語 (Codex TASK-PRE HIGH-1) | G1 ADR DA-G1-19 |
+| source-crossed | source-crossed sensitivity | anchor と gold を**別々の研究・別々の rater・別々の被験者**から取るアーム。G1 では `paperclip` が Cambridge と Ocsai の両方に存在することを使って 1 アームだけ構成できる。**provenance 独立が本当に成立する唯一のアーム**だが 1 物体のみで狭い | G1 ADR DA-G1-19 HIGH-1 |
+
 ## 略語
 
 | 略語 | 正式名称 | 意味 |
 |---|---|---|
 | ERRE | Extract → Reverify → Reimplement → Express | 偉人認知習慣のソフトウェア翻訳パイプライン |
+| AUT | Alternate Uses Task | 「レンガの変わった使い道を挙げよ」形式の発散的思考課題。論文 01 の task battery |
+| LAO | Leave-Anchor-Out | 上表「leave-anchor-out 監査」を参照 |
+| AUC | Area Under the ROC Curve | 二値判別の順位統計量。`evidence/es4_actuator/controls.auc` は Mann-Whitney U 実装 |
 | DMN | Default Mode Network | 課題遂行時に代謝が下がる脳ネットワーク。創発的創造性と関連 |
 | CoALA | Cognitive Architectures for Language Agents | LLM エージェントの認知アーキテクチャ公理系 |
 | PIANO | (Project Sid 由来) | 5並列認知モジュール (memory, social, goal, action, speech) |
