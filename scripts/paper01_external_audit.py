@@ -665,6 +665,190 @@ def write_env_md(path: Path = ENV_MD_PATH) -> None:
     path.write_text(ENV_MD_TEXT, encoding="utf-8")
 
 
+# --- §6 decision rule (Loop I-003, encoder-independent pure logic) --------
+#
+# design-final.md §6 is the single source of truth for this section; the
+# pseudocode there is transcribed literally into ``decide_external`` below.
+# Two failure modes Opus TASK-PRE HIGH-2 found in the naive first draft
+# (design-final.md §6 bullet list, DA-G1-10 / DA-G1-11) are the reason this
+# is its own reviewed block instead of an inline one-liner:
+#
+# 1. ``not engaged(c) => auc_lao == auc_full >= floor => not collapsed(c)``
+#    holds identically, so a naive rule that computes ``collapsed`` over the
+#    *full* eligible set ``E`` (not the engaged subset ``E2``) can never
+#    reach ``NO_VALID_SCORER`` once a single eligible, zero-potency
+#    (``audit_not_engaged``) candidate exists -- that candidate is eligible,
+#    never engaged, and therefore never collapsed, which blocks the
+#    ``collapsed == E`` equality forever.
+# 2. Restricting both ``engaged`` and ``collapsed`` to be computed *within*
+#    the same ``E2`` (this module never computes a ``collapsed``-over-``E``
+#    quantity) closes that hole: a zero-potency candidate is simply absent
+#    from ``E2``, so it cannot block ``collapsed == E2`` from becoming true
+#    for the *other* (truly engaged) candidates.
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CandidateExternalReport:
+    """One scored candidate's §5.1 draw-level and §5.2 bootstrap summary.
+
+    Encoder-independent by construction: every field here is a plain value
+    the (out-of-scope-for-I-003) adapter/statistics layer would compute --
+    this dataclass is what lets ``decide_external`` and its tests never
+    import an encoder.
+
+    ``eligible_flags`` / ``engaged_flags`` are the per-draw §5.1 booleans
+    (``aggregate_draws`` turns each into the candidate-level boolean).
+    ``collapsed_flags`` is the per-draw §5.1 ``collapsed_b`` sequence used
+    only for the *reported* "collapsed draw share" diagnostic (§5.1's
+    ``mean_b(collapsed_b)``) -- ``decide_external`` itself never reads it;
+    the §6 verdict's ``collapsed`` set is decided from the §5.2 bootstrap CI
+    on the median draw instead (``auc_lao_ci_lower`` / ``auc_lao_ci_upper``).
+    ``audit_not_engaged`` mirrors DA-G1-11's per-candidate marker (``not
+    engaged(c)``); it is carried here for downstream reporting only and is
+    never promoted to verdict vocabulary (S3 boundary).
+    """
+
+    key: str
+    family: str
+    eligible_flags: tuple[bool, ...]
+    engaged_flags: tuple[bool, ...]
+    collapsed_flags: tuple[bool, ...]
+    auc_lao_ci_lower: float
+    auc_lao_ci_upper: float
+    potency_median: float
+    auc_full_median: float
+    auc_lao_median: float
+    drop_median: float
+    audit_not_engaged: bool
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ExternalVerdict:
+    """The §6 total verdict plus every set it was derived from.
+
+    ``eligible`` / ``engaged`` / ``survivors`` / ``collapsed`` are candidate
+    ``key`` tuples in :data:`EMBEDDING_FAMILY_EXT` declared order (never
+    input order), so two calls over the same logical candidate set are
+    byte-comparable regardless of the order ``reports`` was passed in.
+    """
+
+    verdict: str
+    collapse_reproduced: bool
+    eligible: tuple[str, ...]
+    engaged: tuple[str, ...]
+    survivors: tuple[str, ...]
+    collapsed: tuple[str, ...]
+    reason: str
+    auc_floor: float
+    min_class_n: int
+
+
+def _decision_reason(
+    verdict: str,
+    *,
+    class_sizes: Mapping[str, int],
+    min_class_n: int,
+    eligible: Sequence[CandidateExternalReport],
+    engaged: Sequence[CandidateExternalReport],
+    survivors: Sequence[CandidateExternalReport],
+    collapsed: Sequence[CandidateExternalReport],
+) -> str:
+    """Human-readable justification for one :func:`decide_external` call."""
+    if verdict == "INVALID_TASK_BATTERY":
+        deficient = sorted(k for k, n in class_sizes.items() if n < min_class_n)
+        if deficient:
+            classes = ", ".join(deficient)
+            return f"gold class below MIN_CLASS_N={min_class_n}: {classes}"
+        if not eligible:
+            return (
+                "no candidate is eligible: AUC_full is below floor on the"
+                " majority of draws for every candidate"
+            )
+        return (
+            "every eligible candidate is audit_not_engaged (potency=0 on the"
+            " majority of draws); the LAO apparatus never activated"
+        )
+    if verdict == "PASS":
+        keys = ", ".join(r.key for r in survivors)
+        return f"{len(survivors)} survivor(s) with CI_lower(AUC_LAO) >= floor: {keys}"
+    if verdict == "NO_VALID_SCORER":
+        keys = ", ".join(r.key for r in collapsed)
+        return f"all {len(engaged)} engaged candidate(s) collapsed under LAO: {keys}"
+    return (
+        f"{len(engaged)} engaged candidate(s), no survivor, {len(collapsed)} fully"
+        " collapsed -- the remainder's CI straddles the floor"
+    )
+
+
+def decide_external(
+    reports: Sequence[CandidateExternalReport],
+    *,
+    class_sizes: Mapping[str, int],
+) -> ExternalVerdict:
+    """§6 total decision rule -- transcribed literally from design-final.md.
+
+    ``AUC_FLOOR`` is read from ``erre_sandbox.evidence.es4_actuator.
+    constants`` *inside this call* (never baked in at import time), so a
+    ``monkeypatch.setattr(_c, "AUC_FLOOR", ...)`` before the call moves the
+    verdict -- design-final.md §6's explicit non-tautology requirement.
+
+    ``reports`` outside :data:`EMBEDDING_FAMILY_EXT` (the lexical ``X5`` /
+    ``X6`` candidates) never enter ``E`` and therefore can never move the
+    verdict, satisfying design-final.md §6's "X5/X6 は判定に一切影響しない".
+    """
+    floor = _c.AUC_FLOOR
+    min_class_n = MIN_CLASS_N
+
+    by_key = {r.key: r for r in reports}
+    # mutation target (4): EMBEDDING_FAMILY_EXT への限定 -- the *sole* gate that
+    # keeps X5/X6 (lexical) out of E; by_key above is deliberately unfiltered
+    # so this is the only line responsible for the restriction (no redundant
+    # second filter to silently keep a mutation here a no-op).
+    family = [by_key[key] for key in EMBEDDING_FAMILY_EXT if key in by_key]
+
+    # mutation target (1): eligible 判定 -- E
+    eligible = [r for r in family if aggregate_draws(r.eligible_flags)]
+    # mutation target (2): engaged 判定 -- E2 (subset of E)
+    engaged = [r for r in eligible if aggregate_draws(r.engaged_flags)]
+    # mutation target (5): CI 跨ぎ判定 (survivor side) -- CI_lower(AUC_LAO) >= floor
+    survivors = [r for r in engaged if r.auc_lao_ci_lower >= floor]
+    # mutation target (3): collapsed 判定 -- CI_upper(AUC_LAO) < floor, over E2 only
+    collapsed = [r for r in engaged if r.auc_lao_ci_upper < floor]
+
+    class_deficient = any(n < min_class_n for n in class_sizes.values())
+
+    if class_deficient or not eligible or not engaged:
+        verdict = "INVALID_TASK_BATTERY"
+    elif survivors:
+        verdict = "PASS"
+    elif len(collapsed) == len(engaged):
+        verdict = "NO_VALID_SCORER"
+    else:
+        verdict = "INCONCLUSIVE_UNDERPOWERED"
+
+    reason = _decision_reason(
+        verdict,
+        class_sizes=class_sizes,
+        min_class_n=min_class_n,
+        eligible=eligible,
+        engaged=engaged,
+        survivors=survivors,
+        collapsed=collapsed,
+    )
+
+    return ExternalVerdict(
+        verdict=verdict,
+        collapse_reproduced=verdict == "NO_VALID_SCORER",
+        eligible=tuple(r.key for r in eligible),
+        engaged=tuple(r.key for r in engaged),
+        survivors=tuple(r.key for r in survivors),
+        collapsed=tuple(r.key for r in collapsed),
+        reason=reason,
+        auc_floor=floor,
+        min_class_n=min_class_n,
+    )
+
+
 # --- orchestration -----------------------------------------------------
 
 
