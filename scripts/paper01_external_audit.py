@@ -52,7 +52,10 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
+import numpy as np
+
 from erre_sandbox.evidence.es4_actuator import constants as _c
+from erre_sandbox.evidence.es4_actuator import controls
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -846,6 +849,517 @@ def decide_external(
         reason=reason,
         auc_floor=floor,
         min_class_n=min_class_n,
+    )
+
+
+# --- §5 statistics (Loop I-004, encoder-independent) ----------------------
+#
+# design-final.md §1 / §5 is the single source of truth for this section.
+# Every function below is encoder-independent by construction: they consume
+# already-scored ``float`` arrays (rarity scores, membership similarities,
+# per-item labels/objects) -- never text, never an embedding model. The
+# adapter that produces those arrays from raw corpora is out of scope here
+# (I-005+). Object-internal AUC is always delegated to the **frozen**
+# ``controls.auc`` (design-final.md §7: "frozen apparatus ... 無改変") --
+# nothing in this section reimplements Mann-Whitney tie handling.
+
+
+def auc_stratified(
+    scores: Sequence[float], labels: Sequence[int], objects: Sequence[str]
+) -> float:
+    """§1 primary estimand: within-object AUC weighted by object class counts.
+
+    ``AUC_strat(s) = sum_o w(o)*AUC_o(s) / sum_o w(o)``, ``w(o) = n_good(o) *
+    n_common(o)``, restricted to objects with ``n_good(o) >= 1`` and
+    ``n_common(o) >= 1`` -- an object missing either class contributes
+    weight 0 and is excluded from both the numerator and the denominator
+    (design-final.md §1, Opus HIGH-4: the internal pooled AUC is "almost
+    entirely a between-object statistic" once objects are this unbalanced).
+
+    Each object's internal AUC is computed by :func:`controls.auc` --
+    frozen, never reimplemented, so tie handling stays exactly the
+    apparatus's own.
+
+    Returns ``0.5`` when no object clears both class minimums (no
+    information), matching ``controls.auc``'s own single-class convention
+    rather than raising.
+    """
+    scores_arr = np.asarray(scores, dtype=float)
+    labels_arr = np.asarray(labels, dtype=int)
+    objects_arr = np.asarray(objects, dtype=object)
+
+    weighted_sum = 0.0
+    weight_total = 0.0
+    for obj in dict.fromkeys(objects_arr.tolist()):
+        mask = objects_arr == obj
+        obj_labels = labels_arr[mask]
+        n_good = int((obj_labels == 1).sum())
+        n_common = int((obj_labels == 0).sum())
+        if n_good == 0 or n_common == 0:
+            continue
+        weight = n_good * n_common
+        obj_auc = controls.auc(scores_arr[mask].tolist(), obj_labels.tolist())
+        weighted_sum += weight * obj_auc
+        weight_total += weight
+
+    if weight_total == 0.0:
+        return 0.5
+    return weighted_sum / weight_total
+
+
+# --- §5.1 draw-level booleans / candidate aggregation ----------------------
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class DrawResult:
+    """One anchor draw's §5.1 continuous statistics for one candidate."""
+
+    auc_full: float
+    auc_lao: float
+    potency: float
+
+    @property
+    def drop(self) -> float:
+        """``AUC_strat(full) - AUC_strat(LAO)`` for this draw (design-final.md §1)."""
+        return self.auc_full - self.auc_lao
+
+
+def is_draw_eligible(auc_full: float, *, floor: float | None = None) -> bool:
+    """§5.1 ``eligible_b``: this draw's ``AUC_strat(full)`` clears the floor.
+
+    ``floor`` defaults to ``erre_sandbox.evidence.es4_actuator.
+    constants.AUC_FLOOR``, read at call time (never cached at import time).
+    """
+    threshold = _c.AUC_FLOOR if floor is None else floor
+    return auc_full >= threshold
+
+
+def is_draw_engaged(potency: float) -> bool:
+    """§5.1 ``engaged_b``: the LAO audit actually fired on this draw."""
+    return potency > 0.0
+
+
+def is_draw_collapsed(
+    *, eligible: bool, engaged: bool, auc_lao: float, floor: float | None = None
+) -> bool:
+    """§5.1 ``collapsed_b``: eligible AND engaged AND ``AUC_strat(LAO) < floor``."""
+    threshold = _c.AUC_FLOOR if floor is None else floor
+    return eligible and engaged and auc_lao < threshold
+
+
+def draw_flags(
+    draws: Sequence[DrawResult], *, floor: float | None = None
+) -> tuple[tuple[bool, ...], tuple[bool, ...], tuple[bool, ...]]:
+    """Per-draw ``(eligible_b, engaged_b, collapsed_b)`` tuples aligned to ``draws``.
+
+    §5.1's three booleans, decided independently for each draw.
+    """
+    eligible_flags = tuple(is_draw_eligible(d.auc_full, floor=floor) for d in draws)
+    engaged_flags = tuple(is_draw_engaged(d.potency) for d in draws)
+    collapsed_flags = tuple(
+        is_draw_collapsed(eligible=e, engaged=g, auc_lao=d.auc_lao, floor=floor)
+        for e, g, d in zip(eligible_flags, engaged_flags, draws, strict=True)
+    )
+    return eligible_flags, engaged_flags, collapsed_flags
+
+
+def median_draw_index(drops: Sequence[float]) -> int:
+    """Index of the draw whose ``drop`` equals the median (design-final.md §5.2).
+
+    Deterministic lower-side tie-break for an even-length sequence: sorted
+    by ``(value, original index)``, the returned index is the element at
+    rank ``(n - 1) // 2`` -- the standard middle element for odd ``n``, and
+    the *lower* of the two middle elements for even ``n``. This is the one
+    draw the §5.2 bootstrap and §5.3 permutation test are computed on; no
+    other draw ever feeds either.
+    """
+    if not drops:
+        msg = "median_draw_index requires at least one draw"
+        raise ValueError(msg)
+    order = sorted(range(len(drops)), key=lambda i: (drops[i], i))
+    return order[(len(order) - 1) // 2]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class DrawAggregate:
+    """§5.1 candidate-level aggregate over a candidate's anchor draws."""
+
+    eligible: bool
+    engaged: bool
+    collapsed: bool
+    collapsed_draw_share: float
+    median_drop: float
+    drop_p5: float
+    drop_p95: float
+    median_draw_index: int
+
+
+def aggregate_candidate_draws(
+    draws: Sequence[DrawResult], *, floor: float | None = None
+) -> DrawAggregate:
+    """§5.1: decide each draw's booleans first, then aggregate the booleans.
+
+    Never a marginal median of ``AUC_full`` / ``AUC_LAO`` taken separately
+    -- design-final.md §5.1 explicitly rejects that design because it can
+    judge a ``(full, LAO)`` combination that no single draw ever produced.
+    The candidate-level ``eligible`` / ``engaged`` / ``collapsed`` booleans
+    always come from :func:`aggregate_draws` (proportion of True draws
+    ``>= DRAW_AGGREGATION_THRESHOLD``) over the per-draw booleans computed
+    by :func:`draw_flags`. ``collapsed_draw_share`` / ``median_drop`` /
+    ``drop_p5`` / ``drop_p95`` are the §5.1 reporting statistics -- display
+    only, never inputs to the booleans above.
+    """
+    if not draws:
+        msg = "aggregate_candidate_draws requires at least one draw"
+        raise ValueError(msg)
+
+    eligible_flags, engaged_flags, collapsed_flags = draw_flags(draws, floor=floor)
+    drops = [d.drop for d in draws]
+
+    return DrawAggregate(
+        eligible=aggregate_draws(eligible_flags),
+        engaged=aggregate_draws(engaged_flags),
+        collapsed=aggregate_draws(collapsed_flags),
+        collapsed_draw_share=float(np.mean(collapsed_flags)),
+        median_drop=float(np.median(drops)),
+        drop_p5=float(np.percentile(drops, 5)),
+        drop_p95=float(np.percentile(drops, 95)),
+        median_draw_index=median_draw_index(drops),
+    )
+
+
+# --- §5.2 bootstrap (stratified by object x class) --------------------------
+
+
+def bootstrap_resample_indices(
+    labels: Sequence[int], objects: Sequence[str], rng: np.random.Generator
+) -> list[int]:
+    """§5.2: one resample's item indices, stratified by ``(object x class)``.
+
+    Within every ``(object, label)`` stratum, draws ``len(stratum)`` indices
+    with replacement from that stratum only -- never across objects, never
+    across classes. This is what keeps every object's ``n_good`` /
+    ``n_common`` (and therefore :func:`auc_stratified`'s per-object weight
+    ``w(o)``) identical across every resample; only *which* items land in
+    each slot varies (design-final.md §5.2, Opus fact-check #3: the
+    bootstrap procedure had never been pre-registered).
+    """
+    labels_arr = np.asarray(labels)
+    objects_arr = np.asarray(objects, dtype=object)
+    resampled: list[int] = []
+    for obj in dict.fromkeys(objects_arr.tolist()):
+        for cls in (0, 1):
+            stratum = np.flatnonzero((objects_arr == obj) & (labels_arr == cls))
+            if stratum.size == 0:
+                continue
+            draw = rng.integers(0, stratum.size, size=stratum.size)
+            resampled.extend(int(i) for i in stratum[draw])
+    return resampled
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class BootstrapDropResult:
+    """§5.2 bootstrap CI outputs for one candidate's median draw."""
+
+    auc_full_ci: tuple[float, float]
+    auc_lao_ci: tuple[float, float]
+    drop_ci: tuple[float, float]
+    p_drop_le_zero: float
+
+
+def bootstrap_stratified_drop(
+    scores_full: Sequence[float],
+    scores_lao: Sequence[float],
+    labels: Sequence[int],
+    objects: Sequence[str],
+    *,
+    seed: int,
+) -> BootstrapDropResult:
+    """§5.2: stratified (object x class) bootstrap of AUC_strat(full/LAO)/drop.
+
+    Applies to a single draw's items only -- callers pass the median draw
+    (design-final.md §5.2 ``BOOTSTRAP_APPLIES_TO``), never loop this over
+    every anchor draw. ``N_RESAMPLES`` / ``CI_ALPHA`` are read from
+    ``erre_sandbox.evidence.es4_actuator.constants`` *inside this call*,
+    never cached, so a test can ``monkeypatch.setattr(_c, "N_RESAMPLES",
+    ...)`` to keep the resample count small without touching this
+    function's signature. RNG is caller-seeded
+    (``np.random.default_rng(seed)``) so two calls with the same ``seed``
+    reproduce bit-identically and different seeds diverge.
+    """
+    n_resamples = _c.N_RESAMPLES
+    alpha = _c.CI_ALPHA
+    full_list = list(scores_full)
+    lao_list = list(scores_lao)
+    labels_list = list(labels)
+    objects_list = list(objects)
+
+    rng = np.random.default_rng(seed)
+    full_draws = np.empty(n_resamples, dtype=float)
+    lao_draws = np.empty(n_resamples, dtype=float)
+    for i in range(n_resamples):
+        idx = bootstrap_resample_indices(labels_list, objects_list, rng)
+        resample_labels = [labels_list[j] for j in idx]
+        resample_objects = [objects_list[j] for j in idx]
+        full_draws[i] = auc_stratified(
+            [full_list[j] for j in idx], resample_labels, resample_objects
+        )
+        lao_draws[i] = auc_stratified(
+            [lao_list[j] for j in idx], resample_labels, resample_objects
+        )
+    drop_draws = full_draws - lao_draws
+
+    lower_q = alpha / 2.0
+    upper_q = 1.0 - lower_q
+    return BootstrapDropResult(
+        auc_full_ci=(
+            float(np.quantile(full_draws, lower_q)),
+            float(np.quantile(full_draws, upper_q)),
+        ),
+        auc_lao_ci=(
+            float(np.quantile(lao_draws, lower_q)),
+            float(np.quantile(lao_draws, upper_q)),
+        ),
+        drop_ci=(
+            float(np.quantile(drop_draws, lower_q)),
+            float(np.quantile(drop_draws, upper_q)),
+        ),
+        p_drop_le_zero=float(np.mean(drop_draws <= 0.0)),
+    )
+
+
+# --- §5.3 permutation p (exploratory, out of the draw loop) -----------------
+
+
+def permutation_p_stratified(
+    scores: Sequence[float],
+    labels: Sequence[int],
+    objects: Sequence[str],
+    *,
+    seed: int,
+) -> float:
+    """§5.3 exploratory label-shuffle permutation p for ``AUC_strat(full)``.
+
+    **Never feeds the §6 verdict** (design-final.md §5.3) -- descriptive
+    only. Deliberately **not** looped per anchor draw: ``scripts/
+    es4_scorer_diag.py``'s ``gold_good_vs_common`` already burns
+    ``N_RESAMPLES`` (10000) permutations per call, each recomputing AUC
+    through ``controls.auc``'s Python tie-ranking loop; at 200 draws x 8
+    candidates x 2 corpora x 2 statistics (full/LAO) that would run many
+    hours. Callers invoke this exactly once per ``corpus x candidate x
+    arm``, on the representative median draw (see
+    :func:`build_candidate_report`) -- never inside the per-draw loop that
+    decides eligible/engaged/collapsed.
+    """
+    observed = auc_stratified(scores, labels, objects)
+    n_resamples = _c.N_RESAMPLES
+    rng = np.random.default_rng(seed)
+    labels_arr = np.asarray(labels)
+    scores_list = list(scores)
+    objects_list = list(objects)
+
+    null = np.empty(n_resamples, dtype=float)
+    for i in range(n_resamples):
+        shuffled = rng.permutation(labels_arr).tolist()
+        null[i] = auc_stratified(scores_list, shuffled, objects_list)
+    return float((1.0 + np.sum(null >= observed)) / (n_resamples + 1.0))
+
+
+# --- §5.4 five-tuple (orientation frozen) -----------------------------------
+
+
+def auc_membership(membership: Sequence[float], labels: Sequence[int]) -> float:
+    """§5.4 ``AUC_membership = auc(1 - m, label_good)`` -- orientation frozen.
+
+    ``membership`` (``m``) is each item's max similarity to the anchor
+    pool: higher ``m`` means "closer to a curated reference", i.e. more
+    common-like. Flipping the sign (``1 - m``) aligns the direction with
+    every rarity candidate on the ladder (higher score = more good/novel).
+    Passing ``m`` unflipped silently inverts the discrimination direction
+    (design-final.md §5.4, Opus HIGH-9).
+    """
+    flipped = [1.0 - m for m in membership]
+    return controls.auc(flipped, labels)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PotencyResult:
+    """§5.4 ``potency`` and per-class near-dup rate (report-only)."""
+
+    potency: float
+    near_dup_good: float
+    near_dup_common: float
+
+
+def potency_and_near_dup(
+    max_similarity: Sequence[float],
+    labels: Sequence[int],
+    *,
+    ref_dedup: float | None = None,
+) -> PotencyResult:
+    """§5.4: ``potency`` and per-class near-dup rate over the anchor pool.
+
+    ``potency = |{x : max_r sim(x,r) >= REF_DEDUP}| / |scored items|``;
+    ``near_dup_good`` / ``near_dup_common`` are the same fraction restricted
+    to each gold class. ``ref_dedup`` defaults to
+    ``erre_sandbox.evidence.es4_actuator.constants.REF_DEDUP``, read at
+    call time (never cached).
+    """
+    threshold = _c.REF_DEDUP if ref_dedup is None else ref_dedup
+    sims = np.asarray(max_similarity, dtype=float)
+    labels_arr = np.asarray(labels, dtype=int)
+    if sims.size == 0:
+        return PotencyResult(0.0, 0.0, 0.0)
+
+    near_dup = sims >= threshold
+    potency_value = float(near_dup.mean())
+    good_mask = labels_arr == 1
+    common_mask = labels_arr == 0
+    near_dup_good = float(near_dup[good_mask].mean()) if good_mask.any() else 0.0
+    near_dup_common = float(near_dup[common_mask].mean()) if common_mask.any() else 0.0
+    return PotencyResult(potency_value, near_dup_good, near_dup_common)
+
+
+def mean_dropped_anchor_fraction(
+    dropped_counts: Sequence[int], reference_sizes: Sequence[int]
+) -> float:
+    """§5.4 additional report: mean over items of anchors-dropped-by-LAO / |R_o|.
+
+    Reporting-only (Opus MEDIUM-3); never feeds §6's verdict. Callers pass
+    the per-item LAO bookkeeping (which anchors were dropped for which
+    item) -- computing that bookkeeping is the adapter's job (I-005+), this
+    function only aggregates already-counted values.
+    """
+    counts = np.asarray(dropped_counts, dtype=float)
+    sizes = np.asarray(reference_sizes, dtype=float)
+    if counts.size == 0:
+        return 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        fractions = np.where(sizes > 0, counts / sizes, 0.0)
+    return float(np.mean(fractions))
+
+
+# --- candidate-report integration (feeds decide_external unmodified) -------
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class DrawItems:
+    """One anchor draw's item-level §5 inputs for one candidate.
+
+    The adapter/encoder layer (out of I-004 scope, lands in I-005+) scores
+    each item's ``rarity`` against this draw's full anchor set
+    (``scores_full``) and its leave-anchor-out variant (``scores_lao``),
+    shares the same ``labels`` (1=good/0=common) and ``objects`` (the
+    item's ``object_id``) across both, and reports this draw's already
+    computed ``potency``. This module only consumes these arrays.
+    """
+
+    scores_full: tuple[float, ...]
+    scores_lao: tuple[float, ...]
+    labels: tuple[int, ...]
+    objects: tuple[str, ...]
+    potency: float
+
+
+def draw_result_from_items(items: DrawItems) -> DrawResult:
+    """Compute one draw's §5.1 continuous statistics from its item arrays."""
+    return DrawResult(
+        auc_full=auc_stratified(items.scores_full, items.labels, items.objects),
+        auc_lao=auc_stratified(items.scores_lao, items.labels, items.objects),
+        potency=items.potency,
+    )
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CandidateStatisticalSummary:
+    """§5's full external-audit statistical summary for one candidate.
+
+    ``report`` is exactly what feeds :func:`decide_external` (I-003's
+    frozen interface, unmodified by this issue). ``bootstrap`` carries the
+    §5.2 outputs that have no field on :class:`CandidateExternalReport`
+    (the ``AUC_strat_full`` CI and ``P(drop <= 0)``) -- reporting-only, per
+    design-final.md §5.2/§5.4. ``permutation_p`` is the §5.3 representative
+    permutation p-value (exploratory only, never fed into
+    ``decide_external``).
+    """
+
+    report: CandidateExternalReport
+    bootstrap: BootstrapDropResult
+    permutation_p: float
+    median_draw_index: int
+
+
+def build_candidate_report(
+    key: str,
+    family: str,
+    draws: Sequence[DrawItems],
+    *,
+    bootstrap_seed: int,
+    permutation_seed: int,
+) -> CandidateStatisticalSummary:
+    """Assemble one candidate's full §5 statistical summary from its draws.
+
+    ``draws`` is the per-anchor-draw sequence already scored elsewhere (the
+    adapter/encoder layer, out of I-004 scope) -- each :class:`DrawItems`
+    holds one draw's item-level arrays plus that draw's already-computed
+    ``potency``.
+
+    §5.1's draw booleans are decided per draw (:func:`draw_flags`), then
+    aggregated by :func:`aggregate_draws` (proportion >= threshold), never
+    a marginal median of the continuous statistics.
+
+    §5.2's bootstrap and §5.3's permutation test are each computed
+    **once**, on the single median-drop draw (design-final.md §5.2/§5.3) --
+    this function calls :func:`bootstrap_stratified_drop` and
+    :func:`permutation_p_stratified` by their bare module-level names (not
+    an injected parameter), so a test can ``monkeypatch.setattr`` either
+    one on this module and observe the call count directly, independent of
+    how many draws are passed in.
+    """
+    if not draws:
+        msg = "build_candidate_report requires at least one draw"
+        raise ValueError(msg)
+
+    results = [draw_result_from_items(items) for items in draws]
+    eligible_flags, engaged_flags, collapsed_flags = draw_flags(results)
+    drops = [r.drop for r in results]
+    idx = median_draw_index(drops)
+    median_items = draws[idx]
+    median_result = results[idx]
+
+    bootstrap = bootstrap_stratified_drop(
+        scores_full=median_items.scores_full,
+        scores_lao=median_items.scores_lao,
+        labels=median_items.labels,
+        objects=median_items.objects,
+        seed=bootstrap_seed,
+    )
+    perm_p = permutation_p_stratified(
+        median_items.scores_full,
+        median_items.labels,
+        median_items.objects,
+        seed=permutation_seed,
+    )
+
+    report = CandidateExternalReport(
+        key=key,
+        family=family,
+        eligible_flags=eligible_flags,
+        engaged_flags=engaged_flags,
+        collapsed_flags=collapsed_flags,
+        auc_lao_ci_lower=bootstrap.auc_lao_ci[0],
+        auc_lao_ci_upper=bootstrap.auc_lao_ci[1],
+        potency_median=median_result.potency,
+        auc_full_median=median_result.auc_full,
+        auc_lao_median=median_result.auc_lao,
+        drop_median=median_result.drop,
+        audit_not_engaged=not aggregate_draws(engaged_flags),
+    )
+    return CandidateStatisticalSummary(
+        report=report,
+        bootstrap=bootstrap,
+        permutation_p=perm_p,
+        median_draw_index=idx,
     )
 
 
