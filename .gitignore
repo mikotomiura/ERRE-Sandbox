@@ -140,3 +140,6 @@ data/bench/*.duckdb.tmp
 
 # 論文ドラフト (本 repo とは別成果物。将来的に独立リポジトリへ分離する想定)
 paper/
+
+# paper01 G1 実走の一時 PID (run.sh が起動ごとに書く。追跡しない)
+experiments/20260907-paper01-g1/results/.run.pid
