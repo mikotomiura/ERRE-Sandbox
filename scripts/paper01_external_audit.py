@@ -45,6 +45,7 @@ variant would just duplicate ``X0`` (see the comment above
 
 from __future__ import annotations
 
+import argparse
 import dataclasses
 import hashlib
 import importlib
@@ -2709,18 +2710,371 @@ def write_external_audit(path: Path = EXTERNAL_AUDIT_PATH) -> dict[str, Any]:
     return result
 
 
+# --- §2 fidelity pin (Loop I-007) --------------------------------------------
+#
+# design-final.md §2 / §7 (DA-G1-16) is the single source of truth. This
+# section proves the *external* harness's own rarity-scoring wiring
+# (:func:`make_embed_candidate`, the same object-keyed function every
+# Cambridge/Ocsai candidate above is built through) reproduces the
+# **sealed** ``experiments/20260701-es4-scorer-diag/diagnostic.json`` rows
+# exactly when fed the *internal* anchor/gold data through it -- proof the
+# external harness is "the same instrument", not a different one that
+# merely failed to detect a collapse (issue 007's opening rationale).
+# Comparison is the internal **pooled** AUC route
+# (``_diag.gold_good_vs_common``, the very function that produced
+# ``diagnostic.json``) -- *never* :func:`auc_stratified` (design-final.md
+# §2's explicit warning: the committed 0.9950/0.7050/0.9900/0.7550 rows are
+# pooled, not within-object). The frozen apparatus (``es4_scorer_diag.py`` /
+# ``evidence/es4_actuator``) is never modified -- every loader/encoder/AUC
+# call below is a bare attribute lookup on the already-imported ``_diag``
+# sibling module, or a call to this module's own ``make_embed_candidate``.
+
+PHASE_A_RUN_DIR: Final[Path] = (
+    REPO_ROOT / "experiments" / "20260630-es4-phase0" / "phaseA"
+)
+FIDELITY_PATH: Final[Path] = RESULTS_DIR / "fidelity.json"
+
+# Sealed diagnostic.json rows (read-only reference; this module never
+# regenerates that artifact -- issue 007 Stop Condition). A mismatch here
+# is design-final.md's Stop Condition S2 (tune-to-pass): these constants
+# are never the side that moves to make a run pass.
+C0_EXPECTED_AUC_FULL: Final[float] = 0.99
+C0_EXPECTED_AUC_LAO: Final[float] = 0.755
+C4_EXPECTED_AUC_FULL: Final[float] = 0.995
+C4_EXPECTED_AUC_LAO: Final[float] = 0.705
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class FidelityCandidateResult:
+    """One fidelity candidate's (C0 or C4) reproduction + covariates.
+
+    ``auc_full``/``auc_lao`` are the *pooled* AUCs (the
+    ``_diag.gold_good_vs_common`` route); ``matches`` is
+    :func:`fidelity_candidate_matches`'s verdict on them.
+    ``auc_membership``/``near_dup_good``/``near_dup_common``/``potency`` are
+    design-final.md §2's descriptive covariates, computed the *external*
+    harness's own way (:func:`auc_membership` / :func:`potency_and_near_dup`)
+    over the internal gold pair.
+    """
+
+    key: str
+    auc_full: float
+    auc_lao: float
+    expected_auc_full: float
+    expected_auc_lao: float
+    matches: bool
+    auc_membership: float
+    near_dup_good: float
+    near_dup_common: float
+    potency: float
+
+
+def fidelity_gold_pair() -> tuple[AdversarialItem, ...]:
+    """The internal 41-item good/common_use_only gold pair (design-final.md §2)."""
+    gold = _diag.load_adversarial_labeled()
+    return tuple(g for g in gold if g.category in {"good", "common_use_only"})
+
+
+def fidelity_candidate_matches(
+    auc_full: float, auc_lao: float, *, expected_full: float, expected_lao: float
+) -> bool:
+    """§2's exact-match fidelity criterion (DA-G1-16: "完全一致で再現").
+
+    Both statistics must equal their sealed ``diagnostic.json`` value
+    exactly -- no tolerance band. This is the *sole* comparison every
+    caller (the fast C4 unit test, the heavy C0 ``--fidelity`` run, and
+    ``main``'s exit code) goes through, so a mutation here is detectable
+    from any of the three call sites.
+    """
+    # mutation targets: (a) exact equality relaxed to a tolerance band,
+    # (b) the two component comparisons OR'd instead of AND'd.
+    return auc_full == expected_full and auc_lao == expected_lao
+
+
+def fidelity_membership_and_potency(
+    candidate: Any, gold_pair: Sequence[AdversarialItem]
+) -> tuple[float, float, float, float]:
+    """§5.4's ``(AUC_membership, near_dup_good, near_dup_common, potency)``.
+
+    For one internal fidelity candidate, computed the *external* harness's
+    own way (:func:`auc_membership` / :func:`potency_and_near_dup`) over the
+    *internal* gold pair -- design-final.md §2's descriptive covariates.
+
+    ``m`` fed to :func:`auc_membership` is the *binary* near-dup indicator
+    (``max_r sim(x, r) >= REF_DEDUP``) -- the same predicate
+    :func:`potency_and_near_dup` uses, per Opus MEDIUM-6's closed form
+    ``AUC_membership = 0.5 + (near_dup_common - near_dup_good) / 2``
+    (design-final.md §5, verified empirically here: 0.5 + (0.500-0.000)/2 =
+    0.750 for C0, 0.5 + (0.4375-0.000)/2 = 0.71875 for C4, matching §2's
+    committed 0.750/0.7188 exactly). The *continuous* max similarity
+    (``1 - rarity_full``) would make ``auc_membership`` tautologically
+    identical to ``auc_full`` (``1 - (1 - rarity_full) == rarity_full``, the
+    same scores the pooled AUC is already computed over) -- a distinct,
+    non-redundant covariate requires the thresholded indicator, not the raw
+    continuous similarity.
+    """
+    max_sim = [
+        1.0 - candidate.rarity(g.object, g.text, leave_anchor_out=False)
+        for g in gold_pair
+    ]
+    labels = [1 if g.category == "good" else 0 for g in gold_pair]
+    potency_result = potency_and_near_dup(max_sim, labels)
+    near_dup_flags = [1.0 if s >= _c.REF_DEDUP else 0.0 for s in max_sim]
+    membership = auc_membership(near_dup_flags, labels)
+    return (
+        membership,
+        potency_result.near_dup_good,
+        potency_result.near_dup_common,
+        potency_result.potency,
+    )
+
+
+def build_c4_fidelity_candidate(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+) -> Any:
+    """C4 (curated-only reference) candidate -- the fast pin.
+
+    No Phase A artifact needed: the anchor is the curated
+    ``common_uses.yaml`` embedded directly, mirroring
+    ``es4_scorer_diag._build_candidates``'s ``C4-mpnet-max-curated`` (no
+    held-out REF-generation augmentation -- that is exactly what makes this
+    fast enough for a unit test: ~160 curated strings vs. C0's ~800 REF
+    generations). Built through this module's own
+    :func:`make_embed_candidate` (the same object-keyed wiring every
+    Cambridge/Ocsai candidate uses), not the frozen script's private
+    constructor -- the point of the fidelity pin is to exercise *this*
+    module's rarity-scoring path.
+    """
+    curated = _diag.load_common_uses()
+    gold_pair = fidelity_gold_pair()
+    to_embed = sorted(
+        {t for txts in curated.values() for t in txts} | {g.text for g in gold_pair}
+    )
+    vmap = _diag.embed_map(mpnet, to_embed)
+    return make_embed_candidate(
+        "C4-mpnet-max-curated",
+        "MPNet 1-max cos, curated-only reference",
+        vmap,
+        curated,
+        agg="max",
+    )
+
+
+def measure_c4_fidelity(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+) -> FidelityCandidateResult:
+    """§2's fast pin: reproduce C4 exactly (design-final.md §2, DA-G1-16)."""
+    candidate = build_c4_fidelity_candidate(mpnet)
+    gold_pair = fidelity_gold_pair()
+    gr = _diag.gold_good_vs_common(candidate, gold_pair)
+    membership, nd_good, nd_common, potency = fidelity_membership_and_potency(
+        candidate, gold_pair
+    )
+    matches = fidelity_candidate_matches(
+        gr.auc_full,
+        gr.auc_leave_anchor_out,
+        expected_full=C4_EXPECTED_AUC_FULL,
+        expected_lao=C4_EXPECTED_AUC_LAO,
+    )
+    return FidelityCandidateResult(
+        key="C4-mpnet-max-curated",
+        auc_full=gr.auc_full,
+        auc_lao=gr.auc_leave_anchor_out,
+        expected_auc_full=C4_EXPECTED_AUC_FULL,
+        expected_auc_lao=C4_EXPECTED_AUC_LAO,
+        matches=matches,
+        auc_membership=membership,
+        near_dup_good=nd_good,
+        near_dup_common=nd_common,
+        potency=potency,
+    )
+
+
+def build_c0_fidelity_candidate(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+    run_dir: Path = PHASE_A_RUN_DIR,
+) -> Any:
+    """C0 (curated ∪ model-high-frequency reference) candidate -- the heavy pin.
+
+    Reconstructs the incumbent ``R_object`` exactly the way
+    ``es4_scorer_diag.run_diagnostic`` does (issue 007: "run_diagnostic が
+    組み立てている手順 ... をそのまま踏襲する") -- ``load_jsonl`` the
+    persisted Phase A generations/judgements, replay the judge from the
+    persisted labels, extract the ``REF`` condition generations, then
+    ``construct_all_references`` (the frozen apparatus, called exactly as
+    ``run_diagnostic`` calls it, never reimplemented). Raises
+    :class:`FileNotFoundError` when ``run_dir``'s sealed artifact is
+    missing (issue 007 Stop Condition).
+    """
+    gens_path = run_dir / "generations.jsonl"
+    judgements_path = run_dir / "judgements.jsonl"
+    if not gens_path.exists() or not judgements_path.exists():
+        msg = f"Phase A artifact missing under {run_dir} (sealed, cannot regenerate)"
+        raise FileNotFoundError(msg)
+
+    aut = _diag.load_aut_battery()
+    obj_human = {it.object_id: it.object for it in aut.items}
+    curated = _diag.load_common_uses()
+
+    gens = _diag.load_jsonl(gens_path)
+    judgements = _diag.load_jsonl(judgements_path)
+    judge = _diag.make_replay_judge(_diag.build_judge_map(judgements))
+
+    aut_gens = [g for g in gens if g["task"] == "aut"]
+    ref_gens = [g for g in aut_gens if g["condition"] == "REF"]
+    responses_by_object: dict[str, list[str]] = {oid: [] for oid in obj_human}
+    for g in ref_gens:
+        responses_by_object[g["item_id"]].append(g["response"])
+
+    references = _diag.construct_all_references(
+        curated, responses_by_object, obj_human, mpnet, judge
+    )
+    full_ref_texts = {oid: list(ref.texts) for oid, ref in references.items()}
+
+    gold_pair = fidelity_gold_pair()
+    to_embed = sorted(
+        {t for txts in full_ref_texts.values() for t in txts}
+        | {g.text for g in gold_pair}
+    )
+    vmap = _diag.embed_map(mpnet, to_embed)
+    return make_embed_candidate(
+        "C0-mpnet-max-full",
+        "MPNet 1-max cos, full R_object (incumbent)",
+        vmap,
+        full_ref_texts,
+        agg="max",
+    )
+
+
+def measure_c0_fidelity(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+    run_dir: Path = PHASE_A_RUN_DIR,
+) -> FidelityCandidateResult:
+    """§2's heavy pin: reproduce C0 exactly (design-final.md §2, DA-G1-16)."""
+    candidate = build_c0_fidelity_candidate(mpnet, run_dir)
+    gold_pair = fidelity_gold_pair()
+    gr = _diag.gold_good_vs_common(candidate, gold_pair)
+    membership, nd_good, nd_common, potency = fidelity_membership_and_potency(
+        candidate, gold_pair
+    )
+    matches = fidelity_candidate_matches(
+        gr.auc_full,
+        gr.auc_leave_anchor_out,
+        expected_full=C0_EXPECTED_AUC_FULL,
+        expected_lao=C0_EXPECTED_AUC_LAO,
+    )
+    return FidelityCandidateResult(
+        key="C0-mpnet-max-full",
+        auc_full=gr.auc_full,
+        auc_lao=gr.auc_leave_anchor_out,
+        expected_auc_full=C0_EXPECTED_AUC_FULL,
+        expected_auc_lao=C0_EXPECTED_AUC_LAO,
+        matches=matches,
+        auc_membership=membership,
+        near_dup_good=nd_good,
+        near_dup_common=nd_common,
+        potency=potency,
+    )
+
+
+def run_fidelity(run_dir: Path = PHASE_A_RUN_DIR) -> dict[str, Any]:
+    """Run both fidelity pins (C4 fast, C0 heavy) and assemble ``fidelity.json``.
+
+    No wall-clock is emitted (design-final.md §7's quantisation
+    discipline); every float leaf is 6-decimal quantised before return
+    (``feedback_golden_crossplatform_float_drift``).
+    """
+    mpnet = _diag.make_encoder("sentence-transformers/all-mpnet-base-v2")
+    if mpnet is None:
+        msg = "MPNet encoder unavailable offline; the fidelity pin cannot run"
+        raise RuntimeError(msg)
+
+    c4 = measure_c4_fidelity(mpnet)
+    c0 = measure_c0_fidelity(mpnet, run_dir)
+
+    result: dict[str, Any] = {
+        "task": "paper01-g1-fidelity-pin",
+        "c0": dataclasses.asdict(c0),
+        "c4": dataclasses.asdict(c4),
+        "all_match": bool(c0.matches and c4.matches),
+    }
+    return _quantize_json(result)
+
+
+def write_fidelity(
+    path: Path = FIDELITY_PATH, run_dir: Path = PHASE_A_RUN_DIR
+) -> dict[str, Any]:
+    """Run :func:`run_fidelity` and write it to ``path`` deterministically."""
+    result = run_fidelity(run_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return result
+
+
 # --- orchestration -----------------------------------------------------
 
 
-def main() -> int:
-    """Write ``SEED``, ``config.json``, and ``env.md``; return exit code 0."""
-    write_seed_file()
-    write_config()
-    write_env_md()
-    sys.stdout.write(
-        f"[paper01-external-audit] wrote {SEED_PATH}, {CONFIG_PATH}, {ENV_MD_PATH}\n"
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point (Loop I-007).
+
+    ``--fidelity`` runs the design-final.md §2 fidelity pin (C4 fast + C0
+    heavy) and returns a non-zero exit code on any mismatch (issue 007 Stop
+    Condition: "不一致なら exit != 0"). ``--audit`` runs
+    :func:`write_external_audit` (Cambridge + Ocsai, corpus-keyed).
+    ``--write-config`` writes ``SEED`` / ``config.json`` / ``env.md`` -- the
+    pre-I-007 behaviour, and stays the default when *no* flag is given at
+    all (issue 007: "引数なしのときの既定動作は既存互換を保つこと"). Flags
+    may combine; each one set runs at most once, in the order
+    fidelity -> audit -> write-config.
+    """
+    parser = argparse.ArgumentParser(description="paper01 G1 external audit CLI")
+    parser.add_argument(
+        "--fidelity",
+        action="store_true",
+        help="run the §2 fidelity pin (C0 heavy + C4 fast); exit != 0 on mismatch",
     )
-    return 0
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="run the external audit (Cambridge + Ocsai); write external-audit.json",
+    )
+    parser.add_argument(
+        "--write-config",
+        action="store_true",
+        help="write SEED / config.json / env.md (pre-I-007 default behaviour)",
+    )
+    args = parser.parse_args(argv)
+    ran_anything = bool(args.fidelity or args.audit or args.write_config)
+    exit_code = 0
+
+    if args.fidelity:
+        result = write_fidelity(path=FIDELITY_PATH, run_dir=PHASE_A_RUN_DIR)
+        sys.stdout.write(f"[paper01-external-audit] wrote {FIDELITY_PATH}\n")
+        if not result["all_match"]:
+            sys.stderr.write(
+                "[paper01-external-audit] FIDELITY MISMATCH -- "
+                f"c0.matches={result['c0']['matches']} "
+                f"c4.matches={result['c4']['matches']}\n"
+            )
+            exit_code = 1
+
+    if args.audit:
+        write_external_audit()
+        sys.stdout.write(f"[paper01-external-audit] wrote {EXTERNAL_AUDIT_PATH}\n")
+
+    if args.write_config or not ran_anything:
+        write_seed_file()
+        write_config()
+        write_env_md()
+        sys.stdout.write(
+            "[paper01-external-audit] wrote "
+            f"{SEED_PATH}, {CONFIG_PATH}, {ENV_MD_PATH}\n"
+        )
+
+    return exit_code
 
 
 if __name__ == "__main__":

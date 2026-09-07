@@ -452,3 +452,99 @@ git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scri
 **関数呼び出しの引数そのものを spy で直接検査する**方が確実であり、この教訓は
 今後 source-crossed / cross-corpus な配線を検査する mutation test 全般に
 持ち越す価値がある。
+
+## I-007 mutation testing — fidelity pin (`fidelity_candidate_matches` / `main --fidelity`)
+
+- **対象ファイル**: `scripts/paper01_external_audit.py` (I-007 で新規追加した
+  §2 fidelity pin 節: `fidelity_candidate_matches` / `measure_c4_fidelity` /
+  `measure_c0_fidelity` / `run_fidelity` / `write_fidelity` / `main` の
+  `--fidelity` 分岐)。`es4_scorer_diag.py` は無改変 (`_diag.*` 経由で参照するのみ)。
+- **手順**: I-003〜I-006 と同一 (`mutate_i007.py` — scratchpad 常設の小スクリプトで
+  `assert old in text` (対象文字列の実在確認) → `assert mutated != text`
+  (置換が実際に適用され no-op でないことの確認) → 置換適用 →
+  `.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"` を実行 →
+  exit code と落ちた test 名を記録 → I-007 実装完了直後のバックアップへ `cp` で復元 →
+  `diff` で byte 一致を確認。1 つずつ直列に実施し、都度 diff 空を確認してから次へ進んだ。
+- **バックアップ**: I-007 実装完了 (後述の AUC_membership 修正込み)・
+  ruff/mypy/test 全緑を確認した直後の `scripts/paper01_external_audit.py` を
+  scratchpad へ `cp` で保持 (`paper01_external_audit.py.bak`)。
+
+### issue が指定した最低 4 種 + 独立に追加した 2 種 (計 6 件、境界を突くパターンで総当たり)
+
+| # | 対象 | 元のコード | 変更後 |
+|---|---|---|---|
+| ① 許容誤差を緩める | `fidelity_candidate_matches` の完全一致判定 | `return auc_full == expected_full and auc_lao == expected_lao` | `return abs(auc_full - expected_full) < 0.5 and abs(auc_lao - expected_lao) < 0.5` |
+| ② 不一致でも exit 0 | `main` の `--fidelity` 分岐、mismatch 時の exit code | `exit_code = 1` | `exit_code = 0` |
+| ③ 期待値定数を書き換える | `C4_EXPECTED_AUC_FULL` | `Final[float] = 0.995` | `Final[float] = 0.85` |
+| ④a auc_full/auc_lao の取り違え (C4 call site) | `measure_c4_fidelity` 内 `fidelity_candidate_matches(...)` 呼び出し | `gr.auc_full, gr.auc_leave_anchor_out,` | `gr.auc_leave_anchor_out, gr.auc_full,` (引数順序を入れ替え) |
+| ④b auc_full/auc_lao の取り違え (C0 call site) | `measure_c0_fidelity` 内、同型の別コード箇所 | 同上 (C0 側) | 同上 (C0 側) |
+| ⑤ (追加) `--fidelity` 分岐そのものが配線されていない | `main` の `if args.fidelity:` | `if args.fidelity:` | `if False and args.fidelity:` |
+
+**注記 (③ の値選定)**: 当初 `0.995 → 0.9` で試したところ、無関係な I-002 の
+`test_thresholds_are_imported_not_redefined` (`0.9` を banned threshold literal として
+AST 走査で検出する既存 test) が**先に**落ちて自テストの kill を覆い隠したため、
+`0.9` を避けて `0.85` に変更し、**自作の `test_expected_constants_are_frozen_to_the_sealed_diagnostic_json`
+単体で kill されること**を確認し直した (下表参照)。
+
+### 結果
+
+| # | pytest exit code | 落ちた test | 復元後 diff |
+|---|---|---|---|
+| ① | **1** | `test_fidelity_candidate_matches_requires_both_statistics` / `test_fidelity_candidate_matches_no_tolerance_band` — 計 2 件 | 空 (バックアップと byte 一致) |
+| ② | **1** | `test_fidelity_mismatch_exits_nonzero` | 空 |
+| ③ | **1** | `test_expected_constants_are_frozen_to_the_sealed_diagnostic_json` | 空 |
+| ④a | **1** | `test_measure_c4_fidelity_does_not_swap_full_and_lao` | 空 |
+| ④b | **1** | `test_measure_c0_fidelity_does_not_swap_full_and_lao` | 空 |
+| ⑤ | **1** | `test_fidelity_mismatch_exits_nonzero` / `test_fidelity_match_exits_zero` / `test_main_fidelity_flag_does_not_write_config` — 計 3 件 | 空 |
+
+**6/6 が初回で kill (生存 mutant ゼロ)。6/6 とも復元後 `diff` が空 (バックアップと byte 一致)。**
+最終確認として `scripts/paper01_external_audit.py` を `paper01_external_audit.py.bak` と
+`diff` し、byte 一致 (`FILE_MATCHES_BACKUP_BYTE_IDENTICAL`) を確認した。
+
+④a/④b を C4/C0 双方の call site で**別々に**実施したのは、I-005 retrospective の教訓
+(「同じ述語クラスでも call site が違えば別々に mutation する」) を踏襲したもの。
+両方とも初回で kill され、2 本の spy test (`test_measure_c4_fidelity_does_not_swap_full_and_lao` /
+`test_measure_c0_fidelity_does_not_swap_full_and_lao`) が各々の call site に固有であることを
+実測で確認した。
+
+### 独立レビュー (結果 JSON の読解で検出した欠落、mutation ではない)
+
+`--fidelity` を実走して `fidelity.json` を目視した際、**`auc_membership` の初版実装が
+`auc_full` と数学的に恒等 (tautology) になっていた**ことを検出した (I-005 の
+「教訓」節が警告する「mutation testing はコードの内部整合しか見ない」の再発)。
+
+- **原因**: `fidelity_membership_and_potency` の初版は `m` (membership) を
+  **連続値の max cosine similarity** (`1 - rarity_full`) として `auc_membership(m, labels)`
+  に渡していた。しかし `auc_membership` は内部で `1 - m` に反転してから `auc()` を呼ぶため、
+  `1 - m = 1 - (1 - rarity_full) = rarity_full` となり、**結局 `auc(rarity_full, labels)`
+  = `auc_full` そのもの**を計算していた (実測値: C0/C4 とも 0.99/0.995 — `auc_full` と
+  完全一致、design-final.md §2 の committed 値 0.750/0.7188 とは**別物**だった)。
+- **検出**: design-final.md の Opus MEDIUM-6 が明記する閉形式
+  `AUC_membership = 0.5 + (near_dup_common − near_dup_good) / 2` に実測の near-dup 率
+  (C0: good 0.000/common 0.500、C4: good 0.000/common 0.4375) を代入すると
+  **0.75 / 0.71875** となり、これが committed 値 (0.750/0.7188) と一致することから、
+  `m` は**近傍複製の二値判定 (`max_r sim(x,r) ≥ REF_DEDUP`)** であるべきと結論した
+  (`potency_and_near_dup` が同じ閾値述語を既に計算している)。
+- **対処**: `fidelity_membership_and_potency` を `m` = 二値近傍複製フラグに修正
+  (`near_dup_flags = [1.0 if s >= _c.REF_DEDUP else 0.0 for s in max_sim]` →
+  `auc_membership(near_dup_flags, labels)`)。修正後の実測値は C0=0.75 / C4=0.71875
+  (≈0.7188) で design-final.md §2 と一致。**`auc_full`/`auc_lao`/near-dup 率/potency
+  (007-1〜007-5 の AC 本体) はこの修正の影響を受けない** (別関数の計算)。
+- **教訓**: 「関数を呼べば動く」ことと「その関数に渡す値の意味論が正しい」ことは別。
+  既存ユーティリティ (`auc_membership`) の docstring だけを読んで `m` を決めると、
+  **数式的には妥当だが実際には別の量に退化する**呼び方をしうる。**出力 JSON を実際に
+  読み、独立に導出した閉形式と突き合わせる**ことでしか検出できなかった (AC のどれにも
+  `auc_membership` の厳密な一致は要求されていないため、test は落ちなかった)。
+
+### 検証コマンド (mutation 完了後、修正込みで全て緑)
+
+```
+.venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1 -m "not eval"        # 91 passed, 4 deselected
+PYTHONHASHSEED=20260907 HF_HUB_OFFLINE=1 \
+  .venv/Scripts/python.exe -m pytest -q tests/test_paper01_g1/test_fidelity.py -m "eval"  # 2 passed, 12 deselected
+.venv/Scripts/python.exe -m ruff format --check scripts/paper01_external_audit.py tests/test_paper01_g1  # 10 files already formatted
+.venv/Scripts/python.exe -m ruff check scripts/paper01_external_audit.py tests/test_paper01_g1            # All checks passed!
+.venv/Scripts/python.exe -m mypy src                                        # Success: no issues found in 247 source files
+git status --porcelain src/erre_sandbox/evidence scripts/es4_scorer_diag.py scripts/paper01_fetch_sources.py experiments/20260701-es4-scorer-diag  # 空
+PYTHONHASHSEED=20260907 HF_HUB_OFFLINE=1 .venv/Scripts/python.exe scripts/paper01_external_audit.py --fidelity  # exit 0, all_match=true
+```
