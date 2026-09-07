@@ -137,3 +137,6 @@ data/eval/m9-c-adopt-rank16-verdict/
 data/bench/*.duckdb
 data/bench/*.duckdb.wal
 data/bench/*.duckdb.tmp
+
+# 論文ドラフト (本 repo とは別成果物。将来的に独立リポジトリへ分離する想定)
+paper/
