@@ -444,15 +444,28 @@ def test_inconclusive_is_not_rejection() -> None:
     This is the pre-registration-bias test (design-final.md §5's exit table
     reads ``deflation_supported=False`` as "deflation rejected" => write
     direction; folding "can't tell" into that reading is exactly the bias
-    DA-SC-19 amended the contract to close). Both instances below are built
-    from :data:`mod.STAGE1_OUTCOME_ENUM` members (not bare string literals)
-    so a mutant collapsing the enum's ``"INCONCLUSIVE"`` entry into
-    ``"DEFLATION_REJECTED"`` (001b-MUT's named mutant) makes the two
-    instances compare equal on ``stage1_outcome`` and is killed by the final
-    inequality assertion.
+    DA-SC-19 amended the contract to close). Both labels below are read
+    out of :data:`mod.STAGE1_OUTCOME_ENUM` positionally, never as bare string
+    literals, so the two constructed instances cannot silently drift away
+    from the frozen vocabulary they are supposed to represent.
+
+    **What actually kills 001b-MUT's named mutant M1** (the enum's
+    ``"INCONCLUSIVE"`` entry collapsed into ``"DEFLATION_REJECTED"``) is the
+    *membership* assertion immediately below -- verified by applying M1 and
+    reading the failure: ``assert "INCONCLUSIVE" in mod.STAGE1_OUTCOME_ENUM``
+    fires first, before any instance is built. The positional reads are
+    therefore **not** a second, independent kill path for M1; claiming so
+    would overstate this witness. Their job is narrower and still worth
+    having: they stop this test from passing while the instances disagree
+    with the enum.
     """
     assert "INCONCLUSIVE" in mod.STAGE1_OUTCOME_ENUM
     assert "DEFLATION_REJECTED" in mod.STAGE1_OUTCOME_ENUM
+
+    rejected_label = mod.STAGE1_OUTCOME_ENUM[1]
+    inconclusive_label = mod.STAGE1_OUTCOME_ENUM[2]
+    assert rejected_label == "DEFLATION_REJECTED"
+    assert inconclusive_label == "INCONCLUSIVE"
 
     base = dict(_SAMPLE_VALUES["Stage1Result"])
     del base["deflation_supported"]
@@ -460,12 +473,12 @@ def test_inconclusive_is_not_rejection() -> None:
 
     inconclusive = mod.Stage1Result(
         deflation_supported=False,
-        stage1_outcome="INCONCLUSIVE",
+        stage1_outcome=inconclusive_label,
         **base,
     )
     rejected = mod.Stage1Result(
         deflation_supported=False,
-        stage1_outcome="DEFLATION_REJECTED",
+        stage1_outcome=rejected_label,
         **base,
     )
 
@@ -474,8 +487,8 @@ def test_inconclusive_is_not_rejection() -> None:
     # deflation_supported alone cannot tell them apart -- stage1_outcome must.
     assert inconclusive.deflation_supported == rejected.deflation_supported
     assert inconclusive.stage1_outcome != rejected.stage1_outcome
-    assert inconclusive.stage1_outcome == "INCONCLUSIVE"
-    assert rejected.stage1_outcome == "DEFLATION_REJECTED"
+    assert inconclusive.stage1_outcome == inconclusive_label
+    assert rejected.stage1_outcome == rejected_label
 
 
 # --- AC 001b-5 (Codex TASK-PRE HIGH-4 / DA-SC-17) ---------------------------
