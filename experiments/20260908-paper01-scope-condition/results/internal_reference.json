@@ -1,0 +1,119 @@
+{
+  "k_star": 10,
+  "references": [
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "blanket",
+      "rho_primary_c4": 0.42731,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "bottle",
+      "rho_primary_c4": 0.446556,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "bottle_cap",
+      "rho_primary_c4": 0.323198,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "brick",
+      "rho_primary_c4": 0.380409,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "candle",
+      "rho_primary_c4": 0.405815,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "clothes_hanger",
+      "rho_primary_c4": 0.3376,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "cork",
+      "rho_primary_c4": 0.379498,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "floor_tile",
+      "rho_primary_c4": 0.40386,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "key",
+      "rho_primary_c4": 0.428772,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "newspaper",
+      "rho_primary_c4": 0.355481,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "paper_cup",
+      "rho_primary_c4": 0.37827,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "paperclip",
+      "rho_primary_c4": 0.332246,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "rubber_band",
+      "rho_primary_c4": 0.357883,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "shoe",
+      "rho_primary_c4": 0.357415,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "tent_peg",
+      "rho_primary_c4": 0.428492,
+      "rho_secondary_c0": 0.0
+    },
+    {
+      "n_refs_primary_c4": 10,
+      "n_refs_secondary_c0": 0,
+      "object_id": "twist_tie",
+      "rho_primary_c4": 0.401267,
+      "rho_secondary_c0": 0.0
+    }
+  ],
+  "rho_int_primary": 0.384004,
+  "rho_int_secondary": 0.0
+}

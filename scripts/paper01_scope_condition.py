@@ -472,6 +472,39 @@ class Stage1Result:
     median_draw_drop: float
     median_draw_outcome: str
 
+    def __post_init__(self) -> None:
+        """Reject artifacts whose mirror disagrees with the load-bearing field.
+
+        Codex TASK-POST MEDIUM-2. ``deflation_supported`` is documented as a
+        *derived mirror* of ``stage1_outcome == "DEFLATION_SUPPORTED"``, but the
+        dataclass previously accepted any combination, so a hand-built
+        ``Stage1Result(stage1_outcome="DEFLATION_REJECTED",
+        deflation_supported=True)`` was constructible. On a pre-registered
+        instrument that is not a harmless inconsistency: the two fields feed
+        different readers (``decide_scope()`` reads the enum, simpler callers
+        read the bool), so a disagreeing artifact would let the same replicate
+        argue both ways. Validate at construction rather than trusting every
+        producer to stay consistent.
+        """
+        if self.stage1_outcome not in STAGE1_OUTCOME_ENUM:
+            raise ValueError(
+                f"stage1_outcome {self.stage1_outcome!r} is not one of "
+                f"{STAGE1_OUTCOME_ENUM!r}"
+            )
+        if self.median_draw_outcome not in STAGE1_OUTCOME_ENUM:
+            raise ValueError(
+                f"median_draw_outcome {self.median_draw_outcome!r} is not one of "
+                f"{STAGE1_OUTCOME_ENUM!r}"
+            )
+        mirror = self.stage1_outcome == "DEFLATION_SUPPORTED"
+        if self.deflation_supported != mirror:
+            raise ValueError(
+                "deflation_supported must mirror "
+                'stage1_outcome == "DEFLATION_SUPPORTED" '
+                f"(got stage1_outcome={self.stage1_outcome!r}, "
+                f"deflation_supported={self.deflation_supported!r})"
+            )
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class CellResult:
@@ -1451,7 +1484,15 @@ def decide_scope(
         )
         for split_key, split_cells in cells.items()
     }
-    both_splits_supported = bool(cond1_by_split) and all(cond1_by_split.values())
+    # Codex TASK-POST MEDIUM-1 (fail-closed): design-final.md §3 Stage 2 condition 2
+    # requires *both* Ocsai splits. ``cli_scope()`` already exits 1 when one is
+    # missing, but the verdict function must not depend on its caller for that --
+    # a hand-assembled ``cells`` holding only one split would otherwise satisfy
+    # ``all(...)`` vacuously and read as "both splits agree".
+    # Membership is checked against the frozen scheme list, never a literal here.
+    required_splits = {scheme.key for scheme in _g1.SPLIT_SCHEMES}
+    all_splits_present = set(cond1_by_split) == required_splits
+    both_splits_supported = all_splits_present and all(cond1_by_split.values())
     split_disagreement = len(set(cond1_by_split.values())) > 1
 
     robust_by_split: dict[str, bool] = {
@@ -1491,7 +1532,10 @@ def decide_scope(
         source=_STAGE0_EXTERNAL_SOURCE,
         candidate=_STAGE0_EXTERNAL_CANDIDATE,
     )
-    no_material_delta = abs(delta_int - delta_ext) < DELTA_MATERIAL_EPS
+    # Opus TASK-POST MEDIUM-2: single source of truth for the F4 boundary --
+    # never re-derive ``abs(...) < DELTA_MATERIAL_EPS`` inline, so a change to
+    # the boundary semantics propagates here too.
+    no_material_delta = not delta_is_material(delta_int, delta_ext)
     t_driven = abs(t_int - t_ext) > abs(s_int - s_ext)
 
     fail_flags: dict[str, bool] = {

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -134,8 +135,29 @@ def run_sh_has_completion_marker(text: str, marker: str = COMPLETION_MARKER) -> 
     disabling this check) would let ``run.sh`` finish without a detectable
     completion signal, defeating the PID-survival + log-tail progress
     judgement this issue requires instead of trusting tqdm's latest line.
+
+    Codex TASK-POST LOW-1: a bare ``marker in text`` containment check is a
+    false-positive waiting to happen -- the literal surviving only in a shell
+    comment (or in this docstring's own constant) would satisfy it while
+    ``run.sh`` no longer emits anything. ``run.sh`` emits the marker as a JSON
+    line, so require a non-comment line that actually carries a JSON object
+    whose ``event`` **equals** the marker.
     """
-    return marker in text
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        start = line.find("{")
+        end = line.rfind("}")
+        if start == -1 or end <= start:
+            continue
+        try:
+            payload = json.loads(line[start : end + 1])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("event") == marker:
+            return True
+    return False
 
 
 def _cmd_check_hashes(args: argparse.Namespace) -> int:

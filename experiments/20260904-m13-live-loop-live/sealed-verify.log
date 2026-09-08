@@ -1,0 +1,20 @@
+[verify] Plane G LLM inner_invocations=0 OK
+[verify] Plane G embedding inner_invocations=0 OK
+[verify] Plane G embedding replay consumed 97/97 records OK
+[verify] Plane G replay checksum 43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb vs manifest 43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb OK
+[verify] LLM request conformance 32/32 prompts match the committed record OK
+[verify] embedding request conformance 97/97 (kind, text) pairs match the committed record OK
+[verify] ecl_trace.jsonl sha256 3f7802f8a65142a6ff03fda0a62502d8c0e32016efb02bce9ce1405676a83207 OK
+[verify] decisions.jsonl sha256 4055046d97c9e6fba38ebadadb90b178023c227480e8eeab6f9cc8da4595ee9a OK
+[verify] envelope_stream.jsonl sha256 82465b425d81f89a7c7afd1bf4d8e393f5e7111accc51b55bc386178a1e3e47b OK
+[verify] embedding_record.jsonl sha256 ea25b183e1899fb60324809e9761a9968a7a207f24ac2d3ce0487b168be3f7e0 OK
+[verify] inbound_perturbations.jsonl sha256 4b29ea83653d79042235adb196a8b9c71402ea8dba854b03535953735957e737 OK
+[verify] env_pins decisions_sha256 agrees with decisions.jsonl OK
+[verify] manifest.json re-render OK
+[verify] 96 envelopes schema-conformant OK
+[verify] Plane L re-drive checksum 43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb vs Plane G 43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb OK
+[verify] wrote wiring_reachability.json OK
+[verify] wrote two_phase_firing_annotation.json OK
+[verify] reachability (annotation, non-gate) all_seams=True perturbations=32 no_double_send=True target_agent_mismatch=0 eligible_ticks=29
+[verify] firing (annotation, non-gate) fired=True witness_ticks=29 eligible_ticks=29 checksums_match=True record_knob_on_pinned=True fail_mode=None
+[verify] BUNDLE OK

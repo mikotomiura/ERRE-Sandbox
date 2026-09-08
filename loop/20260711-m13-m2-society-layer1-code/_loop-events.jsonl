@@ -1,0 +1,8 @@
+{"ts":"2026-07-11","issue":"001","event":"attempt_start","attempt":1,"actor":"orchestrator","note":"I1 tick b4 sorted 化 worker 実装完了、独立検証へ"}
+{"ts":"2026-07-11","issue":"001","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"212c7da","note":"I1 全 AC 緑、独立再検証 6/6 exit 0、scope 違反なし"}
+{"ts":"2026-07-11","issue":"002","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"4ed8b26","note":"I2 全 AC 緑、独立再検証 6/6 exit 0、N=1 byte-identical、scope 違反なし"}
+{"ts":"2026-07-11","issue":"003","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"d148ad6","note":"I3 全 AC 緑 6/6 exit 0。既知gap=dialog/affinity 未発火(DG-6、I4で配線)"}
+{"ts":"2026-07-11","issue":"004","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"749b333","note":"I4 全 AC 緑 7/7 exit 0 509 passed。DG-6 dialog gap 実driver で閉。uuid4 非決定 catch+閉塞"}
+{"ts":"2026-07-11","issue":"005","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"fc58459","note":"I5 全 AC 緑。DG-2 WSL byte 一致実測 PASS (17 passed Linux、golden byte 一致)。full suite 3549 passed"}
+{"ts":"2026-07-11","issue":"006","event":"issue_done","attempt":1,"actor":"loop-watchdog","commit":"468ccb9","note":"I6 全 AC 緑 7/7 exit 0。measurement 非再入 hard gate。負例 witness で実効性実証。全 6 issue 完了"}
+{"ts":"2026-07-11","issue":"ALL","event":"task_complete","actor":"orchestrator","pr":72,"note":"I1-I6 全緑 + 統合 pre-push 3581 passed + DG-2 WSL byte parity + cross-review MEDIUM2反映 → PR #72"}

@@ -18,12 +18,9 @@ branch, not an accident of overlapping conditions.
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
 
+import pytest
 from scripts import paper01_scope_condition as mod
-
-if TYPE_CHECKING:
-    import pytest
 
 _DEFAULT_OBJECTS: tuple[str, ...] = ("brick", "paperclip", "bottle", "shoe")
 _DEFAULT_RHO_BY_TAU: tuple[float, ...] = (
@@ -655,3 +652,68 @@ def test_no_material_delta_is_f4() -> None:
     assert result.fail_reason == "F4"
     assert result.condition_c_supported is False
     assert result.verdict == "DO_NOT_WRITE"
+
+
+# --- TASK-POST 反映 (二者レビュー) --------------------------------------------
+
+
+def test_missing_ocsai_split_can_never_produce_write() -> None:
+    """片方の Ocsai split しか無い ``cells`` から ``WRITE`` は出ない (Codex MEDIUM-1)。
+
+    ``design-final.md`` §3 Stage 2 の条件 2 は **両分割**での成立を要求する。
+    ``cli_scope()`` は片側欠如で exit 1 するが、**判定関数が呼び出し側の親切さに
+    依存してはいけない** — 以前の実装は ``all(cond1_by_split.values())`` だったため、
+    片側だけの ``cells`` でも「存在する split では全部成立」で真になり、
+    **両分割合意として読まれ得た**。
+
+    恒真ではない: 同じ入力から片方の split を**取り除くだけ**で
+    verdict が ``WRITE`` から ``DO_NOT_WRITE`` へ変わることを示す。
+    """
+    stage0 = _build_stage0("material_s_driven")
+    stage1 = _stage1("DEFLATION_REJECTED")
+    cambridge = _cell(verdict="INCONCLUSIVE_UNDERPOWERED")
+
+    both = _supportive_cells()
+    baseline = mod.decide_scope(stage0, stage1, both, cambridge=cambridge)
+    assert baseline.verdict == "WRITE", (
+        "fixture must reach WRITE with both splits, otherwise the removal below "
+        "proves nothing"
+    )
+
+    for dropped in tuple(both):
+        one_split = {k: v for k, v in both.items() if k != dropped}
+        got = mod.decide_scope(stage0, stage1, one_split, cambridge=cambridge)
+        assert got.verdict == "DO_NOT_WRITE", (
+            f"dropping {dropped!r} must fail closed, got {got.verdict!r}"
+        )
+        assert got.condition_c_supported is False
+
+    empty = mod.decide_scope(stage0, stage1, {}, cambridge=cambridge)
+    assert empty.verdict == "DO_NOT_WRITE"
+
+
+def test_stage1_result_rejects_mirror_inconsistency() -> None:
+    """``deflation_supported`` が ``stage1_outcome`` と食い違う artifact を拒否する
+    (Codex MEDIUM-2)。
+
+    ``deflation_supported`` は派生ミラーだが、dataclass は以前どの組合せも受け入れて
+    いた。事前登録した装置では無害な不整合ではない — 2 つのフィールドは**別の読み手**
+    (``decide_scope()`` は enum、単純な呼び出し側は bool) に渡るため、食い違った
+    artifact は**同じ replicate から両方の主張を作れて**しまう。
+    """
+    base = dict(_STAGE1_BASE)
+
+    for outcome in mod.STAGE1_OUTCOME_ENUM:
+        consistent = outcome == "DEFLATION_SUPPORTED"
+        mod.Stage1Result(stage1_outcome=outcome, deflation_supported=consistent, **base)
+        with pytest.raises(ValueError, match="deflation_supported must mirror"):
+            mod.Stage1Result(
+                stage1_outcome=outcome, deflation_supported=not consistent, **base
+            )
+
+    with pytest.raises(ValueError, match="is not one of"):
+        mod.Stage1Result(
+            stage1_outcome="DEFLATION_REJECTED_TYPO",
+            deflation_supported=False,
+            **base,
+        )

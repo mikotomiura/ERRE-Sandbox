@@ -1,0 +1,5 @@
+capture start: 2026年 7月 13日 月曜日 16:06:26    
+[capture] wrote 5 artifacts to tests\fixtures\m2_layer2_live_golden
+[capture] replay_checksum = 094f6e7f4b8075d5316de920cd41a93be8c01ae3b5bb4198e8c786985018ad99
+[capture] event_log_checksum = a8adc97e66974bd0c37f887264dbb92f1f216f6aae35df51973d2000f097a6cc
+capture end rc=0 : 2026年 7月 13日 月曜日 16:07:58    

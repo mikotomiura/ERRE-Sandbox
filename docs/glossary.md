@@ -139,7 +139,7 @@ G1 の後段 (`.steering/20260908-paper01-scope-condition/`) で使う語。
 | 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
 |---|---|---|---|
 | 適用条件 | scope condition | 「参照集合の構成が条件 C を満たすとき、埋め込み rarity スコアラは novelty ではなく reference-set membership を測っている」という形の C。**(a) 外部コーパスの実測で支持され (b) C を満たさない配置では崩落しないことも同じ実測で示せる**ときにだけ「書けた」と言う。**片側だけなら「特定できない」に倒す** | B-G1-10 (凍結) |
-| 参照冗長性 | reference redundancy (ρ) | `ρ(R_o) = mean_{r∈R_o} max_{r'∈R_o, r'≠r} cos(r, r')` — 参照集合の**平均最近傍類似度**。「同じ用途の言い換えが何本入っているか」の尺度。**dedupe 閾値 (`REF_DEDUP`) とは別物** — 内部も外部も 0.90 で dedupe 済なので最大ペア間 cos では区別できない | DA-SC-1 |
+| 参照冗長性 | reference redundancy (ρ) | `ρ(R_o) = mean_{r∈R_o} max_{r'∈R_o, r'≠r} cos(r, r')` — 参照集合の**平均最近傍類似度**。「同じ用途の言い換えが何本入っているか」の尺度。**dedupe 閾値 (`REF_DEDUP`) とは別物**。**C0 と外部 ARM-A は 0.90 で dedupe 済だが C4 は raw curated (dedupe されていない)** — Codex HIGH-1 の訂正。いずれにせよ最大ペア間 cos は**単一の順序統計量**で、10-30 件の集合では 1 ペアの外れ値に支配されるため冗長性の尺度にならない (design-final §2.2) | DA-SC-1 |
 | 間引き閾値 | thinning threshold (τ) | anchor プールを greedy 間引きするときの閾値。**LAO の閾値 `REF_DEDUP`=0.90 (凍結 apparatus `embed_rarity` の中) とは完全に別物で、そちらは一切触らない** | DA-SC-1 |
 | 較正済み間引き閾値 | calibrated thinning threshold (τ\*) | 事前登録した τ グリッド上で `τ* = argmin_τ |ρ_ext(τ) − ρ_int|`。**ρ_int は内部 C4 (curated-only) から算出し、外部の verdict / AUC は一切見ない** | DA-SC-1 / DA-SC-2 |
 | ARM-S | sparse-reference arm | τ\* で間引き `k*` 件に切った anchor で採点するアーム = **条件 C を満たす配置**。ARM-A (τ=0.90, k=30) が **C を満たさない配置** | design-final §Stage 2 |
