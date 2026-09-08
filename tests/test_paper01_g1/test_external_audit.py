@@ -866,6 +866,346 @@ def test_object_key_alignment() -> None:
 
 
 # =============================================================================
+# TASK-POST HIGH-1 / HIGH-2: score_rows_for_draw's five-tuple + NC-2 wiring
+# =============================================================================
+
+
+def test_score_rows_for_draw_near_dup_and_membership_match_direct_computation() -> None:
+    """``DrawItems.near_dup_good`` / ``near_dup_common`` / ``auc_membership``
+    (previously discarded -- only ``.potency`` survived) equal what an
+    independent call over the same ``max_sim`` array/labels produces --
+    the same identity :func:`fidelity_membership_and_potency` already
+    relies on, now pinned for the *external* adapter path (I-005+)."""
+    good_texts = [f"good {i}" for i in range(6)]
+    common_texts = [f"common {i}" for i in range(6)]
+    rows = tuple(
+        mod.CambridgeRow(row_id=i + 1, object="bowl", text=t, category="good")
+        for i, t in enumerate(good_texts)
+    ) + tuple(
+        mod.CambridgeRow(
+            row_id=100 + i, object="bowl", text=t, category="common_use_only"
+        )
+        for i, t in enumerate(common_texts)
+    )
+    vmap = dict(
+        zip(
+            good_texts + common_texts,
+            _fake_encoder(good_texts + common_texts),
+            strict=True,
+        )
+    )
+    # anchor pool = the common texts themselves (ARM-A style): a scorer that
+    # recognises its own anchors should show good/common near-dup asymmetry.
+    anchor_texts_by_object = {"bowl": tuple(common_texts)}
+
+    scored = mod.score_rows_for_draw(
+        rows,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps={"mpnet": vmap},
+        idf_by_object={},
+    )
+    items = scored["X0"]
+    labels = list(items.labels)
+
+    max_sim = mod.embed_max_similarity_by_object(vmap, anchor_texts_by_object, rows)
+    expected_potency = mod.potency_and_near_dup(max_sim.tolist(), labels)
+    expected_near_dup_flags = [
+        1.0 if s >= _c.REF_DEDUP else 0.0 for s in max_sim.tolist()
+    ]
+    expected_membership = mod.auc_membership(expected_near_dup_flags, labels)
+
+    assert items.near_dup_good == pytest.approx(expected_potency.near_dup_good)
+    assert items.near_dup_common == pytest.approx(expected_potency.near_dup_common)
+    assert items.auc_membership == pytest.approx(expected_membership)
+    # The common texts are their own anchors here (cos == 1.0 >= REF_DEDUP),
+    # so this is a non-degenerate, non-zero asymmetry -- not a fixture where
+    # every near-dup rate happens to be 0.
+    assert items.near_dup_common > items.near_dup_good
+
+
+def test_embed_dropped_anchor_counts_counts_near_duplicate_anchors() -> None:
+    """``embed_dropped_anchor_counts`` counts exactly the anchors
+    ``_diag.embed_rarity``'s ``leave_anchor_out=True`` branch would drop
+    (cos >= REF_DEDUP) -- pinned against a hand-built 2D vmap where the
+    near-dup count is known exactly.
+    """
+    rows = (mod.CambridgeRow(row_id=1, object="bowl", text="query", category="good"),)
+    vmap = {
+        "query": np.array([1.0, 0.0]),
+        "identical anchor": np.array([1.0, 0.0]),  # cos = 1.0 -- dropped
+        "near anchor": np.array([0.99, 0.14106736]),  # cos ~ 0.99 -- dropped
+        "far anchor": np.array([0.0, 1.0]),  # cos = 0.0 -- kept
+    }
+    for key, value in vmap.items():
+        vmap[key] = value / np.linalg.norm(value)
+    anchor_texts_by_object = {"bowl": ("identical anchor", "near anchor", "far anchor")}
+
+    dropped, sizes = mod.embed_dropped_anchor_counts(vmap, anchor_texts_by_object, rows)
+
+    assert dropped == (2,)
+    assert sizes == (3,)
+    assert mod.mean_dropped_anchor_fraction(dropped, sizes) == pytest.approx(2.0 / 3.0)
+
+
+def test_embed_dropped_anchor_counts_boundary_is_inclusive() -> None:
+    """``>= REF_DEDUP`` (never ``>``), hit at an *exact* float boundary.
+
+    ``query = (1, 0)`` makes ``ref @ vec`` equal the anchor's own first
+    coordinate exactly (no sqrt rounding the way a hand-picked angle would
+    need) -- ``test_embed_dropped_anchor_counts_counts_near_duplicate_
+    anchors``'s 0.99/0.0 fixture never lands on the threshold itself, so a
+    ``>=`` -> ``>`` mutant survives it; this fixture is built to land on it.
+    """
+    rows = (mod.CambridgeRow(row_id=1, object="bowl", text="query", category="good"),)
+    vmap = {
+        "query": np.array([1.0, 0.0]),
+        "exactly at threshold": np.array([0.9, 0.4]),  # dot with query == 0.9
+        "just under": np.array([0.8999, 0.5]),  # dot with query == 0.8999
+    }
+    anchor_texts_by_object = {"bowl": ("exactly at threshold", "just under")}
+
+    dropped, sizes = mod.embed_dropped_anchor_counts(
+        vmap, anchor_texts_by_object, rows, ref_dedup=0.9
+    )
+
+    assert dropped == (1,)
+    assert sizes == (2,)
+
+
+def test_embed_dropped_anchor_counts_missing_object_or_vector_is_zero() -> None:
+    """A row whose object has no anchor pool, or whose own text never
+    embedded, contributes ``(0, 0)`` -- never raises, never divides by zero
+    downstream (mirrors :func:`embed_max_similarity_by_object`'s own ``ref is
+    None or ref.size == 0 or vec is None`` skip)."""
+    rows = (
+        mod.CambridgeRow(row_id=1, object="unknown", text="query", category="good"),
+        mod.CambridgeRow(row_id=2, object="bowl", text="missing text", category="good"),
+    )
+    vmap = {"anchor": np.array([1.0, 0.0])}
+    anchor_texts_by_object = {"bowl": ("anchor",)}
+
+    dropped, sizes = mod.embed_dropped_anchor_counts(vmap, anchor_texts_by_object, rows)
+
+    assert dropped == (0, 0)
+    assert sizes == (0, 0)
+
+
+def test_dropped_anchor_fraction_scoped_to_embedding_family() -> None:
+    """§5.4's MEDIUM-3 addition is computed for real over the embedding
+    family (X0..X3c) but left at the neutral 0.0 default for the lexical
+    candidates (X5 Jaccard, X6 TF-IDF) -- a deliberate scope choice
+    (docstring in :func:`score_rows_for_draw`), pinned here so a future
+    change either honours it explicitly or updates this test.
+    """
+    good_texts = [f"good {i}" for i in range(4)]
+    common_texts = [f"common {i}" for i in range(4)]
+    rows = tuple(
+        mod.CambridgeRow(row_id=i + 1, object="bowl", text=t, category="good")
+        for i, t in enumerate(good_texts)
+    ) + tuple(
+        mod.CambridgeRow(
+            row_id=100 + i, object="bowl", text=t, category="common_use_only"
+        )
+        for i, t in enumerate(common_texts)
+    )
+    vmap = dict(
+        zip(
+            good_texts + common_texts,
+            _fake_encoder(good_texts + common_texts),
+            strict=True,
+        )
+    )
+    anchor_texts_by_object = {"bowl": tuple(common_texts)}
+
+    scored = mod.score_rows_for_draw(
+        rows,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps={"mpnet": vmap},
+        idf_by_object={},
+    )
+
+    # Exact expected value, independently recomputed (never just "> 0.0"):
+    # each common row is its own anchor (dropped=1/4), each good row shares
+    # no anchor (dropped=0/4) -- mean over 8 rows = (4*0.25 + 4*0.0)/8 =
+    # 0.125. ``dropped_counts``/``ref_sizes`` here are *not* interchangeable
+    # (4 constant sizes vs. a genuinely varying 1/0 count), so an argument-
+    # order swap inside ``score_rows_for_draw`` changes this value.
+    dropped_counts, ref_sizes = mod.embed_dropped_anchor_counts(
+        vmap, anchor_texts_by_object, rows
+    )
+    expected = mod.mean_dropped_anchor_fraction(dropped_counts, ref_sizes)
+    assert expected == pytest.approx(0.125)
+    assert scored["X0"].dropped_anchor_fraction == pytest.approx(expected)
+    assert scored["X5"].dropped_anchor_fraction == 0.0
+    assert scored["X6"].dropped_anchor_fraction == 0.0
+
+
+def test_single_draw_report_includes_auc_full_lao_potency_and_five_tuple() -> None:
+    """``_single_draw_candidate_report`` (shared by ARM-B/C/D/X/NC-1/NC-2,
+    TASK-POST HIGH-1/HIGH-2) carries both the §5.1 aggregate *and* the raw
+    single-draw ``auc_full``/``auc_lao``/``potency`` plus the five-tuple
+    additions -- previously only the aggregate survived.
+    """
+    items = mod.DrawItems(
+        # deliberately distinct full vs. lao scores (a real drop) so
+        # ``auc_full``/``auc_lao`` are two genuinely different numbers --
+        # an accidental swap between them must be detectable.
+        scores_full=(0.9, 0.8, 0.2, 0.1),
+        scores_lao=(0.15, 0.10, 0.20, 0.25),  # LAO fully reverses discrimination
+        labels=(1, 1, 0, 0),
+        objects=("bowl", "clip", "bowl", "clip"),
+        potency=0.42,
+        near_dup_good=0.1,
+        near_dup_common=0.6,
+        auc_membership=0.75,
+        dropped_anchor_fraction=0.33,
+    )
+    report = mod._single_draw_candidate_report(items)
+
+    expected_full = mod.auc_stratified(items.scores_full, items.labels, items.objects)
+    expected_lao = mod.auc_stratified(items.scores_lao, items.labels, items.objects)
+    assert expected_full != pytest.approx(expected_lao)  # sanity: genuinely distinct
+    assert report["auc_full"] == pytest.approx(expected_full)
+    assert report["auc_lao"] == pytest.approx(expected_lao)
+    assert report["potency"] == pytest.approx(0.42)
+    assert report["near_dup_good"] == pytest.approx(0.1)
+    assert report["near_dup_common"] == pytest.approx(0.6)
+    assert report["auc_membership"] == pytest.approx(0.75)
+    assert report["dropped_anchor_fraction"] == pytest.approx(0.33)
+    # the §5.1 aggregate fields are still present (not replaced)
+    for field in ("eligible", "engaged", "collapsed", "median_drop"):
+        assert field in report
+
+
+def test_run_cambridge_split_reports_object_weights(
+    synthetic_cambridge: tuple[
+        dict[str, tuple[mod.CambridgeRow, ...]], dict[str, dict[str, np.ndarray]]
+    ],
+) -> None:
+    """Opus MEDIUM-3: §1's per-object ``w(o)`` and its weight share are now
+    on the record, driven through the real orchestration -- pushed through
+    the same :func:`object_class_weights` a direct rebuild of the contexts
+    would produce, never a hand-copied expectation (this fixture's
+    particular good/common ratio happens to put every ``good`` item in
+    split0, so the *totals* here are legitimately 0 -- that is exactly why
+    this test compares against the production function's own output on an
+    independently rebuilt context, not an assumed class balance).
+    """
+    rows_by_object, vmaps = synthetic_cambridge
+    result = mod.run_cambridge_split(rows_by_object, "SPLIT-BLOCK", vmaps)
+
+    weights = result["object_weights"]
+    assert set(weights) == set(result["active_objects"])
+
+    mpnet_vmap = vmaps["mpnet"]
+    expected_contexts = [
+        mod.build_object_split_context(
+            obj, rows_by_object[obj], "SPLIT-BLOCK", mpnet_vmap
+        )
+        for obj in result["active_objects"]
+    ]
+    expected = mod.object_class_weights(expected_contexts)
+    assert weights == expected
+    # every weight is internally consistent regardless of class balance
+    for v in weights.values():
+        assert v["weight"] == v["n_good"] * v["n_common"]
+
+
+def _alternating_rows(
+    object_key: str, *, n_good: int, n_common: int, id_offset: int
+) -> tuple[mod.CambridgeRow, ...]:
+    """Strict good/common alternation so both classes land in *both*
+    SPLIT-BLOCK halves regardless of the good:common ratio -- unlike
+    ``_synthetic_rows`` above (which front-loads ``good`` items and can
+    leave split1 with zero of one class, as
+    ``test_run_cambridge_split_reports_object_weights`` documents), this is
+    needed here so NC-2 has both classes to discriminate between.
+    """
+    rows: list[mod.CambridgeRow] = []
+    gi = ci = 0
+    row_id = id_offset
+    while gi < n_good or ci < n_common:
+        if gi < n_good and (ci >= n_common or row_id % 2 == 0):
+            rows.append(
+                mod.CambridgeRow(
+                    row_id=row_id,
+                    object=object_key,
+                    text=f"{object_key} good idea {gi}",
+                    category="good",
+                )
+            )
+            gi += 1
+        else:
+            rows.append(
+                mod.CambridgeRow(
+                    row_id=row_id,
+                    object=object_key,
+                    text=f"{object_key} common idea {ci}",
+                    category="common_use_only",
+                )
+            )
+            ci += 1
+        row_id += 1
+    return tuple(rows)
+
+
+def test_nc2_report_includes_auc_full_and_direction_reversed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TASK-POST HIGH-2: NC-2's own ``auc_full`` and the mechanical
+    ``direction_reversed`` observation are on the record, computed through
+    the real ``nc2_direction_reversed`` boundary predicate -- and this is
+    scoped to NC-2 only (ARM-B/ARM-D/NC-1 never carry ``direction_reversed``,
+    since the reversal check is meaningless for anchors that are not the
+    object's own good pool).
+    """
+    monkeypatch.setattr(mod, "ANCHOR_DRAWS", 6)
+    monkeypatch.setattr(
+        mod, "bootstrap_stratified_drop", _fixed_bootstrap(*_SURVIVOR_CI)
+    )
+    monkeypatch.setattr(mod, "permutation_p_stratified", _fake_permutation)
+
+    rows_by_object = {
+        "bowl": _alternating_rows("bowl", n_good=30, n_common=30, id_offset=1),
+        "paperclip": _alternating_rows(
+            "paperclip", n_good=30, n_common=30, id_offset=1000
+        ),
+    }
+    encoders = {
+        "mpnet": _fake_encoder,
+        "MiniLM-L6-v2": _fake_encoder,
+        "e5-small-v2": _fake_encoder,
+        "bge-small-en-v1.5": _fake_encoder,
+    }
+    vmaps = mod.embed_all_texts(rows_by_object, encoders)
+
+    result = mod.run_cambridge_split(rows_by_object, "SPLIT-BLOCK", vmaps)
+
+    nc2 = result["negative_controls"]["NC-2"]
+    assert nc2  # non-empty: both objects have a non-trivial good pool
+    for entry in nc2.values():
+        assert "auc_full" in entry
+        assert "direction_reversed" in entry
+        assert entry["direction_reversed"] == mod.nc2_direction_reversed(
+            entry["auc_full"]
+        )
+    # X0/X2 (max-cosine aggregation) give the fake encoder's orthogonal
+    # good/common half-spaces nowhere to hide: anchoring on the object's own
+    # good pool reverses the discrimination direction outright (auc_full ==
+    # 0.0) -- a concrete, non-vacuous positive case (X1's mean-aggregation
+    # is noisier and is not asserted here).
+    assert nc2["X0"]["auc_full"] == pytest.approx(0.0)
+    assert nc2["X0"]["direction_reversed"] is True
+    assert nc2["X2"]["direction_reversed"] is True
+
+    for arm_key in ("ARM-B", "ARM-D"):
+        for entry in result["sensitivity"][arm_key].values():
+            assert "direction_reversed" not in entry
+    for entry in result["negative_controls"]["NC-1"].values():
+        assert "direction_reversed" not in entry
+
+
+# =============================================================================
 # real xlsx end-to-end (eval marker, extras-only)
 # =============================================================================
 

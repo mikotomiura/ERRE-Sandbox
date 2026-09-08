@@ -51,10 +51,11 @@ _EXP_DIR = _REPO_ROOT / "experiments" / "20260907-paper01-g1"
 _RUN_GATE_PATH = _EXP_DIR / "run_gate.py"
 _RUN_SH_PATH = _EXP_DIR / "run.sh"
 _NOTES_PATH = _EXP_DIR / "notes.md"
+_BUILD_METRICS_PATH = _EXP_DIR / "build_metrics.py"
 
 
-def _load_run_gate() -> object:
-    spec = importlib.util.spec_from_file_location("paper01_g1_run_gate", _RUN_GATE_PATH)
+def _load_module_by_path(name: str, path: Path) -> object:
+    spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -63,7 +64,12 @@ def _load_run_gate() -> object:
     return module
 
 
+def _load_run_gate() -> object:
+    return _load_module_by_path("paper01_g1_run_gate", _RUN_GATE_PATH)
+
+
 run_gate = _load_run_gate()
+build_metrics = _load_module_by_path("paper01_g1_build_metrics", _BUILD_METRICS_PATH)
 
 
 # =============================================================================
@@ -445,3 +451,136 @@ def test_missing_encoder_is_fatal_not_a_silent_skip(
     # so the guard is a verdict gate rather than a blanket import failure.
     partial = mod.build_available_encoders(require_all=False)
     assert "bge-small-en-v1.5" not in partial
+
+
+# =============================================================================
+# Opus MEDIUM-6 (TASK-POST): build_metrics.py no longer drops sensitivity /
+# negative_controls / arm_c / arm_x / object_weights
+# =============================================================================
+
+_FAKE_VERDICT = {
+    "verdict": "PASS",
+    "collapse_reproduced": False,
+    "survivors": ["X0"],
+    "eligible": ["X0"],
+    "engaged": ["X0"],
+}
+
+
+def test_split_summary_passes_through_sensitivity_and_negative_controls() -> None:
+    """``sensitivity`` (ARM-B/D) and ``negative_controls`` (NC-1/NC-2) used
+    to be read past entirely -- ``gather.ps1`` pulls ``metrics.json`` into
+    the paper repo, not the full ``external-audit.json``, so these
+    identification devices (design-final.md §4.2) never left this repo.
+    Passed through verbatim (no re-derivation), not reduced to ``{}``.
+    """
+    fake_sensitivity = {"ARM-B": {"X0": {"eligible": True}}}
+    fake_negative_controls = {
+        "NC-2": {"X0": {"auc_full": 0.1, "direction_reversed": True}}
+    }
+    split = {
+        "verdict": _FAKE_VERDICT,
+        "class_sizes": {"good": 40, "common": 2000},
+        "object_weights": {"bowl": {"weight_share": 1.0}},
+        "candidates": {},
+        "sensitivity": fake_sensitivity,
+        "negative_controls": fake_negative_controls,
+    }
+
+    summary = build_metrics._split_summary(split)
+
+    assert summary["sensitivity"] == fake_sensitivity
+    assert summary["negative_controls"] == fake_negative_controls
+    assert summary["object_weights"] == {"bowl": {"weight_share": 1.0}}
+
+
+def test_split_summary_passes_through_arm_c_and_arm_x_when_present() -> None:
+    """``arm_c`` / ``arm_x`` (Ocsai/paperclip-only) are passed through when
+    the split carries them, and omitted (not defaulted to ``{}``) when it
+    does not -- Cambridge splits never have these keys at all."""
+    fake_arm_c = {
+        "candidates": {"X0": {"potency": 0.4}},
+        "a2_missing_support_objects": [],
+    }
+    fake_arm_x = {"X0": {"auc_full": 0.7}}
+    ocsai_split = {
+        "verdict": _FAKE_VERDICT,
+        "class_sizes": {"good": 40, "common": 2000},
+        "candidates": {},
+        "arm_c": fake_arm_c,
+        "arm_x": fake_arm_x,
+    }
+    cambridge_split = {
+        "verdict": _FAKE_VERDICT,
+        "class_sizes": {"good": 40, "common": 2000},
+        "candidates": {},
+    }
+
+    ocsai_summary = build_metrics._split_summary(ocsai_split)
+    cambridge_summary = build_metrics._split_summary(cambridge_split)
+
+    assert ocsai_summary["arm_c"] == fake_arm_c
+    assert ocsai_summary["arm_x"] == fake_arm_x
+    assert "arm_c" not in cambridge_summary
+    assert "arm_x" not in cambridge_summary
+    assert "sensitivity" not in cambridge_summary
+    assert "negative_controls" not in cambridge_summary
+
+
+def test_build_metrics_end_to_end_carries_the_four_arms_through(tmp_path: Path) -> None:
+    """End-to-end pin through :func:`build_metrics.write_metrics`: an
+    ``external-audit.json``-shaped fixture with all four arms on one split
+    comes out the other side with all four still present -- exercises the
+    real read -> distill -> write path, not just ``_split_summary`` in
+    isolation."""
+    fake_audit = {
+        "cambridge": {
+            "status": "ok",
+            "splits": {
+                "SPLIT-BLOCK": {
+                    "verdict": _FAKE_VERDICT,
+                    "class_sizes": {"good": 40, "common": 2000},
+                    "object_weights": {"bowl": {"weight_share": 0.5}},
+                    "candidates": {},
+                    "sensitivity": {"ARM-B": {}},
+                    "negative_controls": {"NC-2": {"X0": {"auc_full": 0.3}}},
+                }
+            },
+        },
+        "ocsai": {"status": "source_unavailable"},
+    }
+    audit_path = tmp_path / "external-audit.json"
+    metrics_path = tmp_path / "metrics.json"
+    audit_path.write_text(json.dumps(fake_audit), encoding="utf-8")
+
+    result = build_metrics.write_metrics(
+        audit_path=audit_path, metrics_path=metrics_path
+    )
+
+    split = result["cambridge"]["splits"]["SPLIT-BLOCK"]
+    assert split["sensitivity"] == {"ARM-B": {}}
+    assert split["negative_controls"] == {"NC-2": {"X0": {"auc_full": 0.3}}}
+    assert split["object_weights"] == {"bowl": {"weight_share": 0.5}}
+    assert result["ocsai"] == {"status": "source_unavailable"}
+    on_disk = json.loads(metrics_path.read_text(encoding="utf-8"))
+    assert on_disk == result
+
+
+def test_committed_metrics_json_carries_sensitivity_and_negative_controls() -> None:
+    """Real-artifact bonus pin (mirrors ``test_committed_external_audit_has_
+    status_ok_for_both_corpora``): once ``metrics.json`` has been rebuilt by
+    this issue's fixed ``build_metrics.py``, every split carries the four
+    arms design-final.md §4.1/§4.2 pre-registers. Skips (not fails) on a
+    checkout where ``run.sh``/``build_metrics.py`` has not been re-run yet.
+    """
+    metrics_path = _EXP_DIR / "results" / "metrics.json"
+    if not metrics_path.exists():
+        pytest.skip("results/metrics.json not yet (re)built")
+    data = json.loads(metrics_path.read_text(encoding="utf-8"))
+    for corpus in mod.CORPUS_KEYS:
+        if data.get(corpus, {}).get("status") != "ok":
+            continue
+        for split in data[corpus]["splits"].values():
+            assert "sensitivity" in split
+            assert "negative_controls" in split
+            assert "object_weights" in split

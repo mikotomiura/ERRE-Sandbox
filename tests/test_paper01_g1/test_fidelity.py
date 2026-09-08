@@ -252,9 +252,138 @@ def test_internal_near_dup_asymmetry() -> None:
     assert result.near_dup_common == 0.5
 
 
+@pytest.mark.eval
+def test_internal_dropped_anchor_fraction_c0_and_c4() -> None:
+    """Orchestrator follow-up (2026-09-08): the internal counterpart of the
+    external report's ``dropped_anchor_fraction_at_median_draw``, so the
+    internal-vs-external asymmetry/drop comparison is not one-sided.
+
+    Pins both C4 (fast) and C0 (heavy) against the values this same session
+    measured via a real ``--fidelity`` run (``results/fidelity.json``:
+    ``c4.dropped_anchor_fraction=0.017073``,
+    ``c0.dropped_anchor_fraction=0.012828``) -- a regression pin, not a
+    tune-to-pass: :func:`fidelity_candidate_matches` (the actual go/no-go)
+    never reads this field, only ``auc_full``/``auc_lao``.
+    """
+    pytest.importorskip("sentence_transformers")
+    if not (mod.PHASE_A_RUN_DIR / "generations.jsonl").exists():
+        pytest.skip("Phase A artifact not present locally")
+    mpnet = mod._diag.make_encoder("sentence-transformers/all-mpnet-base-v2")
+    if mpnet is None:
+        pytest.skip("mpnet encoder unavailable offline")
+
+    c4 = mod.measure_c4_fidelity(mpnet)
+    c0 = mod.measure_c0_fidelity(mpnet)
+
+    assert c4.dropped_anchor_fraction == pytest.approx(0.017073, abs=1e-6)
+    assert c0.dropped_anchor_fraction == pytest.approx(0.012828, abs=1e-6)
+    # sanity: distinct from 0.0 (the "no vmap passed" default) and from each
+    # other, so a mutant that always returns the default or swaps C0/C4
+    # would be caught.
+    assert c4.dropped_anchor_fraction != 0.0
+    assert c0.dropped_anchor_fraction != 0.0
+    assert c4.dropped_anchor_fraction != pytest.approx(c0.dropped_anchor_fraction)
+
+
 # =============================================================================
 # encoder-independent unit tests for the smaller building blocks
 # =============================================================================
+
+
+def test_fidelity_membership_and_potency_dropped_fraction_needs_both_args() -> None:
+    """``dropped_anchor_fraction`` only computes when *both* ``vmap`` and
+    ``anchor_texts_by_object`` are supplied; either omitted (the default for
+    every pre-2026-09-08 caller) reports the neutral ``0.0`` rather than
+    raising -- and supplying both over a hand-built fixture with a known
+    near-dup produces a real, non-zero value.
+    """
+    import numpy as np
+
+    class _FakeGold:
+        def __init__(self, text: str, obj: str, category: str) -> None:
+            self.text = text
+            self.object = obj
+            self.category = category
+
+    class _FakeCandidate:
+        def rarity(self, object_id: str, text: str, *, leave_anchor_out: bool) -> float:
+            del object_id, text, leave_anchor_out
+            return 0.5  # constant: irrelevant to this test's assertions
+
+    gold_pair = (
+        _FakeGold("good item", "bowl", "good"),
+        _FakeGold("common item", "bowl", "common_use_only"),
+    )
+    candidate = _FakeCandidate()
+
+    # neither vmap nor anchor_texts_by_object -> neutral default
+    result_neither = mod.fidelity_membership_and_potency(candidate, gold_pair)
+    assert result_neither[4] == 0.0
+
+    # both provided, with a real near-dup anchor for "common item" only --
+    # 3D so "good item"/"common item's own anchor"/"unrelated anchor" can
+    # all be made pairwise orthogonal except the one deliberate near-dup.
+    vmap = {
+        "good item": np.array([1.0, 0.0, 0.0]),
+        "common item": np.array([0.0, 1.0, 0.0]),
+        "common item's own anchor": np.array([0.0, 1.0, 0.0]),  # cos=1.0 w/ common
+        "unrelated anchor": np.array([0.0, 0.0, 1.0]),  # cos=0.0 w/ both
+    }
+    anchor_texts_by_object = {"bowl": ("common item's own anchor", "unrelated anchor")}
+    result_both = mod.fidelity_membership_and_potency(
+        candidate,
+        gold_pair,
+        vmap=vmap,
+        anchor_texts_by_object=anchor_texts_by_object,
+    )
+    # "good item" drops 0/2 anchors (0.0), "common item" drops 1/2 (0.5) ->
+    # mean = 0.25.
+    assert result_both[4] == pytest.approx(0.25)
+
+
+def test_build_c4_fidelity_candidate_delegates_to_shared_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``build_c4_fidelity_candidate`` (the public/tested entry point) is a
+    thin wrapper over :func:`_c4_fidelity_context` -- pinned via a spy so a
+    future edit cannot silently reintroduce a *second*, independent
+    embedding pass duplicating the one ``measure_c4_fidelity`` already
+    shares with it."""
+    sentinel_candidate = object()
+    calls: list[object] = []
+
+    def _fake_context(mpnet: object) -> tuple[object, dict, dict]:
+        calls.append(mpnet)
+        return sentinel_candidate, {}, {}
+
+    monkeypatch.setattr(mod, "_c4_fidelity_context", _fake_context)
+    mpnet_arg = object()
+
+    result = mod.build_c4_fidelity_candidate(mpnet_arg)
+
+    assert result is sentinel_candidate
+    assert calls == [mpnet_arg]
+
+
+def test_build_c0_fidelity_candidate_delegates_to_shared_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same guard as the C4 case, for :func:`_c0_fidelity_context`."""
+    sentinel_candidate = object()
+    calls: list[tuple[object, object]] = []
+
+    def _fake_context(mpnet: object, run_dir: object) -> tuple[object, dict, dict]:
+        calls.append((mpnet, run_dir))
+        return sentinel_candidate, {}, {}
+
+    monkeypatch.setattr(mod, "_c0_fidelity_context", _fake_context)
+    mpnet_arg = object()
+    run_dir_arg = object()
+
+    result = mod.build_c0_fidelity_candidate(mpnet_arg, run_dir_arg)
+
+    assert result is sentinel_candidate
+    assert calls == [(mpnet_arg, run_dir_arg)]
 
 
 def test_fidelity_candidate_matches_requires_both_statistics() -> None:
@@ -325,8 +454,8 @@ def test_measure_c4_fidelity_does_not_swap_full_and_lao(
 
     monkeypatch.setattr(
         mod,
-        "build_c4_fidelity_candidate",
-        lambda mpnet: object(),  # noqa: ARG005
+        "_c4_fidelity_context",
+        lambda mpnet: (object(), {}, {}),  # noqa: ARG005
     )
     monkeypatch.setattr(mod, "fidelity_gold_pair", lambda: ())
     monkeypatch.setattr(
@@ -337,7 +466,7 @@ def test_measure_c4_fidelity_does_not_swap_full_and_lao(
     monkeypatch.setattr(
         mod,
         "fidelity_membership_and_potency",
-        lambda *a, **k: (0.0, 0.0, 0.0, 0.0),  # noqa: ARG005
+        lambda *a, **k: (0.0, 0.0, 0.0, 0.0, 0.0),  # noqa: ARG005
     )
     monkeypatch.setattr(mod, "fidelity_candidate_matches", _spy_matches)
 
@@ -372,8 +501,8 @@ def test_measure_c0_fidelity_does_not_swap_full_and_lao(
 
     monkeypatch.setattr(
         mod,
-        "build_c0_fidelity_candidate",
-        lambda mpnet, run_dir: object(),  # noqa: ARG005
+        "_c0_fidelity_context",
+        lambda mpnet, run_dir: (object(), {}, {}),  # noqa: ARG005
     )
     monkeypatch.setattr(mod, "fidelity_gold_pair", lambda: ())
     monkeypatch.setattr(
@@ -384,7 +513,7 @@ def test_measure_c0_fidelity_does_not_swap_full_and_lao(
     monkeypatch.setattr(
         mod,
         "fidelity_membership_and_potency",
-        lambda *a, **k: (0.0, 0.0, 0.0, 0.0),  # noqa: ARG005
+        lambda *a, **k: (0.0, 0.0, 0.0, 0.0, 0.0),  # noqa: ARG005
     )
     monkeypatch.setattr(mod, "fidelity_candidate_matches", _spy_matches)
 

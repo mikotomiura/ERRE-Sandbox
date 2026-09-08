@@ -337,6 +337,49 @@ def test_arm_c_missing_support_is_recorded() -> None:
 
 
 # =============================================================================
+# TASK-POST HIGH-1: ARM-C's report now shares the five-tuple + auc_full/lao/
+# potency the Cambridge-side arms already get via _single_draw_report_map
+# =============================================================================
+
+
+def test_arm_c_report_includes_five_tuple_and_auc_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ARM-C used to build its own inline ``dataclasses.asdict(aggregate_
+    candidate_draws(...))`` dict (only the §5.1 aggregate survived); it now
+    goes through the same :func:`_single_draw_candidate_report` shared with
+    ARM-B/D/X/NC-1/NC-2, so the same fields must be present here too."""
+    monkeypatch.setattr(mod, "ANCHOR_DRAWS", 4)
+    monkeypatch.setattr(mod, "bootstrap_stratified_drop", _fixed_bootstrap(0.85, 0.95))
+    monkeypatch.setattr(mod, "permutation_p_stratified", _fake_permutation)
+
+    rows = _rows_common_then_good("brick", n_common=20, n_good=20)
+    rows_by_object = {"brick": rows}
+    vmaps = _vmaps_for(rows)
+
+    result = mod.run_ocsai_split(
+        rows_by_object, "SPLIT-BLOCK", vmaps, objects=("brick",)
+    )
+
+    arm_c_candidates = result["arm_c"]["candidates"]
+    assert set(arm_c_candidates) >= set(mod.EMBEDDING_FAMILY_EXT)
+    for key in mod.EMBEDDING_FAMILY_EXT:
+        entry = arm_c_candidates[key]
+        for field in (
+            "auc_full",
+            "auc_lao",
+            "potency",
+            "near_dup_good",
+            "near_dup_common",
+            "auc_membership",
+            "dropped_anchor_fraction",
+        ):
+            assert field in entry
+        # never the NC-2-only reversal marker
+        assert "direction_reversed" not in entry
+
+
+# =============================================================================
 # 006-5: verdict comes from ARM-A only (ARM-B/C/D never move it)
 # =============================================================================
 
@@ -512,6 +555,18 @@ def test_arm_x_is_source_crossed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert set(result) >= set(mod.EMBEDDING_FAMILY_EXT)
     for key in mod.EMBEDDING_FAMILY_EXT:
         assert "median_drop" in result[key]
+        # TASK-POST HIGH-1: ARM-X now shares _single_draw_candidate_report
+        # with every other single-draw arm, so it carries the same fields.
+        for field in (
+            "auc_full",
+            "auc_lao",
+            "potency",
+            "near_dup_good",
+            "near_dup_common",
+            "auc_membership",
+            "dropped_anchor_fraction",
+        ):
+            assert field in result[key]
 
     # mutation target 4: the anchor-construction call must have used exactly
     # cambridge_rows -- never ocsai_rows, and never a bypass that skips the

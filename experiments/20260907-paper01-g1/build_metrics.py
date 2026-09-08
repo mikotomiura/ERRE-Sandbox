@@ -2,11 +2,16 @@
 
 Read-only extraction of the primary indicators (design-final.md / issue
 008's ``notes.md`` prompt): per corpus x split, the §6 verdict tuple,
-``class_sizes``, and per-candidate ``auc_full_at_median_draw`` /
-``auc_lao_at_median_draw`` / ``drop_at_median_draw`` /
-``potency_at_median_draw`` / ``collapsed_draw_share`` / the §5.2 bootstrap
-``AUC_LAO`` CI. No wall-clock is ever written; every float leaf is
-6-decimal quantized (``feedback_golden_crossplatform_float_drift.md`` --
+``class_sizes``, ``object_weights`` (§1's per-object AUC weight and its
+share of the total, Opus MEDIUM-3), the §4.1/§4.2 identification arms
+(``sensitivity`` = ARM-B/ARM-D, ``negative_controls`` = NC-1/NC-2, plus
+Ocsai-only ``arm_c``/``arm_x`` -- Opus MEDIUM-6, TASK-POST: these used to be
+silently dropped even though ``gather.ps1`` pulls this file into the paper
+repo, not the full ``external-audit.json``), and per-candidate
+``auc_full_at_median_draw`` / ``auc_lao_at_median_draw`` /
+``drop_at_median_draw`` / ``potency_at_median_draw`` / ``collapsed_draw_share``
+/ the §5.2 bootstrap ``AUC_LAO`` CI. No wall-clock is ever written; every
+float leaf is 6-decimal quantized (``feedback_golden_crossplatform_float_drift.md`` --
 ``results/external-audit.json``'s own leaves are already quantized by
 ``scripts/paper01_external_audit.py``'s ``_quantize_json``, this module
 re-quantizes defensively so ``metrics.json`` never depends on that).
@@ -73,21 +78,38 @@ def _candidate_summary(candidate: dict[str, Any]) -> dict[str, Any]:
 
 
 def _split_summary(split: dict[str, Any]) -> dict[str, Any]:
-    """One split's §6 verdict tuple + per-candidate primary indicators."""
+    """One split's §6 verdict tuple + per-candidate primary indicators.
+
+    ``sensitivity`` (ARM-B / ARM-D) and ``negative_controls`` (NC-1 / NC-2)
+    are §4.1/§4.2's identification devices for the paper's mechanism claim
+    (design-final.md §4.2); ``arm_c`` / ``arm_x`` are Ocsai/paperclip-only
+    arms of the same kind. All four already exist, verbatim, on the source
+    ``external-audit.json`` split -- this used to read past them entirely,
+    so the paper repo's ``gather.ps1`` (which pulls ``metrics.json`` and not
+    the full ``external-audit.json``) never received them (Opus MEDIUM-6,
+    TASK-POST). Passed through unmodified (no re-derivation) when present;
+    omitted, not defaulted to ``{}``, when absent (``arm_c`` / ``arm_x`` only
+    exist on Ocsai splits).
+    """
     verdict = split.get("verdict", {})
     candidates = {
         key: _candidate_summary(candidate)
         for key, candidate in split.get("candidates", {}).items()
     }
-    return {
+    summary: dict[str, Any] = {
         "verdict": verdict.get("verdict"),
         "collapse_reproduced": verdict.get("collapse_reproduced"),
         "survivors": verdict.get("survivors"),
         "eligible": verdict.get("eligible"),
         "engaged": verdict.get("engaged"),
         "class_sizes": split.get("class_sizes", {}),
+        "object_weights": split.get("object_weights", {}),
         "candidates": candidates,
     }
+    for key in ("sensitivity", "negative_controls", "arm_c", "arm_x"):
+        if key in split:
+            summary[key] = split[key]
+    return summary
 
 
 def build_metrics(audit: dict[str, Any]) -> dict[str, Any]:

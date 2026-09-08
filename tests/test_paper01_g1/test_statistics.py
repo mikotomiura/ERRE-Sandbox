@@ -458,3 +458,220 @@ def test_candidate_summary_emits_section_5_1_reporting_block() -> None:
     assert summary.aggregate.median_draw_index == summary.median_draw_index
     for field in ("collapsed_draw_share", "median_drop", "drop_p5", "drop_p95"):
         assert hasattr(summary.aggregate, field)
+
+
+# --- TASK-POST HIGH-1: §5.4 five-tuple surfaced beyond ``.potency`` ---------
+
+
+def test_potency_and_near_dup_reports_class_asymmetry() -> None:
+    """``potency_and_near_dup`` returns the good/common asymmetry, not just
+    the pooled potency -- hand-computed, mirrors the internal C0 shape
+    (design-final.md §2: near-dup good 0.000 / common 0.500).
+    """
+    # 2 good items (both far from every anchor, sim < REF_DEDUP) and 4 common
+    # items (2 are near-duplicates of an anchor, sim >= REF_DEDUP).
+    max_sim = [0.10, 0.20, 0.95, 0.95, 0.30, 0.40]
+    labels = [1, 1, 0, 0, 0, 0]
+
+    result = mod.potency_and_near_dup(max_sim, labels, ref_dedup=0.90)
+
+    assert result.near_dup_good == pytest.approx(0.0)
+    assert result.near_dup_common == pytest.approx(0.5)
+    assert result.potency == pytest.approx(2.0 / 6.0)
+
+
+def test_near_dup_flags_from_similarity_boundary_is_inclusive() -> None:
+    """The single shared boundary (``sims >= REF_DEDUP``,
+    :func:`near_dup_flags_from_similarity`) both ``score_rows_for_draw`` and
+    ``fidelity_membership_and_potency`` now call: exactly on the threshold
+    counts as a near-dup, just below does not."""
+    flags = mod.near_dup_flags_from_similarity(
+        [0.9, 0.8999999999, 0.9000000001, 0.0, 1.0], ref_dedup=0.9
+    )
+    assert flags == [1.0, 0.0, 1.0, 0.0, 1.0]
+
+
+def test_near_dup_flags_from_similarity_reads_ref_dedup_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Omitting ``ref_dedup`` reads ``_c.REF_DEDUP`` at call time (never
+    cached) -- pinned via monkeypatch, mirroring ``potency_and_near_dup``'s
+    own read-through discipline."""
+    assert mod.near_dup_flags_from_similarity([0.5]) == [0.0]  # REF_DEDUP=0.90
+    monkeypatch.setattr(_c, "REF_DEDUP", 0.4)
+    assert mod.near_dup_flags_from_similarity([0.5]) == [1.0]
+
+
+def test_auc_membership_matches_near_dup_closed_form() -> None:
+    """Opus MEDIUM-6's identity: ``AUC_membership = 0.5 + (nd_common -
+    nd_good) / 2`` when ``auc_membership`` is fed the *binary* near-dup
+    indicator (never the continuous similarity) -- exactly how
+    ``score_rows_for_draw`` (I-005+) and ``fidelity_membership_and_potency``
+    (I-007) both compute it. Checked over several asymmetry shapes, not one
+    coincidental fixture.
+    """
+    cases: list[tuple[list[float], list[int]]] = [
+        ([0.10, 0.20, 0.95, 0.95, 0.30, 0.40], [1, 1, 0, 0, 0, 0]),
+        ([0.95, 0.10, 0.20, 0.10, 0.95, 0.95], [1, 1, 1, 0, 0, 0]),
+        ([0.10, 0.10, 0.10, 0.10], [1, 1, 0, 0]),  # no near-dups at all
+        ([0.95, 0.95, 0.95, 0.95], [1, 1, 0, 0]),  # every item is a near-dup
+    ]
+    for max_sim, labels in cases:
+        potency_result = mod.potency_and_near_dup(max_sim, labels, ref_dedup=0.90)
+        near_dup_flags = [1.0 if s >= 0.90 else 0.0 for s in max_sim]
+        membership = mod.auc_membership(near_dup_flags, labels)
+        expected = (
+            0.5 + (potency_result.near_dup_common - potency_result.near_dup_good) / 2.0
+        )
+        assert membership == pytest.approx(expected)
+
+
+def test_mean_dropped_anchor_fraction_hand_computation() -> None:
+    """§5.4's MEDIUM-3 addition: mean over items of dropped-anchors / |R_o|.
+
+    Item 0: 2/4 anchors dropped -> 0.5. Item 1: 0/5 -> 0.0. Item 2: 4/8 -> 0.5.
+    Mean of [0.5, 0.0, 0.5] = 1/3.
+    """
+    dropped_counts = [2, 0, 4]
+    reference_sizes = [4, 5, 8]
+    assert mod.mean_dropped_anchor_fraction(
+        dropped_counts, reference_sizes
+    ) == pytest.approx(1.0 / 3.0)
+
+
+def test_mean_dropped_anchor_fraction_empty_is_zero() -> None:
+    """No items (e.g. a lexical candidate with no reference-set concept)
+    reports 0.0 rather than raising or dividing by zero."""
+    assert mod.mean_dropped_anchor_fraction([], []) == 0.0
+
+
+def test_mean_dropped_anchor_fraction_zero_reference_size_is_safe() -> None:
+    """An item whose object has an empty (unresolved) anchor set contributes
+    0.0 to the mean rather than a ``ZeroDivisionError`` / ``nan`` -- the
+    other item's genuine 3/6 = 0.5 still pulls the mean in the middle:
+    ``mean([0.0, 0.5]) == 0.25``."""
+    assert mod.mean_dropped_anchor_fraction([0, 3], [0, 6]) == pytest.approx(0.25)
+
+
+def test_candidate_report_carries_five_tuple_from_the_median_draw() -> None:
+    """``CandidateExternalReport``'s ``*_at_median_draw`` five-tuple fields
+    come from the *same* median-by-drop draw as ``potency_at_median_draw`` --
+    not draw 0, not some other draw. Three draws, each with a distinct
+    ``near_dup_good``/``near_dup_common``/``auc_membership``/
+    ``dropped_anchor_fraction`` fingerprint so the wrong draw is detectable.
+    """
+    draws = [
+        mod.DrawItems(
+            scores_full=[0.9, 0.8, 0.2, 0.1],
+            scores_lao=[0.9 - 0.1 * i, 0.8, 0.2, 0.1],  # drop varies by draw
+            labels=[1, 1, 0, 0],
+            objects=["bowl", "clip", "bowl", "clip"],
+            potency=0.1 * (i + 1),
+            near_dup_good=0.1 * (i + 1),
+            near_dup_common=0.2 * (i + 1),
+            auc_membership=0.3 + 0.1 * i,
+            dropped_anchor_fraction=0.4 + 0.1 * i,
+        )
+        for i in range(3)
+    ]
+    drops = [d.scores_full[0] - d.scores_lao[0] for d in draws]  # 0.0, 0.1, 0.2
+    expected_idx = mod.median_draw_index(drops)
+
+    summary = mod.build_candidate_report(
+        "X0", "embedding", draws, bootstrap_seed=1, permutation_seed=2
+    )
+
+    expected = draws[expected_idx]
+    assert summary.report.near_dup_good_at_median_draw == pytest.approx(
+        expected.near_dup_good
+    )
+    assert summary.report.near_dup_common_at_median_draw == pytest.approx(
+        expected.near_dup_common
+    )
+    assert summary.report.auc_membership_at_median_draw == pytest.approx(
+        expected.auc_membership
+    )
+    assert summary.report.dropped_anchor_fraction_at_median_draw == pytest.approx(
+        expected.dropped_anchor_fraction
+    )
+    # Sanity: the three draws' fingerprints are genuinely distinct, so a
+    # mutant reading draw 0 (or any other fixed index) unconditionally would
+    # be caught whenever ``expected_idx != 0``.
+    other_indices = [i for i in range(3) if i != expected_idx]
+    assert all(draws[i].near_dup_good != expected.near_dup_good for i in other_indices)
+
+
+# --- TASK-POST HIGH-2: NC-2's pre-registered direction-reversal gate --------
+
+
+def test_nc2_direction_reversed_boundary() -> None:
+    """§4.3's fourth pre-registered row is evaluated mechanically here:
+    ``AUC_full < 0.5`` is a reversal, ``AUC_full == 0.5`` is not (exact
+    boundary, both sides of it)."""
+    assert mod.nc2_direction_reversed(0.5) is False
+    assert mod.nc2_direction_reversed(0.4999) is True
+    assert mod.nc2_direction_reversed(0.5001) is False
+    assert mod.nc2_direction_reversed(0.0) is True
+    assert mod.nc2_direction_reversed(1.0) is False
+
+
+# --- Opus MEDIUM-3: per-object AUC weight share -----------------------------
+
+
+def _ctx_with_split1(
+    object_key: str, *, n_good: int, n_common: int
+) -> mod.ObjectSplitContext:
+    """Minimal :class:`ObjectSplitContext` -- only ``split1`` matters for
+    :func:`~scripts.paper01_external_audit.object_class_weights`."""
+    split1 = tuple(
+        mod.CambridgeRow(row_id=i, object=object_key, text=f"g{i}", category="good")
+        for i in range(n_good)
+    ) + tuple(
+        mod.CambridgeRow(
+            row_id=1000 + i, object=object_key, text=f"c{i}", category="common_use_only"
+        )
+        for i in range(n_common)
+    )
+    return mod.ObjectSplitContext(
+        object_key=object_key,
+        split0=(),
+        split1=split1,
+        common_pool=(),
+        good_pool=(),
+        dedup_common_pool=(),
+        dedup_good_pool=(),
+        dropped=False,
+        idf={},
+        default_idf=1.0,
+    )
+
+
+def test_object_class_weights_matches_auc_stratified_definition() -> None:
+    """``w(o) = n_good(o) * n_common(o)`` (§1's own weight formula) and its
+    share of the total -- hand-computed with a deliberately lopsided split
+    (one object should dominate the weight share, mirroring the real Ocsai
+    "brick" concentration Opus MEDIUM-3 flagged).
+    """
+    contexts = [
+        _ctx_with_split1("brick", n_good=96, n_common=650),  # w = 62400
+        _ctx_with_split1("bottle", n_good=67, n_common=59),  # w = 3953
+    ]
+    weights = mod.object_class_weights(contexts)
+
+    assert weights["brick"]["n_good"] == 96
+    assert weights["brick"]["n_common"] == 650
+    assert weights["brick"]["weight"] == 96 * 650
+    assert weights["bottle"]["weight"] == 67 * 59
+    total = 96 * 650 + 67 * 59
+    assert weights["brick"]["weight_share"] == pytest.approx(96 * 650 / total)
+    assert weights["bottle"]["weight_share"] == pytest.approx(67 * 59 / total)
+    assert weights["brick"]["weight_share"] > 0.9  # brick dominates here
+
+
+def test_object_class_weights_zero_total_is_safe() -> None:
+    """Every object missing a class (total weight 0) reports share 0.0
+    rather than raising ``ZeroDivisionError``."""
+    contexts = [_ctx_with_split1("only-good", n_good=5, n_common=0)]
+    weights = mod.object_class_weights(contexts)
+    assert weights["only-good"]["weight"] == 0
+    assert weights["only-good"]["weight_share"] == 0.0

@@ -145,6 +145,10 @@ draws whose own per-draw boolean is True is >= this threshold. Never a
 marginal median of ``AUC_full`` / ``AUC_LAO`` taken separately -- see
 :func:`aggregate_draws`."""
 
+CHANCE_AUC: Final[float] = 0.5
+"""The uninformative AUC value -- also :func:`nc2_direction_reversed`'s
+boundary (TASK-POST HIGH-2)."""
+
 BOOTSTRAP_SCOPE_OPTIONS: Final[tuple[str, ...]] = ("median_draw", "all_draws")
 """The two possible bootstrap-CI scopes; ``BOOTSTRAP_APPLIES_TO`` freezes
 which one this audit uses (§5.2)."""
@@ -756,6 +760,13 @@ class CandidateExternalReport:
     ``audit_not_engaged`` mirrors DA-G1-11's per-candidate marker (``not
     engaged(c)``); it is carried here for downstream reporting only and is
     never promoted to verdict vocabulary (S3 boundary).
+
+    ``near_dup_good_at_median_draw`` / ``near_dup_common_at_median_draw`` /
+    ``auc_membership_at_median_draw`` / ``dropped_anchor_fraction_at_median_draw``
+    (TASK-POST HIGH-1) are the remaining §5.4 five-tuple members plus its
+    MEDIUM-3 addition, read off the same median-drop draw as
+    ``potency_at_median_draw`` -- report-only, never read by
+    :func:`decide_external`.
     """
 
     key: str
@@ -770,6 +781,10 @@ class CandidateExternalReport:
     auc_lao_at_median_draw: float
     drop_at_median_draw: float
     audit_not_engaged: bool
+    near_dup_good_at_median_draw: float = 0.0
+    near_dup_common_at_median_draw: float = 0.0
+    auc_membership_at_median_draw: float = 0.5
+    dropped_anchor_fraction_at_median_draw: float = 0.0
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -1267,6 +1282,27 @@ def potency_and_near_dup(
     return PotencyResult(potency_value, near_dup_good, near_dup_common)
 
 
+def near_dup_flags_from_similarity(
+    max_similarity: Sequence[float], *, ref_dedup: float | None = None
+) -> list[float]:
+    """The binary near-dup indicator: ``sims >= threshold``, in one place only.
+
+    This is the same predicate
+    :func:`potency_and_near_dup` computes internally (never returned as an
+    array there, only as aggregated rates) -- :func:`auc_membership`'s
+    caller needs the *item-level* binary indicator (Opus MEDIUM-6's closed
+    form ``AUC_membership = 0.5 + (nd_common - nd_good) / 2`` requires the
+    thresholded flag, never the continuous similarity, design-final.md
+    §5.4). Both :func:`score_rows_for_draw` and
+    :func:`fidelity_membership_and_potency` call this rather than each
+    re-deriving the comparison inline, so a boundary mutation
+    (``>=`` relaxed to ``>``, or the threshold source swapped) is a single
+    line to test and cannot silently diverge between the two call sites.
+    """
+    threshold = _c.REF_DEDUP if ref_dedup is None else ref_dedup
+    return [1.0 if s >= threshold else 0.0 for s in max_similarity]
+
+
 def mean_dropped_anchor_fraction(
     dropped_counts: Sequence[int], reference_sizes: Sequence[int]
 ) -> float:
@@ -1299,6 +1335,18 @@ class DrawItems:
     shares the same ``labels`` (1=good/0=common) and ``objects`` (the
     item's ``object_id``) across both, and reports this draw's already
     computed ``potency``. This module only consumes these arrays.
+
+    ``near_dup_good`` / ``near_dup_common`` / ``auc_membership`` are the
+    remaining three §5.4 five-tuple members (TASK-POST HIGH-1): the caller
+    already computes them via :func:`potency_and_near_dup` /
+    :func:`auc_membership` in the course of computing ``potency`` --
+    previously only ``.potency`` was kept and the rest discarded.
+    ``dropped_anchor_fraction`` is §5.4's additional MEDIUM-3 report (mean
+    over items of anchors dropped by LAO divided by ``|R_o|``, see
+    :func:`mean_dropped_anchor_fraction`). All four default to a neutral
+    value so every pre-existing ``DrawItems(...)`` call site in this module
+    and its tests keeps working unchanged; only :func:`score_rows_for_draw`
+    supplies real values.
     """
 
     scores_full: tuple[float, ...]
@@ -1306,6 +1354,10 @@ class DrawItems:
     labels: tuple[int, ...]
     objects: tuple[str, ...]
     potency: float
+    near_dup_good: float = 0.0
+    near_dup_common: float = 0.0
+    auc_membership: float = 0.5
+    dropped_anchor_fraction: float = 0.0
 
 
 def draw_result_from_items(items: DrawItems) -> DrawResult:
@@ -1411,6 +1463,10 @@ def build_candidate_report(
         auc_lao_at_median_draw=median_result.auc_lao,
         drop_at_median_draw=median_result.drop,
         audit_not_engaged=not aggregate_draws(engaged_flags),
+        near_dup_good_at_median_draw=median_items.near_dup_good,
+        near_dup_common_at_median_draw=median_items.near_dup_common,
+        auc_membership_at_median_draw=median_items.auc_membership,
+        dropped_anchor_fraction_at_median_draw=median_items.dropped_anchor_fraction,
     )
     return CandidateStatisticalSummary(
         report=report,
@@ -1838,6 +1894,54 @@ def embed_max_similarity_by_object(
     return out
 
 
+def embed_dropped_anchor_counts(
+    vmap: Mapping[str, np.ndarray],
+    anchor_texts_by_object: Mapping[str, Sequence[str]],
+    rows: Sequence[CambridgeRow] | Sequence[AdversarialItem],
+    *,
+    ref_dedup: float | None = None,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """§5.4 MEDIUM-3: per-row ``(anchors dropped by LAO, |R_o|)``, embedding family.
+
+    ``rows`` is duck-typed on ``.object``/``.text`` only, so a
+    :class:`AdversarialItem` sequence (the internal fidelity pin's gold
+    pair, orchestrator request 2026-09-08) works exactly like a
+    :class:`CambridgeRow` sequence here.
+
+    ``dropped[i]`` counts row ``i``'s object anchors whose cosine similarity
+    to the row is ``>= REF_DEDUP`` -- exactly the anchors the frozen
+    ``_diag.embed_rarity``'s ``leave_anchor_out=True`` branch removes from
+    the reference set before aggregating (that function is read-only reused,
+    never modified; this recomputes the same ``ref @ vec`` dot product it
+    performs internally so the per-anchor detail -- which ``embed_rarity``
+    itself never returns -- becomes observable here). ``sizes[i]`` is
+    ``|R_o|``, the object's full embedded anchor count. Feeds
+    :func:`mean_dropped_anchor_fraction`; report-only, never read by
+    :func:`decide_external`. Object-keyed alignment mirrors
+    :func:`embed_max_similarity_by_object`.
+    """
+    threshold = _c.REF_DEDUP if ref_dedup is None else ref_dedup
+    ref_by_object: dict[str, np.ndarray] = {}
+    for obj, texts in anchor_texts_by_object.items():
+        rows_emb = [vmap[t] for t in texts if t in vmap]
+        ref_by_object[obj] = (
+            np.asarray(rows_emb, dtype=float) if rows_emb else np.zeros((0, 0))
+        )
+    dropped: list[int] = []
+    sizes: list[int] = []
+    for r in rows:
+        ref = ref_by_object.get(r.object)
+        vec = vmap.get(r.text)
+        if ref is None or ref.size == 0 or vec is None:
+            dropped.append(0)
+            sizes.append(0)
+            continue
+        cos = ref @ vec
+        dropped.append(int((cos >= threshold).sum()))
+        sizes.append(int(ref.shape[0]))
+    return tuple(dropped), tuple(sizes)
+
+
 def jaccard_max_similarity_by_object(
     anchor_texts_by_object: Mapping[str, Sequence[str]], rows: Sequence[CambridgeRow]
 ) -> np.ndarray:
@@ -1876,6 +1980,8 @@ def score_rows_for_draw(
     out: dict[str, DrawItems] = {}
     for cand in CANDIDATE_LADDER:
         key = cand.key
+        dropped_counts: tuple[int, ...] = ()
+        ref_sizes: tuple[int, ...] = ()
         if key in _CANDIDATE_ENCODER_KEY:
             enc_key = _CANDIDATE_ENCODER_KEY[key]
             vmap = vmaps.get(enc_key)
@@ -1891,9 +1997,17 @@ def score_rows_for_draw(
                     key, key, vmap, anchor_texts_by_object, agg=_CANDIDATE_AGG[key]
                 )
             max_sim = embed_max_similarity_by_object(vmap, anchor_texts_by_object, rows)
+            dropped_counts, ref_sizes = embed_dropped_anchor_counts(
+                vmap, anchor_texts_by_object, rows
+            )
         elif key == "X5":
             built = make_jaccard_candidate(key, "lexical", anchor_texts_by_object)
             max_sim = jaccard_max_similarity_by_object(anchor_texts_by_object, rows)
+            # mean_dropped_anchor_fraction is scoped to the embedding family
+            # (design-final.md §5.4's committed near-dup covariates are all
+            # cosine-threshold-based); X5's lexical Jaccard analog is left at
+            # the neutral default rather than reaching into es4_scorer_diag's
+            # private tokenizer for a report-only, non-verdict-bearing number.
         else:  # X6
             built = make_tfidf_candidate(key, "lexical", idf_by_object)
             max_sim = np.zeros(len(rows), dtype=float)
@@ -1904,14 +2018,22 @@ def score_rows_for_draw(
         scores_lao = tuple(
             built.rarity(r.object, r.text, leave_anchor_out=True) for r in rows
         )
-        potency = potency_and_near_dup(max_sim.tolist(), list(labels)).potency
+        max_sim_list = max_sim.tolist()
+        potency_result = potency_and_near_dup(max_sim_list, list(labels))
+        near_dup_flags = near_dup_flags_from_similarity(max_sim_list)
+        membership = auc_membership(near_dup_flags, list(labels))
+        dropped_fraction = mean_dropped_anchor_fraction(dropped_counts, ref_sizes)
 
         out[key] = DrawItems(
             scores_full=scores_full,
             scores_lao=scores_lao,
             labels=labels,
             objects=objects,
-            potency=potency,
+            potency=potency_result.potency,
+            near_dup_good=potency_result.near_dup_good,
+            near_dup_common=potency_result.near_dup_common,
+            auc_membership=membership,
+            dropped_anchor_fraction=dropped_fraction,
         )
     return out
 
@@ -2041,6 +2163,90 @@ def cambridge_class_sizes(contexts: Sequence[ObjectSplitContext]) -> dict[str, i
     return {"good": good, "common": common}
 
 
+def object_class_weights(
+    contexts: Sequence[ObjectSplitContext],
+) -> dict[str, dict[str, Any]]:
+    """§1's per-object ``w(o) = n_good(o) * n_common(o)`` and its weight share.
+
+    Report-only (Opus MEDIUM-3, TASK-POST): :func:`auc_stratified` already
+    computes this weight internally per object to average ``AUC_o`` into
+    ``AUC_strat``, but never surfaced it -- a reader could not previously
+    tell that, e.g., the Ocsai primary battery's weight concentrates almost
+    entirely on one object. ``weight_share`` is ``weight / sum(weight)``
+    over every object passed in (``0.0`` when the total is ``0``, e.g. every
+    object here is missing a class); this mirrors ``auc_stratified``'s own
+    exclusion of any object missing a class (its weight is already ``0``,
+    so it is included here with ``weight_share == 0.0`` rather than
+    silently dropped -- the caller can still see it was scored).
+    """
+    per_object: dict[str, dict[str, int]] = {}
+    for ctx in contexts:
+        n_good = sum(1 for r in ctx.split1 if r.category == "good")
+        n_common = sum(1 for r in ctx.split1 if r.category == "common_use_only")
+        per_object[ctx.object_key] = {"n_good": n_good, "n_common": n_common}
+    total_weight = sum(v["n_good"] * v["n_common"] for v in per_object.values())
+    out: dict[str, dict[str, Any]] = {}
+    for obj, counts in per_object.items():
+        weight = counts["n_good"] * counts["n_common"]
+        share = (weight / total_weight) if total_weight > 0 else 0.0
+        out[obj] = {
+            "n_good": counts["n_good"],
+            "n_common": counts["n_common"],
+            "weight": weight,
+            "weight_share": share,
+        }
+    return out
+
+
+def nc2_direction_reversed(auc_full: float) -> bool:
+    """§4.3's NC-2 pre-registered gate, observed only (TASK-POST HIGH-2).
+
+    design-final.md §4.3's fourth pre-registered row reads: "NC-2 で向きが
+    反転しない -> 計測器の実装疑い。verdict を出さず調査に戻す" -- deciding
+    *what to do* about a non-reversal is a human judgement call the ADR
+    explicitly reserves (never auto-wired into :func:`decide_external`, S2
+    boundary). This function only makes the underlying observation
+    mechanical and reportable: NC-2 anchors the object on its own *good*
+    pool, so a working audit should discriminate in the *opposite* direction
+    from ARM-A (good items score less rare, common items score more rare),
+    i.e. ``AUC_full < 0.5``. Callers report this boolean next to NC-2's own
+    ``auc_full`` (never read it back into any verdict path).
+    """
+    return auc_full < CHANCE_AUC
+
+
+def _single_draw_candidate_report(items: DrawItems) -> dict[str, Any]:
+    """One non-bootstrapped, single-draw candidate's full report dict.
+
+    Shared by every single-draw arm (ARM-B / ARM-C / ARM-D / ARM-X / NC-1 /
+    NC-2) so the §5.4 five-tuple additions (TASK-POST HIGH-1) and the raw
+    ``auc_full`` / ``auc_lao`` / ``potency`` NC-2 needs for
+    :func:`nc2_direction_reversed` (TASK-POST HIGH-2) are surfaced uniformly
+    across every arm, not only ARM-A's bootstrapped path. Previously each of
+    these call sites built the same ``dataclasses.asdict(aggregate_candidate_
+    draws([draw_result_from_items(items)]))`` dict independently and kept
+    only the §5.1 aggregate fields (``eligible`` / ``engaged`` / ``collapsed``
+    / ``median_drop`` / ...); this keeps that aggregate and adds the
+    continuous single-draw statistics next to it.
+    """
+    result = draw_result_from_items(items)
+    agg = aggregate_candidate_draws([result])
+    out = dataclasses.asdict(agg)
+    out["auc_full"] = result.auc_full
+    out["auc_lao"] = result.auc_lao
+    out["potency"] = result.potency
+    out["near_dup_good"] = items.near_dup_good
+    out["near_dup_common"] = items.near_dup_common
+    out["auc_membership"] = items.auc_membership
+    out["dropped_anchor_fraction"] = items.dropped_anchor_fraction
+    return out
+
+
+def _single_draw_report_map(scored: Mapping[str, DrawItems]) -> dict[str, Any]:
+    """:func:`_single_draw_candidate_report` over every candidate in ``scored``."""
+    return {key: _single_draw_candidate_report(items) for key, items in scored.items()}
+
+
 def _quantize_json(value: Any) -> Any:
     """Round every float leaf to 6 decimals before JSON serialisation.
 
@@ -2165,12 +2371,7 @@ def run_cambridge_split(
             vmaps=vmaps,
             idf_by_object=idf_by_object,
         )
-        return {
-            key: dataclasses.asdict(
-                aggregate_candidate_draws([draw_result_from_items(items)])
-            )
-            for key, items in scored.items()
-        }
+        return _single_draw_report_map(scored)
 
     arm_b_anchor = {o: arm_b_texts(contexts[o]) for o in active_objects}
     arm_d_anchor = {o: arm_d_texts(contexts[o], mpnet_vmap) for o in active_objects}
@@ -2183,13 +2384,21 @@ def run_cambridge_split(
         o: nc2_texts(contexts[o], corpus=corpus, scheme=scheme) for o in active_objects
     }
 
+    nc2_report = _single_arm(nc2_anchor)
+    for entry in nc2_report.values():
+        # TASK-POST HIGH-2: design-final.md §4.3's fourth pre-registered row
+        # ("NC-2 で向きが反転しない -> 計測器の実装疑い") is only checkable if
+        # NC-2's own AUC_full is on the record next to the observation --
+        # `entry["auc_full"]` comes from `_single_draw_candidate_report`.
+        entry["direction_reversed"] = nc2_direction_reversed(entry["auc_full"])
+
     sensitivity = {
         "ARM-B": _single_arm(arm_b_anchor),
         "ARM-D": _single_arm(arm_d_anchor),
     }
     negative_controls = {
         "NC-1": _single_arm(nc1_anchor) if nc1_anchor else {},
-        "NC-2": _single_arm(nc2_anchor),
+        "NC-2": nc2_report,
     }
 
     return {
@@ -2197,6 +2406,7 @@ def run_cambridge_split(
         "dropped_objects": dropped_objects,
         "active_objects": active_objects,
         "class_sizes": class_sizes,
+        "object_weights": object_class_weights([contexts[o] for o in active_objects]),
         "pool_sizes": {
             o: {
                 "common_raw": len(contexts[o].common_pool),
@@ -2499,12 +2709,7 @@ def arm_x_scored_candidates(
         vmaps=vmaps,
         idf_by_object=idf_by_object,
     )
-    return {
-        key: dataclasses.asdict(
-            aggregate_candidate_draws([draw_result_from_items(items)])
-        )
-        for key, items in scored.items()
-    }
+    return _single_draw_report_map(scored)
 
 
 # --- Ocsai per-split orchestration ------------------------------------------
@@ -2564,12 +2769,7 @@ def run_ocsai_split(
         vmaps=vmaps,
         idf_by_object=idf_by_object,
     )
-    arm_c_report = {
-        key: dataclasses.asdict(
-            aggregate_candidate_draws([draw_result_from_items(items)])
-        )
-        for key, items in arm_c_scored.items()
-    }
+    arm_c_report = _single_draw_report_map(arm_c_scored)
 
     result: dict[str, Any] = dict(base)
     result["active_objects"] = final_active
@@ -2813,7 +3013,13 @@ class FidelityCandidateResult:
     ``auc_membership``/``near_dup_good``/``near_dup_common``/``potency`` are
     design-final.md §2's descriptive covariates, computed the *external*
     harness's own way (:func:`auc_membership` / :func:`potency_and_near_dup`)
-    over the internal gold pair.
+    over the internal gold pair. ``dropped_anchor_fraction`` (orchestrator
+    request, 2026-09-08, TASK-POST follow-up) is the internal counterpart of
+    the external report's ``dropped_anchor_fraction_at_median_draw`` --
+    without it, the internal/external asymmetry-vs-drop comparison the
+    orchestrator asked for was only ever half-populated. Defaults to
+    ``0.0`` so the many hand-built ``FidelityCandidateResult(...)`` test
+    fixtures that predate this field keep constructing unchanged.
     """
 
     key: str
@@ -2826,6 +3032,7 @@ class FidelityCandidateResult:
     near_dup_good: float
     near_dup_common: float
     potency: float
+    dropped_anchor_fraction: float = 0.0
 
 
 def fidelity_gold_pair() -> tuple[AdversarialItem, ...]:
@@ -2851,9 +3058,13 @@ def fidelity_candidate_matches(
 
 
 def fidelity_membership_and_potency(
-    candidate: Any, gold_pair: Sequence[AdversarialItem]
-) -> tuple[float, float, float, float]:
-    """§5.4's ``(AUC_membership, near_dup_good, near_dup_common, potency)``.
+    candidate: Any,
+    gold_pair: Sequence[AdversarialItem],
+    *,
+    vmap: Mapping[str, np.ndarray] | None = None,
+    anchor_texts_by_object: Mapping[str, Sequence[str]] | None = None,
+) -> tuple[float, float, float, float, float]:
+    """§5.4's ``(membership, near_dup_good, near_dup_common, potency, dropped_frac)``.
 
     For one internal fidelity candidate, computed the *external* harness's
     own way (:func:`auc_membership` / :func:`potency_and_near_dup`) over the
@@ -2871,6 +3082,18 @@ def fidelity_membership_and_potency(
     same scores the pooled AUC is already computed over) -- a distinct,
     non-redundant covariate requires the thresholded indicator, not the raw
     continuous similarity.
+
+    ``dropped_anchor_fraction`` (orchestrator request, 2026-09-08) is the
+    internal counterpart of the external report's ``dropped_anchor_fraction_
+    at_median_draw`` -- computed the same way (:func:`embed_dropped_anchor_
+    counts` / :func:`mean_dropped_anchor_fraction`) but needs the raw
+    ``vmap``/``anchor_texts_by_object`` the candidate closure does not
+    expose, so callers that already built them for the candidate
+    (:func:`measure_c4_fidelity` / :func:`measure_c0_fidelity`, via
+    :func:`_c4_fidelity_context` / :func:`_c0_fidelity_context`) pass them
+    through here rather than re-embedding. Omitted (``None``, the default),
+    this reports ``0.0`` -- report-only either way, never gates
+    :func:`fidelity_candidate_matches`.
     """
     max_sim = [
         1.0 - candidate.rarity(g.object, g.text, leave_anchor_out=False)
@@ -2878,14 +3101,49 @@ def fidelity_membership_and_potency(
     ]
     labels = [1 if g.category == "good" else 0 for g in gold_pair]
     potency_result = potency_and_near_dup(max_sim, labels)
-    near_dup_flags = [1.0 if s >= _c.REF_DEDUP else 0.0 for s in max_sim]
+    near_dup_flags = near_dup_flags_from_similarity(max_sim)
     membership = auc_membership(near_dup_flags, labels)
+    if vmap is not None and anchor_texts_by_object is not None:
+        dropped_counts, ref_sizes = embed_dropped_anchor_counts(
+            vmap, anchor_texts_by_object, gold_pair
+        )
+        dropped_fraction = mean_dropped_anchor_fraction(dropped_counts, ref_sizes)
+    else:
+        dropped_fraction = 0.0
     return (
         membership,
         potency_result.near_dup_good,
         potency_result.near_dup_common,
         potency_result.potency,
+        dropped_fraction,
     )
+
+
+def _c4_fidelity_context(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+) -> tuple[Any, dict[str, np.ndarray], dict[str, list[str]]]:
+    """Build C4's candidate together with the ``vmap``/anchor dict that made it.
+
+    :func:`build_c4_fidelity_candidate` (candidate only, the public/tested
+    entry point) and :func:`measure_c4_fidelity` (which also needs the raw
+    ``vmap``/anchor dict for ``dropped_anchor_fraction``, orchestrator
+    request 2026-09-08) both call this so the one embedding pass is never
+    run twice.
+    """
+    curated = _diag.load_common_uses()
+    gold_pair = fidelity_gold_pair()
+    to_embed = sorted(
+        {t for txts in curated.values() for t in txts} | {g.text for g in gold_pair}
+    )
+    vmap = _diag.embed_map(mpnet, to_embed)
+    candidate = make_embed_candidate(
+        "C4-mpnet-max-curated",
+        "MPNet 1-max cos, curated-only reference",
+        vmap,
+        curated,
+        agg="max",
+    )
+    return candidate, vmap, curated
 
 
 def build_c4_fidelity_candidate(
@@ -2904,30 +3162,21 @@ def build_c4_fidelity_candidate(
     constructor -- the point of the fidelity pin is to exercise *this*
     module's rarity-scoring path.
     """
-    curated = _diag.load_common_uses()
-    gold_pair = fidelity_gold_pair()
-    to_embed = sorted(
-        {t for txts in curated.values() for t in txts} | {g.text for g in gold_pair}
-    )
-    vmap = _diag.embed_map(mpnet, to_embed)
-    return make_embed_candidate(
-        "C4-mpnet-max-curated",
-        "MPNet 1-max cos, curated-only reference",
-        vmap,
-        curated,
-        agg="max",
-    )
+    candidate, _vmap, _curated = _c4_fidelity_context(mpnet)
+    return candidate
 
 
 def measure_c4_fidelity(
     mpnet: Callable[[Sequence[str]], np.ndarray],
 ) -> FidelityCandidateResult:
     """§2's fast pin: reproduce C4 exactly (design-final.md §2, DA-G1-16)."""
-    candidate = build_c4_fidelity_candidate(mpnet)
+    candidate, vmap, curated = _c4_fidelity_context(mpnet)
     gold_pair = fidelity_gold_pair()
     gr = _diag.gold_good_vs_common(candidate, gold_pair)
-    membership, nd_good, nd_common, potency = fidelity_membership_and_potency(
-        candidate, gold_pair
+    membership, nd_good, nd_common, potency, dropped_fraction = (
+        fidelity_membership_and_potency(
+            candidate, gold_pair, vmap=vmap, anchor_texts_by_object=curated
+        )
     )
     matches = fidelity_candidate_matches(
         gr.auc_full,
@@ -2946,23 +3195,28 @@ def measure_c4_fidelity(
         near_dup_good=nd_good,
         near_dup_common=nd_common,
         potency=potency,
+        dropped_anchor_fraction=dropped_fraction,
     )
 
 
-def build_c0_fidelity_candidate(
+def _c0_fidelity_context(
     mpnet: Callable[[Sequence[str]], np.ndarray],
     run_dir: Path = PHASE_A_RUN_DIR,
-) -> Any:
-    """C0 (curated ∪ model-high-frequency reference) candidate -- the heavy pin.
+) -> tuple[Any, dict[str, np.ndarray], dict[str, list[str]]]:
+    """Build C0's candidate together with the ``vmap``/anchor dict that made it.
 
-    Reconstructs the incumbent ``R_object`` exactly the way
-    ``es4_scorer_diag.run_diagnostic`` does (issue 007: "run_diagnostic が
-    組み立てている手順 ... をそのまま踏襲する") -- ``load_jsonl`` the
-    persisted Phase A generations/judgements, replay the judge from the
-    persisted labels, extract the ``REF`` condition generations, then
-    ``construct_all_references`` (the frozen apparatus, called exactly as
-    ``run_diagnostic`` calls it, never reimplemented). Raises
-    :class:`FileNotFoundError` when ``run_dir``'s sealed artifact is
+    :func:`build_c0_fidelity_candidate` (candidate only, the public/tested
+    entry point) and :func:`measure_c0_fidelity` (which also needs the raw
+    ``vmap``/anchor dict for ``dropped_anchor_fraction``, orchestrator
+    request 2026-09-08) both call this so C0's expensive reconstruction +
+    embedding pass is never run twice. Reconstructs the incumbent
+    ``R_object`` exactly the way ``es4_scorer_diag.run_diagnostic`` does
+    (issue 007: "run_diagnostic が組み立てている手順 ... をそのまま踏襲する")
+    -- ``load_jsonl`` the persisted Phase A generations/judgements, replay
+    the judge from the persisted labels, extract the ``REF`` condition
+    generations, then ``construct_all_references`` (the frozen apparatus,
+    called exactly as ``run_diagnostic`` calls it, never reimplemented).
+    Raises :class:`FileNotFoundError` when ``run_dir``'s sealed artifact is
     missing (issue 007 Stop Condition).
     """
     gens_path = run_dir / "generations.jsonl"
@@ -2996,13 +3250,28 @@ def build_c0_fidelity_candidate(
         | {g.text for g in gold_pair}
     )
     vmap = _diag.embed_map(mpnet, to_embed)
-    return make_embed_candidate(
+    candidate = make_embed_candidate(
         "C0-mpnet-max-full",
         "MPNet 1-max cos, full R_object (incumbent)",
         vmap,
         full_ref_texts,
         agg="max",
     )
+    return candidate, vmap, full_ref_texts
+
+
+def build_c0_fidelity_candidate(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+    run_dir: Path = PHASE_A_RUN_DIR,
+) -> Any:
+    """C0 (curated ∪ model-high-frequency reference) candidate -- the heavy pin.
+
+    See :func:`_c0_fidelity_context` for the reconstruction procedure; this
+    is the public/tested entry point that returns just the candidate, not
+    the ``vmap``/anchor dict.
+    """
+    candidate, _vmap, _full_ref_texts = _c0_fidelity_context(mpnet, run_dir)
+    return candidate
 
 
 def measure_c0_fidelity(
@@ -3010,11 +3279,13 @@ def measure_c0_fidelity(
     run_dir: Path = PHASE_A_RUN_DIR,
 ) -> FidelityCandidateResult:
     """§2's heavy pin: reproduce C0 exactly (design-final.md §2, DA-G1-16)."""
-    candidate = build_c0_fidelity_candidate(mpnet, run_dir)
+    candidate, vmap, full_ref_texts = _c0_fidelity_context(mpnet, run_dir)
     gold_pair = fidelity_gold_pair()
     gr = _diag.gold_good_vs_common(candidate, gold_pair)
-    membership, nd_good, nd_common, potency = fidelity_membership_and_potency(
-        candidate, gold_pair
+    membership, nd_good, nd_common, potency, dropped_fraction = (
+        fidelity_membership_and_potency(
+            candidate, gold_pair, vmap=vmap, anchor_texts_by_object=full_ref_texts
+        )
     )
     matches = fidelity_candidate_matches(
         gr.auc_full,
@@ -3033,6 +3304,7 @@ def measure_c0_fidelity(
         near_dup_good=nd_good,
         near_dup_common=nd_common,
         potency=potency,
+        dropped_anchor_fraction=dropped_fraction,
     )
 
 
