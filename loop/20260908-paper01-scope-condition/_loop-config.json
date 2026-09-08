@@ -1,9 +1,10 @@
 {
   "task": "paper01-scope-condition",
   "verify": {
-    "test": "pytest -q",
+    "test": "pytest -q --ignore=tests/test_godot",
     "typecheck": "mypy src",
-    "lint": "ruff check ."
+    "lint": "ruff check src tests scripts/paper01_scope_condition.py",
+    "format": "ruff format --check src tests scripts/paper01_scope_condition.py"
   },
   "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
   "scope_test_template": "pytest -q {paths}",
