@@ -185,6 +185,24 @@ STAGE1_INTERNAL_DROP_REF: Final[float] = 0.2350
 Deflation is supported iff a replicate's 5-95 percentile drop band contains
 this value."""
 
+STAGE1_OUTCOME_ENUM: Final[tuple[str, ...]] = (
+    "DEFLATION_SUPPORTED",
+    "DEFLATION_REJECTED",
+    "INCONCLUSIVE",
+)
+"""§3 Stage 1 (Codex TASK-PRE HIGH-3 / DA-SC-19, **pre-registration amendment**):
+the three-state outcome vocabulary the §3 Stage 1 table (design-final.md:165)
+already froze but the original :class:`Stage1Result` contract could not
+express. ``"INCONCLUSIVE"`` is the frozen "X0 が replicate の過半で
+eligible でない" row -- when the primary candidate is not ``eligible`` in a
+majority of replicates, the band cannot be trusted and the outcome must be
+recorded as *undetermined*, never silently folded into
+``"DEFLATION_REJECTED"``. This is registered in
+:func:`collect_preregistration` (``"stage1_outcome_enum"``) exactly like
+:data:`SCOPE_VERDICT_ENUM`, so ``config.json`` carries it too -- amending a
+frozen pre-registration artifact is itself an event this module records
+(DA-SC-19), not a silent addition."""
+
 DELTA_TS_CANDIDATES: Final[tuple[str, ...]] = ("X0", "X3a", "X3b", "X3c", "C0", "C4")
 """§1 Stage 0 scope: the pure max-cos candidates for which
 ``T(x) = 1 - rarity_full(x)`` / ``S(x) = 1 - rarity_LAO(x)`` decompose
@@ -237,6 +255,7 @@ def collect_preregistration() -> dict[str, Any]:
         "stage1_draw_index": STAGE1_DRAW_INDEX,
         "stage1_internal_good_counts": list(STAGE1_INTERNAL_GOOD_COUNTS),
         "stage1_internal_drop_ref": STAGE1_INTERNAL_DROP_REF,
+        "stage1_outcome_enum": list(STAGE1_OUTCOME_ENUM),
         "delta_ts_candidates": list(DELTA_TS_CANDIDATES),
         "delta_material_eps": DELTA_MATERIAL_EPS,
         "fail_precedence": list(FAIL_PRECEDENCE),
@@ -394,12 +413,40 @@ class Stage1Result:
     values. ``drop_p5``/``drop_p95`` are the 5-95 percentile bounds of the
     :data:`STAGE1_REPLICATES` seeded pooled-AUC-drop replicates;
     ``eligible_fraction`` is the share of replicates whose
-    ``AUC_strat(full)`` cleared ``AUC_FLOOR``. ``deflation_supported`` is
-    True iff the band ``[drop_p5, drop_p95]`` contains
-    :data:`STAGE1_INTERNAL_DROP_REF` *and* ``eligible_fraction`` is over half
-    (the §3 table's third row -- "X0 が replicate の過半で eligible でない"
-    -- is the negation of the latter half of this conjunction, recorded
-    separately as "判定不能").
+    ``AUC_strat(full)`` cleared ``AUC_FLOOR``.
+
+    **Three-state outcome (Codex TASK-PRE HIGH-3 / DA-SC-19, pre-registration
+    amendment)**: ``stage1_outcome`` is the **load-bearing** field -- one of
+    :data:`STAGE1_OUTCOME_ENUM`. It is the frozen §3 table's third row
+    ("X0 が replicate の過半で eligible でない" -> "判定不能") made
+    representable: when ``eligible_fraction <= 0.5`` the outcome **must** be
+    ``"INCONCLUSIVE"``, never silently folded into ``"DEFLATION_REJECTED"``.
+    ``deflation_supported: bool`` is **retained, not removed** -- it is a
+    **derived mirror** of ``stage1_outcome == "DEFLATION_SUPPORTED"``, kept
+    for the callers that only need the binary read. **`not
+    deflation_supported` must never be used to derive the right to report
+    "書く" (``ScopeVerdict.verdict == "WRITE"``, design-final.md §5)** -- that
+    right may only be derived from ``stage1_outcome ==
+    "DEFLATION_REJECTED"``. Both ``"INCONCLUSIVE"`` and
+    ``"DEFLATION_REJECTED"`` produce ``deflation_supported = False``; only
+    ``stage1_outcome`` distinguishes them. I-005's ``decide_scope()`` is
+    where this rule is enforced in logic; this dataclass only makes the
+    distinction representable.
+
+    The remaining new fields are secondary/diagnostic, reported alongside
+    the primary pooled-AUC band (design-final.md §3 Stage 1, "副" rows):
+    ``drop_p5_eligible``/``drop_p95_eligible``/``median_drop_eligible`` are
+    the same band restricted to ``eligible`` replicates only (the §3 table's
+    third-row remedy: "eligible な replicate に限った帯を副として報告");
+    ``drop_p5_strat``/``drop_p95_strat``/``median_drop_strat`` are the
+    stratified-statistic counterpart of the pooled band (issue 004 Scope
+    In); ``n_objects_pool_short``/``pool_short_objects`` surface -- never
+    silently drop -- objects whose replicate-construction pool ran short;
+    ``median_draw_drop``/``median_draw_outcome`` are the DA-SC-6/DA-SC-12
+    median-by-drop-draw sensitivity check -- an **outcome-selected** draw,
+    so ``median_draw_outcome`` must **never** be used as the primary
+    verdict input (only ``stage1_outcome``, anchored at
+    :data:`STAGE1_DRAW_INDEX`, may be).
     """
 
     candidate: str
@@ -409,6 +456,17 @@ class Stage1Result:
     median_drop: float
     eligible_fraction: float
     deflation_supported: bool
+    stage1_outcome: str
+    drop_p5_eligible: float
+    drop_p95_eligible: float
+    median_drop_eligible: float
+    drop_p5_strat: float
+    drop_p95_strat: float
+    median_drop_strat: float
+    n_objects_pool_short: int
+    pool_short_objects: tuple[str, ...]
+    median_draw_drop: float
+    median_draw_outcome: str
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -439,8 +497,11 @@ class CellResult:
 class InternalReference:
     """ρ_int primary (C4 raw) / secondary (C0 dedup'd) reference geometry.
 
-    One AUT object, design-final.md §2.3. Frozen contract only -- I-002
-    fills the values. ``rho_primary_c4`` is the C4-raw-curated reference
+    One AUT object, design-final.md §2.3.
+    Frozen contract only -- I-006 fills the values.
+    (Codex TASK-PRE HIGH-5 owner fix: the low-level ρ function is I-002's,
+    but wiring ``ρ_int``/``k*`` through this dataclass is I-006's.)
+    ``rho_primary_c4`` is the C4-raw-curated reference
     set's nearest-neighbour mean cosine (the primary ρ_int basis -- "what
     the actually-collapsed scorer saw"); ``rho_secondary_c0`` is the same
     quantity over ``construct_all_references``'s dedup'd ``R_object`` (the
@@ -490,7 +551,14 @@ class ScopeVerdict:
     deflation-supported Stage 1 forces ``"DO_NOT_WRITE"`` regardless of
     Stage 2, never re-derived from ``fail_reason``).
     ``condition_c_supported`` is the raw §3 four-condition conjunction
-    before :data:`FAIL_PRECEDENCE` is applied.
+    before :data:`FAIL_PRECEDENCE` is applied. ``t_confound_note_required``
+    (Codex TASK-PRE HIGH-4 / DA-SC-17, additive field -- the other five
+    fields above and ``notes`` keep their frozen names, never renamed) is
+    True iff Stage 0's §1 T/S asymmetry check (DA-SC-10, HIGH-3-revised)
+    found the internal collapse to be primarily T-driven while condition C
+    is nonetheless supported -- it forces the write-up to carry the
+    mandatory "T 由来交絡" caveat DA-SC-10 requires instead of silently
+    folding to "特定できない".
     """
 
     verdict: str
@@ -499,3 +567,29 @@ class ScopeVerdict:
     single_point_dependent: bool
     fail_reason: str | None
     notes: tuple[str, ...]
+    t_confound_note_required: bool
+
+
+# ---------------------------------------------------------------------------
+# I-002: sparsification layer (leader clustering / rho)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# I-003: Stage 0 -- Delta = T - S decomposition
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# I-004: Stage 1 -- deflation test
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# I-005: decision rule -- decide_scope()
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# I-006: tau* calibration / cell wiring / CLI
+# ---------------------------------------------------------------------------

@@ -42,6 +42,11 @@
     1,
     0
   ],
+  "stage1_outcome_enum": [
+    "DEFLATION_SUPPORTED",
+    "DEFLATION_REJECTED",
+    "INCONCLUSIVE"
+  ],
   "stage1_replicates": 500,
   "tau_grid": [
     0.9,
