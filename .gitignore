@@ -139,4 +139,15 @@ data/bench/*.duckdb.wal
 data/bench/*.duckdb.tmp
 
 # 論文ドラフト (本 repo とは別成果物。将来的に独立リポジトリへ分離する想定)
-paper/
+#
+# DA-1 の意図は「ドラフト本文を git に置かない」であって「持ち出しツールを
+# バックアップしない」ではない (user 裁定 2026-09-08、blockers.md B-G1-7)。
+# 持ち出しツール 2 本だけを例外にする。`paper/` のままだと git が除外
+# ディレクトリに降りないので `!` が効かない — `paper/*` にして中身を
+# 個別に除外する必要がある。
+paper/*
+!paper/gather.ps1
+!paper/_closure.py
+
+# paper01 G1 実走の一時 PID (run.sh が起動ごとに書く。追跡しない)
+experiments/20260907-paper01-g1/results/.run.pid

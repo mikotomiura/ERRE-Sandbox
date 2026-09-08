@@ -1,0 +1,30 @@
+{
+  "all_match": true,
+  "c0": {
+    "auc_full": 0.99,
+    "auc_lao": 0.755,
+    "auc_membership": 0.75,
+    "dropped_anchor_fraction": 0.012828,
+    "expected_auc_full": 0.99,
+    "expected_auc_lao": 0.755,
+    "key": "C0-mpnet-max-full",
+    "matches": true,
+    "near_dup_common": 0.5,
+    "near_dup_good": 0.0,
+    "potency": 0.195122
+  },
+  "c4": {
+    "auc_full": 0.995,
+    "auc_lao": 0.705,
+    "auc_membership": 0.71875,
+    "dropped_anchor_fraction": 0.017073,
+    "expected_auc_full": 0.995,
+    "expected_auc_lao": 0.705,
+    "key": "C4-mpnet-max-curated",
+    "matches": true,
+    "near_dup_common": 0.4375,
+    "near_dup_good": 0.0,
+    "potency": 0.170732
+  },
+  "task": "paper01-g1-fidelity-pin"
+}

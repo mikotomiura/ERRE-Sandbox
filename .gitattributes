@@ -51,3 +51,8 @@ data/eval/**/*.yml      text eol=lf
 # (core.autocrlf=input が CRLF を LF に潰すのを防ぐ。
 #  memory feedback_forensic_raw_log_whitespace、M13 案 B real 実走 2026-09-07)。
 experiments/**/*.log    -text -whitespace
+
+# 外部コーパス原ファイル (paper01 G1 external audit, Loop issue I-001) は
+# CC BY-NC-ND 4.0 の範囲で byte 無改変配置が要件。checkout 時の eol 変換で
+# SHA-256 pin (gate0-record.md / design-final.md Sec.3.1) が壊れるのを防ぐ。
+experiments/**/data/raw/** -text -whitespace

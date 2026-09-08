@@ -1,0 +1,18 @@
+{
+  "task": "paper01-g1-external-audit",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check ."
+  },
+  "ci_command": "pwsh scripts/dev/pre-push-check.ps1",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": {
+    "max_attempts": 6,
+    "no_progress_threshold": 4,
+    "token_ceiling": 2000000,
+    "parallel": 2
+  },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260907-paper01-g1-external-audit/_loop-events.jsonl"
+}

@@ -42,6 +42,7 @@
 | [29] | arXiv:2607.19510 | Price, E., Tian, K., Xun, Z. & Zhu, Y. — *Total Variation Distance Estimation in Autoregressive Models* | arXiv:2607.19510, 2026-07-21 | paper/02-powered-null/refs.md (TV 推定の参照点・Limitations) | active |
 | [30] | arXiv:2607.16200 | Mudasiru, R. — *Deterministic Replay for AI Agent Systems* (agrepl) | arXiv:2607.16200, 2026 | paper/03-two-plane-determinism/refs.md (直接競合) | active |
 | [31] | arXiv:2608.27100 | Shulepov, I. — *Mutation Testing for Reproducibility Safeguards in Machine Learning Research Software: An Empirical Study* | arXiv:2608.27100, 2026-08-27 | paper/03-two-plane-determinism/refs.md | active |
+| [32] | DOI:10.1007/978-981-97-0065-3_9 | Sun, L., Gu, H., Myers, R. & Yuan, Z. — *A New Dataset and Method for Creativity Assessment Using the Alternate Uses Task* | In: Cruz, C., Zhang, Y. & Gao, W. (eds.), *Intelligent Computers, Algorithms, and Applications* (BenchCouncil IC 2023, Revised Selected Papers), CCIS vol. 2036, pp. 125–138, Springer Singapore, 2024 | experiments/20260907-paper01-g1/notes.md; .idea/paper-01-writing-spec.md §7 (Cambridge AUT dataset の出典) | active |
 
 ## 追加・撤回ルール
 
@@ -72,3 +73,31 @@
 - **[25] J-lens（global workspace）**: Transformer Circuits Thread の web 出版物 (arXiv 版・巻号なし)。著者表記
   (Gurnee, W., Sofroniew, N., Pearce, A. et al.) は WebFetch 由来の recall であり、**正式引用の前に原典で著者順・全著者を
   再確認**する (citation-ssot 規則6)。companion software = [26]。
+
+- **[32] Cambridge AUT dataset (Sun, Gu, Myers & Yuan) — 2026-09-08 追加 (issue I-010)**: 著者名・巻号・年は
+  **原典で実測確認済** (WebFetch、2026-09-08、Springer 書誌ページ
+  `https://link.springer.com/chapter/10.1007/978-981-97-0065-3_9` および KCL Pure 書誌レコード
+  `https://kclpure.kcl.ac.uk/portal/en/publications/a-new-dataset-and-method-for-creativity-assessment-using-the-alte`
+  を確認)。確認できた著者表記は **Luning Sun, Hongyi Gu, Rebecca Myers, Zheng Yuan**、書誌の出版年は
+  **2024** (BenchCouncil IC 2023 本会議は 2023-12 開催、CCIS の Revised Selected Papers 収録は 2024 年刊 —
+  会議年と収録年が異なる)。
+  **既存の `experiments/20260907-paper01-g1/data/raw/NOTICE.md` / `data.md` (I-001 成果物) は著者イニシャルを
+  "Y. Sun, X. Gu, S. M. Myers, D. Yuan" (2023) と記録しており、上記の原典確認結果と食い違う** — I-001 時点の
+  recall 誤りと見られる。`experiments/**` は本 issue (I-010) の Allowed Files 外につき本タスクでは修正せず、
+  `.steering/20260907-paper01-g1-external-audit/blockers.md` B-G1-9 として持ち越す。
+  ライセンス: **CC BY-NC-ND 4.0** (`https://github.com/ghydsgaaa/Cambridge-AUT-dataset` の `LICENSE` を
+  WebFetch で実測確認、2026-09-08)。
+
+- **[22] Organisciak et al. 2023 (Ocsai) の再使用について (issue I-010)**: G1 外部監査
+  (`experiments/20260907-paper01-g1/`, `.idea/paper-01-writing-spec.md` §7) が引く Ocsai の出典 DOI
+  (10.1016/j.tsc.2023.101356) は **既存 [22] と同一** (`docs/literature/20260713-aha-insight-neuroscience.md`
+  で先に登録済)。citation-ssot 規則4 (重複防止キー = DOI) に従い、**新規番号を発行せず [22] を再利用**する。
+  既存行の「使用箇所」列は当初登録時点のまま保持し (append-only diff を壊さないため)、新規の使用箇所は
+  ここに追記する: `experiments/20260907-paper01-g1/notes.md`、`.idea/paper-01-writing-spec.md` §7
+  (Ocsai の出典)。
+  ライセンス: リポジトリ `massivetexts/ocsai` は **MIT** (WebFetch で `LICENSE` の記載を実測確認、
+  2026-09-08)。ただし基盤となる MOTES コーパス (Acar et al., "limited to research access") の行単位
+  provenance が公開 JSONL (`{prompt, completion}` の 2 キーのみ) に無く、**MOTES 由来の混入を機械的に
+  否定できない** — この理由で本 repo は Ocsai データを再配布していない (取得スクリプト + SHA-256 のみ
+  同梱、詳細は `experiments/20260907-paper01-g1/data.md` と
+  `.steering/20260907-paper01-g1-external-audit/blockers.md` B-G1-2)。

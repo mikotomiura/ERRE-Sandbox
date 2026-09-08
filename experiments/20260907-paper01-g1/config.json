@@ -1,0 +1,229 @@
+{
+  "anchor_draws": 200,
+  "arms": [
+    {
+      "definition": "split0 gold-common pool, frozen-scan-order greedy dedupe (cosine >= REF_DEDUP), k = min(N_R_MAX, |pool|) seeded uniform-without-replacement draws, B = ANCHOR_DRAWS. Median draw feeds the §6 verdict.",
+      "key": "ARM-A",
+      "role": "verdict",
+      "scope": "all"
+    },
+    {
+      "definition": "Same dedup'd pool, all items, no cap on reference size.",
+      "key": "ARM-B",
+      "role": "sensitivity",
+      "scope": "all"
+    },
+    {
+      "definition": "(A1 union A2) dedup'd to k items. A2 = items with occurrence count >= EXT_A2_MIN_SUPPORT in the same split0 pool. Closest external analog of the internal recipe's composition.",
+      "key": "ARM-C",
+      "role": "sensitivity",
+      "scope": "ocsai_only"
+    },
+    {
+      "definition": "Same dedup'd pool, the k items nearest the pool centroid (deterministic, no draw). Matches typicality to the internal curated anchor (Opus MEDIUM-12).",
+      "key": "ARM-D",
+      "role": "sensitivity",
+      "scope": "all"
+    },
+    {
+      "definition": "Source-crossed: anchor pool = Cambridge split0 gold-common, gold = Ocsai paperclip good/common. The only arm where anchor provenance is genuinely independent of the scored gold (Codex HIGH-1).",
+      "key": "ARM-X",
+      "role": "sensitivity",
+      "scope": "paperclip_only"
+    }
+  ],
+  "binarisation": {
+    "cambridge": {
+      "common_rating": 1.0,
+      "exclude": "a 0 among rated values, or a 2, or a band-crossing mix, or a missing Responses cell",
+      "good_min_rating": 3.0
+    },
+    "ocsai": {
+      "common_score": 10,
+      "exclude": "encoded score 11-39",
+      "good_min_score": 40
+    }
+  },
+  "bootstrap_applies_to": "median_draw",
+  "candidate_ladder": [
+    {
+      "description": "MPNet (all-mpnet-base-v2) 1-max cos rarity, full R",
+      "family": "embedding",
+      "internal_analog": "C0-mpnet-max-full",
+      "key": "X0"
+    },
+    {
+      "description": "MPNet (all-mpnet-base-v2) 1-mean cos rarity, full R",
+      "family": "embedding",
+      "internal_analog": "C1-mpnet-mean-full",
+      "key": "X1"
+    },
+    {
+      "description": "X0 residualised on idea character length",
+      "family": "embedding",
+      "internal_analog": "C2-lenctrl",
+      "key": "X2"
+    },
+    {
+      "description": "MiniLM (all-MiniLM-L6-v2) 1-max cos rarity, full R",
+      "family": "embedding",
+      "internal_analog": "C3-MiniLM-max-full",
+      "key": "X3a"
+    },
+    {
+      "description": "e5-small-v2 1-max cos rarity, full R",
+      "family": "embedding",
+      "internal_analog": "C3-e5-small-max-full",
+      "key": "X3b"
+    },
+    {
+      "description": "bge-small-en-v1.5 1-max cos rarity, full R",
+      "family": "embedding",
+      "internal_analog": "C3-bge-small-max-full",
+      "key": "X3c"
+    },
+    {
+      "description": "lexical 1-max token-Jaccard novelty, full R",
+      "family": "lexical",
+      "internal_analog": "C5-jaccard-full",
+      "key": "X5"
+    },
+    {
+      "description": "TF-IDF mean token rarity vs. reference corpus",
+      "family": "lexical",
+      "internal_analog": "C6-tfidf-selfrarity",
+      "key": "X6"
+    }
+  ],
+  "corpora": [
+    {
+      "corpus": "cambridge",
+      "fmt": "xlsx",
+      "identifier": "bowl",
+      "sha256": "f8caa57cdebe1d8f19257c88e56c5346415f5289897efaa10f4150508341ac2d",
+      "uri": "https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/bowl%20AUT%20dataset.xlsx"
+    },
+    {
+      "corpus": "cambridge",
+      "fmt": "xlsx",
+      "identifier": "paperclip",
+      "sha256": "69e75792d0caa20363bf49a5dd57bbac731f2a19159a6b04753b0617999d7a96",
+      "uri": "https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/paperclip%20AUT%20dataset.xlsx"
+    },
+    {
+      "corpus": "ocsai",
+      "fmt": "jsonl",
+      "identifier": "train",
+      "sha256": "7b2ed8fb8a1b3c98dbb86428c222c5806870ab73a280d6e664aee137bf05ddfd",
+      "uri": "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_train.jsonl"
+    },
+    {
+      "corpus": "ocsai",
+      "fmt": "jsonl",
+      "identifier": "val",
+      "sha256": "a40bc78a5275ad274baeac7f410f7c1beb37e7913b138f5ef5fcfee8e15ccd9b",
+      "uri": "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_val.jsonl"
+    },
+    {
+      "corpus": "ocsai",
+      "fmt": "jsonl",
+      "identifier": "test",
+      "sha256": "bab9bf8fc28c27113a7d4d55e8f718edbad02214d14d53d98e8c78f07b3a4068",
+      "uri": "https://raw.githubusercontent.com/massivetexts/ocsai/main/data/ocsai1/finetune-gt_main2_prepared_test.jsonl"
+    }
+  ],
+  "draw_aggregation_threshold": 0.5,
+  "embedding_family_ext": [
+    "X0",
+    "X1",
+    "X2",
+    "X3a",
+    "X3b",
+    "X3c"
+  ],
+  "ext_a2_min_support": 2,
+  "min_class_n": 16,
+  "negative_controls": [
+    {
+      "definition": "Object o is scored against a *different* object o' 's split0 common pool; o' is picked by a deterministic cyclic shift of OCSAI_PRIMARY_OBJECTS / CAMBRIDGE_OBJECTS. Breaks object-correspondence while keeping same-population provenance -- the ARM-A vs. NC-1 contrast is what separates H_anchor from H_pop (design-final.md §4.2).",
+      "key": "NC-1",
+      "role": "control",
+      "scope": "all"
+    },
+    {
+      "definition": "Object o is scored against its own split0 *good* pool (instead of common). A positive control: if ARM-A's discrimination direction is real, NC-2 should flip it.",
+      "key": "NC-2",
+      "role": "control",
+      "scope": "all"
+    }
+  ],
+  "normalise_definition": "re.sub(r'\\s+', ' ', s.strip().lower())",
+  "objects": {
+    "cambridge": [
+      "bowl",
+      "paperclip"
+    ],
+    "ocsai_primary": [
+      "backpack",
+      "ball",
+      "book",
+      "bottle",
+      "box",
+      "brick",
+      "fork",
+      "hat",
+      "knife",
+      "lightbulb",
+      "pants",
+      "paperclip",
+      "pencil",
+      "rope",
+      "shoe",
+      "shovel",
+      "sock",
+      "spoon",
+      "table",
+      "tire",
+      "toothbrush"
+    ],
+    "ocsai_sensitivity": [
+      "brick",
+      "paperclip",
+      "bottle",
+      "shoe"
+    ]
+  },
+  "ocsai_concat_order": [
+    "train",
+    "val",
+    "test"
+  ],
+  "seed": 20260907,
+  "split_schemes": [
+    {
+      "definition": "Cambridge: id ascending, first half = split0 / second half = split1. Ocsai: OCSAI_CONCAT_ORDER row index, first half / second half. Minimises participant leakage if rows are participant-contiguous.",
+      "key": "SPLIT-BLOCK",
+      "role": "primary"
+    },
+    {
+      "definition": "Cambridge: int(id) % 2. Ocsai: OCSAI_CONCAT_ORDER row-index parity. The original design; reported alongside SPLIT-BLOCK because which split is correct is not knowable without participant IDs (neither corpus has them).",
+      "key": "SPLIT-PARITY",
+      "role": "sensitivity"
+    }
+  ],
+  "thresholds": {
+    "auc_floor": 0.8,
+    "ci_alpha": 0.1,
+    "n_r_max": 30,
+    "n_r_min": 8,
+    "n_resamples": 10000,
+    "ref_dedup": 0.9
+  },
+  "verdict_arm": "ARM-A",
+  "verdict_enum": [
+    "PASS",
+    "NO_VALID_SCORER",
+    "INVALID_TASK_BATTERY",
+    "INCONCLUSIVE_UNDERPOWERED"
+  ]
+}
