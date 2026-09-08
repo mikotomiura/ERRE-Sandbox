@@ -678,6 +678,461 @@ def corpus_redundancy(by_object: Mapping[str, np.ndarray]) -> float:
 # I-004: Stage 1 -- deflation test
 # ---------------------------------------------------------------------------
 
+_STAGE1_ELIGIBLE_FRACTION_FLOOR: Final[float] = 0.5
+"""design-final.md §3 Stage 1 / Codex TASK-PRE HIGH-3 / DA-SC-19: a replicate
+band is only trustworthy when *more than half* its replicates are
+``eligible``. ``eligible_fraction`` at exactly this floor still counts as
+"the majority is not eligible" (design-final.md:165's "X0 が replicate の
+過半で eligible でない") -- a named constant instead of an inline literal so
+:func:`stage1_outcome`'s boundary predicate is a single line to mutate and
+test, never a bare magic number."""
+
+
+def _stage1_seed(
+    seed: int, corpus: str, scheme: str, replicate_index: int, *extra: object
+) -> int:
+    """Fold this call's own ``seed`` through the frozen :func:`_g1.derive_seed`.
+
+    ``derive_seed`` always mixes in G1's own frozen module ``SEED`` first;
+    passing this function's ``seed`` argument as the leading part on top of
+    that (never re-hashed by hand -- the frozen apparatus's own hashing is
+    reused unmodified, design-final.md §6) is what makes ``internal_shaped_
+    replicates``'s own ``seed`` parameter load-bearing (AC 004-3: same seed
+    -> same extraction, a different seed -> a different one) -- reading only
+    ``_g1.SEED`` would not vary with it. The remaining parts mirror the
+    issue's own ``derive_seed("stage1", corpus, scheme, replicate_index)``
+    call literally (Codex TASK-PRE MEDIUM-2: ``corpus``/``scheme`` are
+    explicit arguments here too, never inferred from a module global);
+    ``extra`` differentiates the good/common draws *within* one replicate
+    for the same object, and different objects from each other, which the
+    issue's four-part call alone cannot (every object in the same replicate
+    would otherwise share one seed).
+    """
+    return _g1.derive_seed(seed, "stage1", corpus, scheme, replicate_index, *extra)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ObjectGoldPool:
+    """One active object's already-labelled item-index pools for Stage 1.
+
+    design-final.md §3 Stage 1. This issue's own contract (not one of the
+    six I-001-frozen dataclasses): ``good_item_indices`` / ``common_item_
+    indices`` are, in the caller's frozen scan order, positions into the
+    *shared* item ordering a companion :class:`~scripts.paper01_external_
+    audit.DrawItems`'s ``labels`` / ``objects`` arrays use (the adapter/
+    encoder layer that produces those arrays and this pool mapping is out
+    of I-004's scope, lands in I-007) -- :func:`internal_shaped_replicates`
+    only ever draws *indices*, never touches a score or an embedding.
+    ``object_weight`` is ``n_good * n_common`` for this object, the same §1
+    weight :func:`~scripts.paper01_external_audit.object_class_weights`
+    reports -- used only to order objects for the cyclic
+    :data:`STAGE1_INTERNAL_GOOD_COUNTS` assignment (design-final.md §3:
+    "object_weight 降順の active 物体へ巡回割当"), never fed into any AUC
+    computation.
+    """
+
+    object_key: str
+    object_weight: float
+    good_item_indices: tuple[int, ...]
+    common_item_indices: tuple[int, ...]
+
+
+def _stage1_object_order(contexts: Mapping[str, ObjectGoldPool]) -> list[str]:
+    """Active objects ordered by ``object_weight`` descending.
+
+    design-final.md §3, ties broken by object key ascending -- fully
+    deterministic regardless of ``contexts``'s own iteration/insertion
+    order (a plain ``dict`` does not sort itself).
+    """
+    return sorted(contexts, key=lambda key: (-contexts[key].object_weight, key))
+
+
+def _stage1_good_counts(contexts: Mapping[str, ObjectGoldPool]) -> dict[str, int]:
+    """Cyclic assignment of :data:`STAGE1_INTERNAL_GOOD_COUNTS` to objects.
+
+    design-final.md §3: the weight-ordered active object at position ``i``
+    (0-based, in :func:`_stage1_object_order`) gets
+    ``STAGE1_INTERNAL_GOOD_COUNTS[i % len(STAGE1_INTERNAL_GOOD_COUNTS)]`` --
+    wrapping around ("巡回割当") once there are more active objects than the
+    16-entry internal multiset.
+    """
+    order = _stage1_object_order(contexts)
+    n = len(STAGE1_INTERNAL_GOOD_COUNTS)
+    return {obj: STAGE1_INTERNAL_GOOD_COUNTS[i % n] for i, obj in enumerate(order)}
+
+
+def _stage1_pool_short_objects(
+    contexts: Mapping[str, ObjectGoldPool], good_counts: Mapping[str, int]
+) -> tuple[str, ...]:
+    """Objects whose good or common pool cannot satisfy its assigned count.
+
+    design-final.md §3 Stage 1, Codex TASK-PRE MEDIUM-2 ("プールが足りない
+    物体の扱いを明示凍結する。無音で減らさない"): sorted for determinism.
+    Structural -- depends only on pool sizes vs. the per-object assigned
+    count, so it is identical for every replicate one
+    :func:`internal_shaped_replicates` call produces.
+    """
+    short = [
+        obj
+        for obj, pool in contexts.items()
+        if len(pool.common_item_indices) < 1
+        or len(pool.good_item_indices) < good_counts[obj]
+    ]
+    return tuple(sorted(short))
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class GoldSubset:
+    """One Stage 1 replicate's internal-shaped item-index subset.
+
+    design-final.md §3 Stage 1. This issue's own contract:
+    ``item_indices`` are positions into the same shared item ordering
+    :class:`ObjectGoldPool`'s pools index into -- exactly one "common"
+    index per active object plus that object's cyclically assigned
+    :data:`STAGE1_INTERNAL_GOOD_COUNTS` share of "good" indices (fewer,
+    for a :data:`pool_short_objects` member), drawn seeded-without-
+    replacement by :func:`internal_shaped_replicates`. ``pool_short_
+    objects`` is structural (the same every replicate one ``internal_
+    shaped_replicates`` call produces, because it only depends on pool
+    sizes vs. the assigned per-object count, never on which items were
+    drawn) -- :func:`stage1_drop_distribution` reads it once, off the
+    first replicate, to populate :class:`Stage1Result`.
+    """
+
+    replicate_index: int
+    item_indices: tuple[int, ...]
+    pool_short_objects: tuple[str, ...]
+
+
+def internal_shaped_replicates(
+    contexts: Mapping[str, ObjectGoldPool],
+    *,
+    replicates: int,
+    corpus: str,
+    scheme: str,
+    seed: int,
+) -> list[GoldSubset]:
+    """Shrink an external gold pool to the internal C0 shape (this issue's Goal).
+
+    design-final.md §3 Stage 1: "Ocsai の gold を内部と同じ形へ縮小: 物体
+    あたり common 1 件 + good は... 巡回割当した件数だけ seeded 復元なし
+    抽出". Each of ``replicates`` independently draws (without replacement
+    *within* that replicate only -- resampling *across* replicates is what
+    makes this a bootstrap-style distribution) exactly one common index and
+    that object's assigned share of good indices from every active object
+    in :func:`_stage1_object_order`, via the frozen
+    :func:`~scripts.paper01_external_audit.anchor_draw_indices` -- never a
+    hand-rolled RNG call (AC 004-4's spy checks this).
+
+    **Anchor (Codex HIGH-5 / DA-SC-12, outcome-independence)**: every draw
+    passes ``draw_index=`` :data:`STAGE1_DRAW_INDEX` literally, never a
+    value derived from an observed statistic (e.g. the superseded
+    "median-by-drop draw", DA-SC-6) -- only ``seed`` (folded per replicate/
+    object/good-or-common via :func:`_stage1_seed`) varies the draw, so the
+    anchor choice itself can never depend on outcome.
+
+    An object short of its assigned count (either pool) still gets a
+    best-effort draw of whatever is available (never raises, never
+    silently vanishes from the replicate) and is recorded in every
+    returned :class:`GoldSubset`'s ``pool_short_objects``
+    (:func:`_stage1_pool_short_objects`) -- "無音で減らさない".
+    """
+    order = _stage1_object_order(contexts)
+    good_counts = _stage1_good_counts(contexts)
+    pool_short_objects = _stage1_pool_short_objects(contexts, good_counts)
+
+    out: list[GoldSubset] = []
+    for r in range(replicates):
+        item_indices: list[int] = []
+        for obj in order:
+            pool = contexts[obj]
+            need_good = min(good_counts[obj], len(pool.good_item_indices))
+            need_common = min(1, len(pool.common_item_indices))
+
+            if need_good > 0:
+                good_seed = _stage1_seed(seed, corpus, scheme, r, obj, "good")
+                drawn_good = _g1.anchor_draw_indices(
+                    len(pool.good_item_indices),
+                    need_good,
+                    seed=good_seed,
+                    draw_index=STAGE1_DRAW_INDEX,
+                )
+                item_indices.extend(
+                    pool.good_item_indices[i] for i in drawn_good.tolist()
+                )
+
+            if need_common > 0:
+                common_seed = _stage1_seed(seed, corpus, scheme, r, obj, "common")
+                drawn_common = _g1.anchor_draw_indices(
+                    len(pool.common_item_indices),
+                    need_common,
+                    seed=common_seed,
+                    draw_index=STAGE1_DRAW_INDEX,
+                )
+                item_indices.extend(
+                    pool.common_item_indices[i] for i in drawn_common.tolist()
+                )
+
+        out.append(
+            GoldSubset(
+                replicate_index=r,
+                item_indices=tuple(item_indices),
+                pool_short_objects=pool_short_objects,
+            )
+        )
+    return out
+
+
+def same_object_pair_share(counts_by_object: Mapping[str, tuple[int, int]]) -> float:
+    """Diagnostic (AC 004-2): same-object share of every pooled good x common pair.
+
+    design-final.md §3 Stage 1 shrinks Ocsai to "物体あたり common 1 件" --
+    ``counts_by_object`` maps each active object to its own ``(n_good,
+    n_common)`` pair count. If every good item were pooled against every
+    common item *across* objects (a flat cross-product, never what
+    :func:`~scripts.paper01_external_audit.auc_stratified` itself computes
+    -- that function never forms cross-object pairs at all), the fraction
+    that happen to share an object is ``sum(n_good*n_common per object) /
+    (total_good * total_common)``. With exactly one common item per object
+    this reduces to ``1 / n_active_objects`` regardless of the good counts,
+    the same structural reason the sealed internal C0 gold (16 objects, one
+    common category slot's worth of weight per object) reports 6.25% =
+    1/16 -- this function never hardcodes that reduction, only the raw
+    pair-counting definition, so a shape that stops being "one common per
+    object" would show up here as a genuine divergence.
+    """
+    same = sum(n_good * n_common for n_good, n_common in counts_by_object.values())
+    total_good = sum(n_good for n_good, _ in counts_by_object.values())
+    total_common = sum(n_common for _, n_common in counts_by_object.values())
+    total = total_good * total_common
+    if total == 0:
+        return 0.0
+    return same / total
+
+
+def _stage1_auc_unweighted_by_object(
+    scores: list[float], labels: list[int], objects: list[str]
+) -> float:
+    """Layer-stratified (object-unweighted) AUC -- the §3 Stage 1 "副" statistic.
+
+    design-final.md §3 Stage 1: "統計量は内部と同じ pooled AUC を主、層別を
+    副として両方出す". Unlike
+    :func:`~scripts.paper01_external_audit.auc_stratified` (the *primary*
+    statistic, weighted by each object's ``n_good * n_common``), this is
+    the plain unweighted mean of every active object's own within-object
+    AUC -- computed by the frozen
+    :func:`~scripts.paper01_external_audit.controls.auc` (never
+    reimplemented), mirroring :func:`~scripts.paper01_scope_condition.
+    corpus_redundancy`'s "物体重みで加重しない" discipline (design-final.md
+    §2.1) so this secondary/diagnostic figure cannot be dominated by a
+    single high-weight object the way the primary pooled statistic can be
+    (design-final.md §8 Limitations, the Ocsai brick-weight-concentration
+    diagnostic). Returns ``0.5`` (uninformative, matching ``controls.auc``'s
+    own single-class convention) when no object clears both class minimums.
+    """
+    scores_arr = np.asarray(scores, dtype=float)
+    labels_arr = np.asarray(labels, dtype=int)
+    objects_arr = np.asarray(objects, dtype=object)
+
+    per_object_aucs: list[float] = []
+    for obj in dict.fromkeys(objects_arr.tolist()):
+        mask = objects_arr == obj
+        obj_labels = labels_arr[mask]
+        if (obj_labels == 1).sum() == 0 or (obj_labels == 0).sum() == 0:
+            continue
+        per_object_aucs.append(
+            _g1.controls.auc(scores_arr[mask].tolist(), obj_labels.tolist())
+        )
+    if not per_object_aucs:
+        return 0.5
+    return float(sum(per_object_aucs) / len(per_object_aucs))
+
+
+def stage1_outcome(
+    band: tuple[float, float], reference_drop: float, eligible_fraction: float
+) -> str:
+    """§3 Stage 1 three-state verdict (Codex TASK-PRE HIGH-3 / DA-SC-19).
+
+    This issue's core. Total over its whole declared input space -- always
+    one of :data:`STAGE1_OUTCOME_ENUM`, never raises.
+
+    design-final.md:165's frozen table, in this priority order:
+
+    1. ``eligible_fraction <=`` :data:`_STAGE1_ELIGIBLE_FRACTION_FLOOR` ->
+       ``"INCONCLUSIVE"`` ("X0 が replicate の過半で eligible でない" ->
+       "判定不能"). Checked *first* and unconditionally: an ineligible
+       majority makes the band untrustworthy regardless of what it
+       contains, so this branch must never be reachable only when the band
+       check below happens to disagree.
+    2. Otherwise, ``band`` (``(drop_p5, drop_p95)``) containing
+       ``reference_drop`` on a **closed** interval (Codex TASK-PRE
+       MEDIUM-3: a boundary-equal ``reference_drop`` counts as *inside* --
+       ``"DEFLATION_SUPPORTED"``, frozen and pinned by a boundary test) ->
+       ``"DEFLATION_SUPPORTED"``.
+    3. Otherwise -> ``"DEFLATION_REJECTED"``.
+
+    **``"INCONCLUSIVE"`` is never folded into ``"DEFLATION_REJECTED"``**
+    (this issue's Background: folding would silently move
+    design-final.md:251's exit table onto the "書く" branch) -- the three
+    branches above are mutually exclusive and jointly exhaustive by
+    construction (an ``if``/``elif``/``else`` chain, never a set of
+    independent booleans that could all be false).
+    """
+    if eligible_fraction <= _STAGE1_ELIGIBLE_FRACTION_FLOOR:
+        return "INCONCLUSIVE"
+    band_low, band_high = band
+    if band_low <= reference_drop <= band_high:
+        return "DEFLATION_SUPPORTED"
+    return "DEFLATION_REJECTED"
+
+
+def stage1_deflation_supported(
+    band: tuple[float, float], reference_drop: float, eligible_fraction: float
+) -> bool:
+    """Derived mirror of ``stage1_outcome(...) == "DEFLATION_SUPPORTED"``.
+
+    design-final.md §3 Stage 1 / Codex TASK-PRE HIGH-3: never re-derives the
+    condition independently -- a single source of truth for "is deflation
+    supported" so the two can never silently drift apart.
+    """
+    return (
+        stage1_outcome(band, reference_drop, eligible_fraction) == "DEFLATION_SUPPORTED"
+    )
+
+
+def stage1_drop_distribution(
+    draw_items: _g1.DrawItems,
+    subsets: list[GoldSubset],
+    *,
+    candidate: str,
+    reference_drop: float = STAGE1_INTERNAL_DROP_REF,
+) -> Stage1Result:
+    """Aggregate §3 Stage 1 statistics over R seeded replicates (this issue's Goal).
+
+    ``draw_items`` holds one candidate's full corpus item arrays
+    (``scores_full`` / ``scores_lao`` / ``labels`` / ``objects``), already
+    scored against the frozen :data:`STAGE1_DRAW_INDEX` anchor by the
+    out-of-scope-for-I-004 adapter/encoder layer (lands in I-007) --
+    this function only ever *subsets* those arrays by each
+    :class:`GoldSubset.item_indices`, delegating every AUC computation to
+    the frozen :func:`~scripts.paper01_external_audit.auc_stratified`
+    (pooled, primary) / :func:`_stage1_auc_unweighted_by_object`
+    (layer-stratified, secondary/"副") -- never reimplementing either
+    (AC 004-6: passing a single subset covering *every* item must reproduce
+    exactly what calling ``auc_stratified`` directly on the same arrays
+    gives).
+
+    Eligibility (``eligible_fraction``, per-replicate) reuses the frozen
+    :func:`~scripts.paper01_external_audit.is_draw_eligible` (``AUC_strat
+    (full) >= AUC_FLOOR``, floor read through
+    ``erre_sandbox.evidence.es4_actuator.constants`` inside that call, live
+    -- never cached here). The eligible-limited band
+    (``drop_p5_eligible``/``drop_p95_eligible``/``median_drop_eligible``,
+    design-final.md:165's "副" remedy row) falls back to the pooled band
+    when *no* replicate is eligible, rather than raising -- that
+    degenerate case is already what routes :func:`stage1_outcome` to
+    ``"INCONCLUSIVE"`` via ``eligible_fraction == 0.0``, so the fallback
+    value is never read as a trustworthy band.
+
+    The median-by-drop-draw sensitivity (``median_draw_drop`` /
+    ``median_draw_outcome``, DA-SC-6/DA-SC-12) is computed from the frozen
+    :func:`~scripts.paper01_external_audit.median_draw_index` (never
+    reimplemented) applied to *this candidate's* R replicate drops --
+    entirely independent of the primary ``band``/``stage1_outcome`` above,
+    so it can never feed the primary verdict (AC 004-5).
+    """
+    if not subsets:
+        msg = "stage1_drop_distribution requires at least one replicate subset"
+        raise ValueError(msg)
+
+    scores_full = np.asarray(draw_items.scores_full, dtype=float)
+    scores_lao = np.asarray(draw_items.scores_lao, dtype=float)
+    labels = np.asarray(draw_items.labels, dtype=int)
+    objects = np.asarray(draw_items.objects, dtype=object)
+
+    drops_pooled: list[float] = []
+    drops_strat: list[float] = []
+    eligible_flags: list[bool] = []
+
+    for subset in subsets:
+        idx = np.asarray(subset.item_indices, dtype=int)
+        sub_labels = labels[idx].tolist()
+        sub_objects = objects[idx].tolist()
+
+        auc_full = _g1.auc_stratified(
+            scores_full[idx].tolist(), sub_labels, sub_objects
+        )
+        auc_lao = _g1.auc_stratified(scores_lao[idx].tolist(), sub_labels, sub_objects)
+        drops_pooled.append(auc_full - auc_lao)
+        eligible_flags.append(_g1.is_draw_eligible(auc_full))
+
+        strat_full = _stage1_auc_unweighted_by_object(
+            scores_full[idx].tolist(), sub_labels, sub_objects
+        )
+        strat_lao = _stage1_auc_unweighted_by_object(
+            scores_lao[idx].tolist(), sub_labels, sub_objects
+        )
+        drops_strat.append(strat_full - strat_lao)
+
+    drops_arr = np.asarray(drops_pooled, dtype=float)
+    strat_arr = np.asarray(drops_strat, dtype=float)
+    eligible_arr = np.asarray(eligible_flags, dtype=bool)
+
+    drop_p5 = float(np.percentile(drops_arr, 5))
+    drop_p95 = float(np.percentile(drops_arr, 95))
+    median_drop = float(np.median(drops_arr))
+    eligible_fraction = float(eligible_arr.mean())
+
+    if eligible_arr.any():
+        eligible_drops = drops_arr[eligible_arr]
+        drop_p5_eligible = float(np.percentile(eligible_drops, 5))
+        drop_p95_eligible = float(np.percentile(eligible_drops, 95))
+        median_drop_eligible = float(np.median(eligible_drops))
+    else:
+        drop_p5_eligible = drop_p5
+        drop_p95_eligible = drop_p95
+        median_drop_eligible = median_drop
+
+    drop_p5_strat = float(np.percentile(strat_arr, 5))
+    drop_p95_strat = float(np.percentile(strat_arr, 95))
+    median_drop_strat = float(np.median(strat_arr))
+
+    band = (drop_p5, drop_p95)
+    outcome = stage1_outcome(band, reference_drop, eligible_fraction)
+    supported = stage1_deflation_supported(band, reference_drop, eligible_fraction)
+
+    median_idx = _g1.median_draw_index(drops_pooled)
+    median_draw_drop = float(drops_pooled[median_idx])
+    median_draw_eligible_fraction = 1.0 if eligible_flags[median_idx] else 0.0
+    median_draw_outcome = stage1_outcome(
+        (median_draw_drop, median_draw_drop),
+        reference_drop,
+        median_draw_eligible_fraction,
+    )
+
+    pool_short_objects = subsets[0].pool_short_objects
+
+    return Stage1Result(
+        candidate=candidate,
+        n_replicates=len(subsets),
+        drop_p5=drop_p5,
+        drop_p95=drop_p95,
+        median_drop=median_drop,
+        eligible_fraction=eligible_fraction,
+        deflation_supported=supported,
+        stage1_outcome=outcome,
+        drop_p5_eligible=drop_p5_eligible,
+        drop_p95_eligible=drop_p95_eligible,
+        median_drop_eligible=median_drop_eligible,
+        drop_p5_strat=drop_p5_strat,
+        drop_p95_strat=drop_p95_strat,
+        median_drop_strat=median_drop_strat,
+        n_objects_pool_short=len(pool_short_objects),
+        pool_short_objects=pool_short_objects,
+        median_draw_drop=median_draw_drop,
+        median_draw_outcome=median_draw_outcome,
+    )
+
 
 # ---------------------------------------------------------------------------
 # I-005: decision rule -- decide_scope()
