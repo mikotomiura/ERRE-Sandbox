@@ -47,6 +47,7 @@ two-path logic is written exactly once, in G1's module.
 
 from __future__ import annotations
 
+import argparse
 import dataclasses
 import importlib
 import json
@@ -57,7 +58,7 @@ from typing import TYPE_CHECKING, Any, Final
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping, Sequence
     from types import ModuleType
 
 # --- two-path import bootstrap (design-final.md §6, reuses G1's helper) ----
@@ -1532,3 +1533,1124 @@ def decide_scope(
 # ---------------------------------------------------------------------------
 # I-006: tau* calibration / cell wiring / CLI
 # ---------------------------------------------------------------------------
+
+
+# --- CellAnchors: one AUT object's leader-clustered draws (I-006 internal) -
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CellAnchors:
+    """One AUT object's ``(tau, k)`` cell anchor draws -- pre-scoring geometry.
+
+    I-006's own internal type (not one of the six I-001-frozen contracts;
+    Codex TASK-PRE LOW-2 permits this since I-007 only ever reads the
+    on-disk ``results/scope.json`` shape :func:`run_scope` freezes below,
+    never this in-process dataclass). :func:`build_cell` produces one of
+    these per ``(object, tau, k)`` before any
+    :func:`~scripts.paper01_external_audit.decide_external` scoring
+    happens; :func:`score_cell` (also I-006) turns a *mapping* of these
+    (one per active object) into the frozen :class:`CellResult`.
+
+    ``draw_texts_by_draw`` has length
+    :data:`scripts.paper01_external_audit.ANCHOR_DRAWS` -- entry ``b`` is
+    the texts :func:`~scripts.paper01_external_audit.anchor_draw_indices`
+    drew for ``draw_index=b``. **Fidelity pin (b)**: at ``tau=REF_DEDUP,
+    cap=N_R_MAX`` this is index-for-index identical to what
+    :func:`~scripts.paper01_external_audit.arm_a_draw_texts` returns when
+    called once per ``b`` (``test_cell_pipeline_order_is_dedupe_then_cap_
+    then_draw`` pins the geometry; ``test_dense_cell_reproduces_g1_arm_a``
+    pins the scored result this feeds).
+    """
+
+    object_key: str
+    tau: float
+    k_target: int
+    k_effective: int
+    n_pool: int
+    n_leaders: int
+    draw_texts_by_draw: tuple[tuple[str, ...], ...]
+
+
+def build_cell(
+    ctx: _g1.ObjectSplitContext,
+    pool_embeddings: Mapping[str, np.ndarray],
+    *,
+    tau: float,
+    cap: int,
+    corpus: str,
+    scheme: str,
+) -> CellAnchors:
+    """design-final.md §3 Stage 2's frozen per-object cell pipeline.
+
+    This issue's Goal (Codex HIGH-4). ``ctx`` is one
+    :class:`scripts.paper01_external_audit.ObjectSplitContext` (reused,
+    never rebuilt -- ``ctx.common_pool`` is the *raw*, un-deduped split0
+    gold-common pool in frozen scan order).
+
+    **Pipeline order (AC 006-2, spy-pinned, never reordered)**:
+
+    1. ``pool`` = ``ctx.common_pool`` -- raw, **not** ``ctx.dedup_common_
+       pool`` (that is already deduped at the fixed ``REF_DEDUP``, not this
+       cell's own ``tau``).
+    2. ``leaders`` = :func:`leader_cluster_indices` at ``radius=tau,
+       cap=len(pool)`` -- **uncapped** (dedupe first, at the whole pool's
+       size, never at ``cap``).
+    3. ``k_eff`` = ``min(cap, len(leaders))`` -- capped only *after* step 2.
+    4. ``draws`` -- one
+       :func:`~scripts.paper01_external_audit.anchor_draw_indices` call per
+       ``b in range(scripts.paper01_external_audit.ANCHOR_DRAWS)``, seeded
+       via ``_g1.derive_seed(corpus, ctx.object_key, scheme, "ARM-A")`` --
+       the **same** seed tag
+       :func:`~scripts.paper01_external_audit.arm_a_draw_texts` uses,
+       literally, for *every* cell (this generalises ARM-A's own recipe
+       rather than forking it -- what makes fidelity pin (b) an exact
+       reduction at ``tau=REF_DEDUP, cap=N_R_MAX`` instead of a
+       coincidence).
+
+    ``pool_embeddings`` maps each pool text to its unit-normalised
+    embedding (the caller's own ``vmap``) -- this function performs no
+    embedding of its own.
+
+    An empty ``ctx.common_pool`` (or a ``0``-``k_eff`` cell) reports
+    ``draw_texts_by_draw`` as :data:`~scripts.paper01_external_audit.
+    ANCHOR_DRAWS` empty tuples, mirroring
+    :func:`~scripts.paper01_external_audit.arm_a_draw_texts`'s own
+    ``k == 0`` short-circuit (never raises).
+    """
+    pool = ctx.common_pool
+    n_pool = len(pool)
+    if n_pool == 0:
+        return CellAnchors(
+            object_key=ctx.object_key,
+            tau=tau,
+            k_target=cap,
+            k_effective=0,
+            n_pool=0,
+            n_leaders=0,
+            draw_texts_by_draw=tuple(() for _ in range(_g1.ANCHOR_DRAWS)),
+        )
+
+    emb = np.asarray([pool_embeddings[r.text] for r in pool], dtype=float)
+    leader_idx = leader_cluster_indices(emb, radius=tau, cap=n_pool)
+    leaders = tuple(pool[i] for i in leader_idx)
+    n_leaders = len(leaders)
+    k_eff = min(cap, n_leaders)
+
+    if k_eff == 0:
+        draws: tuple[tuple[str, ...], ...] = tuple(() for _ in range(_g1.ANCHOR_DRAWS))
+    else:
+        seed = _g1.derive_seed(corpus, ctx.object_key, scheme, "ARM-A")
+        draws = tuple(
+            tuple(
+                leaders[i].text
+                for i in _g1.anchor_draw_indices(
+                    n_leaders, k_eff, seed=seed, draw_index=b
+                ).tolist()
+            )
+            for b in range(_g1.ANCHOR_DRAWS)
+        )
+
+    return CellAnchors(
+        object_key=ctx.object_key,
+        tau=tau,
+        k_target=cap,
+        k_effective=k_eff,
+        n_pool=n_pool,
+        n_leaders=n_leaders,
+        draw_texts_by_draw=draws,
+    )
+
+
+# --- InternalReference: rho_int / k* (Codex HIGH-1 / TASK-PRE HIGH-5) ------
+
+
+def internal_reference_per_object(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+    *,
+    run_dir: Path | None = None,
+) -> tuple[InternalReference, ...]:
+    """design-final.md §2.3: one :class:`InternalReference` row per AUT object.
+
+    **Reuses (never rebuilds) the frozen fidelity-pin contexts** (this
+    issue's Scope In): ``_g1._c4_fidelity_context(mpnet)`` for the
+    *primary* basis (raw curated, un-deduped -- Codex HIGH-1: "実際に C4
+    スコアラが見た集合") and ``_g1._c0_fidelity_context(mpnet, run_dir)`` for
+    the mandatory *secondary* cross-check
+    (``construct_all_references``'s dedup'd ``R_object``). Neither context
+    is reconstructed here -- only its already-embedded ``vmap`` and
+    per-object text lists are read.
+
+    ``rho_primary_c4`` / ``rho_secondary_c0`` are each object's
+    :func:`reference_redundancy` over its own reference embeddings (the
+    *per-object* row :class:`InternalReference`'s own frozen docstring
+    documents -- never the corpus-level :func:`corpus_redundancy`, which
+    :func:`internal_rho_and_k` computes from *this* function's output
+    instead). ``n_refs_primary_c4`` / ``n_refs_secondary_c0`` are the
+    corresponding raw reference-set sizes (``|R_o|``).
+
+    Raises :class:`FileNotFoundError` (propagated from
+    ``_c0_fidelity_context``, never swallowed) when ``run_dir``'s sealed
+    Phase A artifact is missing -- callers that only need the primary (C4)
+    basis should catch this or use :func:`internal_reference_c4_only`.
+    """
+    run_dir = _g1.PHASE_A_RUN_DIR if run_dir is None else run_dir
+    _, vmap_c4, curated = _g1._c4_fidelity_context(mpnet)  # noqa: SLF001
+    _, vmap_c0, full_ref_texts = _g1._c0_fidelity_context(  # noqa: SLF001
+        mpnet, run_dir
+    )
+
+    objects = sorted(set(curated) | set(full_ref_texts))
+    out: list[InternalReference] = []
+    for obj in objects:
+        c4_texts = tuple(curated.get(obj, []))
+        c0_texts = tuple(full_ref_texts.get(obj, []))
+        c4_emb = np.asarray([vmap_c4[t] for t in c4_texts], dtype=float)
+        c0_emb = np.asarray([vmap_c0[t] for t in c0_texts], dtype=float)
+        out.append(
+            InternalReference(
+                object_id=obj,
+                rho_primary_c4=reference_redundancy(c4_emb),
+                rho_secondary_c0=reference_redundancy(c0_emb),
+                n_refs_primary_c4=len(c4_texts),
+                n_refs_secondary_c0=len(c0_texts),
+            )
+        )
+    return tuple(out)
+
+
+def internal_reference_c4_only(
+    mpnet: Callable[[Sequence[str]], np.ndarray],
+) -> tuple[InternalReference, ...]:
+    """The primary-only (C4) half of :func:`internal_reference_per_object`.
+
+    Never touches ``_c0_fidelity_context`` (so never raises
+    :class:`FileNotFoundError` for a missing Phase A artifact) -- each row's
+    ``rho_secondary_c0`` / ``n_refs_secondary_c0`` are the frozen ``0.0`` /
+    ``0`` defaults :func:`reference_redundancy` itself uses for an empty
+    reference set (design-final.md §2.1, Codex TASK-PRE LOW-1), never a
+    fabricated non-zero value.
+    """
+    _, vmap_c4, curated = _g1._c4_fidelity_context(mpnet)  # noqa: SLF001
+    out: list[InternalReference] = []
+    for obj in sorted(curated):
+        c4_texts = tuple(curated.get(obj, []))
+        c4_emb = np.asarray([vmap_c4[t] for t in c4_texts], dtype=float)
+        out.append(
+            InternalReference(
+                object_id=obj,
+                rho_primary_c4=reference_redundancy(c4_emb),
+                rho_secondary_c0=0.0,
+                n_refs_primary_c4=len(c4_texts),
+                n_refs_secondary_c0=0,
+            )
+        )
+    return tuple(out)
+
+
+def internal_rho_and_k(
+    references: tuple[InternalReference, ...],
+) -> tuple[float, float, int]:
+    """design-final.md §2.1/§2.3/§2.4 corpus-level ``(rho_int, k_star)``.
+
+    Aggregated from :func:`internal_reference_per_object`'s (or
+    :func:`internal_reference_c4_only`'s) per-object rows.
+    ``rho_int_primary`` / ``rho_int_secondary`` are each the **unweighted**
+    mean of ``rho_primary_c4`` / ``rho_secondary_c0`` across every row
+    (§2.1: "物体横断の単純平均 (物体重みで加重しない)"), mirroring
+    :func:`corpus_redundancy`'s own convention exactly -- never re-derived
+    with a different weighting here. ``k_star`` is the **median** of
+    ``n_refs_primary_c4`` across every row (§2.4: "内部 C4 の物体あたり
+    |R_o| の中央値").
+
+    Pure aggregation -- no encoder, no I/O -- so it is exercised directly
+    by ``test_rho_int_uses_raw_curated_not_deduped`` /
+    ``test_rho_int_reports_both_bases`` without touching
+    :func:`internal_reference_per_object`'s ``mpnet``-dependent half.
+
+    Returns ``(0.0, 0.0, 0)`` for an empty ``references`` (fail-closed, the
+    same convention :func:`_stage0_t_s_delta` uses for a missing row).
+    """
+    if not references:
+        return 0.0, 0.0, 0
+    rho_primary = float(sum(r.rho_primary_c4 for r in references) / len(references))
+    rho_secondary = float(sum(r.rho_secondary_c0 for r in references) / len(references))
+    k_star = int(np.median([r.n_refs_primary_c4 for r in references]))
+    return rho_primary, rho_secondary, k_star
+
+
+# --- tau* calibration (design-final.md §2.4, Codex MEDIUM-3) ---------------
+
+
+def adjacent_tau_indices(tau_star_index: int) -> tuple[int, ...]:
+    """The :data:`TAU_GRID` neighbour index/indices of ``tau_star_index``.
+
+    design-final.md §2.4 MEDIUM-3's robustness check needs "τ* の隣接 1 段
+    (上または下)". One neighbour at either grid edge, two in the interior
+    (AC 006-7: never drops the sole neighbour at an edge, never reports a
+    nonexistent one past it).
+    """
+    n = len(TAU_GRID)
+    out: list[int] = []
+    if tau_star_index > 0:
+        out.append(tau_star_index - 1)
+    if tau_star_index < n - 1:
+        out.append(tau_star_index + 1)
+    return tuple(out)
+
+
+def calibrate_tau(
+    rho_ext_by_tau: tuple[float, ...],
+    rho_int_primary: float,
+    *,
+    k_star: int,
+) -> TauCalibration:
+    """design-final.md §2.4: ``tau* = argmin_tau |rho_ext(tau) - rho_int|``.
+
+    Over the frozen :data:`TAU_GRID`, ties broken to the **larger** tau
+    (Codex requirement, AC 006-5). ``rho_ext_by_tau`` must be index-aligned
+    with :data:`TAU_GRID` (never a float-keyed mapping --
+    :class:`TauCalibration`'s own frozen docstring); raises
+    :class:`ValueError` otherwise (fail loud, never silently pad or
+    truncate).
+
+    ``single_point_dependent`` is returned ``False`` here -- this function
+    is pure external-anchor-pool *geometry* and has no verdict to compare a
+    neighbour against (design-final.md §2.4's robustness *check* needs each
+    neighbour tau's *scored* :class:`~scripts.paper01_external_audit.
+    ExternalVerdict`, which only exists after :func:`score_cell` runs on
+    the neighbour(s) :func:`adjacent_tau_indices` names).
+    :func:`run_scope`'s caller is what finalises this field, via
+    ``dataclasses.replace``, once it has scored those neighbour cell(s).
+    """
+    if len(rho_ext_by_tau) != len(TAU_GRID):
+        msg = (
+            "calibrate_tau: rho_ext_by_tau must be index-aligned with "
+            f"TAU_GRID (len {len(TAU_GRID)}), got len {len(rho_ext_by_tau)}"
+        )
+        raise ValueError(msg)
+
+    best_index = 0
+    best_gap = abs(rho_ext_by_tau[0] - rho_int_primary)
+    for i in range(1, len(TAU_GRID)):
+        gap = abs(rho_ext_by_tau[i] - rho_int_primary)
+        # tie -> larger tau: TAU_GRID is descending, so a *strict* `<` here
+        # (never `<=`) keeps the first (largest-tau) index seen on a tie.
+        # mutation target: `<=` would flip the tie-break to the smaller tau.
+        if gap < best_gap:
+            best_gap = gap
+            best_index = i
+
+    tau_star = TAU_GRID[best_index]
+    return TauCalibration(
+        rho_int_primary=rho_int_primary,
+        rho_by_tau=tuple(rho_ext_by_tau),
+        tau_star=tau_star,
+        k_star=k_star,
+        single_point_dependent=False,
+    )
+
+
+def external_rho_by_tau(
+    contexts: Mapping[str, _g1.ObjectSplitContext],
+    pool_embeddings: Mapping[str, np.ndarray],
+    active_objects: Sequence[str],
+    *,
+    tau_grid: tuple[float, ...] = TAU_GRID,
+) -> tuple[float, ...]:
+    """design-final.md §2.4: corpus-level ρ_ext(τ) for every τ in ``tau_grid``.
+
+    The external anchor-pool geometry :func:`calibrate_tau` compares
+    against ``rho_int_primary``. For each τ, each active object's
+    ``ctx.common_pool`` is leader-
+    clustered at that τ via the **same** :func:`leader_cluster_indices`
+    :func:`build_cell` uses (never re-dedup'd through
+    :func:`~scripts.paper01_external_audit.greedy_dedupe_indices`), and
+    :func:`corpus_redundancy` is taken over the resulting per-object leader
+    embeddings. ``contexts`` values are
+    :class:`scripts.paper01_external_audit.ObjectSplitContext` instances.
+    Index-aligned with ``tau_grid`` (never a float-keyed mapping, per
+    :class:`TauCalibration`'s own frozen docstring).
+    """
+    out: list[float] = []
+    for tau in tau_grid:
+        by_object: dict[str, np.ndarray] = {}
+        for obj in active_objects:
+            pool = contexts[obj].common_pool
+            if not pool:
+                continue
+            emb = np.asarray([pool_embeddings[r.text] for r in pool], dtype=float)
+            leader_idx = leader_cluster_indices(emb, radius=tau, cap=len(pool))
+            by_object[obj] = emb[np.asarray(leader_idx, dtype=int)]
+        out.append(corpus_redundancy(by_object))
+    return tuple(out)
+
+
+# --- common active object intersection (DA-SC-3 / Codex MEDIUM-4) ----------
+
+
+def active_objects_for_cell(
+    cells_by_object: Mapping[str, CellAnchors],
+) -> tuple[str, ...]:
+    """design-final.md §3 Stage 2: the objects *this one cell* can score.
+
+    ``n_leaders >= N_R_MIN`` (mirrors
+    :attr:`~scripts.paper01_external_audit.ObjectSplitContext.dropped`'s
+    own gate, generalised from the fixed ``REF_DEDUP`` pool size to this
+    cell's own ``tau``-clustered ``n_leaders`` -- at ``tau=REF_DEDUP`` the
+    two gates coincide exactly, since :func:`build_cell`'s ``n_leaders``
+    there equals ``len(ctx.dedup_common_pool)``). Sorted for determinism.
+    """
+    return tuple(
+        sorted(
+            obj
+            for obj, anchors in cells_by_object.items()
+            if anchors.n_leaders >= _c.N_R_MIN
+        )
+    )
+
+
+def common_active_objects(cells: Mapping[str, Sequence[str]]) -> list[str]:
+    """design-final.md §3 Stage 2 DA-SC-3: intersection of every cell's active set.
+
+    Codex MEDIUM-4: purely structural -- never looks at
+    ``decide_external``'s verdict or object identity beyond set
+    membership. ``cells`` maps a cell label (e.g. ``"tau=0.90,k=30"``) to that cell's
+    own :func:`active_objects_for_cell` result. Returns ``[]`` for an empty
+    ``cells`` mapping (fail-closed, never "everything is active" by a
+    vacuous ``all()``) -- sorted for determinism.
+    """
+    if not cells:
+        return []
+    sets = [set(objs) for objs in cells.values()]
+    common = set.intersection(*sets)
+    return sorted(common)
+
+
+# --- cell scoring: CellAnchors -> decide_external's CellResult -------------
+
+
+def score_cell(
+    cells_by_object: Mapping[str, CellAnchors],
+    contexts: Mapping[str, _g1.ObjectSplitContext],
+    active_objects: Sequence[str],
+    vmaps: Mapping[str, Mapping[str, np.ndarray]],
+    *,
+    tau: float,
+    k_target: int,
+    corpus: str,
+    scheme: str,
+) -> CellResult:
+    """design-final.md §3 Stage 2 step 5: score one already-built cell.
+
+    Runs the frozen
+    :func:`~scripts.paper01_external_audit.decide_external`.
+    **``active_objects`` is a required, explicit parameter -- never
+    recomputed from ``cells_by_object`` inside this function** (Codex
+    MEDIUM-4 / AC 006-8): the caller (:func:`run_scope`'s upstream
+    orchestration) is responsible for first computing
+    :func:`common_active_objects` across all four cells of a split and
+    passing *that* intersection here, so every cell of the same split is
+    scored over the identical object set --
+    ``test_all_cells_score_the_intersection`` spies
+    ``scripts.paper01_external_audit.score_rows_for_draw``'s ``rows``
+    argument to confirm this function never widens ``active_objects`` back
+    out to its own ``cells_by_object`` keys.
+
+    Delegates every statistic to the frozen apparatus -- one
+    :func:`~scripts.paper01_external_audit.score_rows_for_draw` call per
+    ``b in range(ANCHOR_DRAWS)``,
+    :func:`~scripts.paper01_external_audit.build_candidate_report` per
+    :data:`~scripts.paper01_external_audit.EMBEDDING_FAMILY_EXT` candidate,
+    then :func:`~scripts.paper01_external_audit.decide_external` once --
+    never reimplementing any of the three (this issue's Goal:
+    **fidelity pin (b)** is exactly this function reducing to G1's own
+    ARM-A wiring at ``tau=REF_DEDUP, k_target=N_R_MAX``).
+
+    ``object_weights`` (LOW-2, mandatory) is each active object's
+    :func:`~scripts.paper01_external_audit.object_class_weights`
+    ``weight_share`` -- never recomputed by a different formula.
+    """
+    active = tuple(active_objects)
+    rows = tuple(r for obj in active for r in contexts[obj].split1)
+    class_sizes = _g1.cambridge_class_sizes([contexts[o] for o in active])
+    idf_by_object = {o: (contexts[o].idf, contexts[o].default_idf) for o in active}
+
+    draws_per_candidate: dict[str, list[_g1.DrawItems]] = {
+        cand.key: [] for cand in _g1.CANDIDATE_LADDER
+    }
+    for b in range(_g1.ANCHOR_DRAWS):
+        anchor_texts_by_object = {
+            o: cells_by_object[o].draw_texts_by_draw[b] for o in active
+        }
+        scored = _g1.score_rows_for_draw(
+            rows,
+            anchor_texts_by_object=anchor_texts_by_object,
+            vmaps=vmaps,
+            idf_by_object=idf_by_object,
+        )
+        for key, items in scored.items():
+            draws_per_candidate[key].append(items)
+
+    reports: list[_g1.CandidateExternalReport] = []
+    for cand in _g1.CANDIDATE_LADDER:
+        if cand.key not in _g1.EMBEDDING_FAMILY_EXT:
+            continue
+        draws = draws_per_candidate.get(cand.key, [])
+        if not draws:
+            continue
+        summary = _g1.build_candidate_report(
+            cand.key,
+            cand.family,
+            draws,
+            bootstrap_seed=_g1.derive_seed(corpus, scheme, cand.key, "bootstrap"),
+            permutation_seed=_g1.derive_seed(corpus, scheme, cand.key, "permutation"),
+        )
+        reports.append(summary.report)
+
+    verdict = _g1.decide_external(reports, class_sizes=class_sizes)
+
+    weights_raw = _g1.object_class_weights([contexts[o] for o in active])
+    object_weights = {o: float(weights_raw[o]["weight_share"]) for o in active}
+
+    if active:
+        n_leaders_median = int(
+            np.median([cells_by_object[o].n_leaders for o in active])
+        )
+        k_eff_median = int(np.median([cells_by_object[o].k_effective for o in active]))
+    else:
+        n_leaders_median = 0
+        k_eff_median = 0
+
+    return CellResult(
+        tau=tau,
+        k_target=k_target,
+        k_effective=k_eff_median,
+        n_leaders=n_leaders_median,
+        corpus=corpus,
+        split_scheme=scheme,
+        verdict=verdict.verdict,
+        active_objects=tuple(sorted(active)),
+        object_weights=object_weights,
+    )
+
+
+# --- run_scope(): Stage 0/1/2 assembly + results/scope.json ----------------
+
+
+def run_scope(
+    *,
+    stage0: tuple[DeltaDecomposition, ...],
+    stage1: Stage1Result,
+    cells: Mapping[str, SplitCells],
+    cambridge: CellResult,
+    internal_references: tuple[InternalReference, ...],
+    out_path: Path | None = None,
+) -> dict[str, Any]:
+    """Assemble + write design-final.md §3's Stage 0/1/2 + ScopeVerdict.
+
+    This issue's Goal: "``run_scope()`` -- Stage 0/1/2 を配線し
+    results/scope.json を書く". **This is the assembly/serialisation half
+    of Stage 0/1/2 wiring, not
+    the encoder/data-fetch half** (issue 006 Scope Out: 実走・run.sh は
+    I-007). Every argument here is already-computed -- ``stage0`` from
+    :func:`split_delta` calls, ``stage1`` from
+    :func:`stage1_drop_distribution`, ``cells`` / ``cambridge`` from
+    :func:`score_cell` (fed by :func:`build_cell` /
+    :func:`common_active_objects` / :func:`calibrate_tau`),
+    ``internal_references`` from :func:`internal_reference_per_object`.
+    This satisfies blockers.md ブロッカー 2's requirement: calling
+    :func:`decide_scope` here (not re-implementing its logic) is what pins
+    that I-003/I-004/I-006's *real* outputs -- not just hand-built test
+    fixtures -- can flow through I-005's frozen ``cells``/``stage0``/
+    ``stage1``/``cambridge`` shapes end to end.
+
+    ``results/scope.json``'s **frozen on-disk shape** (I-007 reads this
+    exactly; Codex TASK-PRE LOW-2/MEDIUM-4 confirmed here):
+
+    .. code-block:: text
+
+        {
+          "stage0": [ {..DeltaDecomposition fields..}, ... ],
+          "stage1": {..Stage1Result fields..},
+          "stage2": {
+            "cells": {split_key: {"arm_a": {..CellResult..},
+                                   "arm_s": {..CellResult..},
+                                   "tau_calibration": {..TauCalibration..}}},
+            "cambridge": {..CellResult..},
+            "internal_references": [ {..InternalReference..}, ... ]
+          },
+          "verdict": {..ScopeVerdict fields..}
+        }
+
+    Every float leaf is 6-decimal quantised via
+    ``scripts.paper01_external_audit._quantize_json`` before writing
+    (never a raw ``model_dump_json``-style embed --
+    ``feedback_golden_crossplatform_float_drift``'s "projection 境界で
+    再量子化必須"), and the file is written with ``sort_keys=True`` for a
+    byte-identical two-run reproduction (design-final.md §7).
+    """
+    out_path = (RESULTS_DIR / "scope.json") if out_path is None else out_path
+
+    verdict = decide_scope(stage0, stage1, cells, cambridge=cambridge)
+
+    payload: dict[str, Any] = {
+        "stage0": [dataclasses.asdict(row) for row in stage0],
+        "stage1": dataclasses.asdict(stage1),
+        "stage2": {
+            "cells": {
+                split_key: {
+                    "arm_a": dataclasses.asdict(split_cells.arm_a),
+                    "arm_s": dataclasses.asdict(split_cells.arm_s),
+                    "tau_calibration": dataclasses.asdict(split_cells.tau_calibration),
+                }
+                for split_key, split_cells in cells.items()
+            },
+            "cambridge": dataclasses.asdict(cambridge),
+            "internal_references": [
+                dataclasses.asdict(ref) for ref in internal_references
+            ],
+        },
+        "verdict": dataclasses.asdict(verdict),
+    }
+    quantized = _g1._quantize_json(payload)  # noqa: SLF001
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(quantized, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return quantized
+
+
+# --- CLI (real-data actions; issue 006 TASK-PRE MEDIUM-4) -------------------
+
+
+def _load_mpnet_or_none() -> Callable[[Sequence[str]], np.ndarray] | None:
+    """Best-effort MPNet loader for the CLI actions below.
+
+    ``None`` (never raises) when the model/extras are unavailable offline,
+    mirroring :func:`~scripts.paper01_external_audit.run_fidelity`'s own
+    guard.
+    """
+    return _diag.make_encoder("sentence-transformers/all-mpnet-base-v2")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _OcsaiGather:
+    """CLI-only, in-process bundle of one real Ocsai split's gathered inputs.
+
+    Never written to disk, never a frozen §9 contract -- shared by the
+    ``--stage0`` / ``--stage1`` / ``--stage2`` / ``--scope`` CLI actions
+    below so the real network fetch + multi-encoder embedding pass happens
+    once per invocation regardless of how many of those actions ran.
+    """
+
+    scheme: str
+    contexts: Mapping[str, _g1.ObjectSplitContext]
+    vmaps: Mapping[str, Mapping[str, np.ndarray]]
+    encoders: Mapping[str, Callable[[Sequence[str]], np.ndarray]]
+    active_objects: tuple[str, ...]
+
+
+def _gather_ocsai(scheme: str) -> _OcsaiGather | None:
+    """Best-effort real Ocsai fetch + multi-encoder embed for one split.
+
+    ``None`` (never raises) when the network fetch or any pre-registered
+    encoder is unavailable offline -- every CLI action below treats that as
+    "cannot run for real here", reports ``source_unavailable``, and exits
+    non-zero rather than writing a partial/misleading result (design-
+    final.md §6's own "encoder が 1 つでも取得できなければ verdict を発行せず"
+    discipline, generalised here to every real-data CLI action, not only
+    ``decide_external``).
+    """
+    splits_data = _g1.load_ocsai_raw_bytes()
+    if splits_data is None:
+        return None
+    try:
+        encoders = _g1.build_available_encoders()
+    except _g1.MissingEncoderError:
+        return None
+
+    rows = _g1.load_ocsai_rows(splits_data)
+    rows_by_object = {
+        obj: tuple(r for r in rows if r.object == obj)
+        for obj in _g1.OCSAI_PRIMARY_OBJECTS
+    }
+    vmaps = _g1.embed_all_texts(rows_by_object, encoders)
+    mpnet_vmap = vmaps.get("mpnet", {})
+    contexts = {
+        obj: _g1.build_object_split_context(
+            obj, rows_by_object[obj], scheme, mpnet_vmap
+        )
+        for obj in _g1.OCSAI_PRIMARY_OBJECTS
+    }
+    active = tuple(
+        sorted(
+            obj
+            for obj in _g1.OCSAI_PRIMARY_OBJECTS
+            if not contexts[obj].dropped
+            and _g1.object_has_both_gold_classes(contexts[obj])
+        )
+    )
+    return _OcsaiGather(
+        scheme=scheme,
+        contexts=contexts,
+        vmaps=vmaps,
+        encoders=encoders,
+        active_objects=active,
+    )
+
+
+def cli_calibrate(out_path: Path | None = None) -> int:
+    """``--calibrate``: compute + write §2.3's internal ρ_int/k*.
+
+    This issue's Scope In (``internal_rho_and_k`` /
+    :class:`InternalReference` ownership, Codex TASK-PRE HIGH-5).
+    Real end-to-end τ* calibration additionally needs a fetched external
+    corpus (:func:`external_rho_by_tau`) -- that full cross-corpus assembly
+    is ``--stage2`` below / ultimately I-007's ``run.sh`` (issue 006 Scope
+    Out: 実走). This action computes and persists the *internal* half on
+    its own, which needs only the sealed internal curated references + one
+    encoder (never the Phase A generations -- uses
+    :func:`internal_reference_c4_only`, never raises
+    :class:`FileNotFoundError`).
+
+    Returns ``1`` (never raises) when the encoder is unavailable offline.
+    """
+    out_path = (
+        (RESULTS_DIR / "internal_reference.json") if out_path is None else out_path
+    )
+    mpnet = _load_mpnet_or_none()
+    if mpnet is None:
+        sys.stderr.write(
+            "[paper01-scope] --calibrate: MPNet encoder unavailable offline\n"
+        )
+        return 1
+
+    references = internal_reference_c4_only(mpnet)
+    rho_primary, rho_secondary, k_star = internal_rho_and_k(references)
+    payload = {
+        "rho_int_primary": rho_primary,
+        "rho_int_secondary": rho_secondary,
+        "k_star": k_star,
+        "references": [dataclasses.asdict(r) for r in references],
+    }
+    quantized = _g1._quantize_json(payload)  # noqa: SLF001
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(quantized, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    sys.stdout.write(f"[paper01-scope] wrote {out_path}\n")
+    return 0
+
+
+def cli_stage2(out_path: Path | None = None) -> int:
+    """``--stage2``: real Ocsai SPLIT-BLOCK ARM-A + ARM-S cells.
+
+    Gathers Ocsai (:func:`_gather_ocsai`), the internal ρ_int/k* basis
+    (:func:`internal_reference_c4_only` / :func:`internal_rho_and_k`), the
+    external ρ_ext(τ) ladder (:func:`external_rho_by_tau`), calibrates τ*
+    (:func:`calibrate_tau`), then builds + scores the ARM-A
+    (``tau=REF_DEDUP, k=N_R_MAX``) and ARM-S (``tau=tau_star, k=k_star``)
+    cells (:func:`build_cell` / :func:`score_cell`). Writes ``stage2.json``
+    on success; on any missing prerequisite, writes
+    ``{"status": "source_unavailable"}`` and returns ``1`` rather than a
+    partial/misleading cell.
+    """
+    out_path = (RESULTS_DIR / "stage2.json") if out_path is None else out_path
+    scheme = "SPLIT-BLOCK"
+    corpus = "ocsai"
+
+    gather = _gather_ocsai(scheme)
+    mpnet = _load_mpnet_or_none()
+    if gather is None or mpnet is None:
+        _write_unavailable(out_path, stage="stage2")
+        sys.stderr.write("[paper01-scope] --stage2: source unavailable\n")
+        return 1
+
+    references = internal_reference_c4_only(mpnet)
+    rho_primary, _rho_secondary, k_star = internal_rho_and_k(references)
+    rho_ext_by_tau = external_rho_by_tau(
+        gather.contexts, gather.vmaps.get("mpnet", {}), gather.active_objects
+    )
+    tau_cal = calibrate_tau(rho_ext_by_tau, rho_primary, k_star=k_star)
+
+    def _cell(tau: float, cap: int) -> CellResult:
+        cells_by_object = {
+            obj: build_cell(
+                gather.contexts[obj],
+                gather.vmaps.get("mpnet", {}),
+                tau=tau,
+                cap=cap,
+                corpus=corpus,
+                scheme=scheme,
+            )
+            for obj in gather.active_objects
+        }
+        active = active_objects_for_cell(cells_by_object)
+        return score_cell(
+            cells_by_object,
+            gather.contexts,
+            active,
+            gather.vmaps,
+            tau=tau,
+            k_target=cap,
+            corpus=corpus,
+            scheme=scheme,
+        )
+
+    arm_a = _cell(_c.REF_DEDUP, _c.N_R_MAX)
+    arm_s = _cell(tau_cal.tau_star, k_star)
+
+    payload = {
+        "arm_a": dataclasses.asdict(arm_a),
+        "arm_s": dataclasses.asdict(arm_s),
+        "tau_calibration": dataclasses.asdict(tau_cal),
+    }
+    quantized = _g1._quantize_json(payload)  # noqa: SLF001
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(quantized, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    sys.stdout.write(f"[paper01-scope] wrote {out_path}\n")
+    return 0
+
+
+def cli_stage0(out_path: Path | None = None) -> int:
+    """``--stage0``: real internal-C4-vs-external-Ocsai-ARM-A Δ rows.
+
+    Internal row: :func:`~scripts.paper01_external_audit._c4_fidelity_
+    context`'s candidate scored (``leave_anchor_out`` both ways) against
+    the sealed 41-item internal gold pair (never re-embeds). External row:
+    the gathered Ocsai ARM-A cell's ``draw_index=0`` anchor set (the same
+    draw :data:`STAGE1_DRAW_INDEX` fixes for Stage 1, Codex HIGH-5's
+    outcome-independence) scored via
+    :func:`~scripts.paper01_external_audit.score_rows_for_draw`. Writes
+    ``stage0.json`` (a 1-or-2-row list, never fabricating an absent row) on
+    partial success; ``source_unavailable`` + exit 1 only when *neither*
+    row could be computed.
+    """
+    out_path = (RESULTS_DIR / "stage0.json") if out_path is None else out_path
+    rows: list[DeltaDecomposition] = []
+
+    mpnet = _load_mpnet_or_none()
+    if mpnet is not None:
+        candidate, _vmap, curated = _g1._c4_fidelity_context(mpnet)  # noqa: SLF001
+        gold_pair = _g1.fidelity_gold_pair()
+        scores_full = tuple(
+            candidate.rarity(g.object, g.text, leave_anchor_out=False)
+            for g in gold_pair
+        )
+        scores_lao = tuple(
+            candidate.rarity(g.object, g.text, leave_anchor_out=True) for g in gold_pair
+        )
+        labels = tuple(1 if g.category == "good" else 0 for g in gold_pair)
+        max_sim_full = tuple(1.0 - s for s in scores_full)
+        references = internal_reference_c4_only(mpnet)
+        rho_primary, _rho_secondary, _k_star = internal_rho_and_k(references)
+        rows.append(
+            split_delta(
+                scores_full,
+                scores_lao,
+                labels,
+                max_sim_full,
+                source=_STAGE0_INTERNAL_SOURCE,
+                candidate=_STAGE0_INTERNAL_CANDIDATE,
+                rho=rho_primary,
+            )
+        )
+        del curated  # only vmap/candidate needed above
+
+    scheme = "SPLIT-BLOCK"
+    corpus = "ocsai"
+    gather = _gather_ocsai(scheme)
+    if gather is not None:
+        cells_by_object = {
+            obj: build_cell(
+                gather.contexts[obj],
+                gather.vmaps.get("mpnet", {}),
+                tau=_c.REF_DEDUP,
+                cap=_c.N_R_MAX,
+                corpus=corpus,
+                scheme=scheme,
+            )
+            for obj in gather.active_objects
+        }
+        active = active_objects_for_cell(cells_by_object)
+        rows_all = tuple(r for obj in active for r in gather.contexts[obj].split1)
+        idf_by_object = {
+            o: (gather.contexts[o].idf, gather.contexts[o].default_idf) for o in active
+        }
+        anchor_texts_by_object = {
+            o: cells_by_object[o].draw_texts_by_draw[STAGE1_DRAW_INDEX] for o in active
+        }
+        scored = _g1.score_rows_for_draw(
+            rows_all,
+            anchor_texts_by_object=anchor_texts_by_object,
+            vmaps=gather.vmaps,
+            idf_by_object=idf_by_object,
+        )
+        x0 = scored.get("X0")
+        rho_ext = (
+            corpus_redundancy(
+                {
+                    o: np.asarray(
+                        [
+                            gather.vmaps.get("mpnet", {})[t]
+                            for t in anchor_texts_by_object[o]
+                        ],
+                        dtype=float,
+                    )
+                    for o in active
+                    if anchor_texts_by_object[o]
+                }
+            )
+            if active
+            else 0.0
+        )
+        if x0 is not None:
+            max_sim_full = tuple(1.0 - s for s in x0.scores_full)
+            rows.append(
+                split_delta(
+                    x0.scores_full,
+                    x0.scores_lao,
+                    x0.labels,
+                    max_sim_full,
+                    source=_STAGE0_EXTERNAL_SOURCE,
+                    candidate=_STAGE0_EXTERNAL_CANDIDATE,
+                    rho=rho_ext,
+                )
+            )
+
+    if not rows:
+        _write_unavailable(out_path, stage="stage0")
+        sys.stderr.write("[paper01-scope] --stage0: source unavailable\n")
+        return 1
+
+    payload = [dataclasses.asdict(row) for row in rows]
+    quantized = _g1._quantize_json(payload)  # noqa: SLF001
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(quantized, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    sys.stdout.write(f"[paper01-scope] wrote {out_path}\n")
+    return 0
+
+
+def cli_stage1(out_path: Path | None = None) -> int:
+    """``--stage1``: real Ocsai-shrunk-to-internal-shape deflation test.
+
+    Candidate X0 (design-final.md §3 Stage 1). Builds each active object's
+    :class:`ObjectGoldPool` from the gathered
+    Ocsai ``split1`` rows (good/common item indices into the same flat row
+    ordering :func:`internal_shaped_replicates` draws from), then calls
+    :func:`internal_shaped_replicates` (``STAGE1_REPLICATES`` seeded draws)
+    and :func:`stage1_drop_distribution` against the ARM-A
+    ``draw_index=STAGE1_DRAW_INDEX`` cell's scored :class:`DrawItems` for
+    X0 -- never a hand-rolled resample, never a different anchor draw.
+    Writes ``stage1.json`` on success; ``source_unavailable`` + exit 1
+    otherwise.
+    """
+    out_path = (RESULTS_DIR / "stage1.json") if out_path is None else out_path
+    scheme = "SPLIT-BLOCK"
+    corpus = "ocsai"
+    gather = _gather_ocsai(scheme)
+    if gather is None:
+        _write_unavailable(out_path, stage="stage1")
+        sys.stderr.write("[paper01-scope] --stage1: source unavailable\n")
+        return 1
+
+    cells_by_object = {
+        obj: build_cell(
+            gather.contexts[obj],
+            gather.vmaps.get("mpnet", {}),
+            tau=_c.REF_DEDUP,
+            cap=_c.N_R_MAX,
+            corpus=corpus,
+            scheme=scheme,
+        )
+        for obj in gather.active_objects
+    }
+    active = active_objects_for_cell(cells_by_object)
+    if not active:
+        _write_unavailable(out_path, stage="stage1")
+        sys.stderr.write("[paper01-scope] --stage1: no active objects\n")
+        return 1
+
+    rows_all = tuple(r for obj in active for r in gather.contexts[obj].split1)
+    idf_by_object = {
+        o: (gather.contexts[o].idf, gather.contexts[o].default_idf) for o in active
+    }
+    anchor_texts_by_object = {
+        o: cells_by_object[o].draw_texts_by_draw[STAGE1_DRAW_INDEX] for o in active
+    }
+    scored = _g1.score_rows_for_draw(
+        rows_all,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps=gather.vmaps,
+        idf_by_object=idf_by_object,
+    )
+    x0 = scored.get("X0")
+    if x0 is None:
+        _write_unavailable(out_path, stage="stage1")
+        sys.stderr.write("[paper01-scope] --stage1: X0 unavailable\n")
+        return 1
+
+    offset = 0
+    contexts_pools: dict[str, ObjectGoldPool] = {}
+    for obj in active:
+        n = len(gather.contexts[obj].split1)
+        good_idx = tuple(
+            offset + i
+            for i, r in enumerate(gather.contexts[obj].split1)
+            if r.category == "good"
+        )
+        common_idx = tuple(
+            offset + i
+            for i, r in enumerate(gather.contexts[obj].split1)
+            if r.category == "common_use_only"
+        )
+        contexts_pools[obj] = ObjectGoldPool(
+            object_key=obj,
+            object_weight=float(len(good_idx) * len(common_idx)),
+            good_item_indices=good_idx,
+            common_item_indices=common_idx,
+        )
+        offset += n
+
+    subsets = internal_shaped_replicates(
+        contexts_pools,
+        replicates=STAGE1_REPLICATES,
+        corpus=corpus,
+        scheme=scheme,
+        seed=SEED,
+    )
+    result = stage1_drop_distribution(x0, subsets, candidate="X0")
+
+    payload = dataclasses.asdict(result)
+    quantized = _g1._quantize_json(payload)  # noqa: SLF001
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(quantized, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    sys.stdout.write(f"[paper01-scope] wrote {out_path}\n")
+    return 0
+
+
+def cli_scope(out_path: Path | None = None) -> int:
+    """``--scope``: requires a Cambridge cell no CLI action in this issue builds.
+
+    Real Cambridge wiring is Ocsai-adjacent but out of this issue's Scope
+    In list -- ``internal_rho_and_k`` / ``calibrate_tau`` /
+    ``build_cell`` / ``common_active_objects`` / ``run_scope`` /
+    the CLI flags themselves, not a Cambridge adapter). :func:`run_scope`
+    itself (the function this flag would call, and the one ``--scope-out``
+    would eventually override the output path of) is fully implemented and
+    tested (``test_scope_json_shape``); this CLI action reports that the
+    remaining real-data assembly is I-007's ``run.sh`` responsibility
+    (issue 006 Scope Out: 実走) rather than fabricate a Cambridge cell.
+    """
+    resolved = (RESULTS_DIR / "scope.json") if out_path is None else out_path
+    sys.stderr.write(
+        f"[paper01-scope] --scope: would write {resolved}, but real "
+        "Cambridge cell wiring lands in I-007's run.sh (issue 006 Scope "
+        "Out: 実走); run_scope() itself is implemented and unit-tested "
+        "(see test_scope_json_shape)\n"
+    )
+    return 1
+
+
+def _write_unavailable(out_path: Path, *, stage: str) -> None:
+    """Shared ``source_unavailable`` writer for the CLI actions above."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"status": "source_unavailable", "stage": stage}
+    out_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _cli_fidelity_stub() -> None:
+    """``--fidelity``'s reserved parser stub (issue 006 TASK-PRE MEDIUM-4).
+
+    I-006 reserves this flag on the parser only; I-007 fills in its body
+    (never adds a second ``--fidelity`` flag to the same parser).
+    """
+    msg = (
+        "--fidelity is reserved for Loop I-007 (issue 006 TASK-PRE "
+        "MEDIUM-4: I-006 only reserves the parser stub)"
+    )
+    raise NotImplementedError(msg)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point (Loop I-006; ``--fidelity`` body reserved for I-007).
+
+    Flags may combine; each one set runs at most once, in the order
+    calibrate -> stage0 -> stage1 -> stage2 -> scope -> fidelity. Every
+    real-data action reports ``source_unavailable`` (never a fabricated
+    result) and returns a non-zero exit code when its prerequisites are not
+    met -- the overall exit code is the maximum of every action run.
+    """
+    parser = argparse.ArgumentParser(description="paper01 scope-condition CLI")
+    parser.add_argument(
+        "--calibrate",
+        action="store_true",
+        help="compute + write the §2.3 internal rho_int/k* basis",
+    )
+    parser.add_argument(
+        "--stage0",
+        action="store_true",
+        help="compute + write the §1/§3 Stage 0 Delta=T-S rows",
+    )
+    parser.add_argument(
+        "--stage1",
+        action="store_true",
+        help="run the §3 Stage 1 deflation test for candidate X0",
+    )
+    parser.add_argument(
+        "--stage2",
+        action="store_true",
+        help="build + score the Ocsai SPLIT-BLOCK ARM-A/ARM-S cells",
+    )
+    parser.add_argument(
+        "--scope",
+        action="store_true",
+        help="run the full §3-§5 scope verdict (reserved: see --scope-out)",
+    )
+    parser.add_argument(
+        "--scope-out",
+        type=Path,
+        default=None,
+        help="output path for results/scope.json (default: results/scope.json)",
+    )
+    parser.add_argument(
+        "--fidelity",
+        action="store_true",
+        help="reserved for Loop I-007 (parser stub only, TASK-PRE MEDIUM-4)",
+    )
+    args = parser.parse_args(argv)
+
+    exit_code = 0
+    if args.calibrate:
+        exit_code = max(exit_code, cli_calibrate())
+    if args.stage0:
+        exit_code = max(exit_code, cli_stage0())
+    if args.stage1:
+        exit_code = max(exit_code, cli_stage1())
+    if args.stage2:
+        exit_code = max(exit_code, cli_stage2())
+    if args.scope:
+        exit_code = max(exit_code, cli_scope(out_path=args.scope_out))
+    if args.fidelity:
+        _cli_fidelity_stub()
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
