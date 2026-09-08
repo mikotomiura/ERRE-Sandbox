@@ -673,6 +673,201 @@ def corpus_redundancy(by_object: Mapping[str, np.ndarray]) -> float:
 # I-003: Stage 0 -- Delta = T - S decomposition
 # ---------------------------------------------------------------------------
 
+_T_S_ATTRIBUTION_TOLERANCE: Final[float] = 0.1
+"""design-final.md §3 "主に由来" 判定: 比 ``|T_int-T_ext| / |S_int-S_ext|`` が
+``1.0 ± この値`` (= [0.9, 1.1]) のとき :func:`delta_attribution` は ``"both"``
+を返す。境界含む (inclusive) -- 1.0±0.1 の両端そのものが「両方」側に倒れる。"""
+
+
+def _engaged_flags(
+    max_sim_full: tuple[float, ...],
+) -> tuple[float, ...]:
+    """Item-level "engaged" predicate, owned by :mod:`paper01_external_audit`.
+
+    design-final.md §3 Stage 0: T/S/Δ are reported "engaged 項目上" only.
+    **Codex TASK-PRE HIGH-1 (binding)**: the item-level flag is
+    ``_g1.near_dup_flags_from_similarity(max_sim_full, ref_dedup=_c.REF_DEDUP)``
+    used verbatim -- :func:`_g1.potency_and_near_dup` only returns the
+    *aggregate* near-dup rate (its own docstring says so), so reimplementing
+    the ``>=`` comparison here would silently fork the predicate from the one
+    G1's own ``score_rows_for_draw`` uses to compute ``potency``. AC 003-5
+    pins that this selects the *same item set* as
+    :func:`_g1.potency_and_near_dup`'s internal ``near_dup`` mask.
+    """
+    return tuple(
+        _g1.near_dup_flags_from_similarity(max_sim_full, ref_dedup=_c.REF_DEDUP)
+    )
+
+
+def _engaged_class_means(
+    values: tuple[float, ...], labels: tuple[int, ...]
+) -> tuple[float, float]:
+    """``(mean_good, mean_common)`` over already-engaged-filtered rows.
+
+    Fail-open on an empty class: returns ``0.0`` rather than raising or
+    producing ``NaN`` -- the same convention
+    :func:`scripts.paper01_external_audit.potency_and_near_dup` uses for its
+    per-class near-dup rate (``if good_mask.any() else 0.0``). AC 003-6
+    requires a one-sided input (only ``good`` or only ``common`` engaged
+    items) not to break.
+    """
+    good = [v for v, label in zip(values, labels, strict=True) if label == 1]
+    common = [v for v, label in zip(values, labels, strict=True) if label == 0]
+    mean_good = float(sum(good) / len(good)) if good else 0.0
+    mean_common = float(sum(common) / len(common)) if common else 0.0
+    return mean_good, mean_common
+
+
+def split_delta(
+    scores_full: tuple[float, ...],
+    scores_lao: tuple[float, ...],
+    labels: tuple[int, ...],
+    max_sim_full: tuple[float, ...],
+    *,
+    source: str,
+    candidate: str,
+    rho: float,
+) -> DeltaDecomposition:
+    """design-final.md §1/§3 Stage 0: ``T = 1-rarity_full``, ``S = 1-rarity_LAO``.
+
+    ``Δ(x) = T(x) - S(x) = rarity_LAO(x) - rarity_full(x)`` (§1, algebraic
+    identity -- computed here as ``T - S``, never re-derived as ``S - T``).
+    ``scores_full``/``scores_lao`` are the *rarity* values a candidate's
+    ``Candidate.rarity(...)`` already produced (e.g. via
+    :func:`scripts.paper01_external_audit.score_rows_for_draw`'s
+    ``DrawItems.scores_full``/``.scores_lao``) -- this function performs no
+    embedding lookups of its own (design-final.md §1: "追加の埋め込みなしに
+    得られる").
+
+    **Scope gate (HIGH-2 / DA-SC-9, binding)**: only raises applies to pure
+    max-cos candidates. ``candidate`` must be a member of
+    :data:`DELTA_TS_CANDIDATES` (``X0, X3a, X3b, X3c, C0, C4``) -- X1
+    (``agg="mean"``) does not decompose into ``T - S`` at all (Codex HIGH-2),
+    and X2 (length-controlled) cancels to ``Δ(X2) ≡ Δ(X0)`` but cannot
+    recover ``T``/``S`` individually (DA-SC-9's own refinement). Passing
+    either raises :class:`ValueError` rather than silently producing a
+    meaningless decomposition (AC 003-4).
+
+    **Empty-survivor semantics (Codex MEDIUM-2, frozen)**: when LAO leaves no
+    surviving anchor for an item, the upstream candidate's ``rarity(...,
+    leave_anchor_out=True)`` call (:func:`es4_scorer_diag.embed_rarity`)
+    returns ``0.0`` by its own frozen contract ("everything is a near-dup =>
+    maximally common => rarity 0"). This function inherits that semantics
+    unchanged: ``S(x) = 1 - scores_lao[x]`` is then exactly ``1.0`` -- the
+    "fully covered" reading, not a special-cased branch here.
+
+    Only **engaged** items (:func:`_engaged_flags`) contribute to the
+    reported means; each engaged item is further split good/common
+    (``labels``: 1=good, 0=common) via :func:`_engaged_class_means`.
+    ``s_common_minus_s_good`` (MEDIUM-1) is the residual-coverage gap between
+    the two classes' engaged means.
+    """
+    if candidate not in DELTA_TS_CANDIDATES:
+        msg = (
+            f"split_delta: candidate {candidate!r} is not one of the pure "
+            f"max-cos DELTA_TS_CANDIDATES {DELTA_TS_CANDIDATES!r} "
+            "(design-final.md §1 HIGH-2 / DA-SC-9: X1 (mean-agg) does not "
+            "decompose into T-S, and X2 (length-controlled) cannot recover "
+            "T/S individually even though Delta(X2) == Delta(X0) -- both "
+            "are excluded by construction and never accepted here)"
+        )
+        raise ValueError(msg)
+
+    n = len(scores_full)
+    if not (len(scores_lao) == n and len(labels) == n and len(max_sim_full) == n):
+        msg = (
+            "split_delta: scores_full/scores_lao/labels/max_sim_full must "
+            "share one length (one row per scored item)"
+        )
+        raise ValueError(msg)
+
+    engaged = _engaged_flags(max_sim_full)
+
+    t_vals: list[float] = []
+    s_vals: list[float] = []
+    delta_vals: list[float] = []
+    engaged_labels: list[int] = []
+    for full, lao, label, flag in zip(
+        scores_full, scores_lao, labels, engaged, strict=True
+    ):
+        if flag != 1.0:
+            continue
+        t = 1.0 - full
+        s = 1.0 - lao
+        t_vals.append(t)
+        s_vals.append(s)
+        delta_vals.append(t - s)
+        engaged_labels.append(label)
+
+    t_vals_t = tuple(t_vals)
+    s_vals_t = tuple(s_vals)
+    delta_vals_t = tuple(delta_vals)
+    engaged_labels_t = tuple(engaged_labels)
+
+    mean_t_good, mean_t_common = _engaged_class_means(t_vals_t, engaged_labels_t)
+    mean_s_good, mean_s_common = _engaged_class_means(s_vals_t, engaged_labels_t)
+    mean_delta_good, mean_delta_common = _engaged_class_means(
+        delta_vals_t, engaged_labels_t
+    )
+
+    n_good = sum(1 for label in engaged_labels_t if label == 1)
+    n_common = sum(1 for label in engaged_labels_t if label == 0)
+
+    return DeltaDecomposition(
+        source=source,
+        candidate=candidate,
+        n_good=n_good,
+        n_common=n_common,
+        mean_t_good=mean_t_good,
+        mean_t_common=mean_t_common,
+        mean_s_good=mean_s_good,
+        mean_s_common=mean_s_common,
+        mean_delta_good=mean_delta_good,
+        mean_delta_common=mean_delta_common,
+        s_common_minus_s_good=mean_s_common - mean_s_good,
+        rho=rho,
+    )
+
+
+def delta_is_material(delta_int: float, delta_ext: float) -> bool:
+    """design-final.md §4 F4: True iff internal/external Δ differ materially.
+
+    ``abs(delta_int - delta_ext) >= DELTA_MATERIAL_EPS`` -- the boundary
+    value itself (exactly ``DELTA_MATERIAL_EPS``) counts as material: §3
+    defines "材料差が無い" ("no material difference", F4) with a strict
+    ``<``, so this function (the positive predicate) uses ``>=`` at the same
+    threshold, never re-derived as ``not (... < eps)`` written differently
+    (AC 003-9 pins the boundary side).
+    """
+    return abs(delta_int - delta_ext) >= DELTA_MATERIAL_EPS
+
+
+def delta_attribution(t_int: float, s_int: float, t_ext: float, s_ext: float) -> str:
+    """design-final.md §3 Stage 0 "主に由来" 事前登録判定 -- ``"T"``/``"S"``/``"both"``.
+
+    ``|T_int - T_ext| > |S_int - S_ext|`` -> ``"T"``; the reverse -> ``"S"``;
+    a ratio within ``1.0 ± `` :data:`_T_S_ATTRIBUTION_TOLERANCE` (i.e.
+    ``[0.9, 1.1]``, inclusive both ends) -> ``"both"``. The "both" band is
+    checked *before* the strict T/S comparison, so a ratio landing exactly on
+    either boundary reads as ``"both"`` rather than falling through to the
+    strict inequality. When both deltas are exactly ``0.0`` the ratio is
+    undefined (``0/0``) and this also reads as ``"both"`` (no signal either
+    way is the most conservative reading, consistent with the inclusive
+    band). All three branches are reachable from disjoint, non-tautological
+    fixtures (AC 003-8).
+    """
+    delta_t = abs(t_int - t_ext)
+    delta_s = abs(s_int - s_ext)
+    if delta_t == 0.0 and delta_s == 0.0:
+        return "both"
+    if delta_s != 0.0:
+        ratio = delta_t / delta_s
+        lo = 1.0 - _T_S_ATTRIBUTION_TOLERANCE
+        hi = 1.0 + _T_S_ATTRIBUTION_TOLERANCE
+        if lo <= ratio <= hi:
+            return "both"
+    return "T" if delta_t > delta_s else "S"
+
 
 # ---------------------------------------------------------------------------
 # I-004: Stage 1 -- deflation test
