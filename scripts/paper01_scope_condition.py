@@ -54,6 +54,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
+import numpy as np
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from types import ModuleType
@@ -573,6 +575,98 @@ class ScopeVerdict:
 # ---------------------------------------------------------------------------
 # I-002: sparsification layer (leader clustering / rho)
 # ---------------------------------------------------------------------------
+
+
+def leader_cluster_indices(
+    embeddings: np.ndarray, *, cap: int, radius: float
+) -> list[int]:
+    """Frozen-scan-order greedy leader clustering at an arbitrary ``radius``.
+
+    design-final.md §3 Stage 2: "半径 τ の greedy leader 法" -- "凍結走査順に、
+    既存代表すべてから ``cos < τ`` の項目を新代表として採用する". This is the
+    *threshold-parameterised* twin of
+    :func:`scripts.paper01_external_audit.greedy_dedupe_indices` -- the same
+    scan / accept predicate, with the frozen ``_c.REF_DEDUP`` module constant
+    replaced by the caller-supplied ``radius`` argument. ``embeddings`` must
+    already be unit-normalised and in the caller's frozen scan order; the
+    result is a subsequence of that order, capped at ``cap`` entries (the cap
+    check happens before the current item is even compared against the kept
+    set, exactly as in ``greedy_dedupe_indices``).
+
+    **Fidelity pin (a)** (design-final.md §6, this issue's Goal): calling
+    this with ``radius=REF_DEDUP`` must return **exactly** the same index
+    list as ``greedy_dedupe_indices(embeddings, cap=cap)`` for the same
+    input -- proven by
+    ``test_leader_cluster_matches_greedy_dedupe_at_ref_dedup``. This equality
+    is **only** pin (a): it does **not** by itself reconstruct ARM-A's full
+    *cell* pipeline (dedupe -> cap -> seeded draw) or reproduce ARM-A's
+    reported numbers -- that is fidelity pin (b), owned by I-006 (Codex
+    HIGH-4; see this issue's Background section and design-final.md §3
+    Stage 2 / §6).
+    """
+    kept: list[int] = []
+    for i in range(embeddings.shape[0]):
+        if len(kept) >= cap:
+            break
+        if not kept:
+            kept.append(i)
+            continue
+        cos = embeddings[i] @ embeddings[np.asarray(kept)].T
+        if float(cos.max()) < radius:
+            kept.append(i)
+    return kept
+
+
+def reference_redundancy(embeddings: np.ndarray) -> float:
+    """§2.1 ``rho(R_o) = mean_r max_{r' != r} cos(r, r')``.
+
+    The mean nearest-neighbour cosine similarity within one object's
+    reference set -- design-final.md §2.2's "冗長性は「隣がどれだけ詰まって
+    いるか」の中心傾向" (a central-tendency statistic, deliberately not the
+    single maximum pairwise cosine over the whole set: see
+    ``test_rho_is_not_max_pairwise``, AC 002-8).
+
+    **rho is a proxy for S, not its algebraic counterpart** (design-final.md
+    §2.1, Codex HIGH-1/MEDIUM-1 -- reflected verbatim here per this issue's
+    Background section): rho is an anchor-anchor quantity, S is an
+    item-anchor quantity. Never describe the relationship as "代数的に対応"
+    ("algebraically corresponds") anywhere this function is documented or
+    used -- the correspondence is only shown descriptively, by placing rho
+    alongside the measured Stage 0 S values (I-003's job), never derived
+    from rho by formula.
+
+    ``embeddings`` must already be unit-normalised, shape ``(n, d)``.
+    Degenerate case (design-final.md §2.1, Codex TASK-PRE LOW-1 -- **frozen**
+    input to I-006's tau* calibration): when ``|R_o| < 2`` there is no
+    ``r' != r`` to maximise over, so this returns the frozen value ``0.0``
+    rather than raising or returning NaN.
+    """
+    n = embeddings.shape[0]
+    if n < 2:  # noqa: PLR2004 — nearest-neighbour pair arity, not magic
+        return 0.0
+    sims = embeddings @ embeddings.T
+    np.fill_diagonal(sims, -np.inf)
+    return float(sims.max(axis=1).mean())
+
+
+def corpus_redundancy(by_object: Mapping[str, np.ndarray]) -> float:
+    """§2.1 ``rho(corpus)``: the unweighted mean of ``reference_redundancy``.
+
+    design-final.md §2.1: "物体横断の単純平均 (物体重みで加重しない。重み集中
+    を持ち込まないため)" -- deliberately *not* weighted by each object's
+    ``|R_o|`` (AC 002-9: an object with a large reference set must not
+    dominate the corpus-level figure the way Ocsai's brick-weight
+    concentration dominates the object-weighted AUC statistics elsewhere in
+    this ADR, design-final.md §8 Limitations item 6).
+
+    ``by_object`` maps each object id to its (unit-normalised) reference
+    embeddings, e.g. the post-``leader_cluster_indices`` survivor set at a
+    given ``(tau, k)`` cell. Returns ``0.0`` for an empty mapping.
+    """
+    if not by_object:
+        return 0.0
+    values = [reference_redundancy(emb) for emb in by_object.values()]
+    return float(sum(values) / len(values))
 
 
 # ---------------------------------------------------------------------------
