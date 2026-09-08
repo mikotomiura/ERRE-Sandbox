@@ -530,6 +530,11 @@ def _audit_ocsai(*, fetch: Callable[[str], bytes] = fetch_bytes) -> dict[str, An
 # --- NOTICE.md (CC BY-NC-ND 4.0 Sec.3(a) attribution) -------------------------
 
 NOTICE_TEXT: Final[str] = (
+    # Kept byte-identical to the committed
+    # experiments/20260907-paper01-g1/data/raw/NOTICE.md, pinned by
+    # test_notice_text_matches_committed_notice_file. Codex TASK-POST
+    # MEDIUM-4 (2026-09-08): re-running this script used to silently revert
+    # the corrected CC BY-NC-ND 4.0 Sec.3(a) creator attribution.
     "# NOTICE -- Cambridge-AUT-dataset attribution (CC BY-NC-ND 4.0)\n"
     "\n"
     "This directory redistributes the following two files unmodified,\n"
@@ -542,15 +547,24 @@ NOTICE_TEXT: Final[str] = (
     "\n"
     "## Creator (作成者)\n"
     "\n"
-    "Y. Sun, X. Gu, S. M. Myers, D. Yuan\n"
+    "Luning Sun, Hongyi Gu, Rebecca Myers, Zheng Yuan\n"
+    "\n"
+    "(Verified 2026-09-08 against the dataset repository's own README, which\n"
+    "names the four authors in full. An earlier revision of this file guessed\n"
+    'the initials as "Y. Sun, X. Gu, S. M. Myers, D. Yuan" -- that was wrong,\n'
+    "and under Sec.3(a) the creator attribution is a licence condition, not a\n"
+    "courtesy, so it is corrected here.)\n"
     "\n"
     "## Copyright notice (著作権表示)\n"
     "\n"
-    "© 2023 Y. Sun, X. Gu, S. M. Myers, D. Yuan. Cite as:\n"
-    "Sun, Y., Gu, X., Myers, S. M., & Yuan, D. (2023). A New Dataset and\n"
-    "Method for Creativity Assessment Using the Alternate Uses Task. In\n"
-    "International Conference on Intelligent Computing (IC 2023) / CCIS\n"
-    "vol. 2036, pp. 125-138. DOI: 10.1007/978-981-97-0065-3_9\n"
+    "© Luning Sun, Hongyi Gu, Rebecca Myers, Zheng Yuan. Cite as:\n"
+    "Sun, L., Gu, H., Myers, R., & Yuan, Z. A New Dataset and Method for\n"
+    "Creativity Assessment Using the Alternate Uses Task. In: Intelligent\n"
+    "Computers, Algorithms, and Applications (BenchCouncil IC 2023, Revised\n"
+    "Selected Papers), CCIS vol. 2036, pp. 125-138, Springer Singapore, 2024.\n"
+    "DOI: 10.1007/978-981-97-0065-3_9\n"
+    "(The conference IC 2023 was held in 2023; the CCIS Revised Selected\n"
+    "Papers volume carries 2024 -- both years appear in the record.)\n"
     "\n"
     "## License reference URI (ライセンス参照 URI)\n"
     "\n"
@@ -559,8 +573,7 @@ NOTICE_TEXT: Final[str] = (
     "## Original source URI (原典 URI)\n"
     "\n"
     "https://github.com/ghydsgaaa/Cambridge-AUT-dataset\n"
-    "(raw file base:"
-    " https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/)\n"
+    "(raw file base: https://raw.githubusercontent.com/ghydsgaaa/Cambridge-AUT-dataset/main/data/)\n"
 )
 
 

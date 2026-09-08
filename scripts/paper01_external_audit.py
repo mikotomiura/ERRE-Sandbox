@@ -1673,18 +1673,44 @@ _CANDIDATE_AGG: Final[dict[str, str]] = {
 }
 
 
-def build_available_encoders() -> dict[str, Callable[[Sequence[str]], np.ndarray]]:
+class MissingEncoderError(RuntimeError):
+    """Raised when an encoder the §6 verdict depends on is not available.
+
+    design-final.md §6: "encoder が 1 つでも取得できなければ verdict を発行せず
+    exit != 0" (Opus MEDIUM-5). A silently-skipped encoder would drop its
+    candidate out of ``EMBEDDING_FAMILY_EXT``, so a *subset* ladder could
+    report a verdict that reads as the full pre-registered battery -- the
+    exact forking-path the ADR closes. Detected by Codex TASK-POST
+    (MEDIUM-1, 2026-09-08): the earlier ``graceful skip`` contradicted §6.
+    """
+
+
+def build_available_encoders(
+    *, require_all: bool = True
+) -> dict[str, Callable[[Sequence[str]], np.ndarray]]:
     """Build every offline-cached encoder in :data:`_EMBEDDING_MODEL_IDS`.
 
-    Reuses ``es4_scorer_diag.make_encoder`` (frozen, unmodified); a model
-    missing from the local HF cache is silently absent from the result
-    (graceful skip, matching the internal apparatus's own behaviour).
+    Reuses ``es4_scorer_diag.make_encoder`` (frozen, unmodified).
+
+    ``require_all`` (the default, and the only value the audit path uses)
+    raises :class:`MissingEncoderError` when any model is absent from the
+    local HF cache, per design-final.md §6. Pass ``require_all=False`` only
+    to *observe* which encoders resolve -- never to produce a verdict.
     """
     out: dict[str, Callable[[Sequence[str]], np.ndarray]] = {}
+    missing: list[str] = []
     for key, model_id in _EMBEDDING_MODEL_IDS.items():
         encoder = _diag.make_encoder(model_id)
-        if encoder is not None:
-            out[key] = encoder
+        if encoder is None:
+            missing.append(f"{key} ({model_id})")
+            continue
+        out[key] = encoder
+    if require_all and missing:
+        msg = (
+            "design-final.md §6 forbids a verdict when any pre-registered "
+            f"encoder is unavailable; missing: {', '.join(missing)}"
+        )
+        raise MissingEncoderError(msg)
     return out
 
 

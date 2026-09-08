@@ -414,3 +414,34 @@ def test_run_gate_module_importable_from_experiment_dir() -> None:
     assert hasattr(run_gate, "hashes_match")
     assert hasattr(run_gate, "notes_has_required_limitations")
     assert hasattr(run_gate, "run_sh_has_completion_marker")
+
+
+# --- Codex TASK-POST MEDIUM-1 regression -------------------------------------
+
+
+def test_missing_encoder_is_fatal_not_a_silent_skip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing encoder must block the verdict (design-final.md §6).
+
+    ``build_available_encoders`` used to drop an uncached model silently, so a
+    *subset* ladder could still produce a verdict that reads as the full
+    pre-registered battery -- exactly the forking path §6 closes with
+    "encoder が 1 つでも取得できなければ verdict を発行せず exit != 0"
+    (Opus MEDIUM-5). Codex found the discrepancy in the TASK-POST review.
+    """
+    real = mod._diag.make_encoder
+
+    def _one_missing(model_id: str) -> object | None:
+        return None if "bge" in model_id else real(model_id)
+
+    monkeypatch.setattr(mod._diag, "make_encoder", _one_missing)
+
+    with pytest.raises(mod.MissingEncoderError) as excinfo:
+        mod.build_available_encoders()
+    assert "bge" in str(excinfo.value)
+
+    # ...and the observation-only escape hatch still returns the partial set,
+    # so the guard is a verdict gate rather than a blanket import failure.
+    partial = mod.build_available_encoders(require_all=False)
+    assert "bge-small-en-v1.5" not in partial

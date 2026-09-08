@@ -292,3 +292,30 @@ def test_no_undeclared_dependency_import() -> None:
             found.add(node.module.split(".")[0])
 
     assert not (found & banned), f"undeclared dependency imported: {found & banned}"
+
+
+# --- Codex TASK-POST MEDIUM-4 regression -------------------------------------
+
+
+def test_notice_text_matches_committed_notice_file() -> None:
+    """Re-running the fetch script must not revert the corrected attribution.
+
+    ``write_notice()`` rewrites ``data/raw/NOTICE.md`` from the module-level
+    ``NOTICE_TEXT``. When the committed file was corrected (the creator is
+    Luning Sun / Hongyi Gu / Rebecca Myers / Zheng Yuan, not the guessed
+    initials) but the constant was not, any later fetch silently restored the
+    wrong CC BY-NC-ND 4.0 Sec.3(a) attribution. Codex found this in the
+    TASK-POST review; it is the same "file corrected, writer constant not"
+    shape that ``ENV_MD_TEXT`` hit earlier in this task.
+    """
+    committed = (RAW_DIR / "NOTICE.md").read_text(encoding="utf-8")
+    assert committed.replace("\r\n", "\n") == NOTICE_TEXT
+
+
+def test_notice_names_the_verified_creators_in_full() -> None:
+    """Sec.3(a) attribution names the four creators as the source names them."""
+    for name in ("Luning Sun", "Hongyi Gu", "Rebecca Myers", "Zheng Yuan"):
+        assert name in NOTICE_TEXT, f"creator {name!r} missing from NOTICE"
+    assert "10.1007/978-981-97-0065-3_9" in NOTICE_TEXT
+    assert "creativecommons.org/licenses/by-nc-nd/4.0" in NOTICE_TEXT
+    assert "github.com/ghydsgaaa/Cambridge-AUT-dataset" in NOTICE_TEXT
