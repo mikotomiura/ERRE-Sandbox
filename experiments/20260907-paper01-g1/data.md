@@ -32,7 +32,7 @@ gold 二値化 (design-final.md §3.3): 値のある rater が **全員ちょう
 **全員 3 以上** → good / それ以外 (0 を含む・2 を含む・band 跨ぎ・`Responses` 欠損)
 → 除外。
 
-出典: Sun, Y., Gu, X., Myers, S. M., & Yuan, D. (2023). *A New Dataset and
+出典: Sun, L., Gu, H., Myers, R., & Yuan, Z. *A New Dataset and
 Method for Creativity Assessment Using the Alternate Uses Task*. International
 Conference on Intelligent Computing (IC 2023) / CCIS vol. 2036, pp. 125-138.
 DOI: 10.1007/978-981-97-0065-3_9
