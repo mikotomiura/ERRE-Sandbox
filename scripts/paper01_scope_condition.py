@@ -683,6 +683,201 @@ def corpus_redundancy(by_object: Mapping[str, np.ndarray]) -> float:
 # I-005: decision rule -- decide_scope()
 # ---------------------------------------------------------------------------
 
+_STAGE0_INTERNAL_SOURCE: Final[str] = "internal_c4"
+_STAGE0_INTERNAL_CANDIDATE: Final[str] = "C4"
+_STAGE0_EXTERNAL_SOURCE: Final[str] = "external_ocsai_arm_a"
+_STAGE0_EXTERNAL_CANDIDATE: Final[str] = "X0"
+"""design-final.md §2.3/§3 Stage 0 basis this issue's F4 / T-confound checks
+read: the *primary* internal reference geometry is C4-raw ("実際に崩落した
+スコアラが見た参照集合", §2.3), matched against the external primary
+candidate X0 (Ocsai's ARM-A, "内部 incumbent と同じ encoder", §3 Stage 1).
+Neither §1 nor §4 pins a scalar Delta_int/Delta_ext formula beyond the
+:data:`DELTA_MATERIAL_EPS` threshold itself -- this (source, candidate)
+pairing and the good/common averaging in :func:`_stage0_t_s_delta` below are
+I-005's own documented reading of that gap, not a restatement of a frozen
+number."""
+
+_F2_OBJECT_LOSS_RATIO: Final[float] = 0.5
+"""§4 F2 threshold: "τ* 適用後の4セル共通active物体が ARM-A active の
+半数未満" -- a named constant instead of an inline literal so the F2
+predicate below never compares against a bare magic number."""
+
+_F1_TO_F6: Final[tuple[str, ...]] = ("F1", "F2", "F3", "F4", "F5", "F6")
+"""§3 condition 4 ("F1-F6 のいずれにも該当しない"): deliberately excludes
+F7 -- the single-point-dependence check is already condition 3
+(``both_splits_robust`` below), never double-counted here."""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class SplitCells:
+    """One Ocsai split scheme's Stage 2 wiring, bundled for :func:`decide_scope`.
+
+    Plumbing introduced by I-005 to carry one split's ARM-A / ARM-S
+    :class:`CellResult` verdicts and I-006's :class:`TauCalibration` (whose
+    ``single_point_dependent`` is the §2.4 MEDIUM-3 robustness check --
+    condition 3 / F7) through a single positional argument. This is *not*
+    new verdict vocabulary (DA-SC-17 constrains :class:`ScopeVerdict`'s field
+    names, not :func:`decide_scope`'s private input shape) -- every field
+    here is an instance of one of the six already-frozen dataclasses.
+    """
+
+    arm_a: CellResult
+    arm_s: CellResult
+    tau_calibration: TauCalibration
+
+
+def _stage0_row(
+    stage0: tuple[DeltaDecomposition, ...], *, source: str, candidate: str
+) -> DeltaDecomposition | None:
+    """First :class:`DeltaDecomposition` matching ``(source, candidate)``.
+
+    Returns ``None`` if Stage 0 never reported that pair.
+    """
+    for row in stage0:
+        if row.source == source and row.candidate == candidate:
+            return row
+    return None
+
+
+def _stage0_t_s_delta(
+    stage0: tuple[DeltaDecomposition, ...], *, source: str, candidate: str
+) -> tuple[float, float, float]:
+    """``(T, S, Delta)`` for one Stage 0 row, averaged across good/common.
+
+    A missing row defaults to ``(0.0, 0.0, 0.0)`` -- **fail-closed** in the
+    same direction DA-SC-19 chose for Stage 1's three-state amendment:
+    absent Stage 0 data reads as "no material difference" (§4 F4) and "not
+    T-driven" rather than raising, so :func:`decide_scope` stays total over
+    this issue's whole input space (AC 005-1) instead of only the cases a
+    caller happened to populate.
+    """
+    row = _stage0_row(stage0, source=source, candidate=candidate)
+    if row is None:
+        return 0.0, 0.0, 0.0
+    t = (row.mean_t_good + row.mean_t_common) / 2.0
+    s = (row.mean_s_good + row.mean_s_common) / 2.0
+    delta = (row.mean_delta_good + row.mean_delta_common) / 2.0
+    return t, s, delta
+
+
+def decide_scope(
+    stage0: tuple[DeltaDecomposition, ...],
+    stage1: Stage1Result,
+    cells: Mapping[str, SplitCells],
+    *,
+    cambridge: CellResult,
+) -> ScopeVerdict:
+    """§3-§5 total, deterministic scope verdict (this issue's Goal).
+
+    ``cells`` maps each Ocsai split-scheme key ("SPLIT-BLOCK" /
+    "SPLIT-PARITY", :data:`scripts.paper01_external_audit.SPLIT_SCHEMES`) to
+    that split's :class:`SplitCells`; ``cambridge`` is the single Cambridge
+    ARM-S :class:`CellResult` design-final.md §4 F5 reads (Cambridge
+    contributes no ARM-A comparison -- it is report-only + non-contradiction
+    only, §0 / §8 item 7).
+
+    **Never derives the right to write from ``not
+    stage1.deflation_supported``** (this issue's core, Codex TASK-PRE HIGH-3
+    / DA-SC-19): the write gate below reads only
+    ``stage1.stage1_outcome == "DEFLATION_REJECTED"``, so an
+    ``"INCONCLUSIVE"`` Stage 1 -- which also has ``deflation_supported ==
+    False`` -- can never produce ``"WRITE"``.
+
+    ``condition_c_supported`` is the raw §3 four-condition conjunction,
+    computed independently of Stage 1 (never re-derived from ``fail_reason``
+    or from Stage 1's outcome) -- a deflation-supported Stage 1 forces
+    ``verdict == "DO_NOT_WRITE"`` (§4: "Stage 1 が deflation を支持した場合
+    は、Stage 2 の結果に関わらず「書かない」枝が確定する") without
+    retroactively flipping ``condition_c_supported`` itself, so
+    ``test_deflation_overrides_stage2`` (AC 005-5) can observe the two
+    fields disagree.
+    """
+    cond1_by_split: dict[str, bool] = {
+        split_key: (
+            split_cells.arm_s.verdict == "NO_VALID_SCORER"
+            and split_cells.arm_a.verdict == "PASS"
+        )
+        for split_key, split_cells in cells.items()
+    }
+    both_splits_supported = bool(cond1_by_split) and all(cond1_by_split.values())
+    split_disagreement = len(set(cond1_by_split.values())) > 1
+
+    robust_by_split: dict[str, bool] = {
+        split_key: not split_cells.tau_calibration.single_point_dependent
+        for split_key, split_cells in cells.items()
+    }
+    both_splits_robust = bool(robust_by_split) and all(robust_by_split.values())
+    single_point_dependent = any(
+        cond1_by_split.get(split_key, False) and not is_robust
+        for split_key, is_robust in robust_by_split.items()
+    )
+
+    rho_unreachable = any(
+        bool(split_cells.tau_calibration.rho_by_tau)
+        and split_cells.tau_calibration.rho_by_tau[-1]
+        > split_cells.tau_calibration.rho_int_primary
+        for split_cells in cells.values()
+    )
+    object_loss = any(
+        len(split_cells.arm_s.active_objects)
+        < len(split_cells.arm_a.active_objects) * _F2_OBJECT_LOSS_RATIO
+        for split_cells in cells.values()
+    )
+    audit_inactive = any(
+        split_cells.arm_s.verdict == "INVALID_TASK_BATTERY"
+        for split_cells in cells.values()
+    )
+    cambridge_contradiction = cambridge.verdict == "PASS"
+
+    t_int, s_int, delta_int = _stage0_t_s_delta(
+        stage0,
+        source=_STAGE0_INTERNAL_SOURCE,
+        candidate=_STAGE0_INTERNAL_CANDIDATE,
+    )
+    t_ext, s_ext, delta_ext = _stage0_t_s_delta(
+        stage0,
+        source=_STAGE0_EXTERNAL_SOURCE,
+        candidate=_STAGE0_EXTERNAL_CANDIDATE,
+    )
+    no_material_delta = abs(delta_int - delta_ext) < DELTA_MATERIAL_EPS
+    t_driven = abs(t_int - t_ext) > abs(s_int - s_ext)
+
+    fail_flags: dict[str, bool] = {
+        "F1": rho_unreachable,
+        "F2": object_loss,
+        "F3": audit_inactive,
+        "F4": no_material_delta,
+        "F5": cambridge_contradiction,
+        "F6": split_disagreement,
+        "F7": single_point_dependent,
+    }
+    fail_reason = next((f for f in FAIL_PRECEDENCE if fail_flags[f]), None)
+
+    condition_c_supported = (
+        both_splits_supported
+        and both_splits_robust
+        and not any(fail_flags[f] for f in _F1_TO_F6)
+    )
+
+    write_eligible = stage1.stage1_outcome == "DEFLATION_REJECTED"
+    verdict = "WRITE" if (write_eligible and condition_c_supported) else "DO_NOT_WRITE"
+
+    t_confound_note_required = t_driven and condition_c_supported
+
+    notes: tuple[str, ...] = (
+        (f"primary fail branch: {fail_reason}",) if fail_reason is not None else ()
+    )
+
+    return ScopeVerdict(
+        verdict=verdict,
+        deflation_supported=stage1.deflation_supported,
+        condition_c_supported=condition_c_supported,
+        single_point_dependent=single_point_dependent,
+        fail_reason=fail_reason,
+        notes=notes,
+        t_confound_note_required=t_confound_note_required,
+    )
+
 
 # ---------------------------------------------------------------------------
 # I-006: tau* calibration / cell wiring / CLI
