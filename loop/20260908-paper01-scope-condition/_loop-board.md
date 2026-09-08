@@ -1,5 +1,5 @@
-# Loop Board — 20260908-paper01-scope-condition   ⏱ updated 12:30 UTC
-進捗 6/8 done · 🔄1 running · ⛔0 blocked · tokens ?/2,000,000
+# Loop Board — 20260908-paper01-scope-condition   ⏱ updated 14:20 UTC
+進捗 8/9 done · 🔄0 running · ⛔0 blocked · **統合 CI 緑 (4233 passed / 53 skipped)** · 残=I-007b (実走・user 認可待ち)
 
 | # | issue | 状態 | phase | try | verify | branch | note | PR |
 |---|-------|------|-------|-----|--------|--------|------|----|
@@ -10,7 +10,8 @@
 | 004 | Stage 1 deflation 検定 | ✅ done | merged | 1 | test✓ tc✓ lint✓ fmt✓ | worktree-agent-a709562 | **境界 3 mutant を orchestrator が実測**: `<=`→`<` (2 kill) / 閉→開区間 (2 kill) / **INCONCLUSIVE→REJECTED 丸め (5 kill)**。mutation 7/7 KILL。`372757d` | – |
 | 005 | `decide_scope()` 全域・非恒真・F1-F7 | ✅ done | merged | 2 | test✓ tc✓ lint✓ fmt✓ | worktree-agent-a12c948 | **中核 witness 実測確認済**: INCONCLUSIVE→WRITE 漏れ mutant を当てると `test_inconclusive_never_derives_write_right` のみ落ちる (1F/38P)。真理値表 576 組合せ網羅、mutation 11/11 KILL。`3ab8549` で統合 | – |
 | 006 | τ\* 較正 + セル配線 (fidelity pin (b)) | ⏳ queued | – | 0 | – | – | deps I-002..I-005 = **全部の合流点** | – |
-| 007 | 実走 + `run.sh` + `notes.md` (honest verdict) | ⏳ queued | – | 0 | – | – | deps I-006 | – |
+| 007a | `--fidelity` 本体 + `--scope` の Cambridge 配線 + run.sh 一式 | ✅ done | merged | 1 | test✓ tc✓ lint✓ fmt✓ | worktree-agent-adf4ba0 | **実走なし・ネットワーク取得なし**。exit code 三分岐 (0/1=不一致/2=データ欠如)。notes.md は結果節がプレースホルダのみ。mutation 7/7 KILL。`b51efb9` | – |
+| 007b | 実走 + verdict の honest 記録 | ⛔ 保留 | – | 0 | – | – | **user 認可待ち**: Ocsai のネットワーク再取得 + 事前登録測定の実行。verdict が B-G1-10 の「書く/書かない」を確定させる | – |
 
 ## 現在のゲート
 
