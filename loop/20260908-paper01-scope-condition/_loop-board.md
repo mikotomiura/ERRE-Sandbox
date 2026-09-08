@@ -1,5 +1,5 @@
-# Loop Board — 20260908-paper01-scope-condition   ⏱ updated 14:20 UTC
-進捗 8/9 done · 🔄0 running · ⛔0 blocked · **統合 CI 緑 (4233 passed / 53 skipped)** · 残=I-007b (実走・user 認可待ち)
+# Loop Board — 20260908-paper01-scope-condition   ⏱ updated 15:35 UTC
+進捗 8/9 done · 🔄0 running · ⛔0 blocked · **統合 CI 緑 `8593e26` (4235 passed / 53 skipped)** · **TASK-POST 完了 (両者 HIGH 0)** · 残=I-007b (実走・user 認可待ち)
 
 | # | issue | 状態 | phase | try | verify | branch | note | PR |
 |---|-------|------|-------|-----|--------|--------|------|----|
