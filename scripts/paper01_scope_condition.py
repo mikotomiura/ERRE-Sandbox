@@ -52,6 +52,7 @@ import dataclasses
 import importlib
 import json
 import sys
+import unittest.mock
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -2542,26 +2543,100 @@ def cli_stage1(out_path: Path | None = None) -> int:
 
 
 def cli_scope(out_path: Path | None = None) -> int:
-    """``--scope``: requires a Cambridge cell no CLI action in this issue builds.
+    """``--scope``: real end-to-end §3-§5 scope-verdict assembly (Loop I-007).
 
-    Real Cambridge wiring is Ocsai-adjacent but out of this issue's Scope
-    In list -- ``internal_rho_and_k`` / ``calibrate_tau`` /
-    ``build_cell`` / ``common_active_objects`` / ``run_scope`` /
-    the CLI flags themselves, not a Cambridge adapter). :func:`run_scope`
-    itself (the function this flag would call, and the one ``--scope-out``
-    would eventually override the output path of) is fully implemented and
-    tested (``test_scope_json_shape``); this CLI action reports that the
-    remaining real-data assembly is I-007's ``run.sh`` responsibility
-    (issue 006 Scope Out: 実走) rather than fabricate a Cambridge cell.
+    I-006 reserved this flag's body ("real Cambridge cell wiring lands in
+    I-007's run.sh") -- this is that body. Gathers both Ocsai split schemes
+    (:func:`_gather_ocsai`, once each), the internal ρ_int/k* basis
+    (:func:`internal_reference_per_object`, falling back to
+    :func:`internal_reference_c4_only` when the sealed Phase A artifact is
+    missing -- mirrors :func:`cli_calibrate`'s own C4-only fallback),
+    Cambridge's single ARM-S non-contradiction check
+    (:func:`_gather_cambridge` / :func:`_score_cambridge_arm_s`), builds
+    every split's full Stage 2 2x2 cell grid (:func:`build_split_cells`),
+    and each split's Stage 0/Stage 1 rows -- then calls the frozen
+    :func:`run_scope` (never re-derives its verdict independently).
+
+    On any missing prerequisite (encoder / Cambridge / either Ocsai split
+    unavailable), writes ``{"status": "source_unavailable"}`` and returns
+    ``1`` -- DA-SC-5 / issue AC 007-4 ("Ocsai 到達不能なら verdict を出さず
+    exit != 0"), never a partial/misleading ``results/scope.json``. This
+    action needs a live Ocsai fetch (never available in an offline/no-
+    network environment) -- see ``tests/test_paper01_scope/
+    test_scope_cli_wiring.py`` for the synthetic-data proof that this
+    wiring *completes* once its prerequisites are met (this issue's own
+    boundary: "実データが無い環境では... 落ちるのは可。ただしデータが揃えば
+    完走することを... unit-test して示す").
     """
     resolved = (RESULTS_DIR / "scope.json") if out_path is None else out_path
-    sys.stderr.write(
-        f"[paper01-scope] --scope: would write {resolved}, but real "
-        "Cambridge cell wiring lands in I-007's run.sh (issue 006 Scope "
-        "Out: 実走); run_scope() itself is implemented and unit-tested "
-        "(see test_scope_json_shape)\n"
+
+    mpnet = _load_mpnet_or_none()
+    if mpnet is None:
+        _write_unavailable(resolved, stage="scope")
+        sys.stderr.write("[paper01-scope] --scope: MPNet encoder unavailable offline\n")
+        return 1
+
+    cambridge_gather = _gather_cambridge()
+    if cambridge_gather is None:
+        _write_unavailable(resolved, stage="scope")
+        sys.stderr.write("[paper01-scope] --scope: Cambridge source unavailable\n")
+        return 1
+
+    try:
+        references = internal_reference_per_object(mpnet)
+    except FileNotFoundError:
+        references = internal_reference_c4_only(mpnet)
+    rho_primary, _rho_secondary, k_star = internal_rho_and_k(references)
+
+    cells: dict[str, SplitCells] = {}
+    stage0_rows: list[DeltaDecomposition] = [
+        _stage0_internal_row(mpnet, rho_int_primary=rho_primary)
+    ]
+    stage1_result: Stage1Result | None = None
+    cambridge_cell: CellResult | None = None
+
+    for scheme_def in _g1.SPLIT_SCHEMES:
+        scheme = scheme_def.key
+        gather = _gather_ocsai(scheme)
+        if gather is None:
+            _write_unavailable(resolved, stage="scope")
+            sys.stderr.write(
+                f"[paper01-scope] --scope: Ocsai {scheme} source unavailable\n"
+            )
+            return 1
+
+        split_cells, dense_k_max = build_split_cells(
+            gather, rho_int_primary=rho_primary, k_star=k_star, corpus="ocsai"
+        )
+        cells[scheme] = split_cells
+
+        if scheme == "SPLIT-BLOCK":
+            external_row = _stage0_external_row(gather, dense_k_max)
+            if external_row is not None:
+                stage0_rows.append(external_row)
+            stage1_result = _stage1_result(gather, dense_k_max)
+            cambridge_cell = _score_cambridge_arm_s(
+                cambridge_gather, split_cells.tau_calibration
+            )
+
+    if stage1_result is None or cambridge_cell is None:
+        _write_unavailable(resolved, stage="scope")
+        sys.stderr.write(
+            "[paper01-scope] --scope: Stage 1 / Cambridge could not be "
+            "scored (no active objects on the primary SPLIT-BLOCK split)\n"
+        )
+        return 1
+
+    run_scope(
+        stage0=tuple(stage0_rows),
+        stage1=stage1_result,
+        cells=cells,
+        cambridge=cambridge_cell,
+        internal_references=references,
+        out_path=resolved,
     )
-    return 1
+    sys.stdout.write(f"[paper01-scope] wrote {resolved}\n")
+    return 0
 
 
 def _write_unavailable(out_path: Path, *, stage: str) -> None:
@@ -2574,27 +2649,674 @@ def _write_unavailable(out_path: Path, *, stage: str) -> None:
     )
 
 
-def _cli_fidelity_stub() -> None:
-    """``--fidelity``'s reserved parser stub (issue 006 TASK-PRE MEDIUM-4).
+# ---------------------------------------------------------------------------
+# I-007 はこのファイルの CLI 分岐のみ
+# ---------------------------------------------------------------------------
+#
+# design-final.md §6's fidelity pin (b)+(c) body (I-006 only reserved the
+# ``--fidelity`` parser stub, TASK-PRE MEDIUM-4) and the real Cambridge
+# cell wiring `cli_scope` (above, I-006's own CLI section) needed but did
+# not build (I-006 Scope Out: "実走"). Every real-data action below shares
+# the same discipline as the I-006 CLI actions immediately above: return
+# (never raise) on a missing prerequisite, quantise every float leaf
+# through ``_g1._quantize_json`` before any JSON write, and delegate every
+# statistic to the frozen apparatus (:mod:`scripts.paper01_external_audit`)
+# -- nothing here re-derives a number that module (or this module's own
+# I-002..I-006 sections) already computes.
+#
+# **Boundary (this session, I-007a)**: this section only ever *builds* the
+# wiring; it never runs it end-to-end against the real Ocsai/Cambridge
+# corpora (no network fetch happens in this repo checkout -- see
+# ``tests/test_paper01_scope/test_scope_cli_wiring.py`` for the
+# synthetic-data proof that it completes once its prerequisites are met).
 
-    I-006 reserves this flag on the parser only; I-007 fills in its body
-    (never adds a second ``--fidelity`` flag to the same parser).
+
+# --- fidelity pin (b): cell(tau=REF_DEDUP, k=N_R_MAX) reproduces G1 ARM-A --
+
+G1_ARM_A_EXPECTED_AUC_FULL: Final[float] = 0.863122
+G1_ARM_A_EXPECTED_AUC_LAO: Final[float] = 0.839575
+G1_ARM_A_EXPECTED_POTENCY: Final[float] = 0.375293
+G1_ARM_A_EXPECTED_CELL_VERDICT: Final[str] = "PASS"
+G1_ARM_A_EXPECTED_OVERALL_VERDICT: Final[str] = "PASS"
+G1_ARM_A_EXPECTED_SURVIVORS: Final[tuple[str, ...]] = ("X3a", "X3b", "X3c")
+"""design-final.md §6 fidelity pin (b) (Codex HIGH-4, AC 006-1/blockers.md
+ブロッカー3): the frozen G1 Ocsai SPLIT-BLOCK ARM-A committed values,
+candidate X3b. These are the *comparison targets*, never recomputed here --
+the same sealed numbers
+``tests/test_paper01_scope/test_cells.py::test_dense_cell_reproduces_
+g1_arm_a`` (I-006's own real-data test for this exact pin, gated
+``ERRE_RUN_REAL_MPNET_TESTS=1``) asserts against. This module keeps its own
+copy so the production ``--fidelity`` CLI action can compare without
+importing a test module."""
+
+G1_ARM_A_TOLERANCE: Final[float] = 1e-6
+"""Matches ``test_dense_cell_reproduces_g1_arm_a``'s own
+``pytest.approx(..., abs=1e-6)`` tolerance -- kept as a named constant so a
+mutant loosening it is a one-line, greppable target."""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ArmAFidelityResult:
+    """One real measurement of fidelity pin (b).
+
+    This issue's own internal type (not a §9 frozen contract -- mirrors
+    :class:`CellAnchors`'s own I-006 precedent of a non-contract in-process
+    dataclass, Codex TASK-PRE LOW-2's rationale: I-007 only ever reads this
+    in the CLI action that produces it, never persists it to disk).
     """
-    msg = (
-        "--fidelity is reserved for Loop I-007 (issue 006 TASK-PRE "
-        "MEDIUM-4: I-006 only reserves the parser stub)"
+
+    auc_full_at_median_draw: float
+    auc_lao_at_median_draw: float
+    potency_at_median_draw: float
+    cell_verdict: str
+    overall_verdict: str
+    survivors: tuple[str, ...]
+
+
+def measure_g1_arm_a_fidelity(gather: _OcsaiGather) -> ArmAFidelityResult:
+    """design-final.md §6 fidelity pin (b): this issue's cell pipeline vs. G1.
+
+    Compares ``cell(tau=REF_DEDUP, k=N_R_MAX)`` against G1's committed
+    Ocsai SPLIT-BLOCK ARM-A numbers. Built entirely from :func:`build_cell`
+    / :func:`score_cell` -- the
+    *generalised* I-006 pipeline -- never G1's own ``run_ocsai_split``
+    called directly. Spies on ``_g1.score_rows_for_draw`` (patches it with
+    a wrapper that still calls the real function; never mutates its
+    behaviour) purely to recover X3b's per-draw items for
+    :func:`~scripts.paper01_external_audit.build_candidate_report`'s
+    ``*_at_median_draw`` statistics, which :func:`score_cell`'s own
+    :class:`CellResult` return does not carry (only the final verdict +
+    object weights). This mirrors ``tests/test_paper01_scope/test_cells.py
+    ::test_dense_cell_reproduces_g1_arm_a`` (I-006's own pre-registered
+    real-data test for this exact pin) line for line, so production and
+    test can never quietly diverge.
+    """
+    scheme = gather.scheme
+    corpus = "ocsai"
+    cells_by_object = {
+        obj: build_cell(
+            gather.contexts[obj],
+            gather.vmaps.get("mpnet", {}),
+            tau=_c.REF_DEDUP,
+            cap=_c.N_R_MAX,
+            corpus=corpus,
+            scheme=scheme,
+        )
+        for obj in gather.active_objects
+    }
+    active = active_objects_for_cell(cells_by_object)
+
+    captured_draws: dict[str, list[Any]] = {c.key: [] for c in _g1.CANDIDATE_LADDER}
+    real_score = _g1.score_rows_for_draw
+
+    def _score_spy(*args: object, **kwargs: object) -> dict[str, Any]:
+        scored = real_score(*args, **kwargs)
+        for key, items in scored.items():
+            captured_draws[key].append(items)
+        return scored
+
+    with unittest.mock.patch.object(_g1, "score_rows_for_draw", side_effect=_score_spy):
+        cell_result = score_cell(
+            cells_by_object,
+            gather.contexts,
+            active,
+            gather.vmaps,
+            tau=_c.REF_DEDUP,
+            k_target=_c.N_R_MAX,
+            corpus=corpus,
+            scheme=scheme,
+        )
+
+    x3b_summary = _g1.build_candidate_report(
+        "X3b",
+        "embedding",
+        captured_draws["X3b"],
+        bootstrap_seed=_g1.derive_seed(corpus, scheme, "X3b", "bootstrap"),
+        permutation_seed=_g1.derive_seed(corpus, scheme, "X3b", "permutation"),
     )
-    raise NotImplementedError(msg)
+
+    class_sizes = _g1.cambridge_class_sizes([gather.contexts[o] for o in active])
+    reports = []
+    for cand in _g1.CANDIDATE_LADDER:
+        if cand.key not in _g1.EMBEDDING_FAMILY_EXT or not captured_draws[cand.key]:
+            continue
+        summary = _g1.build_candidate_report(
+            cand.key,
+            cand.family,
+            captured_draws[cand.key],
+            bootstrap_seed=_g1.derive_seed(corpus, scheme, cand.key, "bootstrap"),
+            permutation_seed=_g1.derive_seed(corpus, scheme, cand.key, "permutation"),
+        )
+        reports.append(summary.report)
+    overall_verdict = _g1.decide_external(reports, class_sizes=class_sizes)
+
+    return ArmAFidelityResult(
+        auc_full_at_median_draw=x3b_summary.report.auc_full_at_median_draw,
+        auc_lao_at_median_draw=x3b_summary.report.auc_lao_at_median_draw,
+        potency_at_median_draw=x3b_summary.report.potency_at_median_draw,
+        cell_verdict=cell_result.verdict,
+        overall_verdict=overall_verdict.verdict,
+        survivors=overall_verdict.survivors,
+    )
+
+
+def g1_arm_a_fidelity_matches(result: ArmAFidelityResult) -> bool:
+    """design-final.md §6 fidelity pin (b)'s exact-match criterion.
+
+    Mirrors :func:`~scripts.paper01_external_audit.
+    fidelity_candidate_matches`'s own discipline (a named boundary
+    predicate, never an inline literal comparison scattered across call
+    sites) -- every component must match within
+    :data:`G1_ARM_A_TOLERANCE`, and the verdict/survivor fields must match
+    exactly.
+
+    mutation targets: (a) any component dropped from the conjunction, (b)
+    the conjunction relaxed to a disjunction, (c) :data:`G1_ARM_A_TOLERANCE`
+    loosened.
+    """
+    return (
+        abs(result.auc_full_at_median_draw - G1_ARM_A_EXPECTED_AUC_FULL)
+        < G1_ARM_A_TOLERANCE
+        and abs(result.auc_lao_at_median_draw - G1_ARM_A_EXPECTED_AUC_LAO)
+        < G1_ARM_A_TOLERANCE
+        and abs(result.potency_at_median_draw - G1_ARM_A_EXPECTED_POTENCY)
+        < G1_ARM_A_TOLERANCE
+        and result.cell_verdict == G1_ARM_A_EXPECTED_CELL_VERDICT
+        and result.overall_verdict == G1_ARM_A_EXPECTED_OVERALL_VERDICT
+        and result.survivors == G1_ARM_A_EXPECTED_SURVIVORS
+    )
+
+
+# --- --fidelity: pin (b) + pin (c), data-unavailable vs. mismatch --------
+
+FIDELITY_EXIT_OK: Final[int] = 0
+FIDELITY_EXIT_MISMATCH: Final[int] = 1
+FIDELITY_EXIT_SOURCE_UNAVAILABLE: Final[int] = 2
+"""This issue's own binding instruction (orchestrator, 2026-09-08): "デー
+タが無い」と「不一致」を混同せず、別々の exit code / メッセージで区別する".
+:data:`FIDELITY_EXIT_MISMATCH` means a pin *ran* and its measured value
+disagrees with its frozen §6 target -- mirrors G1's own ``--fidelity``
+(:func:`scripts.paper01_external_audit.main`)'s "不一致で exit != 0"
+convention. :data:`FIDELITY_EXIT_SOURCE_UNAVAILABLE` means a pin could not
+run at all (missing encoder / sealed Phase A artifact / an offline Ocsai
+fetch) -- "we could not check" is not the same claim as "we checked and it
+disagrees", even though a caller that only tests ``exit_code != 0`` still
+sees a failure either way (never silently exit 0 for a skipped pin). A
+mismatch takes priority over an unavailable pin when both occur in the same
+invocation (:func:`cli_fidelity` surfaces the stronger signal first)."""
+
+
+def cli_fidelity() -> int:
+    """``--fidelity``: design-final.md §6's fidelity pin (b) + (c).
+
+    Body reserved for I-007 by I-006 (issue 006 TASK-PRE MEDIUM-4). Runs
+    two independent pins and returns a combined exit code (never conflates
+    "could not run" with "ran and disagreed" -- see
+    :data:`FIDELITY_EXIT_MISMATCH` / :data:`FIDELITY_EXIT_SOURCE_UNAVAILABLE`):
+
+    - **pin (c)** (internal, C0 heavy + C4 fast): delegates entirely to the
+      frozen G1 apparatus's own :func:`~scripts.paper01_external_audit.
+      run_fidelity` (never reimplemented) -- design-final.md §9's
+      ``C0=0.9900/0.7550`` / ``C4=0.9950/0.7050`` values are *its*
+      ``C0_EXPECTED_AUC_*`` / ``C4_EXPECTED_AUC_*`` module constants, read
+      through, never copied. ``RuntimeError`` (encoder unavailable) and
+      ``FileNotFoundError`` (sealed Phase A artifact missing) are both
+      "source unavailable", never a mismatch.
+    - **pin (b)** (external, ``cell(tau=REF_DEDUP, k=N_R_MAX)`` reproduces
+      G1 ARM-A): :func:`measure_g1_arm_a_fidelity`, gated on a real Ocsai
+      fetch + all four sentence-transformer encoders
+      (:func:`_gather_ocsai`; ``None`` is "source unavailable").
+    """
+    mismatch = False
+    unavailable = False
+
+    try:
+        c_result = _g1.run_fidelity()
+    except (RuntimeError, FileNotFoundError) as exc:
+        unavailable = True
+        sys.stderr.write(
+            "[paper01-scope] --fidelity: pin (c) internal fidelity source "
+            f"unavailable ({exc})\n"
+        )
+    else:
+        if not c_result["all_match"]:
+            mismatch = True
+            sys.stderr.write(
+                "[paper01-scope] --fidelity: pin (c) MISMATCH -- "
+                f"c0.matches={c_result['c0']['matches']} "
+                f"c4.matches={c_result['c4']['matches']}\n"
+            )
+        else:
+            sys.stdout.write("[paper01-scope] --fidelity: pin (c) internal OK\n")
+
+    gather = _gather_ocsai("SPLIT-BLOCK")
+    if gather is None:
+        unavailable = True
+        sys.stderr.write(
+            "[paper01-scope] --fidelity: pin (b) source unavailable "
+            "(Ocsai fetch or an encoder is missing offline)\n"
+        )
+    else:
+        b_result = measure_g1_arm_a_fidelity(gather)
+        if not g1_arm_a_fidelity_matches(b_result):
+            mismatch = True
+            sys.stderr.write(
+                "[paper01-scope] --fidelity: pin (b) MISMATCH -- "
+                f"auc_full={b_result.auc_full_at_median_draw} "
+                f"auc_lao={b_result.auc_lao_at_median_draw} "
+                f"potency={b_result.potency_at_median_draw} "
+                f"cell_verdict={b_result.cell_verdict} "
+                f"overall_verdict={b_result.overall_verdict} "
+                f"survivors={b_result.survivors}\n"
+            )
+        else:
+            sys.stdout.write("[paper01-scope] --fidelity: pin (b) G1 ARM-A OK\n")
+
+    if mismatch:
+        return FIDELITY_EXIT_MISMATCH
+    if unavailable:
+        return FIDELITY_EXIT_SOURCE_UNAVAILABLE
+    return FIDELITY_EXIT_OK
+
+
+# --- Cambridge gather (single, SPLIT-BLOCK-only, §4 F5 non-contradiction) -
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _CambridgeGather:
+    """CLI-only, in-process bundle of Cambridge's gathered inputs.
+
+    Mirrors :class:`_OcsaiGather` (I-006) but SPLIT-BLOCK only --
+    design-final.md's single non-primary Cambridge check (§0/§8 item 7:
+    "報告 + 非矛盾のみ"). This issue's own design choice: the single
+    Cambridge ARM-S cell is scored at the SPLIT-BLOCK split's τ*/k*
+    (never SPLIT-PARITY's, never an average of the two) -- design-final.md
+    does not pin which split backs it, so this reuses the same
+    "SPLIT-BLOCK is primary" convention every other single-scheme CLI
+    action in this file (:func:`cli_stage0` / :func:`cli_stage1`) already
+    follows, and :data:`~scripts.paper01_external_audit.SPLIT_SCHEMES`'s
+    own ``role="primary"`` / :func:`~scripts.paper01_external_audit.
+    run_cambridge_audit`'s ``"primary_split": "SPLIT-BLOCK"`` convention.
+    """
+
+    contexts: Mapping[str, _g1.ObjectSplitContext]
+    vmaps: Mapping[str, Mapping[str, np.ndarray]]
+    active_objects: tuple[str, ...]
+
+
+def _gather_cambridge() -> _CambridgeGather | None:
+    """Best-effort real Cambridge embed, SPLIT-BLOCK only.
+
+    Mirrors :func:`_gather_ocsai`'s discipline (``None``, never raises, on
+    any missing prerequisite). ``_g1.load_cambridge_raw_bytes`` reads the
+    two already-fetched (G1) local ``.xlsx`` files -- no network fetch of
+    its own: this issue's boundary forbids *fetching* Ocsai/Cambridge, not
+    reading what a prior task already fetched to disk
+    (``.steering/20260908-paper01-scope-condition/blockers.md`` ブロッカー4's
+    own inventory: "Cambridge データはある").
+    """
+    try:
+        raw = _g1.load_cambridge_raw_bytes()
+    except FileNotFoundError:
+        return None
+    rows_by_object = {
+        obj: _g1.load_cambridge_rows(obj, data) for obj, data in raw.items()
+    }
+    try:
+        encoders = _g1.build_available_encoders()
+    except _g1.MissingEncoderError:
+        return None
+    vmaps = _g1.embed_all_texts(rows_by_object, encoders)
+    mpnet_vmap = vmaps.get("mpnet", {})
+    scheme = "SPLIT-BLOCK"
+    contexts = {
+        obj: _g1.build_object_split_context(
+            obj, rows_by_object[obj], scheme, mpnet_vmap
+        )
+        for obj in _g1.CAMBRIDGE_OBJECTS
+    }
+    active = tuple(
+        sorted(
+            obj
+            for obj in _g1.CAMBRIDGE_OBJECTS
+            if not contexts[obj].dropped
+            and _g1.object_has_both_gold_classes(contexts[obj])
+        )
+    )
+    return _CambridgeGather(contexts=contexts, vmaps=vmaps, active_objects=active)
+
+
+def _score_cambridge_arm_s(
+    cambridge: _CambridgeGather,
+    tau_calibration: TauCalibration,
+    *,
+    corpus: str = "cambridge",
+) -> CellResult:
+    """Score Cambridge's single ARM-S cell (design-final.md §4 F5).
+
+    At the primary (SPLIT-BLOCK) split's already-calibrated τ*/k* -- see
+    :class:`_CambridgeGather`'s own docstring for why SPLIT-BLOCK. Built
+    from :func:`build_cell` / :func:`score_cell` (never a hand-rolled
+    scoring pass).
+    """
+    scheme = "SPLIT-BLOCK"
+    cells_by_object = {
+        obj: build_cell(
+            cambridge.contexts[obj],
+            cambridge.vmaps.get("mpnet", {}),
+            tau=tau_calibration.tau_star,
+            cap=tau_calibration.k_star,
+            corpus=corpus,
+            scheme=scheme,
+        )
+        for obj in cambridge.active_objects
+    }
+    active = active_objects_for_cell(cells_by_object)
+    return score_cell(
+        cells_by_object,
+        cambridge.contexts,
+        active,
+        cambridge.vmaps,
+        tau=tau_calibration.tau_star,
+        k_target=tau_calibration.k_star,
+        corpus=corpus,
+        scheme=scheme,
+    )
+
+
+# --- one Ocsai split's full Stage 2 2x2 grid (DA-SC-3 + MEDIUM-3) --------
+
+
+def build_split_cells(
+    gather: _OcsaiGather,
+    *,
+    rho_int_primary: float,
+    k_star: int,
+    corpus: str = "ocsai",
+) -> tuple[SplitCells, dict[str, CellAnchors]]:
+    """Wire one Ocsai split's full Stage 2 2x2 cell grid into :class:`SplitCells`.
+
+    design-final.md §3 Stage 2 (DA-SC-3's 4-cell common-active-object
+    intersection + §2.4 MEDIUM-3's τ*-neighbour single-point-dependence
+    check) -- I-006's own Scope In stopped at :func:`build_cell` /
+    :func:`score_cell` / :func:`active_objects_for_cell` /
+    :func:`common_active_objects` as individually-callable primitives; this
+    issue's Goal is wiring them into one split's full grid.
+
+    Builds all four ``(tau, k)`` grid corners via :func:`build_cell` --
+    ``(REF_DEDUP, N_R_MAX)`` = ARM-A, ``(REF_DEDUP, k_star)``,
+    ``(tau_star, N_R_MAX)``, ``(tau_star, k_star)`` = ARM-S -- over
+    ``gather.active_objects``, computes their DA-SC-3 common-active-object
+    intersection (:func:`common_active_objects`), then scores only the two
+    diagonal cells (:func:`score_cell`) over that shared intersection -- the
+    two off-diagonal corners exist only to constrain the intersection
+    (design-final.md §3's 2x2 table: only the diagonal feeds
+    :func:`decide_scope`).
+
+    ``single_point_dependent`` (MEDIUM-3, §2.4) is finalised here (never by
+    :func:`calibrate_tau` itself -- its own docstring defers this to
+    ``run_scope``'s caller): additionally scores ARM-S-shaped cells
+    (``tau=neighbour, cap=k_star``, same common-active intersection) at
+    every :func:`adjacent_tau_indices` neighbour of τ* -- ``True`` iff
+    condition 1 (``verdict(ARM-S)=="NO_VALID_SCORER" and
+    verdict(ARM-A)=="PASS"``) holds at τ* but fails at *every* neighbour
+    tried (§2.4: "τ* の隣接1段(上または下)でも同じ verdict が出ること";
+    "単点だけで成立した場合は... 「特定できない」に倒す" -- so this flag is
+    only meaningful, and only ever set ``True``, when condition 1 holds at
+    τ* itself; the neighbour cells reuse the *same* common-active
+    intersection as the primary grid, this issue's own documented choice
+    since design-final.md does not pin whether the neighbour check gets its
+    own intersection).
+
+    Returns ``(SplitCells, arm_a_cells_by_object)`` -- the second element is
+    the raw ARM-A :class:`CellAnchors` mapping (never returned by
+    :func:`score_cell`'s own :class:`CellResult`), which this split's
+    Stage 0 external row and Stage 1 anchor draw (:data:`STAGE1_DRAW_INDEX`)
+    both need and would otherwise have to rebuild a second time.
+    """
+    scheme = gather.scheme
+    rho_ext_by_tau = external_rho_by_tau(
+        gather.contexts, gather.vmaps.get("mpnet", {}), gather.active_objects
+    )
+    tau_cal_raw = calibrate_tau(rho_ext_by_tau, rho_int_primary, k_star=k_star)
+    tau_star = tau_cal_raw.tau_star
+
+    def _corner_cells(tau: float, cap: int) -> dict[str, CellAnchors]:
+        return {
+            obj: build_cell(
+                gather.contexts[obj],
+                gather.vmaps.get("mpnet", {}),
+                tau=tau,
+                cap=cap,
+                corpus=corpus,
+                scheme=scheme,
+            )
+            for obj in gather.active_objects
+        }
+
+    dense_k_max = _corner_cells(_c.REF_DEDUP, _c.N_R_MAX)
+    dense_k_star = _corner_cells(_c.REF_DEDUP, k_star)
+    sparse_k_max = _corner_cells(tau_star, _c.N_R_MAX)
+    sparse_k_star = _corner_cells(tau_star, k_star)
+
+    active_by_corner = {
+        "dense_k_max": active_objects_for_cell(dense_k_max),
+        "dense_k_star": active_objects_for_cell(dense_k_star),
+        "sparse_k_max": active_objects_for_cell(sparse_k_max),
+        "sparse_k_star": active_objects_for_cell(sparse_k_star),
+    }
+    common = tuple(common_active_objects(active_by_corner))
+
+    arm_a = score_cell(
+        dense_k_max,
+        gather.contexts,
+        common,
+        gather.vmaps,
+        tau=_c.REF_DEDUP,
+        k_target=_c.N_R_MAX,
+        corpus=corpus,
+        scheme=scheme,
+    )
+    arm_s = score_cell(
+        sparse_k_star,
+        gather.contexts,
+        common,
+        gather.vmaps,
+        tau=tau_star,
+        k_target=k_star,
+        corpus=corpus,
+        scheme=scheme,
+    )
+
+    condition1_at_star = arm_s.verdict == "NO_VALID_SCORER" and arm_a.verdict == "PASS"
+    single_point_dependent = False
+    if condition1_at_star:
+        tau_star_index = TAU_GRID.index(tau_star)
+        neighbour_holds = False
+        for idx in adjacent_tau_indices(tau_star_index):
+            neighbour_tau = TAU_GRID[idx]
+            neighbour_cells = _corner_cells(neighbour_tau, k_star)
+            neighbour_arm_s = score_cell(
+                neighbour_cells,
+                gather.contexts,
+                common,
+                gather.vmaps,
+                tau=neighbour_tau,
+                k_target=k_star,
+                corpus=corpus,
+                scheme=scheme,
+            )
+            if neighbour_arm_s.verdict == "NO_VALID_SCORER":
+                neighbour_holds = True
+                break
+        single_point_dependent = not neighbour_holds
+
+    tau_cal = dataclasses.replace(
+        tau_cal_raw, single_point_dependent=single_point_dependent
+    )
+
+    return SplitCells(arm_a=arm_a, arm_s=arm_s, tau_calibration=tau_cal), dense_k_max
+
+
+# --- SPLIT-BLOCK-only Stage 0 external row / Stage 1 (reuse the ARM-A cell)
+
+
+def _stage0_internal_row(
+    mpnet: Callable[[Sequence[str]], np.ndarray], *, rho_int_primary: float
+) -> DeltaDecomposition:
+    """The Stage 0 internal (C4) row.
+
+    Mirrors :func:`cli_stage0`'s own internal branch (I-006) exactly, so
+    ``--scope`` need not shell out to a second ``--stage0`` invocation
+    (which would also compute an external row this function does not need
+    -- :func:`_stage0_external_row` below reuses ``--scope``'s own
+    SPLIT-BLOCK grid instead of re-fetching Ocsai a second time).
+    """
+    candidate, _vmap, curated = _g1._c4_fidelity_context(mpnet)  # noqa: SLF001
+    gold_pair = _g1.fidelity_gold_pair()
+    scores_full = tuple(
+        candidate.rarity(g.object, g.text, leave_anchor_out=False) for g in gold_pair
+    )
+    scores_lao = tuple(
+        candidate.rarity(g.object, g.text, leave_anchor_out=True) for g in gold_pair
+    )
+    labels = tuple(1 if g.category == "good" else 0 for g in gold_pair)
+    max_sim_full = tuple(1.0 - s for s in scores_full)
+    del curated  # only the candidate closure is needed above
+    return split_delta(
+        scores_full,
+        scores_lao,
+        labels,
+        max_sim_full,
+        source=_STAGE0_INTERNAL_SOURCE,
+        candidate=_STAGE0_INTERNAL_CANDIDATE,
+        rho=rho_int_primary,
+    )
+
+
+def _stage0_external_row(
+    gather: _OcsaiGather, dense_k_max: Mapping[str, CellAnchors]
+) -> DeltaDecomposition | None:
+    """The Stage 0 external (Ocsai SPLIT-BLOCK ARM-A, X0) row.
+
+    Mirrors :func:`cli_stage0`'s own external branch (I-006), reusing the
+    ARM-A cell :func:`build_split_cells` already built (never re-fetching /
+    re-clustering). Returns ``None`` when X0 was not scored for any active
+    object (mirrors :func:`cli_stage0`'s own ``if x0 is not None:`` guard).
+    """
+    active = active_objects_for_cell(dense_k_max)
+    if not active:
+        return None
+    rows_all = tuple(r for obj in active for r in gather.contexts[obj].split1)
+    idf_by_object = {
+        o: (gather.contexts[o].idf, gather.contexts[o].default_idf) for o in active
+    }
+    anchor_texts_by_object = {
+        o: dense_k_max[o].draw_texts_by_draw[STAGE1_DRAW_INDEX] for o in active
+    }
+    scored = _g1.score_rows_for_draw(
+        rows_all,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps=gather.vmaps,
+        idf_by_object=idf_by_object,
+    )
+    x0 = scored.get("X0")
+    if x0 is None:
+        return None
+    rho_ext = corpus_redundancy(
+        {
+            o: np.asarray(
+                [gather.vmaps.get("mpnet", {})[t] for t in anchor_texts_by_object[o]],
+                dtype=float,
+            )
+            for o in active
+            if anchor_texts_by_object[o]
+        }
+    )
+    max_sim_full = tuple(1.0 - s for s in x0.scores_full)
+    return split_delta(
+        x0.scores_full,
+        x0.scores_lao,
+        x0.labels,
+        max_sim_full,
+        source=_STAGE0_EXTERNAL_SOURCE,
+        candidate=_STAGE0_EXTERNAL_CANDIDATE,
+        rho=rho_ext,
+    )
+
+
+def _stage1_result(
+    gather: _OcsaiGather, dense_k_max: Mapping[str, CellAnchors]
+) -> Stage1Result | None:
+    """The Stage 1 deflation-test result for candidate X0.
+
+    Mirrors :func:`cli_stage1` (I-006) exactly, reusing the ARM-A cell
+    :func:`build_split_cells` already built. Returns ``None`` when X0 could
+    not be scored (mirrors :func:`cli_stage1`'s own guards).
+    """
+    active = active_objects_for_cell(dense_k_max)
+    if not active:
+        return None
+    rows_all = tuple(r for obj in active for r in gather.contexts[obj].split1)
+    idf_by_object = {
+        o: (gather.contexts[o].idf, gather.contexts[o].default_idf) for o in active
+    }
+    anchor_texts_by_object = {
+        o: dense_k_max[o].draw_texts_by_draw[STAGE1_DRAW_INDEX] for o in active
+    }
+    scored = _g1.score_rows_for_draw(
+        rows_all,
+        anchor_texts_by_object=anchor_texts_by_object,
+        vmaps=gather.vmaps,
+        idf_by_object=idf_by_object,
+    )
+    x0 = scored.get("X0")
+    if x0 is None:
+        return None
+
+    offset = 0
+    contexts_pools: dict[str, ObjectGoldPool] = {}
+    for obj in active:
+        n = len(gather.contexts[obj].split1)
+        good_idx = tuple(
+            offset + i
+            for i, r in enumerate(gather.contexts[obj].split1)
+            if r.category == "good"
+        )
+        common_idx = tuple(
+            offset + i
+            for i, r in enumerate(gather.contexts[obj].split1)
+            if r.category == "common_use_only"
+        )
+        contexts_pools[obj] = ObjectGoldPool(
+            object_key=obj,
+            object_weight=float(len(good_idx) * len(common_idx)),
+            good_item_indices=good_idx,
+            common_item_indices=common_idx,
+        )
+        offset += n
+
+    subsets = internal_shaped_replicates(
+        contexts_pools,
+        replicates=STAGE1_REPLICATES,
+        corpus="ocsai",
+        scheme=gather.scheme,
+        seed=SEED,
+    )
+    return stage1_drop_distribution(x0, subsets, candidate="X0")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entry point (Loop I-006; ``--fidelity`` body reserved for I-007).
+    """CLI entry point (Loop I-006 + I-007's ``--fidelity``/``--scope`` bodies).
 
     Flags may combine; each one set runs at most once, in the order
     calibrate -> stage0 -> stage1 -> stage2 -> scope -> fidelity. Every
     real-data action reports ``source_unavailable`` (never a fabricated
     result) and returns a non-zero exit code when its prerequisites are not
-    met -- the overall exit code is the maximum of every action run.
+    met -- the overall exit code is the maximum of every action run
+    (``--fidelity`` additionally distinguishes a mismatch
+    (:data:`FIDELITY_EXIT_MISMATCH`) from a source-unavailable pin
+    (:data:`FIDELITY_EXIT_SOURCE_UNAVAILABLE`), both non-zero).
     """
     parser = argparse.ArgumentParser(description="paper01 scope-condition CLI")
     parser.add_argument(
@@ -2631,7 +3353,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--fidelity",
         action="store_true",
-        help="reserved for Loop I-007 (parser stub only, TASK-PRE MEDIUM-4)",
+        help=(
+            "run the §6 fidelity pin (b)+(c); exit 1 on mismatch, exit 2 "
+            "on source-unavailable (never conflated)"
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -2647,7 +3372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.scope:
         exit_code = max(exit_code, cli_scope(out_path=args.scope_out))
     if args.fidelity:
-        _cli_fidelity_stub()
+        exit_code = max(exit_code, cli_fidelity())
 
     return exit_code
 
