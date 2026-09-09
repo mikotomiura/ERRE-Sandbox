@@ -2,11 +2,12 @@
 
 ## 到達点
 
-事前登録した scope condition 測定の**装置**を建設し、統合 CI 緑まで到達した。
-**測定そのもの (I-007b) は未実行** — Ocsai のネットワーク再取得を伴うため user 認可待ち。
+事前登録した scope condition 測定の装置を建設し、**2026-09-09 に実走まで完了した**。
+**verdict = `DO_NOT_WRITE`**（design-final.md §5 の「書かない」枝）。
 
-- issue: 001 / 001b / 002 / 003 / 004 / 005 / 006 / 007a = **8 本統合**
-- 統合 CI: `ALL CHECKS PASSED` (4235 passed / 53 skipped / 4 段)、緑 SHA = `8593e26`
+- issue: 001 / 001b / 002 / 003 / 004 / 005 / 006 / 007a / **007b** = **9 本統合**
+- 統合 CI: `ALL CHECKS PASSED` (4235 passed / 53 skipped / 4 段)。装置の緑 SHA = `8593e26`、
+  **実走後の緑 SHA = `8a17919`**
 - TASK-PRE (Codex) / TASK-POST (Opus ∥ Codex) 両ゲート実施
 
 ## 効いたこと
@@ -89,11 +90,39 @@ Codex HIGH-1 (「C4 は raw curated であり dedupe されていない」) は
 ADR には反映されたが、**`docs/glossary.md` には届いていなかった**。
 TASK-POST で Opus が拾った。
 
-## 残 (I-007b)
+## I-007b (実走、2026-09-09) — 完了
 
-- **Ocsai のネットワーク再取得** (ローカルに無い。encoder 4 本と Cambridge は在庫あり)
-- **実走** → `results/scope.json` → verdict
-- **fidelity pin (b) (AC 006-1) はまだ一度も走っていない** (ブロッカー 3)。
-  `run.sh` の `--fidelity` が緑にならないうちは verdict を読まない
-- `notes.md` の結果節記入 / `mutation-log.md` の統合 / `.steering` 最終化
-- Opus LOW-2/3/4 の defer 分 (blockers.md)
+- **Ocsai をネットワークから再取得** (user 明示認可、メモリ上のみ・再配布なし)
+- **fidelity pin (b) の初回実行が一致** → ブロッカー 3 CLOSED。**緑を確認してから
+  verdict を読んだ**
+- `run.sh` exit 0 / 2 回実行 SHA-256 一致 / **verdict = `DO_NOT_WRITE`**
+  (`condition_c_supported=false` / `stage1_outcome=DEFLATION_REJECTED` / `fail_reason=null`)
+- `notes.md` 結果節記入 / `mutation-log.md` 統合 (全 8 issue、要約なし) / `.steering` 最終化
+- 実走後 CI parity 緑 (`8a17919`)、draft PR #96 更新。**merge は user 裁定**
+
+### 効いたこと 4: 意味突き合わせ工程が「配線ミス」と「検出力不足」を分離した (最大の収穫)
+
+design-final.md §7 が mutation の**後に**「出力 JSON の数字を実物に当てる」工程を
+置いていたのが効いた。Stage 1 の drop が全 500 replicate で厳密 0.0 という結果を
+**額面で受け取らず**、`scores_lao` が本当に別配列かを**実際に観測**した
+(`scores_full != scores_lao`、1279 中 41 項目が変化、6 replicate で drop≠0)。
+
+⇒ 配線は健全と確定したうえで、**0 に張り付く真因は「縮小前から Ocsai の drop が
+0.000152 しかない」こと**と判明。**Stage 1 は「小標本が崩落を作らない」と
+「このコーパスはそもそも崩落しない」を区別できない** (Limitation 9)。
+観測しなければ「deflation を棄却した」と書いて終わっていた。
+
+**全 test 緑・全 mutant kill (84/85、生存 1 は同値 mutant) でも出力 JSON の意味は
+壊れうる**という G1 の教訓が、本タスクでも再現した。
+
+### 失敗したこと F: 「まだ実行していない」を assertion / annotation に凍結した (2 箇所同時)
+
+`notes.md` 冒頭の「verdict は一切含まない」宣言と
+`test_notes_results_section_is_a_placeholder` が、実走した瞬間に**両方とも偽**になった。
+後者は統合 CI を落とした。`project_m13_society_live_real_run` が既に記録していた
+erratum の再発であり、**同じ轍を 2 箇所で同時に踏んだ**。
+
+→ 教訓: **凍結する成果物に「未実行」「まだ書いていない」を書き込まない。**
+書くなら「この時点の記録」と時制を明示するか、実行後に反転させる前提で
+guard として設計する (今回は user 裁定で後者を採り、test は削除せず
+「verdict が報告されていること (どちらかは問わない)」へ反転させた)。
