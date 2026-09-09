@@ -1,0 +1,13 @@
+[run.sh] ① PYTHON=.venv/Scripts/python.exe PYTHONHASHSEED=20260908 HF_HUB_OFFLINE=1
+[run.sh] ② --fidelity (design-final.md §6 pin (b)+(c); exit 1=mismatch, exit 2=source-unavailable)
+[paper01-scope] --fidelity: pin (c) internal OK
+[paper01-scope] --fidelity: pin (b) G1 ARM-A OK
+[run.sh] ③ --scope, run 1 -> experiments/20260908-paper01-scope-condition/results/scope.json
+[paper01-scope] wrote C:\ERRE-Sand_Box\experiments\20260908-paper01-scope-condition\results\scope.json
+[run.sh] ④ --scope, run 2 (scratch path) + SHA-256 byte-identity gate
+[paper01-scope] wrote C:\Users\johnd\AppData\Local\Temp\tmp.GkwhasjqXD\scope-repeat.json
+[run_gate] hashes match: e96e1e4e30c99ea4b257853a3e10b48cbb8b2a1e2fe70ec427f888c7cdf624e8
+[run.sh] ⑤ metrics.json (build_metrics.py, read-only extraction)
+[build_metrics] wrote C:\ERRE-Sand_Box\experiments\20260908-paper01-scope-condition\results\metrics.json
+[run.sh] ⑥ done
+{"event": "PAPER01_SCOPE_CONDITION_RUN_COMPLETE", "status": "ok"}

@@ -1,0 +1,358 @@
+{
+  "stage0": [
+    {
+      "candidate": "C4",
+      "mean_delta_common": 0.652713,
+      "mean_delta_good": 0.0,
+      "mean_s_common": 0.310457,
+      "mean_s_good": 0.0,
+      "mean_t_common": 0.96317,
+      "mean_t_good": 0.0,
+      "n_common": 7,
+      "n_good": 0,
+      "rho": 0.384004,
+      "s_common_minus_s_good": 0.310457,
+      "source": "internal_c4"
+    },
+    {
+      "candidate": "X0",
+      "mean_delta_common": 0.184136,
+      "mean_delta_good": 0.0,
+      "mean_s_common": 0.76221,
+      "mean_s_good": 0.0,
+      "mean_t_common": 0.946346,
+      "mean_t_good": 0.0,
+      "n_common": 41,
+      "n_good": 0,
+      "rho": 0.627753,
+      "s_common_minus_s_good": 0.76221,
+      "source": "external_ocsai_arm_a"
+    }
+  ],
+  "stage1": {
+    "candidate": "X0",
+    "deflation_supported": false,
+    "drop_p5": 0.0,
+    "drop_p5_eligible": 0.0,
+    "drop_p5_strat": 0.0,
+    "drop_p95": 0.0,
+    "drop_p95_eligible": 0.0,
+    "drop_p95_strat": 0.0,
+    "eligible_fraction": 0.8,
+    "median_draw_drop": 0.0,
+    "median_draw_outcome": "DEFLATION_REJECTED",
+    "median_drop": 0.0,
+    "median_drop_eligible": 0.0,
+    "median_drop_strat": 0.0,
+    "n_objects_pool_short": 0,
+    "n_replicates": 500,
+    "pool_short_objects": [],
+    "stage1_outcome": "DEFLATION_REJECTED"
+  },
+  "stage2": {
+    "cambridge": {
+      "active_objects": [
+        "bowl",
+        "paperclip"
+      ],
+      "corpus": "cambridge",
+      "k_effective": 10,
+      "k_target": 10,
+      "n_leaders": 176,
+      "object_weights": {
+        "bowl": 0.358523,
+        "paperclip": 0.641477
+      },
+      "split_scheme": "SPLIT-BLOCK",
+      "tau": 0.45,
+      "verdict": "INVALID_TASK_BATTERY"
+    },
+    "cells": {
+      "SPLIT-BLOCK": {
+        "arm_a": {
+          "active_objects": [
+            "bottle",
+            "box",
+            "brick",
+            "fork",
+            "knife",
+            "paperclip",
+            "rope"
+          ],
+          "corpus": "ocsai",
+          "k_effective": 30,
+          "k_target": 30,
+          "n_leaders": 118,
+          "object_weights": {
+            "bottle": 0.040401,
+            "box": 0.05788,
+            "brick": 0.69918,
+            "fork": 0.014717,
+            "knife": 0.057715,
+            "paperclip": 0.03364,
+            "rope": 0.096467
+          },
+          "split_scheme": "SPLIT-BLOCK",
+          "tau": 0.9,
+          "verdict": "PASS"
+        },
+        "arm_s": {
+          "active_objects": [
+            "bottle",
+            "box",
+            "brick",
+            "fork",
+            "knife",
+            "paperclip",
+            "rope"
+          ],
+          "corpus": "ocsai",
+          "k_effective": 10,
+          "k_target": 10,
+          "n_leaders": 41,
+          "object_weights": {
+            "bottle": 0.040401,
+            "box": 0.05788,
+            "brick": 0.69918,
+            "fork": 0.014717,
+            "knife": 0.057715,
+            "paperclip": 0.03364,
+            "rope": 0.096467
+          },
+          "split_scheme": "SPLIT-BLOCK",
+          "tau": 0.45,
+          "verdict": "PASS"
+        },
+        "tau_calibration": {
+          "k_star": 10,
+          "rho_by_tau": [
+            0.657612,
+            0.646573,
+            0.621099,
+            0.597183,
+            0.562181,
+            0.527406,
+            0.493681,
+            0.440797,
+            0.408121,
+            0.375421,
+            0.321498
+          ],
+          "rho_int_primary": 0.384004,
+          "single_point_dependent": false,
+          "tau_star": 0.45
+        }
+      },
+      "SPLIT-PARITY": {
+        "arm_a": {
+          "active_objects": [
+            "bottle",
+            "box",
+            "brick",
+            "fork",
+            "knife",
+            "pants",
+            "paperclip",
+            "rope",
+            "table",
+            "tire"
+          ],
+          "corpus": "ocsai",
+          "k_effective": 30,
+          "k_target": 30,
+          "n_leaders": 42,
+          "object_weights": {
+            "bottle": 0.03446,
+            "box": 0.099688,
+            "brick": 0.600098,
+            "fork": 0.01723,
+            "knife": 0.055423,
+            "pants": 0.014769,
+            "paperclip": 0.031465,
+            "rope": 0.117164,
+            "table": 0.018871,
+            "tire": 0.01083
+          },
+          "split_scheme": "SPLIT-PARITY",
+          "tau": 0.9,
+          "verdict": "PASS"
+        },
+        "arm_s": {
+          "active_objects": [
+            "bottle",
+            "box",
+            "brick",
+            "fork",
+            "knife",
+            "pants",
+            "paperclip",
+            "rope",
+            "table",
+            "tire"
+          ],
+          "corpus": "ocsai",
+          "k_effective": 10,
+          "k_target": 10,
+          "n_leaders": 16,
+          "object_weights": {
+            "bottle": 0.03446,
+            "box": 0.099688,
+            "brick": 0.600098,
+            "fork": 0.01723,
+            "knife": 0.055423,
+            "pants": 0.014769,
+            "paperclip": 0.031465,
+            "rope": 0.117164,
+            "table": 0.018871,
+            "tire": 0.01083
+          },
+          "split_scheme": "SPLIT-PARITY",
+          "tau": 0.5,
+          "verdict": "PASS"
+        },
+        "tau_calibration": {
+          "k_star": 10,
+          "rho_by_tau": [
+            0.66167,
+            0.651202,
+            0.62702,
+            0.594148,
+            0.562364,
+            0.522415,
+            0.486756,
+            0.442078,
+            0.398702,
+            0.359092,
+            0.319818
+          ],
+          "rho_int_primary": 0.384004,
+          "single_point_dependent": false,
+          "tau_star": 0.5
+        }
+      }
+    },
+    "internal_references": [
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 13,
+        "object_id": "blanket",
+        "rho_primary_c4": 0.42731,
+        "rho_secondary_c0": 0.491389
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 15,
+        "object_id": "bottle",
+        "rho_primary_c4": 0.446556,
+        "rho_secondary_c0": 0.489302
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 14,
+        "object_id": "bottle_cap",
+        "rho_primary_c4": 0.323198,
+        "rho_secondary_c0": 0.394065
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 15,
+        "object_id": "brick",
+        "rho_primary_c4": 0.380409,
+        "rho_secondary_c0": 0.404961
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 11,
+        "object_id": "candle",
+        "rho_primary_c4": 0.405815,
+        "rho_secondary_c0": 0.407673
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 11,
+        "object_id": "clothes_hanger",
+        "rho_primary_c4": 0.3376,
+        "rho_secondary_c0": 0.38187
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 22,
+        "object_id": "cork",
+        "rho_primary_c4": 0.379498,
+        "rho_secondary_c0": 0.488319
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 18,
+        "object_id": "floor_tile",
+        "rho_primary_c4": 0.40386,
+        "rho_secondary_c0": 0.501182
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 28,
+        "object_id": "key",
+        "rho_primary_c4": 0.428772,
+        "rho_secondary_c0": 0.568673
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 27,
+        "object_id": "newspaper",
+        "rho_primary_c4": 0.355481,
+        "rho_secondary_c0": 0.474906
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 17,
+        "object_id": "paper_cup",
+        "rho_primary_c4": 0.37827,
+        "rho_secondary_c0": 0.487628
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 12,
+        "object_id": "paperclip",
+        "rho_primary_c4": 0.332246,
+        "rho_secondary_c0": 0.334163
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 15,
+        "object_id": "rubber_band",
+        "rho_primary_c4": 0.357883,
+        "rho_secondary_c0": 0.493296
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 10,
+        "object_id": "shoe",
+        "rho_primary_c4": 0.357415,
+        "rho_secondary_c0": 0.357415
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 14,
+        "object_id": "tent_peg",
+        "rho_primary_c4": 0.428492,
+        "rho_secondary_c0": 0.473808
+      },
+      {
+        "n_refs_primary_c4": 10,
+        "n_refs_secondary_c0": 24,
+        "object_id": "twist_tie",
+        "rho_primary_c4": 0.401267,
+        "rho_secondary_c0": 0.478437
+      }
+    ]
+  },
+  "verdict": {
+    "condition_c_supported": false,
+    "deflation_supported": false,
+    "fail_reason": null,
+    "notes": [],
+    "single_point_dependent": false,
+    "t_confound_note_required": false,
+    "verdict": "DO_NOT_WRITE"
+  }
+}

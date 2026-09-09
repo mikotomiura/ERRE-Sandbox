@@ -1,0 +1,94 @@
+{
+  "cambridge_verdict": "INVALID_TASK_BATTERY",
+  "splits": {
+    "SPLIT-BLOCK": {
+      "arm_a_active_objects": [
+        "bottle",
+        "box",
+        "brick",
+        "fork",
+        "knife",
+        "paperclip",
+        "rope"
+      ],
+      "arm_a_verdict": "PASS",
+      "arm_s_active_objects": [
+        "bottle",
+        "box",
+        "brick",
+        "fork",
+        "knife",
+        "paperclip",
+        "rope"
+      ],
+      "arm_s_verdict": "PASS",
+      "k_star": 10,
+      "rho_int_primary": 0.384004,
+      "single_point_dependent": false,
+      "tau_star": 0.45
+    },
+    "SPLIT-PARITY": {
+      "arm_a_active_objects": [
+        "bottle",
+        "box",
+        "brick",
+        "fork",
+        "knife",
+        "pants",
+        "paperclip",
+        "rope",
+        "table",
+        "tire"
+      ],
+      "arm_a_verdict": "PASS",
+      "arm_s_active_objects": [
+        "bottle",
+        "box",
+        "brick",
+        "fork",
+        "knife",
+        "pants",
+        "paperclip",
+        "rope",
+        "table",
+        "tire"
+      ],
+      "arm_s_verdict": "PASS",
+      "k_star": 10,
+      "rho_int_primary": 0.384004,
+      "single_point_dependent": false,
+      "tau_star": 0.5
+    }
+  },
+  "stage0_rows": [
+    {
+      "candidate": "C4",
+      "mean_delta_common": 0.652713,
+      "mean_delta_good": 0.0,
+      "rho": 0.384004,
+      "source": "internal_c4"
+    },
+    {
+      "candidate": "X0",
+      "mean_delta_common": 0.184136,
+      "mean_delta_good": 0.0,
+      "rho": 0.627753,
+      "source": "external_ocsai_arm_a"
+    }
+  ],
+  "stage1": {
+    "deflation_supported": false,
+    "eligible_fraction": 0.8,
+    "median_draw_outcome": "DEFLATION_REJECTED",
+    "median_drop": 0.0,
+    "stage1_outcome": "DEFLATION_REJECTED"
+  },
+  "verdict": {
+    "condition_c_supported": false,
+    "deflation_supported": false,
+    "fail_reason": null,
+    "single_point_dependent": false,
+    "t_confound_note_required": false,
+    "verdict": "DO_NOT_WRITE"
+  }
+}
