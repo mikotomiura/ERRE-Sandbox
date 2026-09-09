@@ -131,6 +131,21 @@ PR #89/#90/#91 で land した live 双方向ループ閉包と、その follow-
 | cross-fit | row-level cross-fit within one evaluation system | 同一コーパスを行単位で `split0` (anchor 構築) と `split1` (gold + 採点) に決定論的に分ける手続き。**外部・行分離ではあるが、rater プールは共通**なので **provenance 独立ではない**。この区別を潰さないための語 (Codex TASK-PRE HIGH-1) | G1 ADR DA-G1-19 |
 | source-crossed | source-crossed sensitivity | anchor と gold を**別々の研究・別々の rater・別々の被験者**から取るアーム。G1 では `paperclip` が Cambridge と Ocsai の両方に存在することを使って 1 アームだけ構成できる。**provenance 独立が本当に成立する唯一のアーム**だが 1 物体のみで狭い | G1 ADR DA-G1-19 HIGH-1 |
 
+## 論文 01 案 2 / scope condition 用語
+
+G1 の後段 (`.steering/20260908-paper01-scope-condition/`) で使う語。
+**参照集合の「作り方」に関する語彙であって、崩落の大きさを主張する語彙ではない**。
+
+| 用語 (日本語) | 用語 (英語) | 定義 | 関連 |
+|---|---|---|---|
+| 適用条件 | scope condition | 「参照集合の構成が条件 C を満たすとき、埋め込み rarity スコアラは novelty ではなく reference-set membership を測っている」という形の C。**(a) 外部コーパスの実測で支持され (b) C を満たさない配置では崩落しないことも同じ実測で示せる**ときにだけ「書けた」と言う。**片側だけなら「特定できない」に倒す** | B-G1-10 (凍結) |
+| 参照冗長性 | reference redundancy (ρ) | `ρ(R_o) = mean_{r∈R_o} max_{r'∈R_o, r'≠r} cos(r, r')` — 参照集合の**平均最近傍類似度**。「同じ用途の言い換えが何本入っているか」の尺度。**dedupe 閾値 (`REF_DEDUP`) とは別物**。**C0 と外部 ARM-A は 0.90 で dedupe 済だが C4 は raw curated (dedupe されていない)** — Codex HIGH-1 の訂正。いずれにせよ最大ペア間 cos は**単一の順序統計量**で、10-30 件の集合では 1 ペアの外れ値に支配されるため冗長性の尺度にならない (design-final §2.2) | DA-SC-1 |
+| 間引き閾値 | thinning threshold (τ) | anchor プールを greedy 間引きするときの閾値。**LAO の閾値 `REF_DEDUP`=0.90 (凍結 apparatus `embed_rarity` の中) とは完全に別物で、そちらは一切触らない** | DA-SC-1 |
+| 較正済み間引き閾値 | calibrated thinning threshold (τ\*) | 事前登録した τ グリッド上で `τ* = argmin_τ |ρ_ext(τ) − ρ_int|`。**ρ_int は内部 C4 (curated-only) から算出し、外部の verdict / AUC は一切見ない** | DA-SC-1 / DA-SC-2 |
+| ARM-S | sparse-reference arm | τ\* で間引き `k*` 件に切った anchor で採点するアーム = **条件 C を満たす配置**。ARM-A (τ=0.90, k=30) が **C を満たさない配置** | design-final §Stage 2 |
+| deflation 検定 | deflation test (Stage 1) | 「内部の崩落は gold 41 項目・有効ペア 25 の**小標本効果**である」という**最も deflating な対立仮説**を、外部 gold を内部と同じ形へ縮小抽出して先に潰す工程。**都合の良い仮説から測らないための順序規律** | requirement.md |
+| 被覆損失 | coverage loss (CL) | `mean over engaged items of (rarity_LAO − rarity_full)` — LAO が実際にスコアをどれだけ動かしたか。**媒介量として報告するだけで、条件 C の定義には使わない** (使うと「LAO がスコアを大きく動かすと崩落する」という恒等式的主張に落ちる) | design-final §Stage 2 |
+
 ## 略語
 
 | 略語 | 正式名称 | 意味 |

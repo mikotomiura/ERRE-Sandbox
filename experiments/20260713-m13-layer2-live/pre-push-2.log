@@ -1,0 +1,165 @@
+
+==[ ruff format --check src tests ]==
+576 files already formatted
+  [PASS] ruff format --check src tests (0.1s)
+
+==[ ruff check src tests ]==
+All checks passed!
+  [PASS] ruff check src tests (0.1s)
+
+==[ mypy src ]==
+Success: no issues found in 240 source files
+  [PASS] mypy src (1.0s)
+
+==[ pytest -q (non-godot) ]==
+........................................................................ [  1%]
+........................s....ss......................................... [  3%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 42%]
+...................................s..............................s..... [ 44%]
+.....................................................s.................. [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+........................................................................ [ 51%]
+........................................................................ [ 53%]
+........................................................................ [ 55%]
+.................................................ss..................... [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+.............ss...sss...ss..sss.s.ssssss.s.sssssss.ss..ss............... [ 84%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+.................................sss.................................... [ 90%]
+....................................................ssss................ [ 91%]
+.........s...........................................sssssss............ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+...............                                                          [100%]
+============================== warnings summary ===============================
+tests/test_evidence/test_d0_ladder.py::test_evaluate_r0_and_r1_matches_separate_calls
+  C:\ERRE-Sand_Box\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <socket.socket fd=2984, family=2, type=1, proto=0, laddr=('127.0.0.1', 51131), raddr=('127.0.0.1', 51132)>
+  
+  Traceback (most recent call last):
+    File "C:\Users\johnd\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\asyncio\windows_events.py", line 55, in __init__
+      super().__init__(loop=loop)
+      ^^^^^^^
+  ResourceWarning: unclosed <socket.socket fd=2984, family=2, type=1, proto=0, laddr=('127.0.0.1', 51131), raddr=('127.0.0.1', 51132)>
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/test_evidence/test_d0_ladder.py::test_evaluate_r0_and_r1_matches_separate_calls
+  C:\ERRE-Sand_Box\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <socket.socket fd=2776, family=2, type=1, proto=0, laddr=('127.0.0.1', 51132), raddr=('127.0.0.1', 51131)>
+  
+  Traceback (most recent call last):
+    File "C:\Users\johnd\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\asyncio\windows_events.py", line 55, in __init__
+      super().__init__(loop=loop)
+      ^^^^^^^
+  ResourceWarning: unclosed <socket.socket fd=2776, family=2, type=1, proto=0, laddr=('127.0.0.1', 51132), raddr=('127.0.0.1', 51131)>
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/test_evidence/test_d0_ladder.py::test_evaluate_r0_and_r1_matches_separate_calls
+  C:\ERRE-Sand_Box\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <function BaseEventLoop.__del__ at 0x000002639C41FA60>
+  
+  Traceback (most recent call last):
+    File "C:\Users\johnd\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\asyncio\base_events.py", line 693, in __del__
+      _warn(f"unclosed event loop {self!r}", ResourceWarning, source=self)
+  ResourceWarning: unclosed event loop <ProactorEventLoop running=False closed=False debug=False>
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_cli\test_eval_run_golden.py:150: symlink creation not supported on this platform / FS
+SKIPPED [1] tests\test_cli\test_eval_run_golden.py:267: symlink creation not supported on this platform / FS
+SKIPPED [1] tests\test_cli\test_eval_run_golden.py:291: symlink creation not supported on this platform / FS
+SKIPPED [1] tests\test_evidence\test_individuation_c3b_pipeline.py:417: real encoder download avoided in base CI (ERRE_RUN_REAL_MPNET_TESTS=1)
+SKIPPED [1] tests\test_evidence\test_individuation_centroid_panel.py:170: MPNet (~440MB) download avoided in base CI; set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in
+SKIPPED [1] tests\test_evidence\test_individuation_layer1.py:337: MPNet (~440MB) download avoided in base CI; set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in
+SKIPPED [1] tests\test_evidence\test_tier_a\test_burrows_corpus_qc.py:377: Kant corpus has 2656 tokens (<10000); ME-6 5K-chunk stability deferred to m9-eval-corpus expansion (Akademie-Ausgabe Bd. VIII full ingest)
+SKIPPED [1] tests\\test_evidence\\test_tier_a\\test_burrows_corpus_qc.py:393: Riky\u016b corpus has 122 tokens (<10000); ME-6 5K-chunk stability deferred to m9-eval-corpus expansion (\u9752\u7a7a\u6587\u5eab / \u56fd\u6587\u5927\u89b3 OCR pipeline)
+SKIPPED [1] tests\test_schema_contract.py:94: AffordanceEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: AgentSpec has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: BiorhythmEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: Cognitive has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: CognitiveHabit has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ERREMode has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ERREModeShiftEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: InternalEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: LocomotionState has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: MemoryEntry has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: PerceptionEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: PersonalityTraits has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: Physical has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: Position has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: PropLayout has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ProximityEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ReasoningTrace has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ReflectionEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: RelationshipBond has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: RunLifecycleState has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: SamplingBase has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: SamplingDelta has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: SemanticMemoryRecord has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: SpatialContext has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: SpeechEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: TemporalEvent has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: TriggerEventTag has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ZoneLayout has no schema_version field
+SKIPPED [1] tests\test_schema_contract.py:94: ZoneTransitionEvent has no schema_version field
+SKIPPED [1] tests\test_tools\test_build_mock_lora.py:59: symlink creation not supported on this platform / FS
+SKIPPED [1] tests\test_tools\test_build_mock_lora.py:95: could not import 'peft': No module named 'peft'
+SKIPPED [1] tests\test_tools\test_build_mock_lora.py:117: could not import 'peft': No module named 'peft'
+SKIPPED [1] tests\test_training\test_preference_burrows.py:208: could not import 'trl': No module named 'trl'
+SKIPPED [1] tests\test_training\test_preference_burrows.py:215: could not import 'trl': No module named 'trl'
+SKIPPED [1] tests\test_training\test_preference_burrows.py:223: could not import 'trl': No module named 'trl'
+SKIPPED [1] tests\test_training\test_preference_burrows.py:239: could not import 'trl': No module named 'trl'
+SKIPPED [1] tests\test_training\test_preference_burrows.py:897: could not import 'trl': No module named 'trl'
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:124: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:132: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:142: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:152: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:165: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:178: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+SKIPPED [1] tests\test_training\test_qc_detectors_real.py:197: MPNet integration tests skipped by default to avoid ~440MB model download in base CI. Set ERRE_RUN_REAL_MPNET_TESTS=1 to opt-in (local cache or explicit network OK).
+3707 passed, 52 skipped, 3 warnings in 421.30s (0:07:01)
+  [PASS] pytest -q (non-godot) (423.9s)
+
+==[ ALL CHECKS PASSED (425.1s total) ]==
+Safe to push / gh pr create.

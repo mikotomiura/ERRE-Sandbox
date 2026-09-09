@@ -1,0 +1,14 @@
+{
+  "task": "20260711-m13-m2-society-layer1-code",
+  "verify": {
+    "test": "pytest -q",
+    "typecheck": "mypy src",
+    "lint": "ruff check src tests"
+  },
+  "ci_command": "bash scripts/dev/pre-push-check.sh",
+  "scope_test_template": "pytest -q {paths}",
+  "resource_isolation": "per-worktree",
+  "budget": { "max_attempts": 6, "no_progress_threshold": 4, "token_ceiling": 2000000, "parallel": 2 },
+  "events_path": "C:/ERRE-Sand_Box/loop/20260711-m13-m2-society-layer1-code/_loop-events.jsonl",
+  "notes": "M13 M2 Layer1 (N体 composition + 並行 determinism, GATING) 実コード実装。binding = FROZEN ADR .steering/20260711-m13-m2-impl-design/design-final.md §M3-§M9 (PR #71, merged) + decisions.md DA-M2IMPL-1..8 + codex-review.md HIGH 4。construction であって measurement でない (floor/landscape/verdict/scorer/D_* 非計算、R-budget=0 不変、holding 不可侵、over-read 禁止、firing⇔detectability 混同禁止)。gating CI = replay/mock only (live local qwen3 は non-gating shakedown)。実行 = subagent-per-issue (worktree)。依存: I1→I2→I3→(I4,I5)、I6 は society 完成後に最終。全 verify_level=recheck。binding 逸脱 (run_ecl_loop 改変 / 凍結 apparatus touch / Layer2 内部 HOW 前倒し / measurement 再入) は Stop→superseding ADR。凍結 apparatus (evidence/**, bank*.py, organ committed golden/handoff artifact) read-only。reasoning-trace door 保全のまま touch しない。"
+}

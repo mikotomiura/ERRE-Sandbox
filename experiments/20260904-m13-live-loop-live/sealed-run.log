@@ -1,0 +1,4 @@
+[capture] mode = real
+[capture] wrote 6 artifacts to experiments\20260904-m13-live-loop-live\artifacts
+[capture] replay_checksum = 43eb904d11046b940ff03558cb60b12764b2c49c43e2f06b03b66d35762888eb
+[capture] injected perturbations = 32
