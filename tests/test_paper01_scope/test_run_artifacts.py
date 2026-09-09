@@ -32,6 +32,8 @@ import json
 import sys
 from pathlib import Path
 
+from scripts import paper01_scope_condition as mod
+
 # =============================================================================
 # load experiments/20260908-paper01-scope-condition/{run_gate,build_metrics}.py
 # by path
@@ -177,12 +179,32 @@ def test_notes_all_eight_limitations_present_does_not_imply_amendment() -> None:
     assert run_gate.notes_has_preregistration_amendment(text) is False
 
 
-def test_notes_results_section_is_a_placeholder() -> None:
-    """I-007a boundary: this session must not have written any measured
-    numbers or a verdict into notes.md's Results section -- the exact
-    placeholder the orchestrator prescribed must be present verbatim."""
+def test_notes_results_section_reports_a_verdict() -> None:
+    """I-007b: notes.md's Results section must carry the measured verdict.
+
+    **This assertion is the inverse of the one it replaces.** Until the
+    2026-09-09 run this test pinned the I-007a boundary -- "this session
+    must not have written any measured numbers or a verdict", asserting
+    the placeholder ``"(未実走 — I-007b で埋める)"`` verbatim. I-007b's
+    whole job was to fill that section in, so the original premise expired
+    by design and the assertion started failing the integration CI.
+
+    Freezing "not yet run" into an assertion guarantees a self-contradiction
+    once the run happens (the same failure mode corrected in notes.md's own
+    header; see ``project_m13_society_live_real_run``). Rather than delete
+    the test, it is inverted into the post-run honesty guard it should have
+    been: the placeholder must be **gone**, and a verdict from the frozen
+    ``ScopeVerdict`` vocabulary must be present -- so notes.md can never
+    ship claiming a run happened while its Results section still says
+    "未実走".
+
+    This pins *that a verdict is reported*, never *which* verdict: both
+    members of the frozen enum satisfy it, so it cannot pull the result in
+    either direction.
+    """
     text = _NOTES_PATH.read_text(encoding="utf-8")
-    assert "(未実走 — I-007b で埋める)" in text
+    assert "(未実走 — I-007b で埋める)" not in text
+    assert any(v in text for v in mod.SCOPE_VERDICT_ENUM)
 
 
 # =============================================================================

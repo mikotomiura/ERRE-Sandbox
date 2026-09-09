@@ -1571,3 +1571,49 @@ issue 自身の新規コードに対する追加 4 種 (M4-M7))
   診断メッセージ) は文字化けせず正しく読めており、判定には影響していない。
 
 ---
+
+<!-- ================= I007b ================= -->
+
+# mutation-log — I-007b (実走、2026-09-09)
+
+## 対象: 期限切れテストの反転 (`test_notes_results_section_reports_a_verdict`)
+
+I-007a が置いた `test_notes_results_section_is_a_placeholder` は
+「結果節がプレースホルダ `(未実走 — I-007b で埋める)` であること」を assert していた。
+I-007b が結果節を埋めた時点で**前提が設計どおり満了**し、統合 CI で
+`1 failed, 4234 passed` になった (`prepush-62404b6.log`)。
+
+**user 裁定 (2026-09-09) により、削除ではなく事後版へ反転**させた:
+
+- 旧: `assert "(未実走 — I-007b で埋める)" in text`
+- 新: `assert "(未実走 — I-007b で埋める)" not in text` かつ
+  `assert any(v in text for v in mod.SCOPE_VERDICT_ENUM)`
+
+新版は **verdict が報告されていること**を pin し、**どちらの verdict かは pin しない**
+(`SCOPE_VERDICT_ENUM` の両メンバが充足する)。結果を一方向へ引っ張らない。
+
+## mutant を実際に当てて観測した (`feedback_witness_needs_mutation_testing`)
+
+`notes.md` を pristine から 1 mutant ずつ書き換え → 当該 test を
+`python -B -m pytest -p no:cacheprovider` で実行 → 復元 → SHA-256 で byte 一致を確認。
+pristine SHA-256 = `b0a3affbd696354af75690130e8c5e200d95eaea70053dae7cd589ac24ca680e`。
+
+| mutant | 内容 | 期待 | 実測 |
+|---|---|---|---|
+| M0 | pristine (対照) | pass | **exit 0 / 1 passed** |
+| M1 | 結果節にプレースホルダを差し戻す (実走前を装う) | KILL | **exit 1 / 1 failed** |
+| M2 | `notes.md` から verdict 語彙 (`WRITE`/`DO_NOT_WRITE`) を除去 | KILL | **exit 1 / 1 failed** |
+
+**2/2 KILLED、生存 0。** 復元後の SHA-256 は pristine と一致
+(`b0a3affb...`、byte-identical: True)。
+
+**二重確認**: 各 mutant で `assert old in txt` / `txt.count(old) == 1` /
+`assert mutated != txt` / 書込み後に `assert "(未実走 ...)" in on_disk` を実施した。
+
+## 教訓 (blockers.md ブロッカー 5 / notes.md 冒頭の訂正と同じ型)
+
+**「まだ実行していない」を assertion に凍結すると、実行した瞬間に必ず自己矛盾する。**
+本タスクではこれが **2 箇所** (notes.md 冒頭の宣言 / この test) で同時に起きた。
+`project_m13_society_live_real_run` が記録した erratum の再発である。
+反転版は「実走後に notes.md が『未実走』のまま PR に乗る」ことを防ぐ guard として
+存続させたので、guard の総数は減っていない。
