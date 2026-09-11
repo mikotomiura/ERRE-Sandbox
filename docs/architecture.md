@@ -87,7 +87,7 @@
 | ダッシュボード | Streamlit / FastAPI + HTMX | [planned] | ブラウザから直接可視化、現状は ui/dashboard/ 内 server-side aggregation のみ実装 |
 | 研究ツール | Jupyter | 最新 | リプレイ・指標計算 |
 | ドキュメント | MkDocs Material + mkdocstrings | 最新 | JA/EN 併記対応 |
-| CI | GitHub Actions + pre-commit | 最新 | `.github/workflows/ci.yml` で `uv sync --frozen --all-groups` → ruff check / ruff format --check / mypy src / pytest -m "not godot" を lint / typecheck / test の 3 並列 jobs で実行。`.pre-commit-config.yaml` で commit 時にも ruff を自動実行 (uv.lock 固定の SSoT 構成) |
+| CI | GitHub Actions + pre-commit | 最新 | `.github/workflows/ci.yml` で `uv sync --frozen --all-groups` → ruff check / ruff format --check / mypy src / pytest -m "not godot and not eval and not spike and not training and not inference" を lint / typecheck / test / eval-egress grep gate / policy grep gate の並列 jobs で実行 (test job は `ubuntu-latest` と `windows-latest` の matrix)。test 選択式の SSOT は本 workflow であり、`scripts/dev/pre-push-check.*` はそれを複製して `tests/test_architecture/test_pre_push_ci_parity.py` が一致を検査する。`.pre-commit-config.yaml` で commit 時にも ruff を自動実行 (uv.lock 固定の SSoT 構成) |
 
 ## 3. レイヤー構成
 

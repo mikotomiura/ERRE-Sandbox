@@ -163,7 +163,7 @@ Write-Host "`n=== 02 powered null ===" -ForegroundColor Cyan
 Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/verdict.json'           '02-powered-null/data/raw/cproper-verdict.json' '本稿の中核。NO_CHANNEL_CONFORMANCE / tv_bar=0.038065'
 Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/manifest.json'          '02-powered-null/data/raw/cproper-manifest.json' 'run の来歴'
 Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/bank_annotation.jsonl'  '02-powered-null/data/raw/bank_annotation.jsonl' '注釈付き bank (682 KB)'
-Copy-Artifact '.steering/20260629-m13-es3-impl/verdict-forensic.json'              '02-powered-null/data/raw/es3-verdict-forensic.json' 'ES-3 の機械可読 verdict はここにしか無い (D_loco=0.0468)'
+Copy-Artifact 'experiments/20260629-m13-es3-locomotion/data/raw/verdict-forensic.json' '02-powered-null/data/raw/es3-verdict-forensic.json' 'ES-3 の機械可読 verdict (D_loco=0.0468)。原本は .steering/ (追跡外) にあり、2026-09-11 に experiments/ へ byte 無改変で退避した (B-P03-5 / DA-CIS-4)'
 Copy-Artifact 'src/erre_sandbox/integration/embodied/bank_power.py'                '02-powered-null/analysis/scripts/bank_power.py' 'near-uniform 検出力の反証'
 
 Write-Host "`n=== 共通 (01 / 02) ===" -ForegroundColor Cyan

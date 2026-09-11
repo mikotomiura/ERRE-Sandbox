@@ -49,14 +49,39 @@ jobs:
         run: uv run mypy src
 
   test:
-    name: pytest (non-godot)
-    runs-on: ubuntu-latest
-    # es4 の mock-run テスト (多数 seed のサンプリング = 純計算 CPU 負荷) が
-    # suite 全体を ~10 分に押し上げ、遅い runner を引くと 10 分 timeout で
-    # cancel される (PR #51 で 2 回連続再現、runner 変動でなく systemic)。
-    # 恒久策として 50% の headroom を確保する。es4 slow test の分離/軽量化は
-    # 別途フォローアップ (coverage を落とさない範囲で検討)。
-    timeout-minutes: 15
+    name: pytest non-godot (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 片方の leg が落ちても、もう片方を cancel しない。cross-platform の
+      # 主張にとっては「どちらが落ちたか」が情報そのものなので、早期打ち切りは
+      # しない。
+      fail-fast: false
+      matrix:
+        include:
+          # es4 の mock-run テスト (多数 seed のサンプリング = 純計算 CPU 負荷) が
+          # suite 全体を ~10 分に押し上げ、遅い runner を引くと 10 分 timeout で
+          # cancel される (PR #51 で 2 回連続再現、runner 変動でなく systemic)。
+          # 恒久策として 50% の headroom を確保する。es4 slow test の分離/軽量化は
+          # 別途フォローアップ (coverage を落とさない範囲で検討)。
+          - os: ubuntu-latest
+            timeout: 15
+          # windows-latest leg は論文 03 の gate G1 のために追加した
+          # (.steering/20260911-ci-selection-ssot/decisions.md DA-CIS-2)。
+          # committed bundle の replay-verify を Windows でも公開 CI で機械強制する。
+          # 45 分は初期値 — 実測が出たら「実測 + 50% headroom」へ寄せる。
+          - os: windows-latest
+            timeout: 45
+    timeout-minutes: ${{ matrix.timeout }}
+    env:
+      # 両 leg の text decode を揃える。Windows runner の既定 console codepage は
+      # legacy ANSI なので、subprocess の stdout を読むテストが UnicodeDecodeError で
+      # 落ちる (memory feedback_powershell_cp932_subprocess_test)。ubuntu では
+      # 既に UTF-8 が実効既定なので実質 no-op。
+      #
+      # これを CI 側に置くのが要点: pre-push script が PYTHONUTF8=1 を立てるのは
+      # 「CI が設定しない env の追加」ではなく CI への追従になる
+      # (memory feedback_pre_push_script_ci_drift の禁則を踏まない)。
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

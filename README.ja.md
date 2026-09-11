@@ -107,7 +107,7 @@ uv sync
 uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy src
-uv run pytest -m "not godot"
+uv run pytest -m "not godot and not eval and not spike and not training and not inference"
 
 # 3 体エージェント社会を起動
 uv run erre-sandbox --personas kant,nietzsche,rikyu
@@ -120,8 +120,10 @@ empath、arch) は extras に分離されています:
 uv sync --extra eval        # M9-eval Tier-A/B 指標
 ```
 
-CI (`.github/workflows/ci.yml`) は上記 4 チェックを 3 並列 jobs で `main` への
-push 時と全 PR で実行します。クローン直後にローカル pre-commit hook を有効化:
+CI (`.github/workflows/ci.yml`) は上記 4 チェックを `main` への push 時と全 PR で
+実行します。test job は `ubuntu-latest` と `windows-latest` の両方で走り、
+**その marker 式が正典** です (`scripts/dev/pre-push-check.*` はそれを複製し、
+一致を `tests/test_architecture/test_pre_push_ci_parity.py` が検査します)。クローン直後にローカル pre-commit hook を有効化:
 
 ```bash
 uv tool install pre-commit && pre-commit install
