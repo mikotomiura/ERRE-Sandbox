@@ -132,6 +132,22 @@ CI (`.github/workflows/ci.yml`) runs the four checks above on every push to
 `windows-latest`; that marker expression is the source of truth and the
 `scripts/dev/pre-push-check.*` helpers copy it verbatim.
 
+### 🔁 Reproducing the byte-exact replay claim
+
+To replay every committed artifact the determinism claim rests on — including
+the sealed real-model runs — and check its hashes, in one command. The replay
+itself needs no language model, no GPU and opens no connection (installing the
+dependencies first does need a package index, as any install does):
+
+```bash
+uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
+```
+
+**[`REPRODUCING.md`](REPRODUCING.md)** explains what that verifies, what it
+deliberately does not (it is a replay-verify, never a re-bake), and the expected
+hashes in [`docs/artifact-hashes.md`](docs/artifact-hashes.md). CI runs the same
+command on both operating systems on every PR.
+
 Enable the local pre-commit hook once after cloning:
 
 ```bash

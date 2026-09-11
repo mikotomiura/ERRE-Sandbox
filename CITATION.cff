@@ -10,15 +10,16 @@ abstract: >-
   though a non-deterministic language model sits inside the loop.
 type: software
 authors:
-  - family-names: "TODO"          # 姓 (ローマ字表記を決める)
-    given-names: "TODO"           # 名
+  - family-names: "Miura"
+    given-names: "Mikoto"
     alias: "mikotomiura"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # 取得後に有効化 (corresponding author 必須)
-    # affiliation: "TODO"          # Independent Researcher / 所属 のいずれかに決める
+    orcid: "https://orcid.org/0009-0000-4196-0508"
+    affiliation: "Independent Researcher"
 version: "0.0.1"
 license: "Apache-2.0 OR MIT"
-repository-code: "https://github.com/mikotomiura/ERRE-Sandbox"   # 公開後に正式 URL を確認
-# doi: "TODO"                     # Zenodo で DOI を切ったら記入
+repository-code: "https://github.com/mikotomiura/ERRE-Sandbox"
+# doi:                            # Zenodo が release から DOI を発行した時点で記入する
+#                                 # (発行前に書けない値なので空欄のままにしてある)
 keywords:
   - LLM agents
   - multi-agent simulation

@@ -41,11 +41,28 @@ experiments/<YYYYMMDD>-<exp-name>/
 - [ ] 結果が research-positioning.md の主張 (§5 仮説) と対応づいているか
 - [ ] 使用した凍結 apparatus を touch していないか (`src/.../evidence/` 不変性)
 
-## scripts/repro.sh の方針
+## 1 コマンド再現のエントリポイント
 
-代表実験を 1 コマンドで再走できるエントリポイントを置く (中身はプロジェクトに応じて実装)。
+代表実験を 1 コマンドで再走できるエントリポイントを置く。
 既存の verdict run スクリプト (例: `scripts/es2_verdict_run.py`) は実験単位の run.sh から
 呼ばれる再現起点になりうる。
+
+**正典 = `scripts/verify_committed_artifacts.py`** (2026-09-12 以降)。
+
+```bash
+uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
+```
+
+封印済の 4 bundle + ECL v0 golden を replay-verify し、`docs/artifact-hashes.md`
+(生成物) と checked-out bytes を照合する。target ごとに subprocess を分け、
+環境変数はその bundle 自身の `manifest.json` の `env_pins` から組み立てる
+(プロセス全体への `export` はしない)。手順書は `REPRODUCING.md`、CI の
+`repro` job が両 OS で同一コマンドを実行し、
+`tests/test_architecture/test_reproducing_doc_parity.py` が手順書と CI の一致を検査する。
+
+`scripts/repro.sh` は歴史的な入口として残っているが、
+`--only ecl-v0-golden` で上記へ委譲する薄いラッパである。
+各 `experiments/<run>/repro.{sh,ps1}` は per-experiment の入口として引き続き有効。
 
 ## pre-push CI parity との関係
 

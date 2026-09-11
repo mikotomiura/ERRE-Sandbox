@@ -1,30 +1,34 @@
 #!/usr/bin/env bash
-# ECL v0 golden — one-command offline reproducibility check (Issue 005).
+# Thin alias kept for the historical entry point named in
+# docs/experiment-tracking.md. The reproduction entry point is now
+# scripts/verify_committed_artifacts.py, which covers the sealed real-model
+# bundles as well as this fixture and works identically on Windows.
 #
-# 使い方:
-#   bash scripts/repro.sh
+# See REPRODUCING.md. To verify everything (what CI runs on both operating
+# systems):
 #
-# 委託先の MacBook が Ollama 無し・offline 単独で committed golden を再生し、
-# ecl_trace_checksum が manifest.json と byte 一致するか検証する
-# (design-final.md §論点5 の cross-machine 再現性契約)。
+#   uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
 #
-# 決定性: LLM は記録済 Plane 2 の replay (inner_invocations == 0)、embedding は
-# 定数ベクトルの in-memory mock ゆえ live 推論バックエンドを必要としない。
-# reproducibility-discipline: seed 固定 (handoff.GOLDEN_SEED) / 1 コマンド再現。
+# This script narrows that to the ECL v0 golden fixture only.
+#
+# Why the ERRE_ZONE_BIAS_P export that used to live here is gone: it set 0.1
+# while every bundle's manifest pins "0.2", and measurement on 2026-09-12 showed
+# the golden verify passes identically at 0.1 / 0.2 / 0.9 / unset -- it was both
+# wrong and inert. Carrying it into the wider target set would not have been
+# inert, because the society and live-loop replays read the same variable. The
+# new entry point sets the value each bundle records in its own env_pins, per
+# subprocess (.steering/20260912-paper03-repro-path/decisions.md DA-P03R-1).
 
-set -uo pipefail
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
 PYTHON=".venv/Scripts/python.exe"
 if [[ ! -x "$PYTHON" ]]; then
     PYTHON=".venv/bin/python"
 fi
 if [[ ! -x "$PYTHON" ]]; then
-    echo "ERROR: Python venv not found. Run 'uv sync --extra eval' first." >&2
+    echo "ERROR: Python venv not found. Run 'uv sync' first." >&2
     exit 2
 fi
 
-# ERRE_ZONE_BIAS_P を manifest env pin と同値に固定 (未 pin 非決定源を塞ぐ)。
-export ERRE_ZONE_BIAS_P="${ERRE_ZONE_BIAS_P:-0.1}"
-
-exec "$PYTHON" scripts/ecl_v0_golden.py --verify \
-    --golden-dir tests/fixtures/ecl_v0_golden
+exec "$PYTHON" scripts/verify_committed_artifacts.py --only ecl-v0-golden

@@ -6,8 +6,9 @@
   "access_right": "open",
   "creators": [
     {
-      "name": "TODO, TODO",
-      "affiliation": "TODO"
+      "name": "Miura, Mikoto",
+      "affiliation": "Independent Researcher",
+      "orcid": "0009-0000-4196-0508"
     }
   ],
   "keywords": [
@@ -18,8 +19,8 @@
     "embodied cognition",
     "measurement validity"
   ],
-  "_comment_todo": [
-    "creators.name は 'Family, Given' 形式。ORCID を取得したら creators に 'orcid' を追加する。",
+  "_comment": [
+    "creators.name は Zenodo 仕様どおり 'Family, Given' 形式。orcid は bare ID。",
     "license は SPDX 識別子 1 つしか取れないため Apache-2.0 を代表として記載。",
     "実際のデュアルライセンス (Apache-2.0 OR MIT) は LICENSE / LICENSE-MIT / pyproject.toml が正典。",
     "GitHub release を切ると Zenodo がこのファイルを読んでレコードを作る。DOI 取得後に",

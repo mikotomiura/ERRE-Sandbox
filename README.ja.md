@@ -125,6 +125,21 @@ CI (`.github/workflows/ci.yml`) は上記 4 チェックを `main` への push �
 **その marker 式が正典** です (`scripts/dev/pre-push-check.*` はそれを複製し、
 一致を `tests/test_architecture/test_pre_push_ci_parity.py` が検査します)。
 
+### 🔁 byte 一致 replay の再現
+
+決定性の主張が依拠する committed artifact (封印済の real model 実走を含む) を
+すべて replay-verify し、hash を照合する 1 コマンド。**replay 自体は** LLM も GPU も
+使わず、接続を一切開きません (依存の install には package index が要ります):
+
+```bash
+uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
+```
+
+何を検証し、何を**検証しないか** (これは replay-verify であって re-bake ではない)
+は **[`REPRODUCING.md`](REPRODUCING.md)** に、期待 hash は
+[`docs/artifact-hashes.md`](docs/artifact-hashes.md) にあります (生成物)。
+CI は同じコマンドを全 PR で両 OS 上で実行します。
+
 クローン直後にローカル pre-commit hook を有効化:
 
 ```bash
