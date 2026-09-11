@@ -114,7 +114,7 @@ uv sync
 uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy src
-uv run pytest -m "not godot"
+uv run pytest -m "not godot and not eval and not spike and not training and not inference"
 
 # boot the three-agent society
 uv run erre-sandbox --personas kant,nietzsche,rikyu
@@ -127,9 +127,12 @@ evaluation pipeline are isolated under extras:
 uv sync --extra eval        # M9-eval Tier-A/B metrics
 ```
 
-CI (`.github/workflows/ci.yml`) runs the four checks above in three parallel
-jobs on every push to `main` and every PR. Enable the local pre-commit hook
-once after cloning:
+CI (`.github/workflows/ci.yml`) runs the four checks above on every push to
+`main` and every PR. The test job runs on both `ubuntu-latest` and
+`windows-latest`; that marker expression is the source of truth and the
+`scripts/dev/pre-push-check.*` helpers copy it verbatim.
+
+Enable the local pre-commit hook once after cloning:
 
 ```bash
 uv tool install pre-commit && pre-commit install

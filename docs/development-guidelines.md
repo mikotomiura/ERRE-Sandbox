@@ -93,18 +93,19 @@ feat(cognition): add DMN-inspired idle reflection window
 
 | 種類 | 範囲 | フレームワーク | 実行頻度 |
 |---|---|---|---|
-| 単体テスト | 個々の関数・クラス | pytest | CI (push/PR、`pytest -m "not godot"`) + 手動 (`uv run pytest`) |
+| 単体テスト | 個々の関数・クラス | pytest | CI (push/PR、`pytest -m "not godot and not eval and not spike and not training and not inference"`) + 手動 (`uv run pytest`) |
 | 統合テスト | モジュール間連携 (memory + cognition 等) | pytest-asyncio | CI (push/PR) + 手動 |
 | E2E テスト | 1体エージェントの認知サイクル完走 | pytest-asyncio | CI (push/PR) + 手動 |
 | 埋め込みプレフィックステスト | 検索/文書プレフィックスの正確性 | pytest | CI (push/PR) + 手動 |
-| Godot 連携テスト | `@pytest.mark.godot` 付与のテスト | pytest | 手動のみ (CI では `-m "not godot"` で deselect) |
+| Godot 連携テスト | `@pytest.mark.godot` 付与のテスト | pytest | 手動のみ (CI の選択式が `not godot` で deselect。明示実行は `pytest -m godot`) |
 
 > **現状実装スナップショット (last verified 2026-04-28)**: pre-commit hook
 > (`.pre-commit-config.yaml`) と GitHub Actions CI (`.github/workflows/ci.yml`、
 > lint / typecheck / test の 3 並列 jobs) を導入済。Godot binary 必須テストは
 > `pyproject.toml` の `markers = ["godot: ..."]` 登録 + 対象テストへの
-> `@pytest.mark.godot` 付与で CI から `pytest -m "not godot"` により明示的に
-> deselect する policy。
+> `@pytest.mark.godot` 付与で CI の選択式 (`not godot` を含む) により明示的に
+> deselect する policy。**選択式そのものの正典は `.github/workflows/ci.yml` の
+> `test` job** であり、ここで restate しない (drift 源になるため)。
 
 ### テストの書き方
 - テストファイルは `tests/` 配下に `src/` のミラー構造で配置
@@ -122,7 +123,7 @@ feat(cognition): add DMN-inspired idle reflection window
 - [ ] `uv run ruff check src tests` が通る (pre-commit + CI lint job)
 - [ ] `uv run ruff format --check src tests` が通る (pre-commit + CI lint job)
 - [ ] `uv run mypy src` が通る (CI typecheck job)
-- [ ] `uv run pytest -m "not godot"` が通る (CI test job、Godot 連携除く)
+- [ ] `uv run pytest -m "not godot and not eval and not spike and not training and not inference"` が通る (CI test job と同一選択。`bash scripts/dev/pre-push-check.sh` / `pwsh scripts/dev/pre-push-check.ps1` が 4 段まとめて実行する)
 - [ ] 型ヒントが付与されている
 
 ### 手動チェック (セルフレビュー / Claude Code `/review`)

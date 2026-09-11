@@ -834,9 +834,20 @@ def test_committed_rehearsal_has_the_preregistered_shape() -> None:
 
 
 async def test_committed_sealed_real_bundle_verifies(tmp_path: Path) -> None:
-    """The ratified real bundle, once it exists, replays green through the very
-    same Ollama-free verify path. **Absent as of Issue 007** (the real spend is
-    a separate, user-ratified gate), so this skips."""
+    """The ratified real bundle replays green through the very same Ollama-free
+    verify path.
+
+    The bundle exists: the user-ratified real spend ran on 2026-09-07 and its
+    bytes are committed under ``experiments/20260907-m13-society-live/artifacts/``
+    (PR #93). On the Linux CI runner this replay *is* the cross-platform
+    measurement — bytes baked under Windows/UCRT verifying under glibc — and the
+    same holds on the Windows CI leg added for paper 03's gate G1. Reviewers can
+    close the loop themselves by running this test: ``verify`` is Ollama-free by
+    construction, so it needs neither an LLM nor a GPU.
+
+    The guard below keeps the test meaningful in a checkout that does not carry
+    ``artifacts/``; it is not a statement that the run has yet to happen.
+    """
     if not (_REAL_DIR / "manifest.json").exists():
         pytest.skip("sealed real bundle not present in this checkout")
     assert await harness_verify(_REAL_DIR, annotation_dir=tmp_path) is True
