@@ -43,6 +43,8 @@
 | [30] | arXiv:2607.16200 | Mudasiru, R. — *Deterministic Replay for AI Agent Systems* (agrepl) | arXiv:2607.16200, 2026 | paper/03-two-plane-determinism/refs.md (直接競合) | active |
 | [31] | arXiv:2608.27100 | Shulepov, I. — *Mutation Testing for Reproducibility Safeguards in Machine Learning Research Software: An Empirical Study* | arXiv:2608.27100, 2026-08-27 | paper/03-two-plane-determinism/refs.md | active |
 | [32] | DOI:10.1007/978-981-97-0065-3_9 | Sun, L., Gu, H., Myers, R. & Yuan, Z. — *A New Dataset and Method for Creativity Assessment Using the Alternate Uses Task* | In: Cruz, C., Zhang, Y. & Gao, W. (eds.), *Intelligent Computers, Algorithms, and Applications* (BenchCouncil IC 2023, Revised Selected Papers), CCIS vol. 2036, pp. 125–138, Springer Singapore, 2024 | experiments/20260907-paper01-g1/notes.md; .idea/paper-01-writing-spec.md §7 (Cambridge AUT dataset の出典) | active |
+| [33] | URL:https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3375r3.html | Davidson, G. — *P3375R3: Reproducible floating-point results* | WG21 (ISO/IEC JTC1/SC22/WG21) paper P3375R3, audience SG6 / SG14 / LEWG, 2025-05-12 | paper/03-two-plane-determinism/refs.md (浮動小数の実装間差が標準化委員会レベルで既知であることの anchor) | active |
+| [34] | arXiv:2505.17716 | Feng, E., Zhou, W., Liu, Z., Chen, L., Dong, Y., Zhang, C., Zhao, Y., Du, D., Hua, Z., Xia, Y. & Chen, H. — *Get Experience from Practice: LLM Agents with Record & Replay* | arXiv:2505.17716 [cs.LG], 2025-05-23 | paper/03-two-plane-determinism/refs.md (record/replay の別系統 — 目的は経験再利用であって決定論的検証ではない) | active |
 
 ## 追加・撤回ルール
 
@@ -66,9 +68,16 @@
 
 - **[27]-[31] (2026-09-07 追加)**: いずれも **arXiv abstract を一次ソースで実測確認済** (WebFetch、2026-09-07)。
   ただし規則6 に従い、**著者順・全著者・所属・版 (v1/v2) は正式引用の前に原典で再確認**すること。
-  特に **[30] Mudasiru に日付の不整合がある**: arXiv ID `2607.*` は 2026-07 を示すが、取得した
-  abstract ページの記載は "Submitted 30 April 2026"。**投稿版・改訂版のどちらを引くかを含め要再確認**
-  (本表では年のみ `2026` として保守的に記載)。
+  **[30] Mudasiru の版・日付は 2026-09-11 に原典で確定済** (WebFetch、`https://arxiv.org/abs/2607.16200`、
+  タスク `20260911-paper03-two-plane-determinism`)。確認結果: **著者は Rasheed Mudasiru の単著**、
+  **版は v1 のみ** (submission history に `[v1] Thu, 30 Apr 2026 12:00:45 UTC (1,052 KB)` の 1 行のみ)、
+  primary subject class は **cs.AI**、実装は Go の単一静的バイナリ・MIT licence。
+  したがって **arXiv ID `2607.*` (2026-07) と submission 日付 (2026-04-30) の不一致は残るが、
+  「引くべき版は v1 ただ一つ」であることは確定**し、投稿版/改訂版の選択問題は解消した
+  (本表では年のみ `2026` として保守的に記載する方針を維持)。
+  abstract の要点 (直接競合の境界を画定する): "intercepts all external interactions at the transport
+  layer via a man-in-the-middle (MITM) proxy" / 5 workloads・n=250・replay fidelity F=1.0 /
+  **cross-platform も byte-exact も主張していない**。
 
 - **[25] J-lens（global workspace）**: Transformer Circuits Thread の web 出版物 (arXiv 版・巻号なし)。著者表記
   (Gurnee, W., Sofroniew, N., Pearce, A. et al.) は WebFetch 由来の recall であり、**正式引用の前に原典で著者順・全著者を
