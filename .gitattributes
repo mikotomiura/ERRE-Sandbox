@@ -56,3 +56,18 @@ experiments/**/*.log    -text -whitespace
 # CC BY-NC-ND 4.0 の範囲で byte 無改変配置が要件。checkout 時の eol 変換で
 # SHA-256 pin (gate0-record.md / design-final.md Sec.3.1) が壊れるのを防ぐ。
 experiments/**/data/raw/** -text -whitespace
+
+# SHA-256 で pin されるが拡張子が無い / 上のルールに当たらないファイル。
+# checkout 時に eol 変換されると pin が壊れる。GitHub の windows-latest runner は
+# `core.autocrlf=true` が既定なので、ここに無いと Windows CI でだけ hash が変わる。
+#
+# 2026-09-11 実測: `uv.lock` が未被覆だったため windows-latest leg が実際に落ちた。
+# 決定性 manifest の `uv_lock_sha256` が CRLF 版
+# (a08cda6d535592128e4ee813ad5609c0a25eb345c032a0c2ed8def5d23d4785a、449,321 B) になり、
+# committed な LF 版 (9cc70f9d…、445,491 B) と一致しなかった
+# (tests/test_integration/test_m13_live_loop_capture.py::test_committed_rehearsal_is_rebakeable)。
+# これらは `paper/data-hashes.md` が SHA-256 と byte 数を pin している source でもある。
+*.lock                  text eol=lf
+LICENSE                 text eol=lf
+LICENSE-MIT             text eol=lf
+SEED                    text eol=lf

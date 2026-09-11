@@ -130,8 +130,9 @@ uv sync --extra eval        # M9-eval Tier-A/B metrics
 CI (`.github/workflows/ci.yml`) runs the four checks above on every push to
 `main` and every PR. The test job runs on both `ubuntu-latest` and
 `windows-latest`; that marker expression is the source of truth and the
-`scripts/dev/pre-push-check.*` helpers copy it verbatim. Enable the local pre-commit hook
-once after cloning:
+`scripts/dev/pre-push-check.*` helpers copy it verbatim.
+
+Enable the local pre-commit hook once after cloning:
 
 ```bash
 uv tool install pre-commit && pre-commit install
