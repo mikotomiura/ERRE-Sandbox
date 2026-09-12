@@ -164,7 +164,10 @@ Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/verdict.json'        
 Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/manifest.json'          '02-powered-null/data/raw/cproper-manifest.json' 'run の来歴'
 Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/bank_annotation.jsonl'  '02-powered-null/data/raw/bank_annotation.jsonl' '注釈付き bank (682 KB)'
 Copy-Artifact 'experiments/20260629-m13-es3-locomotion/data/raw/verdict-forensic.json' '02-powered-null/data/raw/es3-verdict-forensic.json' 'ES-3 の機械可読 verdict (D_loco=0.0468)。原本は .steering/ (追跡外) にあり、2026-09-11 に experiments/ へ byte 無改変で退避した (B-P03-5 / DA-CIS-4)'
-Copy-Artifact 'src/erre_sandbox/integration/embodied/bank_power.py'                '02-powered-null/analysis/scripts/bank_power.py' 'near-uniform 検出力の反証'
+# 2026-09-13: `analysis/scripts/bank_power.py` への単体コピーは廃止した。Phase 1b (`8eb4db0`) で
+# apparatus を推移閉包ごと `analysis/apparatus/erre_sandbox/...` へ出す方式に変えたとき、宛先を
+# 意図的に削除している。行だけが残って -Verify が MISSING を出し続けていた (Phase 2 で除去)。
+# bank_power.py / bank_scorer.py はどちらも下の閉包コピーが拾い、-Verify で MATCH する。
 
 Write-Host "`n=== 共通 (01 / 02) ===" -ForegroundColor Cyan
 foreach ($p in @('01-scorer-circularity', '02-powered-null')) {

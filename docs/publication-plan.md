@@ -18,10 +18,10 @@
   (`feedback_never_freeze_not_yet_run` と同じ扱い: 期限切れ記述は削除でなく事後版へ反転する)
 - **現時点で生きている投稿計画は §11** (論文 02 / 03)。まずそちらを読むこと
 
-| 論文 | 投稿ステータス (2026-09-12) |
+| 論文 | 投稿ステータス (2026-09-13) |
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
-| 02 powered-null | 数値は取得済・未執筆。**投稿先は 2026-09-12 に確定** = **PCI RR → Peer Community Journal** (APC ゼロ、fallback = Zenodo preprint → TMLR → JOTE)。**2 個目モデル実走は IPA 取得後**に置くと確定 → §11.3 |
+| 02 powered-null | **Stage 1 protocol 執筆済・投稿文面確定済。残るのは user の投稿操作のみ** (2026-09-13)。投稿先 = **PCI RR → Peer Community Journal** (APC ゼロ、fallback = Zenodo preprint → TMLR → JOTE)。**2 個目モデル実走は IPA 取得後** → §11.3 |
 | 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,724 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
@@ -438,12 +438,16 @@ matters for your research application ... beyond a superficial code structure de
 >
 > **前節 (§11.3 旧版) は「枠のみ・候補は未調査」だった。本節がそれを置き換える。**
 
-| 項目 | 状態 (2026-09-12) |
+| 項目 | 状態 (2026-09-13) |
 |---|---|
 | 主張 | エージェント内部変調 → 下流離散選択のチャネルは、検出力を確保した設計の下で効果が検出されない |
-| 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか)。本文未執筆 |
-| repo | `C:\ERRE-Papers\powered-null` (PUBLIC、commit `324d432`、**push 未実施**) |
-| 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走は IPA 取得後** |
+| 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか) |
+| 本文 | **Stage 1 protocol が `manuscript/main.md` にある** (Phase 1b)。Phase 2 で PCI RR 要件に合わせ **§8.1 study design table / §14 AI usage disclosure / §15 ethics・funding・COI** を追加 (2026-09-13) |
+| repo | <https://github.com/mikotomiura/powered-null> (PUBLIC、**push 済**。初回 push = commit `8eb4db0`、107 files) |
+| 再現 | `bash repro.sh` が 9 ステップ exit 0。両 OS の公開 CI が強制。中核 verdict は同梱データから**再計算**して記録と一致 |
+| 提出物 | **提出 PDF (24 ページ) を repo に固定**し、tag `stage1-submitted` (commit `29fda67`) から URL で渡す。`https://github.com/mikotomiura/powered-null/raw/stage1-submitted/manuscript/powered-null-stage1.pdf` が HTTP 200 で手元 PDF と **byte 一致**することを実測 (2026-09-13) |
+| 投稿フォーム | **1 ページ目 18 欄をブラウザで実読**し、貼付値を欄ごとに確定 (Phase 2b、2026-09-13)。**添付欄もデータ・コード URL 欄も存在せず**、原稿は URL 1 本で渡す。2 ページ目 (recommender 提案) は**意図的に未読** — 覗く行為がライブの投稿システムへの入力操作になるため |
+| 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走は IPA 取得後**。投稿文面は `.steering/20260913-paper02-phase2/submission/` に揃っており、**残るのは user の投稿操作のみ** |
 | **投稿先** | **PCI RR → Peer Community Journal** (両方 APC ゼロ)。fallback = Zenodo preprint → TMLR → JOTE |
 
 #### 確定ルート (ハイブリッド)
@@ -452,6 +456,10 @@ matters for your research application ... beyond a superficial code structure de
 Phase 0  llama3.1:8b を pull → verdict-blind feasibility pilot (Level 6 を維持する設計)
    ↓
 Phase 1  Stage 1 protocol 執筆 → PCI RR へ投稿   ← 線 = 2026-10 中旬
+   ↓       Phase 0 ✅ (PR #107) / Phase 1a ✅ (PR #108) / Phase 1b ✅ (本文 + 初回 push、2026-09-13)
+   ↓       Phase 2 ✅ (投稿文面 4 件 + 本文の PCI RR 要件充足、2026-09-13)
+   ↓       Phase 2b ✅ (フォーム実読に合わせて文面確定 + 裁定 3 件、2026-09-13)
+   ↓       **残るのは user の投稿操作のみ**
    ↓       推定問題として書く (方向性仮説を立てない。criterion 1B)
 Phase 2  IPA 取得 → PCI RR が OSF へ protocol を登録
    ↓
