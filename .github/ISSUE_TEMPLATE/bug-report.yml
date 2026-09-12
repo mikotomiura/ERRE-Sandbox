@@ -1,0 +1,38 @@
+name: Bug report
+description: Something behaves differently from what the documentation says.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The exact command(s) you ran.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Full output, including the traceback if there is one.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "OS, Python version, and `git rev-parse --short HEAD`"
+    validations:
+      required: true
