@@ -1,0 +1,43 @@
+name: Draft paper PDF
+
+# 論文 03 (joss/paper.md) を Open Journals の公式イメージで typeset し、
+# PDF を artifact として出す。**手動起動のみ** (workflow_dispatch)。
+#
+# なぜ手動のみか:
+# - この PDF は成果物ではなく「投稿前に読むための draft」であり、
+#   毎 PR で焼く必要が無い
+# - `ci.yml` の test matrix / selection には一切触らない。CI selection の
+#   正典は `ci.yml` の test job であり (DA-CIS-1)、本 workflow はその外側にいる
+#
+# 使いどころ:
+# - Zenodo preprint に上げる PDF を作るとき
+#   (手順 = .steering/20260912-paper03-manuscript/ZENODO-PREPRINT-HANDOVER.md)
+# - JOSS へ投稿する前に組版結果を確認するとき
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    name: build joss/paper.pdf
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build draft PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: joss/paper.md
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          # 出力はソースと同じディレクトリに置かれる
+          path: joss/paper.pdf
+          if-no-files-found: error

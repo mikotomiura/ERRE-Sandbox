@@ -22,7 +22,7 @@
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
 | 02 powered-null | 数値は取得済・未執筆。投稿先は **未定** → §11.3 |
-| 03 two-plane determinism | 実装済・未執筆。投稿先は **未定 (user 裁定)** → §11.1 / §11.2 |
+| 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,724 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
 
@@ -374,9 +374,24 @@ matters for your research application ... beyond a superficial code structure de
 > ORCID 0009-0000-4196-0508 / Apache-2.0) もそのまま載った。**G2 = 達成。**
 >
 > **③ の投稿先が JOSS に確定した** (2026-09-12 user 裁定、DA-P03M-1)。
-> 本文初稿は `joss/paper.md` + `joss/paper.bib` (**追跡下**、1,729 words)。
+> 本文初稿は `joss/paper.md` + `joss/paper.bib` (**追跡下**、1,724 words)。
 > **JOSS は `paper.md` を software と同じ repo に置くことを要求する**ので、
-> ladder ③ の提出物は既に repo 内にある。**投稿そのものは未実施。**
+> ladder ③ の提出物は既に repo 内にある。
+>
+> ⚠ **ただし ③ は今は出さない** (2026-09-12 user 裁定、**DA-P03M-6**)。
+> JOSS の review criteria を一次確認した結果、本 repo が **2 つの基準でラインに届いていない**:
+>
+> | 基準 | JOSS の "OK" ライン (原文) | 本 repo の実測 (2026-09-12) |
+> |---|---|---|
+> | **Open development** | Repository made public **6+ months ago** with clear evidence of ongoing development | `created_at` = `2026-05-31T14:38:34Z` → **3.4 か月** |
+> | **Collaborative effort** | Single author but shows **other evidence of community engagement, either in the repository or evidenced in the paper** | star **0** / fork **0** / watcher **0** / 外部 issue・PR **0 件** / contributor **1 名** |
+>
+> **Collaborative effort は "Not acceptable: Single author with no evidence of community
+> engagement, external use, or collaborative input" の記述にそのまま当てはまる。**
+>
+> **1 つ目は 2026-11-30 頃に時間で解けるが、2 つ目は待っても解けない**
+> (→ `.steering/20260912-paper03-manuscript/blockers.md` B-P03M-6)。
+> → **順序を ② preprint 先行に組み替えた** (下記)。
 
 ```
 ① Zenodo          GitHub release → DOI 発行       無料 / endorsement 不要 / 所属不要
@@ -394,6 +409,19 @@ matters for your research application ... beyond a superficial code structure de
   DOI を先に取っておけば両方に効く
 - **② と ③ は同時進行してよい** (preprint は prior publication に当たらない)。
   ③ を 2 誌同時に出すのは制約 1 違反
+
+### 2026-09-12 に確定した実行順 (DA-P03M-6)
+
+1. **② Zenodo preprint を先に出す** — 無料 / endorsement 不要 / 所属不要。
+   手順書 = `.steering/20260912-paper03-manuscript/ZENODO-PREPRINT-HANDOVER.md`。
+   PDF は `.github/workflows/draft-paper.yml` (**手動起動のみ**) が
+   Open Journals 公式イメージで JOSS 組版して artifact に出す
+   (この機体には pandoc / docker / quarto がいずれも無い — 2026-09-12 実測)
+2. **③ JOSS は 2026-11-30 頃以降** (公開 6 か月条項をクリアしてから)
+3. その間に **Collaborative effort の証跡を作る** (B-P03M-6。**待っても解消しない方**)
+
+> **preprint 先行は時間を買う手でもある。** 公開されれば外部が `REPRODUCING.md` を
+> 回す到達可能性が上がり、それが 2 つ目の解消経路そのものになる。
 
 ### 11.3 論文 02 (powered-null) の投稿先 — **枠のみ。候補は未調査**
 
