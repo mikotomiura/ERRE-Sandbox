@@ -107,6 +107,49 @@ jobs:
         # mock httpx and use synthetic DuckDB fixtures with no GPU imports.
         run: uv run pytest -m "not godot and not eval and not spike and not training and not inference"
 
+  repro:
+    # Paper 03 gate G5 ("a reproduction procedure a third party can run, checked
+    # in a clean environment"). Until now that gate rested on the author having
+    # seen `bash scripts/repro.sh` exit 0 once, on the author's own Windows box,
+    # against the ECL v0 golden fixture alone -- not against the sealed bundles
+    # the cross-platform claim actually rests on.
+    #
+    # This job runs the exact command REPRODUCING.md tells a reader to run, on
+    # two runner images, on every PR. The agreement between the two is not left
+    # to discipline: tests/test_architecture/test_reproducing_doc_parity.py
+    # parses this `run:` line and the fenced command in REPRODUCING.md and
+    # compares them (.steering/20260912-paper03-repro-path/decisions.md
+    # DA-P03R-2).
+    #
+    # Deliberately a separate job rather than a step inside `test`: the `test`
+    # matrix was only just stabilised, and folding the reproduction into it
+    # would make a repro failure and a suite failure the same red square.
+    #
+    # `--no-dev` is the point, not a saving: a green run here is public evidence
+    # that replaying the committed bundles needs no test tooling, no ML extras,
+    # no language model and no GPU. It is a replay-verify of committed bytes and
+    # never a re-bake (DA-CIS-5).
+    name: reproduce committed artifacts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Sync runtime dependencies only
+        # Separate from the verify step so an install failure and a
+        # reproduction failure cannot be confused for one another
+        # (.steering/20260911-ci-selection-ssot/decisions.md, Codex MEDIUM-4).
+        run: uv sync --frozen --no-dev
+      - name: Replay-verify every committed artifact
+        run: uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
+
   eval-egress-grep-gate:
     # m9-eval-system Phase P0b — defence-in-depth (layer 4 of the
     # 4-layer DuckDB schema-guard contract). The behavioural sentinel

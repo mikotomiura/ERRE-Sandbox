@@ -66,6 +66,10 @@ CANONICAL_EXPRESSION_DOCS: Final[tuple[str, ...]] = (
     "README.ja.md",
     "docs/architecture.md",
     "docs/development-guidelines.md",
+    # The reviewer-facing reproduction procedure. Its section 3 hands a reader
+    # the full-suite command; a stale copy there would send a third party
+    # reproducing the paper's claim into a selection CI does not run.
+    "REPRODUCING.md",
 )
 
 _PS1_MARKER_RE: Final = re.compile(

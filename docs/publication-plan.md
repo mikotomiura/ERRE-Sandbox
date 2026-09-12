@@ -1,9 +1,35 @@
-# 論文化プラン (Springer Nature)
+# 論文化プラン
 
-> 対象 = ERRE-Sandbox の **計測方法論**を主張とする 1 本目の論文。
+> 3 本すべての **投稿戦略と手順** の SSOT。命題・数値の再掲はしない (SSOT 二重化の禁止)。
 > 科学的中身 (問い・仮説・verdict) の SSOT は `docs/research-positioning.md`。
-> 本ファイルは **投稿戦略と手順のみ** を持つ。命題・数値の再掲はしない (SSOT 二重化の禁止)。
-> 調査日: 2026-09-06。APC・制度は変わるので投稿直前に再確認すること。
+> APC・制度は変わるので投稿直前に再確認すること。
+
+## 0. このファイルの読み方 (2026-09-12 追記)
+
+**§1-§9 は論文 01 (scorer circularity) を Springer Nature 系に単独投稿するための計画である
+(調査日 2026-09-06)。その前提は 2026-09-09 に覆った。**
+
+- 2026-09-09、論文 01 案 2 (scope condition) の実走が `DO_NOT_WRITE` を返し、
+  **「01 は単独では出さない。結果とハーネスは論文 03 に畳む」**と確定した
+  (`project_paper01_scope_condition` / `project_paper_track`)
+- したがって **§6 (投稿先) / §7 (手順) は「01 単独投稿ルートの記録」**である。
+  **削除しない** — APC 表・waiver の制約・Registered Report ルート・presubmission 可否は
+  02 / 03 でも再利用できる調査結果であり、消すと同じ調査をやり直すことになる
+  (`feedback_never_freeze_not_yet_run` と同じ扱い: 期限切れ記述は削除でなく事後版へ反転する)
+- **現時点で生きている投稿計画は §11** (論文 02 / 03)。まずそちらを読むこと
+
+| 論文 | 投稿ステータス (2026-09-12) |
+|---|---|
+| 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
+| 02 powered-null | 数値は取得済・未執筆。投稿先は **未定** → §11.3 |
+| 03 two-plane determinism | 実装済・未執筆。投稿先は **未定 (user 裁定)** → §11.1 / §11.2 |
+
+---
+
+# 【§1-§9】論文 01 単独投稿ルートの記録 (2026-09-06 調査 / 2026-09-09 に前提が覆った)
+
+> **この範囲は履歴である。** 01 は単独投稿しないと確定した (§0)。
+> 生きている計画は §11。§1-§9 を「現在の方針」として読まないこと。
 
 ## 1. 前提の訂正 (調査で覆った点)
 
@@ -135,7 +161,7 @@ statistical power / preregistration に翻訳する **対応表を 1 つ作る**
 
 SN は preprint を明示許容。先に出して引用可能状態にし、反応を取る。
 
-## 6. 投稿先 (優先順)
+## 6. 投稿先 (優先順) — **01 単独ルートの調査結果。現行方針ではない (§0)**
 
 | 順 | 誌 | APC | 根拠 |
 |---|---|---|---|
@@ -150,7 +176,7 @@ SN は preprint を明示許容。先に出して引用可能状態にし、反�
 **G1 の外部監査を Stage 1 で事前登録し in-principle acceptance を取る**手がある。
 結果が再び `NO_VALID_SCORER` でも出版される。この研究の性格に制度として最も合う。要検討。
 
-## 7. 手順 (順番厳守)
+## 7. 手順 (順番厳守) — **01 単独ルートの手順。現行方針ではない (§0)**
 
 | # | やること | 期間 |
 |---|---|---|
@@ -181,9 +207,13 @@ SN は preprint を明示許容。先に出して引用可能状態にし、反�
 - `docs/references.md` の初期エントリの DOI/巻号 (同ファイル冒頭の警告どおり、正式引用前に原典再確認)
 
 
+---
+
+# 【§10-§11】現行 (2026-09-12)
+
 ## 10. 運用 — ERRE-Sandbox をオーケストレータにする (2026-09-07 決定)
 
-論文 01/02 は独立リポジトリへ分離した (`C:\ERRE-Papersnchor-recognition-not-novelty` /
+論文 01/02 は独立リポジトリへ分離した (`C:\ERRE-Papers\anchor-recognition-not-novelty` /
 `powered-null`)。**分離は維持しつつ、道具はすべて ERRE-Sandbox 側から回す。**
 
 ### なぜ分離を畳まないか
@@ -224,3 +254,136 @@ paper repo は **PUBLIC**、ERRE-Sandbox は非公開 (OSS 公開 Phase 2-6 未�
 `.steering/20260629-m13-es3-impl/verdict-forensic.json` (論文 02 の `D_loco=0.0468` の出典) は
 **原本が gitignore 配下、コピーは未 push** ゆえ G-GEAR 上にしか存在しない。
 これは同期の問題ではなく **backup の問題**。push するか別媒体へ退避するかのどちらか。
+
+> **2026-09-11 追記 (解消済)**: 上記 JSON は `experiments/20260629-m13-es3-locomotion/verdict-forensic.json`
+> として追跡下へ退避した (`.steering/20260911-ci-selection-ssot/decisions.md` DA-CIS-4)。
+> 対になる人間可読版 `verdict-result.md` は未退避 (同 `blockers.md` B-CIS-3)。
+
+---
+
+## 11. 投稿先の判断材料 — 論文 02 / 03 (2026-09-12 調査)
+
+> **本節は材料であって決定ではない。** 投稿先の確定は確定タイトルと同じく **user 裁定事項**
+> (`paper/03-two-plane-determinism/PREP-STEPS.md` [D] / DA-P03-5 = DEFERRED)。
+> 調査日 2026-09-12。一次情報の出典と確認方法を各行に明記した。
+
+### 11.0 3 つの制約 (どのルートを選んでも効く)
+
+**制約 1 — 同時複数投稿は不可。**
+ほぼ全誌が "not under consideration for publication elsewhere" を投稿宣言として要求する
+(SoftwareX の Guide for authors "Submission declaration" で一次確認)。
+複数の機会を得る正当な方法は 2 つだけ:
+
+1. **preprint を先に出す** (preprint は "prior publication" に当たらないと明記されている)
+2. **順番を事前に決めた ladder で 1 誌ずつ**出す
+
+**制約 2 — APC ゼロが user 制約 (2026-09-12 user 明示)。**
+§8 も「自腹なら重い」と書いている。§11.2 に**全工程 APC ゼロで成立する ladder** を 1 本示す。
+
+**制約 3 — arXiv は初回投稿に endorsement が要る。**
+「arXiv requires that users be endorsed before submitting their first paper to arXiv or a new
+category」(info.arxiv.org/help/endorsement で一次確認)。
+所属メールが無い場合は **既存 arXiv 著者から個人 endorsement を得るしかない**。
+自動 endorsement の仕組みは無い。**無所属の単著はここで実際に詰まりうる。**
+→ **代替 (endorsement 不要)**:
+
+- **Zenodo に preprint を上げて DOI を取る** (アップロードに endorsement も所属も不要)
+- **SSRN** — SoftwareX は投稿時に **SSRN への無料 preprint 掲載**を選べ、
+  **preprint DOI** が付く (Guide for authors "Preprints" で一次確認)。
+  掲載可否は編集判断 (desk review 通過後) に依存する点だけ注意
+
+### 11.1 論文 03 の投稿先候補 — JOSS vs SoftwareX
+
+| 軸 | **JOSS** (Journal of Open Source Software) | **SoftwareX** (Elsevier) |
+|---|---|---|
+| 形式 | `paper.md` (**Markdown**) + `paper.bib` | **専用テンプレート必須** (Word または LaTeX の Original Software Publication)。他形式は受理されない |
+| 語数 | **750-1750 語** (「1750 語を大きく超えると短縮を求められる」) | **4,000 語上限** の短い記述論文 |
+| APC | **無料** ("There are no fees for submitting or publishing in JOSS") | **USD 1,920** (excl. taxes)。waiver は **Research4Life 対象国のみ** = 日本は対象外 |
+| 審査対象 | **リポジトリそのもの** (GitHub 上で公開レビュー) | 論文 + 公開リポジトリ。受理版のコードは**誌の GitHub へ複製保管**される |
+| 必須節 | Summary / Statement of need / **State of the field** / **Software design** / **Research impact statement** / **AI usage disclosure** | Highlights (3-5 点・各 85 字) / graphical abstract / abstract 250 語 / code metadata 表 / data statement |
+| 研究データ | — | **Option C**: データを repository に deposit し、論文から cite + link する (= **Zenodo DOI が実質必須**) |
+| preprint | 可 | 可。**SSRN 無料 preprint + DOI** を投稿時に選べる |
+| ライセンス | OSI 承認 OSS が必須 (本 repo = Apache-2.0 OR MIT で充足) | CC BY / CC BY-NC / CC BY-NC-ND から選択 |
+| 生成 AI | **AI usage disclosure が必須節** | **Declaration of generative AI use** が必須 (本文末尾に節を立てる) |
+
+出典: JOSS = `joss.readthedocs.io` の submitting / review_criteria / paper (2026-09-12 取得)。
+SoftwareX = ScienceDirect の Guide for authors / Open access information (同日取得、APC は公式表)。
+
+#### 03 の主張との適合・不適合
+
+**prompt / 従来メモにあった前提を 1 つ訂正する。**
+「JOSS はソフトウェアの記述であって新規研究主張の場ではない」は**半分だけ正しい**。
+JOSS が禁じているのは *"Your paper must not focus on new research **results** accomplished
+with the software"* であって、**software design の主張には `Software design` という必須節が
+用意されている** ("the trade-offs you weighed, the design/architecture you chose, and why it
+matters for your research application ... beyond a superficial code structure description")。
+
+03 の delta 3 点 (`paper/03-two-plane-determinism/README.md` §2) との対応:
+
+| delta | JOSS でどこに書くか | 収まるか |
+|---|---|---|
+| ① Plane 1 の決定化 (物理・RNG・時計・ID・スケジューラ順序) | `Software design` | ⭕ そのもの |
+| ② OS 跨ぎ byte 一致の実証 | `Research impact statement` (reproducible materials) | ⭕ 実測値で書ける |
+| ③ 量子化幅の数値的正当化 | `Software design` | ⭕ trade-off の説明として |
+
+- **JOSS の有利**: APC ゼロ (制約 2 を満たす唯一の査読誌)。審査対象がリポジトリ本体なので、
+  **本タスクで作った `REPRODUCING.md` + `docs/artifact-hashes.md` + 両 OS の CI がそのまま
+  審査材料になる**。JOSS の `Research impact statement` は
+  "realized impact (publications, external use, integrations) **or** credible near-term
+  significance (benchmarks, **reproducible materials**, community-readiness signals)" を
+  認めており、後者の弾がある
+- **JOSS の不利・リスク (2 点、実測済)**:
+  1. **公開 commit 履歴が短い。** JOSS の review criteria は
+     "sustained development over time (preferably months or years)" / "6+ months" を挙げるが、
+     本 repo の公開履歴は **2026-05-31 の単一クリーンコミット起点** (`4de3eb8`) で
+     **約 3.5 か月** (2026-09-12 実測で 291 commits)
+     (OSS 公開 cleanup Phase 4 で `rm -rf .git` したため)。**実際の開発期間より短く見える**。
+     → 対処案: `docs/` と `experiments/` の日付連鎖 (2026-04〜) を Research impact statement で
+     明示し、履歴短縮の理由を書く。**これは事前に潰しておく論点**
+  2. **"evidence that the software is being used for research" を要求される。** 外部採用も
+     被引用もまだ無い。弾は「reproducible materials」側のみ
+- **SoftwareX の有利**: 語数 4,000 で余裕がある。二平面設計を丁寧に書ける。
+  code metadata 表が本 repo の provenance pin と相性が良い
+- **SoftwareX の不利**: **APC 1,920 USD が制約 2 に正面から抵触**。waiver 対象外。
+  テンプレート (LaTeX/Word) 固定で Markdown 資産が使えない
+
+### 11.2 APC ゼロで成立する ladder (制約 2 を満たす最低 1 本)
+
+```
+① Zenodo          GitHub release → DOI 発行       無料 / endorsement 不要 / 所属不要
+       ↓  (これで artifact が永続参照可能になる = G2)
+② preprint        arXiv (cs.SE / cs.MA)           無料。ただし endorsement が要る (制約 3)
+                  └ 詰まったら Zenodo に preprint  無料 / endorsement 不要
+       ↓
+③ 査読誌          JOSS                            APC 無料
+       ↓  (reject された場合のみ)
+④ 次の段          SoftwareX 等 (APC 判断を user が下す)
+```
+
+- **①→②→③ の順序は入れ替えない。** JOSS も SoftwareX も受理時に archival DOI を要求し、
+  SoftwareX は研究データの deposit + link を Option C として要求する。
+  DOI を先に取っておけば両方に効く
+- **② と ③ は同時進行してよい** (preprint は prior publication に当たらない)。
+  ③ を 2 誌同時に出すのは制約 1 違反
+
+### 11.3 論文 02 (powered-null) の投稿先 — **枠のみ。候補は未調査**
+
+repo のどこにも 02 の投稿先が書かれていなかったので枠を作る。
+**本タスクでは候補調査をしていない** (scope 外)。分かっていることだけを置く。
+
+| 項目 | 状態 (2026-09-12) |
+|---|---|
+| 主張 | エージェント内部変調 → 下流離散選択のチャネルは、検出力を確保した設計の下で効果が検出されない |
+| 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか)。本文未執筆 |
+| repo | `C:\ERRE-Papers\powered-null` (PUBLIC、commit `324d432`、**push 未実施**) |
+| 残 gate | 2 個目のモデルでの再現 (`project_paper_track`) |
+| 投稿先 | **未調査**。null result を正面から扱う誌を当たる必要がある。§6 の Registered Report ルート (Scientific Reports の Stage 1/Stage 2) は **02 にこそ効く** 可能性がある — 結果が null でも出版されるため |
+
+### 11.4 次に潰すべき未確認事項
+
+- JOSS の "Research impact statement" に対して、本 repo の弾 (reproducible materials) が
+  十分と判断されるか — **pre-review issue を立てる前に JOSS の submission checklist を通す**
+- SoftwareX の APC に対する institutional agreement の有無 (所属が付いた場合のみ意味がある)
+- arXiv の endorser 候補の当て (無所属単著の最大のボトルネック)
+- Zenodo の release 連携は **連携を有効にした後の release しか拾わない**ため、
+  tag を切る前に repository を enable する順序を守ること (§G2 手順書)
