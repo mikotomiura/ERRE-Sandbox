@@ -263,9 +263,13 @@ paper repo は **PUBLIC**、ERRE-Sandbox は非公開 (OSS 公開 Phase 2-6 未�
 
 ## 11. 投稿先の判断材料 — 論文 02 / 03 (2026-09-12 調査)
 
-> **本節は材料であって決定ではない。** 投稿先の確定は確定タイトルと同じく **user 裁定事項**
-> (`paper/03-two-plane-determinism/PREP-STEPS.md` [D] / DA-P03-5 = DEFERRED)。
+> **論文 03 の投稿先は 2026-09-12 に user 裁定で JOSS に確定した**
+> (`.steering/20260912-paper03-manuscript/decisions.md` DA-P03M-1)。
+> **本節は削除せず材料のまま残す** — 02 の投稿先判断と、03 が reject された場合の
+> ladder 第 4 段でそのまま再利用できるため (`feedback_never_freeze_not_yet_run` と同じ扱い)。
 > 調査日 2026-09-12。一次情報の出典と確認方法を各行に明記した。
+>
+> **論文 02 の投稿先は依然として未確定** (→ §11.3)。
 
 ### 11.0 3 つの制約 (どのルートを選んでも効く)
 
@@ -292,7 +296,7 @@ category」(info.arxiv.org/help/endorsement で一次確認)。
   **preprint DOI** が付く (Guide for authors "Preprints" で一次確認)。
   掲載可否は編集判断 (desk review 通過後) に依存する点だけ注意
 
-### 11.1 論文 03 の投稿先候補 — JOSS vs SoftwareX
+### 11.1 論文 03 の投稿先候補 — JOSS vs SoftwareX → **JOSS に確定 (2026-09-12 user 裁定)**
 
 | 軸 | **JOSS** (Journal of Open Source Software) | **SoftwareX** (Elsevier) |
 |---|---|---|
@@ -334,12 +338,27 @@ matters for your research application ... beyond a superficial code structure de
   認めており、後者の弾がある
 - **JOSS の不利・リスク (2 点、実測済)**:
   1. **公開 commit 履歴が短い。** JOSS の review criteria は
-     "sustained development over time (preferably months or years)" / "6+ months" を挙げるが、
-     本 repo の公開履歴は **2026-05-31 の単一クリーンコミット起点** (`4de3eb8`) で
-     **約 3.5 か月** (2026-09-12 実測で 291 commits)
-     (OSS 公開 cleanup Phase 4 で `rm -rf .git` したため)。**実際の開発期間より短く見える**。
-     → 対処案: `docs/` と `experiments/` の日付連鎖 (2026-04〜) を Research impact statement で
-     明示し、履歴短縮の理由を書く。**これは事前に潰しておく論点**
+     "sustained development over time (preferably months or years)" / "6+ months" を挙げる。
+     **2026-09-12 の再実測で数値を訂正した** (DA-P03M-5。当初の「約 3.5 か月 / 291 commits」は
+     時点も根拠も不正確だった):
+
+     | 指標 | 実測値 (2026-09-12) | 取得方法 |
+     |---|---|---|
+     | GitHub repo `created_at` | `2026-05-31T14:38:34Z` → **約 3.4 か月** | `api.github.com/repos/mikotomiura/ERRE-Sandbox` (無認証) |
+     | ローカル最古 commit | `4de3eb8` 2026-05-31 (`rm -rf .git` 後の initial) | `git log --reverse` |
+     | commit 総数 | **293** | `git rev-list --count HEAD` |
+     | **追跡下 `docs/` の最古日付** | **2026-04-21** → 約 **4.7 か月** | `docs/functional-design.md:217` (M5 完了 `v0.3.0-m5`) |
+     | 旧 repo の痕跡 (追跡下) | **2026-04-30 の PR #117–#124 / #127** | `docs/functional-design.md:232` / `:236` |
+
+     → **現行 repo の PR 番号は #1 (2026-06-01) 始まりなのに、追跡下の `docs/` が
+     2026-04-30 時点の PR #117–#127 を参照している。** これは現行 repo より前に
+     100 本超の PR を持つ GitHub repo が実在したことの、追跡下ファイルに残った証拠である。
+     ただし旧 repo は OSS 公開 cleanup Phase 5 (remote recreate) で消えており、
+     **それらの PR はもう公開解決できない**。`.steering/` の 2026-04-18 起点は
+     **gitignore 配下 = 非公開なので証拠に使えない**。
+     → 対処 (実施済): **「6 か月」とは書かない。** `Research impact statement` に
+     「機械的に辿れるのは 3.4 か月 / 追跡下 docs の日付連鎖は 2026-04-21 まで /
+     断絶は公開前に research scaffolding を剥がした意図的なもの」を明記した
   2. **"evidence that the software is being used for research" を要求される。** 外部採用も
      被引用もまだ無い。弾は「reproducible materials」側のみ
 - **SoftwareX の有利**: 語数 4,000 で余裕がある。二平面設計を丁寧に書ける。
@@ -353,6 +372,11 @@ matters for your research application ... beyond a superficial code structure de
 > **Concept DOI = `10.5281/zenodo.22718679`** / version DOI = `10.5281/zenodo.22718680` が発行済。
 > `.zenodo.json` の著者メタデータ (Miura, Mikoto / Independent Researcher /
 > ORCID 0009-0000-4196-0508 / Apache-2.0) もそのまま載った。**G2 = 達成。**
+>
+> **③ の投稿先が JOSS に確定した** (2026-09-12 user 裁定、DA-P03M-1)。
+> 本文初稿は `joss/paper.md` + `joss/paper.bib` (**追跡下**、1,729 words)。
+> **JOSS は `paper.md` を software と同じ repo に置くことを要求する**ので、
+> ladder ③ の提出物は既に repo 内にある。**投稿そのものは未実施。**
 
 ```
 ① Zenodo          GitHub release → DOI 発行       無料 / endorsement 不要 / 所属不要

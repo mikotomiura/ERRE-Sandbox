@@ -71,3 +71,9 @@ experiments/**/data/raw/** -text -whitespace
 LICENSE                 text eol=lf
 LICENSE-MIT             text eol=lf
 SEED                    text eol=lf
+
+# JOSS 投稿物 (joss/paper.md + joss/paper.bib)。`.md` は上で被覆済だが `.bib` は
+# 未被覆だった。windows runner は core.autocrlf=true が既定なので、ここに無いと
+# Windows 側 checkout でだけ行末が変わる (uv.lock で実際に起きた class、
+# memory feedback_gitattributes_sha_pin_eol)。DA-P03M-2。
+*.bib                   text eol=lf
