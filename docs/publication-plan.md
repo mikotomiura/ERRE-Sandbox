@@ -412,7 +412,11 @@ matters for your research application ... beyond a superficial code structure de
 
 ### 2026-09-12 に確定した実行順 (DA-P03M-6)
 
-1. **② Zenodo preprint を先に出す** — 無料 / endorsement 不要 / 所属不要。
+1. **② Zenodo preprint を先に出す** — ✅ **2026-09-12 完了**。
+   **Concept DOI = `10.5281/zenodo.22719772`** (version DOI `…73` /
+   [record](https://zenodo.org/record/22719773))。`paper.pdf` + `paper.md` + `paper.bib` を収録、
+   licence CC BY 4.0、ソフト DOI へ `isSupplementTo` で紐付け済。
+   ⚠ **ソフトの DOI (`…2271867x`) と preprint の DOI (`…2271977x`) は別系統。取り違えない。**
    手順書 = `.steering/20260912-paper03-manuscript/ZENODO-PREPRINT-HANDOVER.md`。
    PDF は `.github/workflows/draft-paper.yml` (**手動起動のみ**) が
    Open Journals 公式イメージで JOSS 組版して artifact に出す
