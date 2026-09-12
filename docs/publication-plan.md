@@ -438,11 +438,13 @@ matters for your research application ... beyond a superficial code structure de
 >
 > **前節 (§11.3 旧版) は「枠のみ・候補は未調査」だった。本節がそれを置き換える。**
 
-| 項目 | 状態 (2026-09-12) |
+| 項目 | 状態 (2026-09-13) |
 |---|---|
 | 主張 | エージェント内部変調 → 下流離散選択のチャネルは、検出力を確保した設計の下で効果が検出されない |
-| 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか)。本文未執筆 |
-| repo | `C:\ERRE-Papers\powered-null` (PUBLIC、commit `324d432`、**push 未実施**) |
+| 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか) |
+| 本文 | **Stage 1 protocol 初稿が `manuscript/main.md` にある** (Phase 1b、2026-09-13) |
+| repo | <https://github.com/mikotomiura/powered-null> (PUBLIC、**push 済**。初回 push = commit `8eb4db0`、107 files) |
+| 再現 | `bash repro.sh` が 9 ステップ exit 0。両 OS の公開 CI が強制。中核 verdict は同梱データから**再計算**して記録と一致 |
 | 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走は IPA 取得後** |
 | **投稿先** | **PCI RR → Peer Community Journal** (両方 APC ゼロ)。fallback = Zenodo preprint → TMLR → JOTE |
 
@@ -452,6 +454,8 @@ matters for your research application ... beyond a superficial code structure de
 Phase 0  llama3.1:8b を pull → verdict-blind feasibility pilot (Level 6 を維持する設計)
    ↓
 Phase 1  Stage 1 protocol 執筆 → PCI RR へ投稿   ← 線 = 2026-10 中旬
+   ↓       Phase 0 ✅ (PR #107) / Phase 1a ✅ (PR #108) / Phase 1b ✅ (本文 + 初回 push、2026-09-13)
+   ↓       **残るのは投稿フォーム用の文面 (cover letter / Level 申告 / AI-use disclosure) と投稿操作のみ**
    ↓       推定問題として書く (方向性仮説を立てない。criterion 1B)
 Phase 2  IPA 取得 → PCI RR が OSF へ protocol を登録
    ↓
