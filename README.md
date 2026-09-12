@@ -148,6 +148,12 @@ deliberately does not (it is a replay-verify, never a re-bake), and the expected
 hashes in [`docs/artifact-hashes.md`](docs/artifact-hashes.md). CI runs the same
 command on both operating systems on every PR.
 
+**If you run it, please tell us what happened** — pass or fail — with the
+[reproduction report](https://github.com/mikotomiura/ERRE-Sandbox/issues/new?template=reproduction-report.yml)
+template. A failure is the more valuable of the two: it means the claim is
+narrower than stated. A pass on hardware the author does not own is evidence the
+author cannot generate alone. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 Enable the local pre-commit hook once after cloning:
 
 ```bash

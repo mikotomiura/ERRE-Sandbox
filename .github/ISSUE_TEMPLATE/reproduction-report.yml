@@ -1,0 +1,65 @@
+name: Reproduction report
+description: You ran the one-command verification. Tell us what happened — pass or fail.
+title: "[repro] "
+labels: ["reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for running it. **A failure is more valuable than a success** — it
+        means the claim is narrower than stated, and we would rather learn that
+        here than from a reviewer.
+
+        The command, for reference (no language model, no GPU, no test framework):
+
+        ```
+        uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
+        ```
+
+        What it checks, and what it deliberately does not, is in
+        [REPRODUCING.md](../blob/main/REPRODUCING.md).
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - Passed (exit code 0)
+        - Failed (non-zero exit code)
+        - Could not get far enough to run it
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. Ubuntu 24.04 / Windows 11 / macOS 15 (Apple silicon)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Paste the command's output. If it failed, the whole thing; if it passed, the last few lines are enough.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit you ran against
+      description: "`git rev-parse --short HEAD`"
+      placeholder: "e.g. dcbc50a"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Surprises, confusing steps, or documentation that did not match what you saw.
+    validations:
+      required: false

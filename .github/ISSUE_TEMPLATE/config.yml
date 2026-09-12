@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to check the reproducibility claim yourself
+    url: https://github.com/mikotomiura/ERRE-Sandbox/blob/main/REPRODUCING.md
+    about: One command, no language model and no GPU required. Please report the result either way.

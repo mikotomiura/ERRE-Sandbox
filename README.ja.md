@@ -140,6 +140,12 @@ uv run --frozen --no-dev python scripts/verify_committed_artifacts.py
 [`docs/artifact-hashes.md`](docs/artifact-hashes.md) にあります (生成物)。
 CI は同じコマンドを全 PR で両 OS 上で実行します。
 
+**回した方は、通っても落ちても結果を教えてください** —
+[reproduction report](https://github.com/mikotomiura/ERRE-Sandbox/issues/new?template=reproduction-report.yml)
+テンプレートがあります。**落ちた報告の方が価値が高い**です (主張が宣言より狭い、
+という情報になるため)。通った報告も、著者が持っていないハードウェア上の実測は
+著者が単独では作れない証拠になります。詳細は [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
 クローン直後にローカル pre-commit hook を有効化:
 
 ```bash
