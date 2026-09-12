@@ -6,26 +6,30 @@ name: Draft paper PDF
 #
 # | job | 出力 artifact | テンプレート | 用途 |
 # |---|---|---|---|
-# | `joss`     | `paper-joss`       | Open Journals 公式 (誌面装飾つき) | **JOSS へ投稿するとき**の組版確認 |
+# | `joss`     | `paper-joss`        | Open Journals 公式 (誌面装飾つき) | **JOSS へ投稿するとき**の組版確認 |
 # | `preprint` | `paper-preprint`    | 素の pandoc (装飾なし)            | **Zenodo preprint に上げる実体** |
-# | `preprint` | `paper-preprint-ja` | 同上 + 日本語組版                 | 日本語版 (Zenodo 公開は当面しない) |
+# | `preprint` | `paper-preprint-ja` | 同上 + 日本語組版                 | 日本語版 (Zenodo には上げない = DA-P03M-14) |
 #
-# なぜ分けるか (2026-09-12 の実地の失敗 = DA-P03M-10):
+# なぜ分けるか (DA-P03M-10):
 #   `openjournals-draft-action` は JOSS の誌面テンプレートを**必ず**付ける。
 #   全ページに `DRAFT` 透かし / `DOI: 10.xxxxxx/draft` (placeholder) /
 #   `Journal of Open Source Software, ¿VOL?(¿ISSUE?), ¿PAGE?` /
-#   `Editor: Open Journals` / `Reviewers: @openjournals` /
-#   `Submitted: 01 January 1970` が入る。
+#   `Editor: Open Journals` / `Reviewers: @openjournals` / `Submitted: 01 January 1970`。
 #   **JOSS 提出物としては正しいが、独立した preprint に載せると
 #   placeholder DOI と実在しない編集情報を公開物に残すことになる。**
 #   実際に 10.5281/zenodo.22719773 の初版でこれをやってしまった。
 #
-# なぜ preprint を matrix 1 本にしたか (2026-09-12、2 度目の失敗の後):
-#   最初は en を container (`pandoc/latex`)、ja を apt で組む 2 本立てにしたが、
-#   (1) container のタグを実在しない値に pin して失敗し、
-#   (2) apt 側は `lmodern` 不足で失敗した。
-#   **toolchain が 2 本あると、片方だけ直して drift する。**
-#   日本語には CJK フォントが要り container では賄えないので、**apt 側へ寄せて 1 本にした。**
+# なぜ matrix 1 本か (DA-P03M-12):
+#   最初は en を container、ja を apt で組む 2 本立てにしたが、**別々の理由で両方落ちた**。
+#   toolchain が 2 本あると片方だけ直して drift する。日本語には CJK フォントが要り
+#   container では賄えないので、**apt 側へ寄せて 1 本にした。**
+#
+# **この workflow で踏んだ失敗は全部「値の実在を確かめずに書いた」型である。**
+#   - 存在しない container タグ (`pandoc/latex:3.1.11`) を pin した
+#   - `lmodern.sty` が入る前提だった → 入っていなかった
+#   - `xeCJK.sty` が `texlive-xetex` に入る前提だった → 入っていなかった
+#   - JOSS 形式の `authors:` を素の pandoc が読む前提だった → **著者名の無い PDF ができた**
+#   → **install 段と検査段で、実在を機械的に確かめる。**
 #
 # なぜ手動のみか:
 # - この PDF は成果物ではなく「投稿前に読むための draft」であり、毎 PR で焼く必要が無い
@@ -61,23 +65,24 @@ jobs:
           if-no-files-found: error
 
   preprint:
-    name: build ${{ matrix.out }} (${{ matrix.label }})
+    name: build ${{ matrix.out }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          - label: neutral
-            src: joss/paper.md
+          - src: joss/paper.md
             out: paper-preprint.pdf
             artifact: paper-preprint
             # 英語版は CJK 設定を渡さない
             cjk: ""
-            # 日本語が出ているかの検査は英語版では不要
+            # 日本語描画の検査は英語版では不要
             must: ""
-          - label: Japanese
-            src: joss/paper.ja.md
+            author: "Mikoto Miura, Independent Researcher (ORCID 0009-0000-4196-0508)"
+            # 著者名の検査に使う語 (姓)
+            author_probe: "Miura"
+          - src: joss/paper.ja.md
             out: paper-preprint-ja.pdf
             artifact: paper-preprint-ja
             # フォント名に空白があるので **クォートを値に含める**。
@@ -85,14 +90,17 @@ jobs:
             # `Noto` `Serif` `CJK` `JP` が別々の引数に割れる。
             cjk: '--variable=CJKmainfont:"Noto Serif CJK JP"'
             must: "二平面 決定性 再現 限界"
+            author: "三浦 尊 (Independent Researcher, ORCID 0009-0000-4196-0508)"
+            author_probe: "三浦"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pandoc + XeTeX + fonts
+      - name: Install pandoc + XeTeX + CJK
         # container を使わないのは日本語の組版に CJK フォントが要るため。
-        # `lmodern` は明示指定する — `--no-install-recommends` だと
-        # texlive-fonts-recommended に引きずられて入らず、pandoc の既定
-        # テンプレートが `lmodern.sty` を要求して落ちる (2026-09-12 実測)。
+        #
+        # `lmodern` / `texlive-lang-cjk` を明示指定するのは、
+        # **どちらも「入っている前提」で書いて実際に落ちた**ため
+        # (lmodern.sty / xeCJK.sty、2026-09-12)。
         run: |
           set -eux
           sudo apt-get update -qq
@@ -102,11 +110,28 @@ jobs:
             texlive-fonts-recommended \
             texlive-latex-recommended \
             texlive-latex-extra \
+            texlive-lang-cjk \
+            texlive-lang-japanese \
             lmodern \
             fonts-noto-cjk \
             poppler-utils
+          # 使う .sty の実在を install 段で確かめる。
+          # PDF 生成の失敗で気づくのでは遅い。
           kpsewhich lmodern.sty
+          kpsewhich xeCJK.sty
           fc-list :lang=ja family | head -3
+
+      - name: Write author metadata
+        # `paper.md` の front matter は **JOSS 形式の `authors:`**
+        # (複数形・オブジェクトのリスト) であり、**素の pandoc はこれを解釈しない**。
+        # 何もしないと **著者名の無い PDF** ができる (2026-09-12 実測)。
+        # `paper.md` 側は JOSS のスキーマを保ったまま、ここで `author:` を注入する。
+        env:
+          AUTHOR: ${{ matrix.author }}
+        run: |
+          set -eu
+          printf 'author:\n  - "%s"\n' "$AUTHOR" > preprint-meta.yaml
+          cat preprint-meta.yaml
 
       - name: Build PDF
         # --citeproc が joss/paper.bib から References を生成する
@@ -118,6 +143,7 @@ jobs:
             --from=markdown \
             --citeproc \
             --resource-path=joss \
+            --metadata-file=preprint-meta.yaml \
             --pdf-engine=xelatex \
             --metadata link-citations=true \
             --variable=papersize:a4 \
@@ -128,29 +154,45 @@ jobs:
             --output="${{ matrix.out }}"
 
       - name: Sanity check
-        # この step が本 job の存在理由である。
-        # placeholder DOI や誌名が混入した PDF を preprint として公開しないための機械検査。
+        # **この step が本 job の存在理由である。**
+        # 「PDF が生成された」は「正しい PDF ができた」を意味しない (DA-P03M-10)。
         env:
           OUT: ${{ matrix.out }}
           MUST: ${{ matrix.must }}
+          PROBE: ${{ matrix.author_probe }}
         run: |
           set -eu
           pdftotext "$OUT" - > extracted.txt
+
+          # (1) JOSS テンプレートの痕跡が混入していないこと
           for bad in '10.xxxxxx' 'Journal of Open Source Software' 'Editor:' 'Reviewers:' '01 January 1970'; do
             if grep -qF "$bad" extracted.txt; then
               echo "::error::$OUT に JOSS テンプレートの痕跡が混入: $bad"
               exit 1
             fi
           done
-          # 日本語版のみ: 豆腐 (□) やフォント欠落で本文が消えていないかを実測する。
-          # **PDF が生成されたことは、読めることを意味しない** (DA-P03M-10 の教訓)。
+
+          # (2) 著者名が出ていること
+          if ! grep -qF "$PROBE" extracted.txt; then
+            echo "::error::$OUT に著者名が出ていない: $PROBE"
+            exit 1
+          fi
+
+          # (3) References が生成されていること (空の見出しだけ、を弾く)
+          if ! grep -qF 'Mudasiru' extracted.txt; then
+            echo "::error::$OUT に References が生成されていない"
+            exit 1
+          fi
+
+          # (4) 日本語版のみ: 豆腐 (□) やフォント欠落で本文が消えていないこと
           for w in $MUST; do
             if ! grep -qF "$w" extracted.txt; then
               echo "::error::$OUT に日本語が出ていない (フォント欠落の疑い): $w"
               exit 1
             fi
           done
-          echo "OK: テンプレート痕跡なし${MUST:+ / 日本語の描画を確認}"
+
+          echo "OK: テンプレート痕跡なし / 著者名あり / References あり${MUST:+ / 日本語の描画を確認}"
 
       - name: Upload PDF
         uses: actions/upload-artifact@v4
