@@ -1,0 +1,25 @@
+{
+  "experiment": "paper02-phase0-feasibility-pilot",
+  "pilot_schema_version": "paper02-phase0-pilot-1",
+  "purpose": "2 個目モデルの実行可能性のみを実測する。判定は計算しない",
+  "driver": "scripts/paper02_phase0_pilot.py",
+  "k_contexts": 8,
+  "m_draws": 6,
+  "n_draws_per_model": 96,
+  "arms": [
+    {"role": "primary", "model": "llama3.1:8b"},
+    {"role": "reference", "model": "qwen3:8b"}
+  ],
+  "collected": {
+    "primary": ["latency", "vram", "think_probe", "parse_band"],
+    "reference": ["latency", "vram", "think_probe"]
+  },
+  "not_collected": [
+    "判定 (上位 ADR §CB4.4 の 5 分岐)",
+    "T_on / T_off の対比",
+    "rho_hat / 検出力 / 置換検定 / H(zone|ctx)",
+    "per-context の内訳",
+    "zone の同一性 (どの zone が選ばれたか)",
+    "生応答"
+  ]
+}
