@@ -9,6 +9,13 @@ committed to this repository, and it asserts that zero language-model calls were
 made while replaying. (Installing the runtime dependencies first needs a package
 index, as any install does; the replay itself opens no connection at all.)
 
+**Permanent reference.** The archived snapshot of this repository is
+[`10.5281/zenodo.22718679`](https://doi.org/10.5281/zenodo.22718679) (concept DOI — always resolves to the
+latest archived version; `10.5281/zenodo.22718680` is the `v0.0.1` release
+specifically). GitHub Actions logs and the state of `main` both move; the DOI
+does not. Cite the concept DOI, and use the archived snapshot if you want the
+exact bytes a claim was made about.
+
 **What you are checking, precisely.** You are checking a **replay-verify**: the
 committed records are replayed and the re-rendered bytes are compared against
 the committed bytes, on your machine. You are *not* re-baking the bundles.
