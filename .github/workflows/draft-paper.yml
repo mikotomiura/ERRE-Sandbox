@@ -1,18 +1,28 @@
 name: Draft paper PDF
 
-# 論文 03 (joss/paper.md) を Open Journals の公式イメージで typeset し、
-# PDF を artifact として出す。**手動起動のみ** (workflow_dispatch)。
+# 論文 03 (joss/paper.md) を PDF に組む。**手動起動のみ** (workflow_dispatch)。
+#
+# **2 種類を焼き分ける。用途が違う。**
+#
+# | job | テンプレート | 用途 |
+# |---|---|---|
+# | `joss` | Open Journals 公式 (誌面装飾つき) | **JOSS へ投稿するとき**の組版確認 |
+# | `preprint` | 素の pandoc (装飾なし) | **Zenodo preprint に上げる実体** |
+#
+# なぜ分けるか (2026-09-12 の実地の失敗):
+#   `openjournals-draft-action` は JOSS の誌面テンプレートを**必ず**付ける。
+#   全ページに `DRAFT` 透かし / `DOI: 10.xxxxxx/draft` (placeholder) /
+#   `Journal of Open Source Software, ¿VOL?(¿ISSUE?), ¿PAGE?` /
+#   `Editor: Open Journals` / `Reviewers: @openjournals` /
+#   `Submitted: 01 January 1970` が入る。
+#   **JOSS 提出物としては正しいが、独立した preprint に載せると
+#   placeholder DOI と実在しない編集情報を公開物に残すことになる。**
+#   実際に 10.5281/zenodo.22719773 の初版でこれをやってしまった。
 #
 # なぜ手動のみか:
-# - この PDF は成果物ではなく「投稿前に読むための draft」であり、
-#   毎 PR で焼く必要が無い
+# - この PDF は成果物ではなく「投稿前に読むための draft」であり、毎 PR で焼く必要が無い
 # - `ci.yml` の test matrix / selection には一切触らない。CI selection の
 #   正典は `ci.yml` の test job であり (DA-CIS-1)、本 workflow はその外側にいる
-#
-# 使いどころ:
-# - Zenodo preprint に上げる PDF を作るとき
-#   (手順 = .steering/20260912-paper03-manuscript/ZENODO-PREPRINT-HANDOVER.md)
-# - JOSS へ投稿する前に組版結果を確認するとき
 
 on:
   workflow_dispatch:
@@ -21,8 +31,8 @@ permissions:
   contents: read
 
 jobs:
-  draft:
-    name: build joss/paper.pdf
+  joss:
+    name: build paper.pdf (JOSS template)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,7 +47,121 @@ jobs:
       - name: Upload PDF
         uses: actions/upload-artifact@v4
         with:
-          name: paper
+          name: paper-joss
           # 出力はソースと同じディレクトリに置かれる
           path: joss/paper.pdf
+          if-no-files-found: error
+
+  preprint:
+    name: build paper-preprint.pdf (neutral)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      # pandoc + TeX を同梱した公式イメージ。version 固定 (再現性)
+      image: pandoc/latex:3.1.11
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build neutral PDF
+        # --citeproc が joss/paper.bib から References を生成する
+        # (bibliography: paper.bib は paper.md の front matter で宣言済。
+        #  相対解決のため --resource-path で joss/ を渡す)
+        run: |
+          set -eux
+          pandoc joss/paper.md \
+            --from=markdown \
+            --citeproc \
+            --resource-path=joss \
+            --metadata link-citations=true \
+            --variable=papersize:a4 \
+            --variable=geometry:margin=2.5cm \
+            --variable=fontsize:11pt \
+            --variable=colorlinks:true \
+            --output=paper-preprint.pdf
+
+      - name: Sanity check — JOSS のテンプレート痕跡が無いこと
+        # このガードが本 job の存在理由である。placeholder DOI や誌名が
+        # 混入した PDF を preprint として公開しないための機械検査。
+        run: |
+          set -eu
+          pdftotext paper-preprint.pdf - > extracted.txt 2>/dev/null \
+            || python3 -c "print('pdftotext unavailable; skipping text extraction')" > extracted.txt
+          for bad in '10.xxxxxx' 'Journal of Open Source Software' 'Editor:' 'Reviewers:' '01 January 1970'; do
+            if grep -qF "$bad" extracted.txt; then
+              echo "::error::preprint PDF に JOSS テンプレートの痕跡が混入: $bad"
+              exit 1
+            fi
+          done
+          echo "OK: JOSS テンプレートの痕跡なし"
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-preprint
+          path: paper-preprint.pdf
+          if-no-files-found: error
+
+  preprint-ja:
+    name: build paper-preprint-ja.pdf (Japanese)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # container を使わないのは、日本語の組版に CJK フォントが要るため。
+    # pandoc/latex イメージには Noto CJK が入っていないので、runner に apt で入れる。
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pandoc + XeTeX + CJK fonts
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            pandoc texlive-xetex texlive-fonts-recommended \
+            texlive-latex-recommended texlive-latex-extra \
+            fonts-noto-cjk poppler-utils
+          fc-list :lang=ja family | head -5
+
+      - name: Build Japanese PDF
+        # xelatex + xeCJK で日本語を組む。References は英語版と同じく
+        # --citeproc が joss/paper.bib から生成する (書誌は英語のまま)。
+        run: |
+          set -eux
+          pandoc joss/paper.ja.md \
+            --from=markdown \
+            --citeproc \
+            --resource-path=joss \
+            --pdf-engine=xelatex \
+            --metadata link-citations=true \
+            --variable=papersize:a4 \
+            --variable=geometry:margin=2.5cm \
+            --variable=fontsize:11pt \
+            --variable=colorlinks:true \
+            --variable=CJKmainfont:"Noto Serif CJK JP" \
+            --variable=CJKoptions:"BoldFont=Noto Sans CJK JP Bold" \
+            --output=paper-preprint-ja.pdf
+
+      - name: Sanity check — JOSS テンプレート痕跡が無いこと + 日本語が出ていること
+        run: |
+          set -eu
+          pdftotext paper-preprint-ja.pdf - > extracted-ja.txt
+          for bad in '10.xxxxxx' 'Journal of Open Source Software' 'Editor:' 'Reviewers:' '01 January 1970'; do
+            if grep -qF "$bad" extracted-ja.txt; then
+              echo "::error::日本語 PDF に JOSS テンプレートの痕跡が混入: $bad"
+              exit 1
+            fi
+          done
+          # 豆腐 (□) やフォント欠落で日本語が消えていないかを実測する。
+          # 本文に必ず出る語で確認する。
+          for must in '二平面' '決定性' '再現' '限界'; do
+            if ! grep -qF "$must" extracted-ja.txt; then
+              echo "::error::日本語が PDF に出ていない (フォント欠落の疑い): $must"
+              exit 1
+            fi
+          done
+          echo "OK: テンプレート痕跡なし / 日本語の描画を確認"
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-preprint-ja
+          path: paper-preprint-ja.pdf
           if-no-files-found: error
