@@ -45,6 +45,11 @@
 | [32] | DOI:10.1007/978-981-97-0065-3_9 | Sun, L., Gu, H., Myers, R. & Yuan, Z. — *A New Dataset and Method for Creativity Assessment Using the Alternate Uses Task* | In: Cruz, C., Zhang, Y. & Gao, W. (eds.), *Intelligent Computers, Algorithms, and Applications* (BenchCouncil IC 2023, Revised Selected Papers), CCIS vol. 2036, pp. 125–138, Springer Singapore, 2024 | experiments/20260907-paper01-g1/notes.md; .idea/paper-01-writing-spec.md §7 (Cambridge AUT dataset の出典) | active |
 | [33] | URL:https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3375r3.html | Davidson, G. — *P3375R3: Reproducible floating-point results* | WG21 (ISO/IEC JTC1/SC22/WG21) paper P3375R3, audience SG6 / SG14 / LEWG, 2025-05-12 | paper/03-two-plane-determinism/refs.md (浮動小数の実装間差が標準化委員会レベルで既知であることの anchor) | active |
 | [34] | arXiv:2505.17716 | Feng, E., Zhou, W., Liu, Z., Chen, L., Dong, Y., Zhang, C., Zhao, Y., Du, D., Hua, Z., Xia, Y. & Chen, H. — *Get Experience from Practice: LLM Agents with Record & Replay* | arXiv:2505.17716 [cs.LG], 2025-05-23 | paper/03-two-plane-determinism/refs.md (record/replay の別系統 — 目的は経験再利用であって決定論的検証ではない) | active |
+| [35] | DOI:10.18653/v1/2020.emnlp-main.745 | Card, D., Henderson, P., Khandelwal, U., Jia, R., Mahowald, K. & Jurafsky, D. — *With Little Power Comes Great Responsibility* | Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), pp. 9263–9274, 2020 | C:\ERRE-Papers\powered-null\manuscript\refs.md (論文02、検出力議論の下敷き) | active |
+| [36] | DOI:10.1177/1948550617697177 | Lakens, D. — *Equivalence Tests: A Practical Primer for t Tests, Correlations, and Meta-Analyses* | Social Psychological and Personality Science, 8(4), 355–362, 2017 | C:\ERRE-Papers\powered-null\manuscript\refs.md (論文02、事前宣言 margin での TOST 同等性検定の標準手続き) | active |
+| [37] | arXiv:2606.11217 | Vaccaro, M. — *Preregistration for Experiments with AI Agents* | arXiv:2606.11217 [cs.CY], 2026-05-03 | C:\ERRE-Papers\powered-null\manuscript\refs.md (論文02、事前登録の枠組み) | active |
+| [38] | DOI:10.1007/s10462-025-11412-6 | Larooij, M. & Törnberg, P. — *Validation is the central challenge for generative social simulation: a critical review of LLMs in agent-based modeling* | Artificial Intelligence Review, 59(1), article 15, 2025 | C:\ERRE-Papers\powered-null\manuscript\refs.md (論文02、生成社会シミュレーション検証論の positioning) | active |
+| [39] | DOI:10.1140/epjds/s13688-026-00674-x | Tomašević, A., Cvetković, D., Major, S., Maletić, S., Anđelković, M., Vranić, A., Stupovski, B., Vudragović, D., Bogojević, A. & Mitrović Dankulov, M. — *Towards operational validation of LLM-agent social simulations: a replicated study of a Reddit-like technology forum* | EPJ Data Science, 15(1), article 72, 2026 | C:\ERRE-Papers\powered-null\manuscript\refs.md (論文02、生成社会シミュレーション検証論の positioning) | active |
 
 ## 追加・撤回ルール
 
@@ -110,3 +115,41 @@
   否定できない** — この理由で本 repo は Ocsai データを再配布していない (取得スクリプト + SHA-256 のみ
   同梱、詳細は `experiments/20260907-paper01-g1/data.md` と
   `.steering/20260907-paper01-g1-external-audit/blockers.md` B-G1-2)。
+
+- **[35] Card et al. — 2026-09-12 確認 (タスク `20260912-paper02-phase1a`)**: ACL Anthology
+  (`https://aclanthology.org/2020.emnlp-main.745/`) と Crossref API
+  (`https://api.crossref.org/works/10.18653/v1/2020.emnlp-main.745`) を実測確認 (WebFetch)。両者とも
+  著者を **Dallas Card, Peter Henderson, Urvashi Khandelwal, Robin Jia, Kyle Mahowald, Dan Jurafsky**
+  の 6 名フルネームで表記、ページ 9263–9274、EMNLP 2020 (Online) と一致。
+
+- **[36] Lakens (equivalence testing / TOST) — 2026-09-12 確認 (タスク `20260912-paper02-phase1a`)**:
+  候補として 2017 年 *Equivalence Tests: A Practical Primer* (SPPS) と 2018 年 Lakens, Scheel & Isager
+  *Equivalence Testing for Psychological Research: A Tutorial* (AMPPS) の 2 本を比較検討した。
+  本稿の用途 (t 検定・比率等の単純な効果量に対し margin を事前宣言してから TOST を実施する、という
+  最小構成の手続き) には、TOST 手続きそのものを t 検定・相関・メタ分析向けに定式化し「境界を分析前に
+  specify (事前宣言) せよ」と明記した **2017 年の Practical Primer が最も直接に対応する**ため、
+  こちらを [36] として採用した (2018 年チュートリアルは SESOI 決定法など裾野が広く、本稿の用途には
+  やや広すぎる)。Crossref API (`https://api.crossref.org/works/10.1177/1948550617697177`) を実測確認
+  (WebFetch)。著者 **Daniël Lakens** (単著)、*Social Psychological and Personality Science*, 8(4),
+  355–362, 2017。
+
+- **[37] Vaccaro — 2026-09-12 確認 (タスク `20260912-paper02-phase1a`)**: arXiv Export API
+  (`http://export.arxiv.org/api/query?id_list=2606.11217`) を実測確認 (WebFetch)。著者は **Michelle
+  Vaccaro** の単著、submission 日時は `2026-05-03T19:57:27Z`、primary category は **cs.CY**、v1 のみ
+  (updated も同時刻)。**arXiv ID の月部分 `2606` (2026年6月) と実際の submission 日付 (2026年5月3日) は
+  一致しない**が、これは arXiv API から直接取得した値であり、原典の表記のまま記載する (推測で補正しない)。
+
+- **[38] Larooij & Törnberg — 2026-09-12 確認 (タスク `20260912-paper02-phase1a`)**: Crossref API
+  (`https://api.crossref.org/works/10.1007/s10462-025-11412-6`、生 JSON を直接パースして実測確認、
+  WebFetch 経由の要約に依らない) で著者を **Maik Larooij, Petter Törnberg** (2 名、ウムラウト付き
+  `Törnberg` 含め確認) と確定。*Artificial Intelligence Review*, vol. 59, issue 1, article-number 15,
+  `published.date-parts = [2025, 11, 18]` (発行年 2025)。
+
+- **[39] Tomašević et al. — 2026-09-12 確認 (タスク `20260912-paper02-phase1a`)**: Crossref API
+  (`https://api.crossref.org/works/10.1140/epjds/s13688-026-00674-x`、生 JSON を直接パース) および
+  arXiv Export API (`http://export.arxiv.org/api/query?id_list=2508.21740`、対応プレプリント) の
+  両方で著者 10 名のダイアクリティカルマーク付き表記
+  (**Tomašević, Cvetković, Maletić, Anđelković, Vranić, Vudragović, Bogojević** 等) を相互確認した。
+  *EPJ Data Science*, vol. 15, issue 1, article-number 72, `published.date-parts = [2026, 6, 11]`
+  (発行年 2026)。WebFetch の中間要約 (小型モデル) が `Bogojević` の `é` を一度 `Bogojevic` と欠落
+  表示したため、Crossref の生 JSON を直接パースして再確認した (中間要約のみを信用しない教訓)。

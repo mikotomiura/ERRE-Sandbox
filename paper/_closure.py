@@ -44,6 +44,12 @@ ENTRIES: dict[str, tuple[str, ...]] = {
         "erre_sandbox.evidence.spdm.scenario",
         "erre_sandbox.evidence.spdm.verdict_report",
         "erre_sandbox.integration.embodied.bank_power",
+        # C-proper の verdict を産んだ scorer。data/raw/cproper-verdict.json が
+        # scorer_schema_version="ecl-cproper-scorer-1" を宣言しているのに閉包から
+        # 漏れており、中核 verdict が論文 repo 単体で再導出できなかった
+        # (2026-09-12、code-reviewer HIGH-3)。_MOVE-IN.done.md §3 の
+        # 「C-proper scorer ... 所在を特定してから移す」がこれで閉じる。
+        "erre_sandbox.integration.embodied.bank_scorer",
     ),
 }
 
