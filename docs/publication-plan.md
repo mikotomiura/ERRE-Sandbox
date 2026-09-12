@@ -21,7 +21,7 @@
 | 論文 | 投稿ステータス (2026-09-12) |
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
-| 02 powered-null | 数値は取得済・未執筆。投稿先は **未定** → §11.3 |
+| 02 powered-null | 数値は取得済・未執筆。**投稿先は 2026-09-12 に確定** = **PCI RR → Peer Community Journal** (APC ゼロ、fallback = Zenodo preprint → TMLR → JOTE)。**2 個目モデル実走は IPA 取得後**に置くと確定 → §11.3 |
 | 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,724 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
@@ -427,18 +427,113 @@ matters for your research application ... beyond a superficial code structure de
 > **preprint 先行は時間を買う手でもある。** 公開されれば外部が `REPRODUCING.md` を
 > 回す到達可能性が上がり、それが 2 つ目の解消経路そのものになる。
 
-### 11.3 論文 02 (powered-null) の投稿先 — **枠のみ。候補は未調査**
+### 11.3 論文 02 (powered-null) の投稿先 — **確定 (2026-09-12 user 裁定)**
 
-repo のどこにも 02 の投稿先が書かれていなかったので枠を作る。
-**本タスクでは候補調査をしていない** (scope 外)。分かっていることだけを置く。
+> **2026-09-12 に候補を一次情報で調査し、投稿ルートを user 裁定で確定した。**
+> 調査の全文 (出典 URL + 確認日を各行に付したもの) = `.steering/20260912-paper02-route/venue-survey.md`。
+> 確定 ADR = `.steering/20260912-paper02-route/design-final.md` (**2 個目モデル実走の事前登録を含む**)。
+> 判断根拠 = 同 `decisions.md` (DA-P02R-0〜9) / 持ち越しリスク = 同 `blockers.md` (B-P02R-1〜7)。
+> Codex (`gpt-5.5`/`xhigh`) independent review = 同 `codex-review.md` (**Verdict: Adopt-with-changes**、
+> 必須変更 5 件を ADR に全反映)。
+>
+> **前節 (§11.3 旧版) は「枠のみ・候補は未調査」だった。本節がそれを置き換える。**
 
 | 項目 | 状態 (2026-09-12) |
 |---|---|
 | 主張 | エージェント内部変調 → 下流離散選択のチャネルは、検出力を確保した設計の下で効果が検出されない |
 | 数値 | **取得済** (`experiments/20260710-m13-c-proper/` ほか)。本文未執筆 |
 | repo | `C:\ERRE-Papers\powered-null` (PUBLIC、commit `324d432`、**push 未実施**) |
-| 残 gate | 2 個目のモデルでの再現 (`project_paper_track`) |
-| 投稿先 | **未調査**。null result を正面から扱う誌を当たる必要がある。§6 の Registered Report ルート (Scientific Reports の Stage 1/Stage 2) は **02 にこそ効く** 可能性がある — 結果が null でも出版されるため |
+| 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走は IPA 取得後** |
+| **投稿先** | **PCI RR → Peer Community Journal** (両方 APC ゼロ)。fallback = Zenodo preprint → TMLR → JOTE |
+
+#### 確定ルート (ハイブリッド)
+
+```
+Phase 0  llama3.1:8b を pull → verdict-blind feasibility pilot (Level 6 を維持する設計)
+   ↓
+Phase 1  Stage 1 protocol 執筆 → PCI RR へ投稿   ← 線 = 2026-10 中旬
+   ↓       推定問題として書く (方向性仮説を立てない。criterion 1B)
+Phase 2  IPA 取得 → PCI RR が OSF へ protocol を登録
+   ↓
+Phase 3  ★ user spend 批准 → 2 個目モデル verdict 実走 (one-shot、概算 5-6h)
+   ↓
+Phase 4  Stage 2 → recommendation → Peer Community Journal が無審査受理 (APC N/A)
+
+fallback (Stage 1 が IPA 前に落ちた場合 — 公開痕跡は残らず全選択肢が残る):
+   Zenodo preprint → TMLR → (reject なら) JOTE
+```
+
+#### 一次情報の要点 (2026-09-12 取得。制度は変わるので投稿直前に再確認)
+
+| 候補 | APC | 実験前要件 / 出版保証 | 出典 |
+|---|---|---|---|
+| **PCI RR** | **無料** (「PCI RR is free to use for authors」) | **Level 制**。Level 6 = データ未取得。「will not consider studies where the authors **already know the outcomes** of the prospective (planned) analyses」(= Level 0 は対象外)。IPA は「commits PCI RR to recommending the final article **regardless of the outcomes**」 | `rr.peercommunityin.org/help/guide_for_authors` |
+| **Peer Community Journal** | **APC N/A / submission fee N/A** | PCI RR 推奨を**無審査受理**。scope「**All STEM, medicine, social sciences and humanities**」/ 最低 bias-control **Level 1** / 語数制限なし。**全 36 の PCI RR-friendly 誌のうち APC 無料は 22 誌だが、本稿の scope に入るのはこの 1 誌のみ** | `rr.peercommunityin.org/about/pci_rr_friendly_journals` |
+| **TMLR** | **無料** (「imposes **no fees or payments**」) | 受理基準 2 問のみ。「**novelty of the studied method is not a necessary criterion**」/ 非 SOTA を reject 理由にしない。**ただし出版保証なし** (結果を見てから判定) | `jmlr.org/tmlr/editorial-policies.html` / `acceptance-criteria.html` |
+| **JOTE** | **無料** (「does **not** charge any processing fees」) | 「**any academic discipline**」/ null が設立目的。RR も受けるが **pilot 由来で 2026-09 の継続は未確認**。**.docx + APA 7 + American English** が必須 | `journal.trialanderror.org/for-authors` |
+| ~~Scientific Reports~~ | **£2290/$2850/€2490** | **制約 2 違反で除外。** 日本は waiver 対象外 (低所得国のみ)。なお RR 条項は「only for studies that are **able to commence immediately**」/「published **regardless of the significance or direction** of the results」 | `nature.com/srep/open-access` / `…/journal-policies/registered-reports` |
+| ~~Experimental Results (CUP)~~ | — | **2023 年末に終刊。新規投稿を受け付けていない** | `cambridge.org/core/journals/experimental-results` |
+| ~~Meta-Psychology~~ | 無料 | scope が「metascience that advances **psychology** as a science」= 本稿は心理学でない。APC ゼロだけで拾うと scope 違反の desk reject | 同 friendly journals 一覧 |
+
+#### ★ 締切 (Stage 1 の submission window)
+
+**PCI RR は年 2 回、受付を完全停止する**: 「two periods each year in which we are closed to
+all submissions: **1 December through mid January, and early July through late August**」。
+標準 track の初回審査は **~4-8 週**。
+→ **実質の線 = 2026-10 中旬。** 間に合わない場合は **待って 2027-01 に出す**
+(user 裁定 DA-P02R-8。**焦って protocol の質を落とさない**。論文 03 が 2026-11-30 まで
+構造的に待ちなのでカレンダーは衝突しない)。
+
+#### ★ なぜ実走より先にルートを決めたのか (機序を正確に記録する)
+
+「実走すると RR が恒久的に潰れる」は**本件では正しいが、理由は「RR は事前登録だから」ではない**。
+一次情報では潰れ方に **2 段**ある (DA-P02R-2):
+
+1. **走らせただけ** → Level 6 から **Level 3/2/1 へ降格**。RR は**まだ出せる**
+   (Peer Community Journal の最低は Level 1 なので、この誌に限れば残る)
+2. **結論を知ってしまった** → **Level 0 = 対象外。ここで初めて恒久的に消える**
+
+本稿の 2 個目モデル実走は**走らせれば verdict が即座に確定する**ので 1 と 2 が同時に起きる。
+
+#### ★ 起点の二択は偽の二分法だった (DA-P02R-3)
+
+「RR 先行」と「実走してから通常投稿」の 2 択に対し、一次情報が**第三経路を明文で用意している**:
+
+> §2.7「... **or to demonstrate the feasibility of their proposed methods**」
+> §2.6 末尾「these levels apply **only** to data that form the focus of the prospective
+> (planned) analyses ... and **do not apply to any completed preliminary studies or pilot data**」
+
+→ **verdict を計算しない feasibility pilot は Level 6 を維持したまま実行できる** (Phase 0)。
+**ただし「Level 6 preserved (保証)」とは書かない** — 2 条項の組み合わせによる
+defensible な読みであって明文の保証ではない (Codex 必須変更 C1)。
+
+#### ★ 既存の C-proper 実走が Stage 1 の資産になる
+
+§2.6 末尾より、**既に観測済みの C-proper データは Level 判定の対象外**であり、
+§2.7 の「予備研究」としてそのまま Stage 1 に載る。
+
+| Stage 1 の部品 | 本稿が既に持っているもの | PCI RR の基準 |
+|---|---|---|
+| 予備研究 (研究問いの確立・効果量推定・実行可能性の実証) | **C-proper 実走** (4800 draws / 2h44m / 封印済) | §2.7 |
+| **outcome-neutral 条件 / positive control** | **ES-3 の zone-function control `D_loco = 7.40e-17`** (estimand が 0 を取りうることの実証) + **ablation bit-equality `max\|Δ\| = 0.0`** | **criterion 1E (必須)** |
+| 検出力解析 | power worksheet (near-uniform `[0.2]×5` で power=1.0 / collapse demo で ≈0.18) | criterion 1C |
+| 効果の不在を測る手続き | 事前宣言 margin `delta_tv_min = 0.10` + 層別置換検定 | §2.3 (equivalence testing を明示的に推奨) |
+
+**この資産が評価軸に正面から入るのは RR 側だけである。** TMLR の受理 2 問には対応項目がない。
+→ これが RR 先行を選んだ 3 番目の根拠 (DA-P02R-1)。
+
+#### ⚠ 残っているリスク (消えていない)
+
+- **B-P02R-1 独立研究者への強化スクリーニング (緩和不能)**: 「PCI RR **may apply enhanced
+  initial screening to submissions from independent researchers**」「reserves the right to
+  **decline such submissions without detailed assessment**」。著者は日本在住・無所属・単著で
+  条項本文に当てはまる。**ただし §2.8 より IPA 前の decline は公開痕跡を残さず、損失は時間のみ**
+- **B-P02R-2 IPA 後の撤回は恒久的な公開痕跡**: §2.12「publicly record each withdrawal by
+  **marking the Stage 1 recommendation as "withdrawn"**」+ embargo 解除。
+  → Phase 0 でリスクを下げ、`design-final.md` §3.4 のチェックリストを Stage 1 投稿前に全通過させる
+- **B-P02R-5 族 ⊥ think regime を分離できない**: 16 GB 内で「族を変える」と「think 相を保つ」が
+  同時に満たせない (`deepseek-r1:8b` は Qwen distill)。**事前宣言 limitation として受ける。**
+  論文に書いてよいのは「**非 Qwen の native non-thinking regime でも同じ結論か**」まで
 
 ### 11.4 次に潰すべき未確認事項
 
@@ -448,3 +543,17 @@ repo のどこにも 02 の投稿先が書かれていなかったので枠を�
 - arXiv の endorser 候補の当て (無所属単著の最大のボトルネック)
 - Zenodo の release 連携は **連携を有効にした後の release しか拾わない**ため、
   tag を切る前に repository を enable する順序を守ること (§G2 手順書)
+
+**論文 02 側 (2026-09-12 追加。詳細 = `.steering/20260912-paper02-route/design-final.md` §5)**
+
+- **PCI RR が CS/AI 分野の RR を recommend した実績件数** (U-1)。方針上は「full spectrum of
+  STEM」だが、recommender の分野的な手当てがあるかは未調査。**Stage 1 投稿前に
+  既 recommend 一覧を分野で数えると screening risk が見積もれる**
+- **PCI RR の独立研究者強化スクリーニングの運用実態** (U-2)。明文はあるが desk decline の
+  頻度は外から観測できない。**緩和不能リスクとして受ける** (損失は時間のみ、IPA 前に限る)
+- **JOTE の RR が 2026-09 時点で継続しているか** (U-3)。fallback では JOTE を**通常投稿**で
+  使うので判断には影響しないが、RR として使う場合は編集部へ照会
+- **`llama3.1:8b` の digest / peak VRAM / per-draw latency / zone annotation の parse 成立** (U-4)
+  → **Phase 0 で実測する**
+- **ollama の版ドリフト** (C-proper の env pin は 0.31.1、機体は 2026-09-12 実測で 0.32.12)。
+  → control アーム (`qwen3:8b` 再走) と **R5 一致検査**で吸収する設計にした
