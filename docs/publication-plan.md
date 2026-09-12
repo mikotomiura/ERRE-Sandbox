@@ -349,9 +349,14 @@ matters for your research application ... beyond a superficial code structure de
 
 ### 11.2 APC ゼロで成立する ladder (制約 2 を満たす最低 1 本)
 
+> **① は 2026-09-12 に完了した。** release `v0.0.1` (`main` = `555126b`) を Zenodo が拾い、
+> **Concept DOI = `10.5281/zenodo.22718679`** / version DOI = `10.5281/zenodo.22718680` が発行済。
+> `.zenodo.json` の著者メタデータ (Miura, Mikoto / Independent Researcher /
+> ORCID 0009-0000-4196-0508 / Apache-2.0) もそのまま載った。**G2 = 達成。**
+
 ```
 ① Zenodo          GitHub release → DOI 発行       無料 / endorsement 不要 / 所属不要
-       ↓  (これで artifact が永続参照可能になる = G2)
+       ↓  (これで artifact が永続参照可能になる = G2) ✅ 2026-09-12 完了
 ② preprint        arXiv (cs.SE / cs.MA)           無料。ただし endorsement が要る (制約 3)
                   └ 詰まったら Zenodo に preprint  無料 / endorsement 不要
        ↓

@@ -18,8 +18,9 @@ authors:
 version: "0.0.1"
 license: "Apache-2.0 OR MIT"
 repository-code: "https://github.com/mikotomiura/ERRE-Sandbox"
-# doi:                            # Zenodo が release から DOI を発行した時点で記入する
-#                                 # (発行前に書けない値なので空欄のままにしてある)
+# Concept DOI: 全 version を指す永続識別子。論文・第三者が引くのはこちら
+# (version 固有の DOI は 10.5281/zenodo.22718680 = v0.0.1)
+doi: "10.5281/zenodo.22718679"
 keywords:
   - LLM agents
   - multi-agent simulation
