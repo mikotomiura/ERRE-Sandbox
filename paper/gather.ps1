@@ -35,7 +35,7 @@ $PaperRoot = Join-Path $RepoRoot 'paper'
 # paper/NN の作業名 -> 移送先 repo 名 (move-out.ps1 の $Map と一致させること)
 $MovedMap = @{
     '01-scorer-circularity'    = 'anchor-recognition-not-novelty'
-    '02-powered-null'          = 'powered-null'
+    '02-collapsed-decision-space'          = 'collapsed-decision-space'
     '03-two-plane-determinism' = 'erre-paper-03-two-plane-determinism'
 }
 
@@ -160,17 +160,17 @@ foreach ($f in @('generations.jsonl', 'judgements.jsonl', 'scores.jsonl', 'phase
 }
 
 Write-Host "`n=== 02 powered null ===" -ForegroundColor Cyan
-Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/verdict.json'           '02-powered-null/data/raw/cproper-verdict.json' '本稿の中核。NO_CHANNEL_CONFORMANCE / tv_bar=0.038065'
-Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/manifest.json'          '02-powered-null/data/raw/cproper-manifest.json' 'run の来歴'
-Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/bank_annotation.jsonl'  '02-powered-null/data/raw/bank_annotation.jsonl' '注釈付き bank (682 KB)'
-Copy-Artifact 'experiments/20260629-m13-es3-locomotion/data/raw/verdict-forensic.json' '02-powered-null/data/raw/es3-verdict-forensic.json' 'ES-3 の機械可読 verdict (D_loco=0.0468)。原本は .steering/ (追跡外) にあり、2026-09-11 に experiments/ へ byte 無改変で退避した (B-P03-5 / DA-CIS-4)'
+Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/verdict.json'           '02-collapsed-decision-space/data/raw/cproper-verdict.json' '本稿の中核。NO_CHANNEL_CONFORMANCE / tv_bar=0.038065'
+Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/manifest.json'          '02-collapsed-decision-space/data/raw/cproper-manifest.json' 'run の来歴'
+Copy-Artifact 'experiments/20260710-m13-c-proper/artifacts/bank_annotation.jsonl'  '02-collapsed-decision-space/data/raw/bank_annotation.jsonl' '注釈付き bank (682 KB)'
+Copy-Artifact 'experiments/20260629-m13-es3-locomotion/data/raw/verdict-forensic.json' '02-collapsed-decision-space/data/raw/es3-verdict-forensic.json' 'ES-3 の機械可読 verdict (D_loco=0.0468)。原本は .steering/ (追跡外) にあり、2026-09-11 に experiments/ へ byte 無改変で退避した (B-P03-5 / DA-CIS-4)'
 # 2026-09-13: `analysis/scripts/bank_power.py` への単体コピーは廃止した。Phase 1b (`8eb4db0`) で
 # apparatus を推移閉包ごと `analysis/apparatus/erre_sandbox/...` へ出す方式に変えたとき、宛先を
 # 意図的に削除している。行だけが残って -Verify が MISSING を出し続けていた (Phase 2 で除去)。
 # bank_power.py / bank_scorer.py はどちらも下の閉包コピーが拾い、-Verify で MATCH する。
 
 Write-Host "`n=== 共通 (01 / 02) ===" -ForegroundColor Cyan
-foreach ($p in @('01-scorer-circularity', '02-powered-null')) {
+foreach ($p in @('01-scorer-circularity', '02-collapsed-decision-space')) {
     Copy-Artifact 'LICENSE'        "$p/LICENSE"          'Apache-2.0'
     Copy-Artifact 'LICENSE-MIT'    "$p/LICENSE-MIT"      'MIT (Apache-2.0 OR MIT)'
     Copy-Artifact 'uv.lock'        "$p/env/uv.lock"      '本体からコピー。依存を削ったら lock を打ち直す'
@@ -188,7 +188,7 @@ foreach ($p in @('01-scorer-circularity', '02-powered-null')) {
 # こうするとコピーは **原本と byte 一致のまま**なので provenance も -Verify も壊れない。
 # 実行側は PYTHONPATH=analysis/apparatus を通すだけでよい。
 Write-Host "`n=== apparatus 閉包 (01 / 02) ===" -ForegroundColor Cyan
-foreach ($pair in @(@('01', '01-scorer-circularity'), @('02', '02-powered-null'))) {
+foreach ($pair in @(@('01', '01-scorer-circularity'), @('02', '02-collapsed-decision-space'))) {
     $num = $pair[0]; $paperDir = $pair[1]
     $listing = & python (Join-Path $PaperRoot '_closure.py') $num
     if ($LASTEXITCODE -ne 0) {

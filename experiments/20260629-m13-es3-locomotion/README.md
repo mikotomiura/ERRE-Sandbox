@@ -16,7 +16,7 @@
 
 ## なぜ退避したか
 
-`D_loco = 0.0468` は **論文 02 (`02-powered-null`) が引用する唯一の実測値**でありながら、
+`D_loco = 0.0468` は **論文 02 (`02-collapsed-decision-space`) が引用する唯一の実測値**でありながら、
 原本が `.steering/20260629-m13-es3-impl/verdict-forensic.json` にあり、
 `.gitignore:6` (`.steering/`) の配下で**この作業機にしか存在しなかった**。
 `docs/publication-plan.md` §10 が「これは同期の問題ではなく **backup の問題**」として
@@ -65,5 +65,5 @@
   (user 裁定の対象が JSON 1 ファイルだったため)。追跡下へ移すかは別途判断する
 - **実装 PR**: #34
 - **本文での参照**: `docs/research-positioning.md` (H3 連鎖) / `docs/arasuji.md` ②
-- **論文側の移送先**: `paper/gather.ps1` が `02-powered-null/data/raw/es3-verdict-forensic.json`
+- **論文側の移送先**: `paper/gather.ps1` が `02-collapsed-decision-space/data/raw/es3-verdict-forensic.json`
   へコピーする。SHA-256 の突合は `pwsh paper/gather.ps1 -Verify`
