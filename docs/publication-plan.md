@@ -21,7 +21,7 @@
 | 論文 | 投稿ステータス (2026-09-13) |
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
-| 02 powered-null | **Stage 1 を PCI RR へ投稿完了** (2026-09-13)。投稿先 = **PCI RR → Peer Community Journal** (APC ゼロ、fallback = Zenodo preprint → TMLR → JOTE)。**2 個目モデル実走は IPA 取得後** → §11.3 |
+| 02 powered-null | **PCI RR が desk reject** (2026-09-13、投稿当日・外部査読なし・理由の特定なし)。~~PCI RR → Peer Community Journal~~ は**閉じた**。→ **fallback 発動 = Zenodo 自前封印 → llama3.1 実走 → TMLR** (`DA-P2-22`、user 裁定)。**実走のゲートは「IPA 取得後」から「Zenodo 封印後」へ置き直す** → §11.3 |
 | 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,724 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
@@ -446,11 +446,11 @@ matters for your research application ... beyond a superficial code structure de
 | repo | <https://github.com/mikotomiura/powered-null> (PUBLIC、**push 済**。初回 push = commit `8eb4db0`、107 files) |
 | 再現 | `bash repro.sh` が 9 ステップ exit 0。両 OS の公開 CI が強制。中核 verdict は同梱データから**再計算**して記録と一致 |
 | 提出物 | **提出 PDF (24 ページ) を repo に固定**し、tag `stage1-submitted` (commit `29fda67`) から URL で渡す。`https://github.com/mikotomiura/powered-null/raw/stage1-submitted/manuscript/powered-null-stage1.pdf` が HTTP 200 で手元 PDF と **byte 一致**することを実測 (2026-09-13) |
-| **投稿** | **2026-09-13 に PCI RR へ Stage 1 を投稿完了** (standard track、**#3384**)。同日 12:53 に受領確認メールを受信し、**件名のタイトルが凍結タイトルと一致**することを確認。現在は **Managing Board による preliminary evaluation** (= §2.1 末尾の独立研究者強化スクリーニングが適用される段階)。以後 recommender 割当 → 査読 (~4-8 週) → 著者応答 → IPA |
+| **投稿 → desk reject** | 2026-09-13 に PCI RR へ Stage 1 を投稿 (#3384) → **同日、Managing Board が外部査読なしで reject**。理由は定型文で、§2.1 末尾の独立研究者強化スクリーニング条項が挙げる 6 項目のうち**どれに当たったかは示されていない**。**推定して改稿しない** (→ `B-P2-11`)。**公開痕跡は残らず、prospective draw は 1 つも取っていないので全選択肢が残る** |
 | 投稿フォーム | **全 3 画面を実読して埋めた** (Phase 2b)。①18 欄 ②**25 項目の質問票** ③recommender 提案。**添付欄もデータ・コード URL 欄も無く**、原稿は URL 1 本で渡す。②で **OSF アカウントが必須**だった (未知の要件。user 保有済で解消) |
 | 主な申告 | bias-control **Level 6** / Study Design Template = **量的仮説検証を含む側**で申告 (`DA-P2-20`) / OSF 登録は**即時公開** / 査読は**署名・匿名の両方**を受ける (PCJ は署名を要求しないことを実測) / interested 誌への通知 = YES / Stage 1 査読は **IPA 時点で公開** / Stage 2 まで **6 か月** / 開始日 `2027-02-01` かつ **flexible** (IPA 前に収集しないので Level 6 を維持) |
 | recommender 提案 | **Daniel Lakens / Marjan Bakker / Michèle Nuijten**。実名簿 189 名を走査し、各人の Areas of expertise を実読して選定 (推測で名前を書いていない)。3 名ともメタ科学・統計側 = **本稿で判断が難しいのは LLM 実装でなく「効果不在 vs 低検出力」の分離**だから |
-| 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走は IPA 取得後**。投稿は完了しており、**次に動くのは PCI RR 側** |
+| 残 gate | 2 個目のモデルでの再現 → **`llama3.1:8b` に固定** (DA-P02R-5)。**実走のゲートは PCI RR の IPA だったが、desk reject でその経路が消えた。新しい境界 = Zenodo の自前封印** (`DA-P2-22`)。封印の中身と順序の証明方法は**未設計** — 次タスクで Plan mode + `/reimagine` + Codex |
 | **投稿先** | **PCI RR → Peer Community Journal** (両方 APC ゼロ)。fallback = Zenodo preprint → TMLR → JOTE |
 
 #### 確定ルート (ハイブリッド)
@@ -462,7 +462,9 @@ Phase 1  Stage 1 protocol 執筆 → PCI RR へ投稿   ← 線 = 2026-10 中旬
    ↓       Phase 0 ✅ (PR #107) / Phase 1a ✅ (PR #108) / Phase 1b ✅ (本文 + 初回 push、2026-09-13)
    ↓       Phase 2 ✅ (投稿文面 4 件 + 本文の PCI RR 要件充足、2026-09-13)
    ↓       Phase 2b ✅ (フォーム実読に合わせて文面確定 + 裁定 3 件、2026-09-13)
-   ↓       **投稿完了 ✅ 2026-09-13。以後は PCI RR 側の進行待ち**
+   ↓       **投稿 2026-09-13 → 同日 desk reject。この経路は閉じた (B-P2-11)**
+   ↓       → fallback へ: 事前登録を自前封印 (Zenodo) → TMLR → JOTE
+   ↓       → ただし DA-P02R-5「実走は IPA 取得後」のゲートを置き直す必要がある (user 裁定)
    ↓       推定問題として書く (方向性仮説を立てない。criterion 1B)
 Phase 2  IPA 取得 → PCI RR が OSF へ protocol を登録
    ↓
