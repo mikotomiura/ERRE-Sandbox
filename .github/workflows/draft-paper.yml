@@ -192,7 +192,27 @@ jobs:
             fi
           done
 
-          echo "OK: テンプレート痕跡なし / 著者名あり / References あり${MUST:+ / 日本語の描画を確認}"
+          # (5) AI usage disclosure の commit 統計が **焼いた後も** 生きていること。
+          # 本文側の照合は `.steering/.../claim-check-commits.py` が見ているが、
+          # それは source を見るだけで、**組版で落ちた・壊れたことは見えない**
+          # (memory `feedback_pdf_build_silent_content_loss`)。
+          # ここは pin と両数値が PDF のテキストに残っているかだけを見る。
+          for w in 'dcbc50a' '193' '266'; do
+            if ! grep -qF "$w" extracted.txt; then
+              echo "::error::$OUT に AI disclosure の commit 統計が出ていない: $w"
+              exit 1
+            fi
+          done
+          # 撤回済みの値が復活していないこと (初版 = 254 of the 293。再現不能だった)。
+          # 2026-09-13 時点で `254` は本文にも paper.bib にも 1 件も無いので、
+          # 裸の数値で見てよい。将来、頁番号などで正当な 254 が入ったら
+          # **この検査を消すのではなく、文脈つきの判定に書き換える**こと。
+          if grep -qE '(^|[^0-9])254([^0-9]|$)' extracted.txt; then
+            echo "::error::$OUT に撤回済みの commit 統計 254 が出ている (正当な 254 なら本検査を書き換える)"
+            exit 1
+          fi
+
+          echo "OK: テンプレート痕跡なし / 著者名あり / References あり / commit 統計あり${MUST:+ / 日本語の描画を確認}"
 
       - name: Upload PDF
         uses: actions/upload-artifact@v4

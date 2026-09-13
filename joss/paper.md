@@ -171,14 +171,16 @@ the Linux runner, which are both LF.
 # AI usage disclosure
 
 This project was developed with substantial AI assistance, disclosed here in full. Claude
-(Anthropic; Opus, Sonnet and Haiku models, via Claude Code) was used for implementation,
-refactoring, test scaffolding, documentation, and drafting of this paper's text; OpenAI Codex
-(`gpt-5.5`) was used for independent design and code review. Assistance is visible in the
-public record rather than asserted here: 254 of the 293 public commits carry `Co-Authored-By`
-trailers naming the model used (measured 2026-09-12).
+(Anthropic, via Claude Code) was used for implementation, refactoring, test scaffolding,
+documentation, and drafting this paper's text; OpenAI Codex (`gpt-5.5`) was used for
+independent design and code review. Assistance is visible in the public record rather than
+asserted here: 193 of the 293 public commits at `dcbc50a` carry `Co-Authored-By` trailers
+naming Opus 4.8, Opus 5 or Sonnet 5. Commits are counted case-insensitively, not the 266
+trailer lines they contain, since one commit may carry several. Haiku was used too, for
+subagent work that authors no commit.
 
 All AI-assisted output was reviewed, edited and validated by the human author, who made the
-core design decisions — including the two-plane separation, the canonicalisation rules and
+core design decisions, including the two-plane separation, the canonicalisation rules and
 quantum, the scope of every claim in this paper, and the venue and title of this submission.
 Validation is not self-reported: the replay-verify claims are enforced by repository tests and
 public CI, and the guards were themselves checked by mutation. The Windows bake provenance

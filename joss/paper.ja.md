@@ -178,12 +178,15 @@ pin されたハッシュが変わったためである——**著者機と Linu
 # AI 利用の開示 (AI usage disclosure)
 
 本プロジェクトは**相当量の AI 支援のもとで開発されており、ここに全面的に開示する。**
-Claude（Anthropic。Claude Code 経由で Opus / Sonnet / Haiku の各モデル）を実装・
-リファクタリング・テストの足場・文書化、および**本稿本文の起草**に用いた。
+Claude（Anthropic。Claude Code 経由）を実装・リファクタリング・テストの足場・文書化、
+および**本稿本文の起草**に用いた。
 OpenAI Codex（`gpt-5.5`）を独立した設計・コードレビューに用いた。
 支援の事実はここでの主張ではなく**公開記録に現れている**——
-公開 293 commit のうち 254 件が、使用モデル名を記した `Co-Authored-By` trailer を持つ
-（2026-09-12 実測）。
+`dcbc50a` 時点の公開 293 commit のうち **193 件**が、使用モデル名
+（Opus 4.8 / Opus 5 / Sonnet 5）を記した `Co-Authored-By` trailer を持つ。
+**数えているのは trailer 行ではなく commit である**（大小文字は区別しない）。
+1 commit が複数の trailer を持ちうるため、この 193 commit が含む trailer 行は 266 行ある。
+Haiku も用いているが、それは commit を著者しない subagent 実行であり、trailer には現れない。
 
 **AI 支援による出力はすべて人間の著者がレビュー・編集・検証し、中核的な設計判断は人間が下した**
 ——二平面分離、正準化の規則と量子幅、本稿の全主張の射程、そして投稿先とタイトルを含む。
