@@ -22,7 +22,7 @@
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
 | 02 powered-null | **PCI RR が desk reject** (2026-09-13、投稿当日・外部査読なし・理由の特定なし)。~~PCI RR → Peer Community Journal~~ は**閉じた**。→ **fallback 発動 = Zenodo 自前封印 → llama3.1 実走 → TMLR** (`DA-P2-22`、user 裁定)。**実走のゲートは「IPA 取得後」から「Zenodo 封印後」へ置き直す** → §11.3 |
-| 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,724 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
+| 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,749 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
 
@@ -374,7 +374,7 @@ matters for your research application ... beyond a superficial code structure de
 > ORCID 0009-0000-4196-0508 / Apache-2.0) もそのまま載った。**G2 = 達成。**
 >
 > **③ の投稿先が JOSS に確定した** (2026-09-12 user 裁定、DA-P03M-1)。
-> 本文初稿は `joss/paper.md` + `joss/paper.bib` (**追跡下**、1,724 words)。
+> 本文初稿は `joss/paper.md` + `joss/paper.bib` (**追跡下**、1,749 words)。
 > **JOSS は `paper.md` を software と同じ repo に置くことを要求する**ので、
 > ladder ③ の提出物は既に repo 内にある。
 >
@@ -413,14 +413,27 @@ matters for your research application ... beyond a superficial code structure de
 ### 2026-09-12 に確定した実行順 (DA-P03M-6)
 
 1. **② Zenodo preprint を先に出す** — ✅ **2026-09-12 完了**。
-   **Concept DOI = `10.5281/zenodo.22719772`** (version DOI `…73` /
-   [record](https://zenodo.org/record/22719773))。`paper.pdf` + `paper.md` + `paper.bib` を収録、
+   **Concept DOI = `10.5281/zenodo.22719772`** (**現行 version DOI = `10.5281/zenodo.22733449`**、
+   2026-09-13 の訂正版。初版は `…73`)。`paper.pdf` + `paper.md` + `paper.bib` を収録、
    licence CC BY 4.0、ソフト DOI へ `isSupplementTo` で紐付け済。
    ⚠ **ソフトの DOI (`…2271867x`) と preprint の DOI (`…2271977x`) は別系統。取り違えない。**
    手順書 = `.steering/20260912-paper03-manuscript/ZENODO-PREPRINT-HANDOVER.md`。
    PDF は `.github/workflows/draft-paper.yml` (**手動起動のみ**) が
    Open Journals 公式イメージで JOSS 組版して artifact に出す
-   (この機体には pandoc / docker / quarto がいずれも無い — 2026-09-12 実測)
+   (この機体には pandoc / docker / quarto がいずれも無い — 2026-09-12 実測)。
+   ⚠ **2026-09-13 に AI usage disclosure の commit 統計を訂正し、v4 を公開した。**
+   初版の「254 of the 293 public commits」は**どの数え方でも再現できず**、
+   `dcbc50a` 時点の実測は **commit 193 / trailer 行 266**、
+   trailer に現れるモデルは **Opus 4.8 / Opus 5 / Sonnet 5** (Haiku は 0 件) だった。
+   本文を実測値 + 数え方 + pin の 3 点が揃った形に直し、
+   commit 統計を機械照合の射程に入れた (`claim-check-commits.py`、変異 12 件で射程を実測)。
+   **訂正版 = version DOI `10.5281/zenodo.22733449`** ([record](https://zenodo.org/records/22733449)、
+   2026-09-13)。**concept DOI `10.5281/zenodo.22719772` は不変なので引用は壊れない。**
+   **旧版 (…73 / …859 / …1622) は消せないので残る** — 訂正の経緯は新版の notes 欄に書いた。
+   公開後に**ファイルを取り直してバイト比較**し、検証済 PDF と一致することを実測した
+   (sha256 `8f642b9d…`、50,224 bytes)。
+   記録 = `.steering/20260913-paper03-ai-disclosure/`、
+   手順書 = `.steering/20260912-paper03-manuscript/CORRECTION-AI-DISCLOSURE.md`。
 2. **③ JOSS は 2026-11-30 頃以降** (公開 6 か月条項をクリアしてから)
 3. その間に **Collaborative effort の証跡を作る** (B-P03M-6。**待っても解消しない方**)
 
