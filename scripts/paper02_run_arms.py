@@ -17,7 +17,8 @@ default に封印値を置くと検査は構造的に恒真になる。したが
 * ``model_digest`` は ``GET /api/tags`` の当該 digest
 * ``think`` は apparatus が実際に渡した値 (spy で観測。定数を再掲しない)
 * ``m_draws`` / ``k_contexts`` / ``context_ids`` は産出物・消費物から数える
-* ``bank_checksum`` は **消費した凍結 bank の bytes** から再計算
+* ``bank_checksum`` は **消費した凍結 bank を正規形へ直列化した上で** 再計算
+  (ファイル bytes の sha256 ではない — 正規形なので CRLF に影響されない)
 * ``sealed_manifest_sha256`` は ``seal/SEAL-MANIFEST.json`` から
   **同ファイルが申告する canonicalisation で** 再計算
 
@@ -111,6 +112,59 @@ RUN_MANIFEST_VERSION: Final[str] = "paper02-run-1"
 _RESOLVED_FROM_TAG: Final[str] = "pre_bias_direct_parse"
 _ARMS: Final[tuple[str, ...]] = ("control", "primary")
 
+#: 2.5 時間の連続実行で 1 度でも超えれば全損する。既定の 60 秒では短い
+#: (モデル再ロード / GPU の取り合いで実測 60 秒を超えうる)。
+_CHAT_TIMEOUT_SECONDS: Final[float] = 300.0
+
+#: 観測 API は短くてよいが、httpx 既定の 5 秒よりは緩める。
+_OBSERVE_TIMEOUT_SECONDS: Final[float] = 30.0
+
+#: transport 失敗の有界 retry 回数 (1 回の draw あたり)。
+_TRANSPORT_RETRIES: Final[int] = 3
+_TRANSPORT_RETRY_BACKOFF_S: Final[float] = 5.0
+
+#: ``OllamaUnavailableError`` は単一型で、理由が文字列に入る。**transport 失敗
+#: だけ**を retry する。内容の失敗 (non-JSON / parse 失敗) を retry すると、
+#: 見た応答を捨てて引き直すことになり estimand が汚れる — transport 失敗は
+#: 「要求が答えられなかった」であって応答の選択ではない。
+_RETRIABLE_REASONS: Final[tuple[str, ...]] = (
+    "timeout",
+    "unreachable",
+    "HTTP 502",
+    "HTTP 503",
+    "HTTP 504",
+)
+
+#: ``verify`` の終了コード。**2 を 0 にしない** — 封印検査に落ちた bundle が
+#: exit 0 を返すと、緑が「前向き結果である」と読まれる (Codex/code-reviewer H4)。
+VERIFY_OK: Final[int] = 0
+VERIFY_FAIL: Final[int] = 1
+VERIFY_SUB_SEALED: Final[int] = 2
+
+_SEAL_OK: Final[str] = "ok"
+_SEAL_FAILED: Final[str] = "failed"
+_SEAL_NOT_RUN: Final[str] = "not_run"
+
+
+class CaptureAbortedError(RuntimeError):
+    """実走後のガードで停止する。**生データを道連れにしないための例外**。
+
+    版ドリフト / セル不揃い / context 不一致は、成果物を書く前に停止すべきである。
+    しかし素朴に ``SystemExit`` すると **2.5 時間分の raw が診断材料ごと消える**
+    (code-reviewer H2)。records を携えて上げ、呼び出し側が隔離保存してから
+    非ゼロ終了する。
+    """
+
+    def __init__(self, reason: str, records: Sequence[BankLlmCallRecord]) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.records = tuple(records)
+
+
+def _is_retriable(exc: Exception) -> bool:
+    message = str(exc)
+    return any(reason in message for reason in _RETRIABLE_REASONS)
+
 
 # --------------------------------------------------------------------------- #
 # 封印の読み出し — 値は封印ファイルの bytes から。literal を持たない
@@ -169,34 +223,78 @@ class OllamaObservation:
 
     version: str
     digests: dict[str, str]
+    #: ``/api/ps`` が返した常駐モデル名。封印の照合対象ではない (VRAM 運用の材料)。
+    resident: tuple[str, ...] = ()
 
 
 async def observe_ollama(
     endpoint: str, *, client: httpx.AsyncClient | None = None
 ) -> OllamaObservation:
-    """``/api/version`` と ``/api/tags`` を読む。
+    """``/api/version`` / ``/api/tags`` / ``/api/ps`` を読む。
 
     ``model_digest`` を CLI 引数で受けないのがこの関数の存在理由である。引数は
     著者の申告であり、封印との一致はそのとき「著者が正しく打った」ことしか
     示さない。
+
+    ``/api/ps`` は封印の照合対象ではないが、**常駐しているモデル**を記録する
+    (code-reviewer M3/M4)。2 アームを続けて走らせると keep_alive の既定 5 分で
+    両モデルが常駐し、16 GB では合計 12 GB 超になる。
     """
     owned = client is None
-    http = client if client is not None else httpx.AsyncClient(base_url=endpoint)
+    http = (
+        client
+        if client is not None
+        else httpx.AsyncClient(base_url=endpoint, timeout=_OBSERVE_TIMEOUT_SECONDS)
+    )
     try:
         version_resp = await http.get("/api/version")
         version_resp.raise_for_status()
-        version = str(version_resp.json().get("version", "unknown"))
+        version = str(
+            _json_object(version_resp, "/api/version").get("version", "unknown")
+        )
 
         tags_resp = await http.get("/api/tags")
         tags_resp.raise_for_status()
-        digests = {
-            str(model["name"]): str(model["digest"])
-            for model in tags_resp.json().get("models", [])
-        }
+        digests: dict[str, str] = {}
+        for model in _json_object(tags_resp, "/api/tags").get("models", []):
+            if (
+                not isinstance(model, dict)
+                or "name" not in model
+                or "digest" not in model
+            ):
+                msg = f"[paper02] /api/tags の応答に name/digest が無い: {model!r}"
+                raise SystemExit(msg)
+            digests[str(model["name"])] = str(model["digest"])
+
+        resident: list[str] = []
+        try:
+            ps_resp = await http.get("/api/ps")
+            ps_resp.raise_for_status()
+        except httpx.HTTPError:
+            resident = ["unobserved"]
+        else:
+            resident = [
+                str(m.get("name", "?"))
+                for m in _json_object(ps_resp, "/api/ps").get("models", [])
+                if isinstance(m, dict)
+            ]
     finally:
         if owned:
             await http.aclose()
-    return OllamaObservation(version=version, digests=digests)
+    return OllamaObservation(version=version, digests=digests, resident=tuple(resident))
+
+
+def _json_object(response: httpx.Response, what: str) -> dict[str, Any]:
+    """応答を dict として読む。壊れていたら traceback でなく明示的に停止する。"""
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        msg = f"[paper02] {what} の応答が JSON でない: {exc}"
+        raise SystemExit(msg) from exc
+    if not isinstance(payload, dict):
+        msg = f"[paper02] {what} の応答が JSON object でない: {type(payload).__name__}"
+        raise SystemExit(msg)
+    return payload
 
 
 def observe_uv_lock_sha256(lock_path: Path) -> str:
@@ -519,6 +617,19 @@ def preflight_problems(
         )
     compare("context_ids", bank.context_ids, sealed_ids)
 
+    # VRAM: 2 アームを続けて走らせると keep_alive の既定 5 分で両モデルが常駐し、
+    # 16 GB では合計 12 GB 超になる (pilot 実測 6.0 + 6.4 GB)。CPU offload へ劣化
+    # すると所要時間が倍増しうる (code-reviewer M4)。封印の照合対象ではないので
+    # **停止させず警告に留める** — 判断は運用側にある。
+    other_resident = [name for name in observed.resident if name != model]
+    if other_resident:
+        print(
+            f"[preflight] ⚠ 別のモデルが常駐している: {other_resident}。"
+            "16 GB では 2 モデル同時常駐で CPU offload へ劣化しうる "
+            "(封印の照合対象ではない)",
+            file=sys.stderr,
+        )
+
     # 標本計画も draw 0 の時点で突き合わせる (Codex MEDIUM-6)。seed / M は
     # manifest に現れてから ``verify_seal`` が落とすが、それは実走の後である。
     sampling = spec.get("sampling", {})
@@ -542,12 +653,26 @@ class ThinkAndModelSpy:
     「apparatus が think を切った」ことの証拠にならない。``run_bank_mloop`` が
     渡した値をそのまま拾うことで、manifest の ``think`` は観測になる
     (ECL v1 の sampling-spy と同型)。
+
+    加えて実走を **5 時間生き延びさせる** 役目を負う (code-reviewer H1):
+
+    * ``transport`` 失敗だけを有界 retry する。内容の失敗は retry しない
+      (見た応答を捨てて引き直すのは応答の選択であり estimand が汚れる)
+    * 応答を受け取るたび ``partial_path`` へ追記 flush する。途中で落ちても
+      raw が 1 バイトも残らない事態を避ける。**部分データは採点できない**
+      (``_observed_m_draws`` が完全なセルを要求する) のでチェリーピックには
+      使えない
+    * 呼び出し上限を **live に** 強制する (事後集計では発火しえない — L2)
     """
 
     inner: Any
+    call_cap: int | None = None
+    partial_path: Path | None = None
     think_values: set[Any] = field(default_factory=set)
     models: set[str] = field(default_factory=set)
     calls: int = 0
+    retries: int = 0
+    retry_reasons: list[str] = field(default_factory=list)
 
     async def chat(
         self,
@@ -558,13 +683,58 @@ class ThinkAndModelSpy:
         options: dict[str, Any] | None = None,
         think: bool | None = None,
     ) -> ChatResponse:
+        if self.call_cap is not None and self.calls >= self.call_cap:
+            msg = (
+                f"[paper02] M-loop の呼び出し上限に達した: "
+                f"{self.calls} >= {self.call_cap} (cost ceiling)"
+            )
+            raise RuntimeError(msg)
         self.calls += 1
         self.think_values.add(think)
-        response = await self.inner.chat(
+        response = await self._chat_with_bounded_retry(
             messages, sampling=sampling, model=model, options=options, think=think
         )
         self.models.add(response.model)
+        self._flush_partial(response)
         return response
+
+    async def _chat_with_bounded_retry(
+        self,
+        messages: Sequence[ChatMessage],
+        **kwargs: Any,
+    ) -> ChatResponse:
+        last: Exception | None = None
+        for attempt in range(_TRANSPORT_RETRIES + 1):
+            try:
+                return cast("ChatResponse", await self.inner.chat(messages, **kwargs))
+            except Exception as exc:  # 分類してから再送出する
+                if not _is_retriable(exc):
+                    raise
+                last = exc
+                self.retries += 1
+                self.retry_reasons.append(f"call {self.calls}: {exc}")
+                print(
+                    f"[capture] transport 失敗を retry する "
+                    f"({attempt + 1}/{_TRANSPORT_RETRIES}): {exc}",
+                    file=sys.stderr,
+                )
+                if attempt < _TRANSPORT_RETRIES:
+                    await asyncio.sleep(_TRANSPORT_RETRY_BACKOFF_S)
+        assert last is not None
+        raise last
+
+    def _flush_partial(self, response: ChatResponse) -> None:
+        if self.partial_path is None:
+            return
+        row = {
+            "call_index": self.calls,
+            "model": response.model,
+            "content": response.content,
+            "observed_at": datetime.now(UTC).isoformat(),
+        }
+        self.partial_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.partial_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
     async def close(self) -> None:
         close = getattr(self.inner, "close", None)
@@ -737,6 +907,7 @@ async def capture(
     endpoint: str = OllamaChatClient.DEFAULT_ENDPOINT,
     inner_chat: Any | None = None,
     reobserve: Any | None = None,
+    partial_path: Path | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """1 アームを実走し、成果物と sidecar メトリクスを返す。
 
@@ -757,9 +928,12 @@ async def capture(
     inner = (
         inner_chat
         if inner_chat is not None
-        else OllamaChatClient(model=model, endpoint=endpoint)
+        else OllamaChatClient(
+            model=model, endpoint=endpoint, timeout=_CHAT_TIMEOUT_SECONDS
+        )
     )
-    spy = ThinkAndModelSpy(inner=inner)
+    cap = 2 * m_draws * k_contexts
+    spy = ThinkAndModelSpy(inner=inner, call_cap=cap, partial_path=partial_path)
     llm_client = BankRecordReplayClient.for_record(spy)
 
     started = time.monotonic()
@@ -779,7 +953,7 @@ async def capture(
                 "[paper02] 実走中に ollama の版が変わった: "
                 f"{observed.version} -> {after.version}。この run は封印を名乗れない。"
             )
-            raise SystemExit(msg)
+            raise CaptureAbortedError(msg, records)
         before_digest = observed.digests.get(model)
         after_digest = after.digests.get(model)
         if before_digest != after_digest:
@@ -787,15 +961,14 @@ async def capture(
                 f"[paper02] 実走中に {model} の digest が変わった: "
                 f"{before_digest} -> {after_digest}。この run は封印を名乗れない。"
             )
-            raise SystemExit(msg)
+            raise CaptureAbortedError(msg, records)
 
-    cap = 2 * m_draws * k_contexts
     actual = llm_client.inner_invocations
     if actual > cap:
         msg = (
             f"[paper02] M-loop の呼び出し上限を超えた: {actual} > {cap} (cost ceiling)"
         )
-        raise RuntimeError(msg)
+        raise CaptureAbortedError(msg, records)
 
     annotation_rows = _annotation_rows_from_records(records)
 
@@ -811,7 +984,10 @@ async def capture(
     )
 
     # run.m_draws / run.k_contexts は産出物から数える (引数を書き写さない)。
-    observed_m = _observed_m_draws(records)
+    try:
+        observed_m = _observed_m_draws(records)
+    except SystemExit as exc:  # 生データを道連れにしない (H2)
+        raise CaptureAbortedError(str(exc), records) from exc
     produced_ids = sorted({r.frozen_ctx_id for r in records})
     observed_k = len(produced_ids)
 
@@ -823,7 +999,7 @@ async def capture(
             "[paper02] 産出 records の context が消費した bank と食い違う: "
             f"産出 {produced_ids} != bank {sorted(bank.context_ids)}"
         )
-        raise SystemExit(msg)
+        raise CaptureAbortedError(msg, records)
 
     sub_sealed = observed_m < M_MIN or observed_k < K_MIN
 
@@ -839,7 +1015,7 @@ async def capture(
         env_pins=env_pins,
         sub_sealed_scale=sub_sealed,
     )
-    metrics = {
+    metrics: dict[str, Any] = {
         "note": (
             "壁時計は自己申告である。ここに書かれた時刻は run manifest の外にあり、"
             "何かが何かより前に起きたことを証明しない (manifest は決定性のため "
@@ -850,6 +1026,12 @@ async def capture(
         "llm_calls": actual,
         "recorded_at": datetime.now(UTC).isoformat(),
         "sub_sealed_scale": sub_sealed,
+        # transport 失敗の retry 回数。0 でない run は「何事もなく通った」run では
+        # ない。理由も残す (H1)。
+        "transport_retries": spy.retries,
+        "transport_retry_reasons": list(spy.retry_reasons),
+        # ``/api/ps`` が返した常駐モデル。封印の照合対象ではない (M3/M4)。
+        "resident_models_before": list(observed.resident),
     }
     return rendered, metrics
 
@@ -877,7 +1059,8 @@ async def verify(
     *,
     arm: str,
     paper_repo: Path | None = None,
-) -> bool:
+    bank_path: Path | None = None,
+) -> int:
     """committed bundle を Ollama-free で replay し、scorer を当てる。
 
     順序が A.6 M-4 そのものである: **shipped verdict を読まない**。raw annotation
@@ -893,24 +1076,58 @@ async def verify(
     (Codex HIGH-2)。driver 自身の整合検査は封印検査ではない: ``model_digest`` や
     ``bank_checksum`` を改竄した manifest でも driver は verdict を出せてしまう。
     正典は ``verify_seal.py`` なので、それを通るまで OK と言わない。
+    **検査器に届かなかったことを「通った」に数えない** (code-reviewer H3)。
+
+    返り値は終了コードである (``bool`` ではない — code-reviewer H4):
+
+    * :data:`VERIFY_OK` — 整合が取れ、封印検査も通った
+    * :data:`VERIFY_FAIL` — どこかが落ちた
+    * :data:`VERIFY_SUB_SEALED` — 整合は取れたが封印規模でない bundle。
+      **exit 0 にしない**。緑が「前向き結果である」と読まれないようにする
+
+    ``replay が byte 一致`` が示すのは**決定性**であって改竄検知ではない
+    (replay client は prompt を照合せず順に再生する)。records / annotation /
+    manifest を整合的に書き換えた bundle は driver の検査を通る。外部性は
+    リポジトリ内の検査では原理的に届かない
+    (``feedback_offline_check_cannot_witness_outside``)。
     """
     manifest_path = artifact_dir / "run-manifest.json"
     if not manifest_path.is_file():
         print(f"[verify] FAIL manifest が無い: {manifest_path}")
-        return False
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return VERIFY_FAIL
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        records_text = (artifact_dir / "run_records.jsonl").read_text(encoding="utf-8")
+        annotation_text = (artifact_dir / "run_annotation.jsonl").read_text(
+            encoding="utf-8"
+        )
+    except (OSError, ValueError) as exc:  # L1: traceback でなく明示的な FAIL
+        print(f"[verify] FAIL bundle を読めない: {exc}")
+        return VERIFY_FAIL
 
     recorded_arm = manifest.get("arm")
     if recorded_arm != arm:
-        print(
-            f"[verify] FAIL この bundle のアームは {recorded_arm!r}、"
-            f"指定は {arm!r}"
+        print(f"[verify] FAIL この bundle のアームは {recorded_arm!r}、指定は {arm!r}")
+        return VERIFY_FAIL
+
+    # ``sub_sealed_scale`` は自己申告なので、**記録から再計算して突き合わせる**
+    # (code-reviewer H4)。突き合わせないと、封印対象フィールドを改竄した manifest に
+    # このフラグを 1 行足すだけで封印検査の失敗を握り潰せる。
+    run_config = manifest.get("run", {})
+    try:
+        recomputed_sub_sealed = (
+            int(run_config["m_draws"]) < M_MIN or int(run_config["k_contexts"]) < K_MIN
         )
-        return False
-    records_text = (artifact_dir / "run_records.jsonl").read_text(encoding="utf-8")
-    annotation_text = (artifact_dir / "run_annotation.jsonl").read_text(
-        encoding="utf-8"
-    )
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"[verify] FAIL manifest.run から M/K を読めない: {exc}")
+        return VERIFY_FAIL
+    declared_sub_sealed = bool(manifest.get("sub_sealed_scale"))
+    if declared_sub_sealed != recomputed_sub_sealed:
+        print(
+            f"[verify] FAIL sub_sealed_scale の自己申告 {declared_sub_sealed} が "
+            f"記録された M/K から再計算した {recomputed_sub_sealed} と食い違う"
+        )
+        return VERIFY_FAIL
 
     committed_records = _records_from_jsonl(records_text)
     frozen_contexts = _frozen_contexts_from_records(committed_records)
@@ -970,21 +1187,51 @@ async def verify(
     else:
         print("[verify] OK annotation は records から再導出できる")
 
+    # 消費した凍結 bank を bundle 側から再導出できるようにする (code-reviewer M2)。
+    # ここまでの検査は committed records しか見ておらず、``bank_checksum`` は
+    # capture 時のコードだけが担保していた。bank を渡されたら独立に突き合わせる。
+    if bank_path is not None:
+        try:
+            bank = load_frozen_bank(bank_path)
+        except SystemExit as exc:
+            ok = False
+            print(f"[verify] FAIL 凍結 bank を読めない: {exc}")
+        else:
+            if bank.checksum != manifest.get("bank_checksum"):
+                ok = False
+                print(
+                    f"[verify] FAIL bank_checksum {bank.checksum} != "
+                    f"manifest {manifest.get('bank_checksum')}"
+                )
+            elif sorted(bank.context_ids) != sorted(
+                {r.frozen_ctx_id for r in committed_records}
+            ):
+                ok = False
+                print("[verify] FAIL 凍結 bank の context が records と食い違う")
+            else:
+                print("[verify] OK bank_checksum を凍結 bank から再導出して一致")
+
     if not ok:
         # 改竄された bundle の古い verdict を残さない。残すと「検査に落ちたのに
         # 判定だけ手元にある」状態になる。
-        stale = artifact_dir / "run-verdict.json"
-        if stale.exists():
-            stale.unlink()
-            print("[verify] 古い run-verdict.json を削除した")
+        _drop_stale_verdict(artifact_dir)
         print("[verify] MISMATCH — 整合が取れないので scorer を走らせない")
-        return False
+        return VERIFY_FAIL
+
+    # 記録された seed を **load-bearing にする** (code-reviewer M1)。manifest が
+    # 名乗る seed と解析が使う seed が独立だと、封印の seed 照合は記録の一致しか
+    # 示さない。
+    try:
+        recorded_seed = int(run_config["seed"])
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"[verify] FAIL manifest.run.seed を読めない: {exc}")
+        return VERIFY_FAIL
 
     verdict = score_bank_annotation(
         annotation_rows=annotation_dicts,
         manifest=manifest,
         n_replicates=N_REPLICATES_DEFAULT,
-        seed=POWER_SEED_DEFAULT,
+        seed=recorded_seed,
         require_powered_scale=True,
     )
     verdict_dict = verdict_to_dict(verdict)
@@ -994,43 +1241,84 @@ async def verify(
     print(f"[verify] VERDICT {verdict.verdict}")
     print(f"[verify] reason: {'; '.join(verdict.reason)}")
 
-    if paper_repo is not None:
-        sealed_ok = run_sealed_seal_check(
+    seal_outcome = (
+        run_sealed_seal_check(
             paper_repo=paper_repo,
             manifest_path=manifest_path,
             verdict_path=verdict_path,
             arm=arm,
         )
-        if not sealed_ok:
-            if manifest.get("sub_sealed_scale"):
-                # 封印未満を自己申告している bundle は、封印検査に落ちるのが正しい。
-                # harness 検証としては成功なので OK とするが、**前向き結果ではない**。
-                print(
-                    "[verify] NOTE 封印検査は落ちた。この bundle は "
-                    "sub_sealed_scale=true を名乗っており、前向き結果ではない"
-                )
-            else:
-                print(
-                    "[verify] FAIL 封印検査に落ちた。封印規模を名乗る bundle が "
-                    "verify_seal を通らないので OK と言わない"
-                )
-                return False
+        if paper_repo is not None
+        else _SEAL_NOT_RUN
+    )
+    if paper_repo is None:
+        print(
+            "[verify] NOTE 論文 repo が指定されていない (または存在しない) ため "
+            "封印検査を実行していない"
+        )
+
+    if recomputed_sub_sealed:
+        # 封印未満の bundle は封印検査に落ちるのが正しい。harness 検証としては
+        # 成功だが **前向き結果ではない** ので exit 0 にしない (code-reviewer H4)。
+        print(
+            f"[verify] SUB-SEALED 封印規模でない bundle (封印検査 = {seal_outcome})。"
+            "harness の検証としては整合が取れているが、前向き結果ではない"
+        )
+        return VERIFY_SUB_SEALED
+
+    # ここから先は「これは前向き結果だ」と名乗っている bundle である。
+    # **検査器に届かなかったことを「通った」に数えない** (code-reviewer H3)。
+    if seal_outcome != _SEAL_OK:
+        reason = (
+            "封印検査を実行できなかった"
+            if seal_outcome == _SEAL_NOT_RUN
+            else "封印検査に落ちた"
+        )
+        print(
+            f"[verify] FAIL {reason}。封印規模を名乗る bundle が "
+            "verify_seal を通るまで OK と言わない"
+        )
+        _quarantine_verdict(artifact_dir)
+        return VERIFY_FAIL
+
     print("[verify] OK")
-    return True
+    return VERIFY_OK
+
+
+def _drop_stale_verdict(artifact_dir: Path) -> None:
+    stale = artifact_dir / "run-verdict.json"
+    if stale.exists():
+        stale.unlink()
+        print("[verify] 古い run-verdict.json を削除した")
+
+
+def _quarantine_verdict(artifact_dir: Path) -> None:
+    """封印検査に落ちた verdict を **緑の名前で残さない** (code-reviewer M8)。"""
+    verdict = artifact_dir / "run-verdict.json"
+    if verdict.exists():
+        deviation = artifact_dir / "run-verdict.DEVIATION.json"
+        if deviation.exists():
+            deviation.unlink()
+        verdict.rename(deviation)
+        print(f"[verify] verdict を {deviation.name} へ改名した (前向き結果ではない)")
 
 
 def run_sealed_seal_check(
     *, paper_repo: Path, manifest_path: Path, verdict_path: Path, arm: str
-) -> bool:
+) -> str:
     """封印検査器 ``verify_seal.py`` を **そのまま** 走らせる (Codex HIGH-2).
 
     driver の整合検査は封印検査ではない。``model_digest`` や ``bank_checksum`` を
     改竄した manifest でも driver は verdict を出せる。正典を複製せず呼ぶ。
+
+    返すのは 3 値である (code-reviewer H3): :data:`_SEAL_OK` / :data:`_SEAL_FAILED` /
+    :data:`_SEAL_NOT_RUN`。**「実行できなかった」を「通った」に畳まない** —
+    畳むと `--paper-repo` の打ち間違いや WSL からの実行で、検査が無言で消える。
     """
     script = paper_repo / "analysis" / "scripts" / "verify_seal.py"
     if not script.is_file():
-        print(f"[verify] NOTE 封印検査器が見つからないので照合を飛ばした: {script}")
-        return True
+        print(f"[verify] NOTE 封印検査器が見つからない: {script}")
+        return _SEAL_NOT_RUN
     command = [
         sys.executable,
         str(script),
@@ -1041,13 +1329,17 @@ def run_sealed_seal_check(
         "--run-verdict",
         str(verdict_path),
     ]
-    completed = subprocess.run(  # noqa: S603
-        command, cwd=paper_repo, capture_output=True, text=True, check=False
-    )
+    try:
+        completed = subprocess.run(  # noqa: S603
+            command, cwd=paper_repo, capture_output=True, text=True, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"[verify] NOTE 封印検査器を起動できなかった: {exc}")
+        return _SEAL_NOT_RUN
     for line in (completed.stdout + completed.stderr).splitlines():
         if line.strip():
             print(f"[verify][seal] {line}")
-    return completed.returncode == 0
+    return _SEAL_OK if completed.returncode == 0 else _SEAL_FAILED
 
 
 # --------------------------------------------------------------------------- #
@@ -1105,6 +1397,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="封印と食い違ったまま走る (harness 検証専用。前向き結果にはならない)",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="空でない出力先へ上書きする (既定は拒否。古い verdict との取り違えを防ぐ)",
+    )
     args = parser.parse_args(argv)
 
     # ``--arm`` は全モードで必須にする (Codex MEDIUM-7)。``--verify`` でも
@@ -1117,9 +1414,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         artifact_dir = args.artifact_dir
         if artifact_dir is None:
             artifact_dir = args.out_root / args.arm
-        paper_repo = args.paper_repo if args.paper_repo.is_dir() else None
-        ok = asyncio.run(verify(artifact_dir, arm=args.arm, paper_repo=paper_repo))
-        return 0 if ok else 1
+        # **存在しない論文 repo を None に畳んで飲み込まない** (code-reviewer H3)。
+        # そのまま渡し、verify 側が「実行できなかった」を 3 値で扱う。
+        return asyncio.run(
+            verify(
+                artifact_dir,
+                arm=args.arm,
+                paper_repo=args.paper_repo,
+                bank_path=args.bank if args.bank.is_file() else None,
+            )
+        )
 
     spec_path, seal_manifest_path = _resolve_paths(args)
     spec = load_arm_spec(spec_path)
@@ -1171,34 +1475,126 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    seal_hash = sealed_manifest_sha256(seal_manifest_path)
-    rendered, metrics = asyncio.run(
-        capture(
-            arm=args.arm,
-            spec=spec,
-            seal_hash=seal_hash,
-            bank=bank,
-            m_draws=args.m_draws,
-            seed=args.seed,
-            uv_lock=uv_lock,
-            python_version=python_version,
-            observed=observed,
-            endpoint=args.endpoint,
-            reobserve=observe_ollama,
-        )
-    )
-    metrics["driver_provenance"] = driver_provenance()
     out_dir = (
         args.artifact_dir if args.artifact_dir is not None else args.out_root / args.arm
     )
+
+    # 出力先の上書きを黙って許さない (code-reviewer M5)。smoke と本番の default
+    # 出力先が同じなので、古い run-verdict.json が残ったまま新しい manifest が
+    # 座ると、手で両者を渡したときに組み合わせがずれる。
+    if out_dir.exists() and any(out_dir.iterdir()) and not args.force:
+        print(
+            f"[capture] 中止 — 出力先が空でない: {out_dir}\n"
+            "          上書きするなら --force を明示すること "
+            "(古い run-verdict.json が残ると組み合わせがずれる)。",
+            file=sys.stderr,
+        )
+        return 1
+
+    # 試行の痕跡を append-only で残す (code-reviewer H5)。落ちた後に「もう一度
+    # 走らせる」のは自然な対応だが、成果物は上書きされるので最終 bundle は
+    # 一発目と区別できなくなる。**実走の前に入れておかないと意味がない。**
+    attempts = out_dir / "attempts.jsonl"
+    _append_attempt(
+        attempts,
+        {
+            "event": "start",
+            "argv": list(argv) if argv is not None else sys.argv[1:],
+            "preflight_problems": problems,
+            "smoke": bool(args.smoke),
+            "requested_m_draws": args.m_draws,
+            "requested_k_contexts": args.k_contexts,
+            "driver": driver_provenance(),
+        },
+    )
+
+    seal_hash = sealed_manifest_sha256(seal_manifest_path)
+    try:
+        rendered, metrics = asyncio.run(
+            capture(
+                arm=args.arm,
+                spec=spec,
+                seal_hash=seal_hash,
+                bank=bank,
+                m_draws=args.m_draws,
+                seed=args.seed,
+                uv_lock=uv_lock,
+                python_version=python_version,
+                observed=observed,
+                endpoint=args.endpoint,
+                reobserve=observe_ollama,
+                partial_path=out_dir / "run_records.partial.jsonl",
+            )
+        )
+    except CaptureAbortedError as exc:
+        # **生データを道連れにしない** (code-reviewer H2)。manifest / annotation は
+        # 書かない — 書くと bundle と誤認されうる。
+        _write_quarantine(out_dir, exc)
+        _append_attempt(attempts, {"event": "aborted", "reason": exc.reason})
+        print(f"[capture] 中止: {exc.reason}", file=sys.stderr)
+        quarantined = out_dir / "run_records.quarantine.jsonl"
+        print(
+            f"[capture] 生データを {quarantined} へ隔離した (bundle ではない。診断用)",
+            file=sys.stderr,
+        )
+        return 1
+    metrics["driver_provenance"] = driver_provenance()
+    # draw 0 の時点で何が分かっていたかを成果物に残す (code-reviewer M7)。
+    metrics["preflight_problems"] = problems
+    metrics["smoke"] = bool(args.smoke)
+    metrics["requested_m_draws"] = args.m_draws
+    metrics["requested_k_contexts"] = args.k_contexts
+
+    # 直前の run の verdict を残さない (code-reviewer M5)。新しい manifest と
+    # 古い verdict の組み合わせは、手で検査器に渡したときにずれる。
+    _drop_stale_verdict(out_dir)
     _write(out_dir, rendered)
     (out_dir / "run-metrics.json").write_text(
         json.dumps(metrics, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
         newline="\n",
     )
+    _append_attempt(
+        attempts,
+        {
+            "event": "captured",
+            "llm_calls": metrics["llm_calls"],
+            "transport_retries": metrics["transport_retries"],
+            "sub_sealed_scale": metrics["sub_sealed_scale"],
+        },
+    )
     print(f"[capture] {len(rendered) + 1} 個の成果物を {out_dir} に書いた")
     return 0
+
+
+def _append_attempt(path: Path, row: dict[str, Any]) -> None:
+    """試行を **append-only** で記録する (code-reviewer H5)。
+
+    落ちた後に走らせ直すのは自然な対応だが、成果物は上書きされるので最終 bundle は
+    一発目と区別できなくなる。ここに残る行だけが「何回目か」を知っている。
+    `feedback_declare_everything_then_show_unknown` の核心に触れるので、
+    **実走の前に**入れておく必要がある。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"recorded_at": datetime.now(UTC).isoformat(), **row}
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _write_quarantine(out_dir: Path, exc: CaptureAbortedError) -> None:
+    """中止した run の生データだけを隔離保存する (code-reviewer H2)。
+
+    **manifest / annotation は書かない** — 書くと bundle と誤認されうる。
+    部分データは ``_observed_m_draws`` が完全なセルを要求するので採点できず、
+    チェリーピックには使えない。
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "run_records.quarantine.jsonl").write_text(
+        _records_to_jsonl(exc.records), encoding="utf-8", newline="\n"
+    )
+    (out_dir / "quarantine-reason.txt").write_text(
+        exc.reason + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 if __name__ == "__main__":

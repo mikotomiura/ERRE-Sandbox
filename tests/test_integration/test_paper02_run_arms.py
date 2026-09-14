@@ -593,7 +593,7 @@ def test_produced_contexts_must_match_the_consumed_bank(
     来る。黙って通すと両者が食い違った manifest が出る。
     """
     monkeypatch.setattr(driver, "run_bank_mloop", _context_dropping_mloop)
-    with pytest.raises(SystemExit, match="消費した bank と食い違う"):
+    with pytest.raises(driver.CaptureAbortedError, match="消費した bank と食い違う"):
         _capture(driver, sealed, driver.load_frozen_bank(bank_path))
 
 
@@ -669,7 +669,7 @@ def test_verify_round_trip(
 ) -> None:
     out = tmp_path / "primary"
     _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
-    assert asyncio.run(driver.verify(out, arm="primary")) is True
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_SUB_SEALED
     verdict = json.loads((out / "run-verdict.json").read_text(encoding="utf-8"))
     # 封印未満なので INCONCLUSIVE。**それでよい** — ここで検証しているのは
     # 統計ではなく harness である。
@@ -693,7 +693,7 @@ def test_verify_refuses_to_score_a_tampered_bundle(
         encoding="utf-8",
         newline="\n",
     )
-    assert asyncio.run(driver.verify(out, arm="primary")) is False
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_FAIL
     assert not (out / "run-verdict.json").exists()
 
 
@@ -844,7 +844,7 @@ def test_verify_refuses_annotation_tampered_with_matching_sha256(
     """
     out = tmp_path / "primary"
     _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
-    assert asyncio.run(driver.verify(out, arm="primary")) is True
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_SUB_SEALED
     assert (out / "run-verdict.json").exists()
 
     annotation = out / "run_annotation.jsonl"
@@ -865,7 +865,7 @@ def test_verify_refuses_annotation_tampered_with_matching_sha256(
         driver.handoff.canonical_dumps(manifest) + "\n", encoding="utf-8", newline="\n"
     )
 
-    assert asyncio.run(driver.verify(out, arm="primary")) is False
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_FAIL
     # 落ちた bundle の古い verdict を残さない
     assert not (out / "run-verdict.json").exists()
 
@@ -876,8 +876,8 @@ def test_verify_requires_the_arm_to_match_the_bundle(
     """Codex MEDIUM-7: control の bundle を primary として検証しても通らない."""
     out = tmp_path / "primary"
     _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
-    assert asyncio.run(driver.verify(out, arm="primary")) is True
-    assert asyncio.run(driver.verify(out, arm="control")) is False
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_SUB_SEALED
+    assert asyncio.run(driver.verify(out, arm="control")) == driver.VERIFY_FAIL
 
 
 def test_capture_uses_the_endpoint_it_observed(
@@ -892,13 +892,19 @@ def test_capture_uses_the_endpoint_it_observed(
     Ollama と実際に答えた Ollama が別物でも manifest は preflight 側を名乗れる。
     """
     seen: list[str | None] = []
+    seen_timeouts: list[float | None] = []
 
     class _Recording(_StubChat):
         def __init__(
-            self, *, model: str = "llama3.1:8b", endpoint: str | None = None
+            self,
+            *,
+            model: str = "llama3.1:8b",
+            endpoint: str | None = None,
+            timeout: float | None = None,
         ) -> None:
             super().__init__(model=model)
             seen.append(endpoint)
+            seen_timeouts.append(timeout)
 
     monkeypatch.setattr(driver, "OllamaChatClient", _Recording)
     bank = driver.load_frozen_bank(bank_path)
@@ -917,6 +923,8 @@ def test_capture_uses_the_endpoint_it_observed(
         )
     )
     assert seen == ["http://observed-host:11434"]
+    # 既定 60 秒では 2.5 時間の連続実行を生き延びない (code-reviewer H1)
+    assert seen_timeouts == [driver._CHAT_TIMEOUT_SECONDS]
 
 
 def test_capture_stops_if_the_backend_moves_mid_run(
@@ -929,7 +937,7 @@ def test_capture_stops_if_the_backend_moves_mid_run(
             version="0.33.0", digests=_observation(driver).digests
         )
 
-    with pytest.raises(SystemExit, match="版が変わった"):
+    with pytest.raises(driver.CaptureAbortedError, match="版が変わった"):
         _capture(driver, sealed, driver.load_frozen_bank(bank_path), reobserve=moved)
 
 
@@ -942,7 +950,7 @@ def test_capture_stops_if_the_digest_moves_mid_run(
             digests={"qwen3:8b": "5" * 64, "llama3.1:8b": "9" * 64},
         )
 
-    with pytest.raises(SystemExit, match="digest が変わった"):
+    with pytest.raises(driver.CaptureAbortedError, match="digest が変わった"):
         _capture(driver, sealed, driver.load_frozen_bank(bank_path), reobserve=repulled)
 
 
@@ -1035,7 +1043,7 @@ def test_sealed_seal_check_is_invoked_and_can_fail(driver: Any, tmp_path: Path) 
         verdict_path=tmp_path / "v.json",
         arm="primary",
     )
-    assert ok is False
+    assert ok == driver._SEAL_FAILED
 
     (scripts / "verify_seal.py").write_text(
         "print('[seal] OK synthetic')\n", encoding="utf-8"
@@ -1047,54 +1055,630 @@ def test_sealed_seal_check_is_invoked_and_can_fail(driver: Any, tmp_path: Path) 
             verdict_path=tmp_path / "v.json",
             arm="primary",
         )
-        is True
+        == driver._SEAL_OK
     )
 
 
-def test_sealed_seal_check_absent_checker_does_not_pretend(
+def test_sealed_seal_check_absent_checker_reports_not_run(
     driver: Any, tmp_path: Path
 ) -> None:
-    """検査器が無いときに「通った」と言わない — 飛ばしたと言う."""
-    ok = driver.run_sealed_seal_check(
+    """検査器が無いときに「通った」と言わない (code-reviewer H3).
+
+    以前はここで ``True`` を返しており、``--paper-repo`` の打ち間違いや WSL からの
+    実行で**封印検査が無言で消えて exit 0** になっていた。3 値にして
+    「実行できなかった」を独立に表す。
+    """
+    outcome = driver.run_sealed_seal_check(
         paper_repo=tmp_path / "nowhere",
         manifest_path=tmp_path / "m.json",
         verdict_path=tmp_path / "v.json",
         arm="primary",
     )
-    assert ok is True  # 呼べないことは失敗ではない (メッセージで申告する)
+    assert outcome == driver._SEAL_NOT_RUN
+    assert outcome != driver._SEAL_OK
 
 
-def test_verify_fails_when_a_sealed_scale_bundle_fails_the_seal_check(
-    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
-) -> None:
-    """封印規模を名乗る bundle が verify_seal を通らないなら OK と言わない.
+# --------------------------------------------------------------------------- #
+# code-reviewer (Opus, 2026-09-14) の HIGH に対する回帰ケース
+# --------------------------------------------------------------------------- #
 
-    これが実走で効く枝である。``sub_sealed_scale`` が偽 = 「これは前向き結果だ」と
-    名乗っているので、封印検査の失敗は握り潰せない。
+
+@pytest.fixture
+def sealed_scale_bundle(driver: Any, tmp_path: Path) -> tuple[Path, dict[str, Any]]:
+    """**封印規模** (M=300 / K=8) の合成 bundle を作る.
+
+    `sub_sealed_scale` を手で書き換えて封印規模を装うテストは、H4 の修正
+    (記録された M/K から再計算して照合する) が正しく弾く。本物の規模で作る。
+    合成 stub なので 0.2 秒で終わる。
     """
-    out = tmp_path / "primary"
-    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+    rows = _bank_rows(k=8, m=300)
+    bank_file = tmp_path / "sealed-bank.jsonl"
+    bank_file.write_text(
+        "".join(f"{driver.handoff.canonical_dumps(r)}\n" for r in rows),
+        encoding="utf-8",
+        newline="\n",
+    )
+    bank = driver.load_frozen_bank(bank_file)
+    spec = {
+        "environment": {
+            "ollama_version": "0.32.12",
+            "python": "3.11.15",
+            "uv_lock_sha256": "a" * 64,
+        },
+        "context_bank": {
+            "bank_checksum": bank.checksum,
+            "context_ids": bank.context_ids,
+        },
+        "arms": {
+            "primary": {
+                "model": "llama3.1:8b",
+                "model_digest": "4" * 64,
+                "think": False,
+            }
+        },
+    }
+    rendered, _ = _capture(driver, spec, bank, m_draws=300)
+    out = tmp_path / "sealed-primary"
+    driver._write(out, rendered)
+    assert json.loads(rendered["run-manifest.json"])["sub_sealed_scale"] is False
+    return out, {"bank_file": bank_file, "spec": spec}
 
+
+class _StubClientFactory(_StubChat):
+    """``OllamaChatClient`` の差し替え。**クラス属性も持たせる** —
+
+    ``main`` は ``OllamaChatClient.DEFAULT_ENDPOINT`` を argparse の default に
+    使うので、単なる lambda に差し替えると argparse が壊れる。
+    """
+
+    DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
+
+    def __init__(self, **_kwargs: Any) -> None:
+        super().__init__()
+
+
+def _fake_seal_checker(paper_repo: Path, *, passes: bool) -> None:
+    scripts = paper_repo / "analysis" / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    body = (
+        "print('[seal] OK synthetic')\n"
+        if passes
+        else "import sys\nprint('[seal] FAIL synthetic')\nsys.exit(1)\n"
+    )
+    (scripts / "verify_seal.py").write_text(body, encoding="utf-8")
+
+
+def test_h3_unreachable_paper_repo_is_not_counted_as_passing(
+    driver: Any, sealed_scale_bundle: tuple[Path, dict[str, Any]], tmp_path: Path
+) -> None:
+    """封印検査器に届かなかったことを「通った」に数えない (H3).
+
+    以前は `--paper-repo` が存在しないと検査ブロックごと消え、**メッセージすら
+    出ずに** exit 0 になっていた。WSL 側で verify を回す / パスを打ち間違える、で
+    起きる。
+    """
+    out, _ = sealed_scale_bundle
+    code = asyncio.run(
+        driver.verify(out, arm="primary", paper_repo=tmp_path / "nowhere")
+    )
+    assert code == driver.VERIFY_FAIL
+    # 落ちた bundle の verdict を緑の名前で残さない (M8)
+    assert not (out / "run-verdict.json").exists()
+    assert (out / "run-verdict.DEVIATION.json").exists()
+
+
+def test_h3_positive_control_sealed_scale_bundle_can_pass(
+    driver: Any, sealed_scale_bundle: tuple[Path, dict[str, Any]], tmp_path: Path
+) -> None:
+    """陽性対照: 封印検査が通れば封印規模 bundle は exit 0 になる."""
+    out, _ = sealed_scale_bundle
+    paper_repo = tmp_path / "paper-ok"
+    _fake_seal_checker(paper_repo, passes=True)
+    code = asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo))
+    assert code == driver.VERIFY_OK
+    assert (out / "run-verdict.json").exists()
+
+
+def test_h3_failing_seal_check_fails_a_sealed_scale_bundle(
+    driver: Any, sealed_scale_bundle: tuple[Path, dict[str, Any]], tmp_path: Path
+) -> None:
+    out, _ = sealed_scale_bundle
+    paper_repo = tmp_path / "paper-bad"
+    _fake_seal_checker(paper_repo, passes=False)
+    code = asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo))
+    assert code == driver.VERIFY_FAIL
+
+
+def test_h4_sub_sealed_flag_cannot_swallow_a_seal_failure(
+    driver: Any, sealed_scale_bundle: tuple[Path, dict[str, Any]], tmp_path: Path
+) -> None:
+    """`sub_sealed_scale` を 1 行足して封印検査の失敗を握り潰せない (H4).
+
+    以前は判定対象の manifest 自身からこのフラグを読み、真なら `[verify] OK` /
+    exit 0 だった。**記録された M/K から再計算して照合する**ことで閉じる。
+    """
+    out, _ = sealed_scale_bundle
     manifest_path = out / "run-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["sub_sealed_scale"] = False
+    assert manifest["sub_sealed_scale"] is False
+    manifest["sub_sealed_scale"] = True  # 攻撃: 1 行で握り潰す
     manifest_path.write_text(
         driver.handoff.canonical_dumps(manifest) + "\n", encoding="utf-8", newline="\n"
     )
 
-    paper_repo = tmp_path / "paper"
-    scripts = paper_repo / "analysis" / "scripts"
-    scripts.mkdir(parents=True)
-    (scripts / "verify_seal.py").write_text(
-        "import sys\nprint('[seal] FAIL synthetic')\nsys.exit(1)\n", encoding="utf-8"
+    paper_repo = tmp_path / "paper-bad"
+    _fake_seal_checker(paper_repo, passes=False)
+    code = asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo))
+    assert code == driver.VERIFY_FAIL
+
+
+def test_h4_sub_sealed_bundle_never_exits_zero(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """封印規模でない bundle は exit 0 にならない (H4).
+
+    整合が取れていても「前向き結果である」とは読ませない。
+    """
+    out = tmp_path / "primary"
+    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+    paper_repo = tmp_path / "paper-ok"
+    _fake_seal_checker(paper_repo, passes=True)
+    code = asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo))
+    assert code == driver.VERIFY_SUB_SEALED
+    assert code != driver.VERIFY_OK
+
+
+class _FlakyChat(_StubChat):
+    """最初の N 回だけ transport 失敗を出すスタブ."""
+
+    def __init__(self, *, fail_times: int, message: str) -> None:
+        super().__init__()
+        self.fail_times = fail_times
+        self.message = message
+        self.attempts = 0
+
+    async def chat(self, messages: Any, **kwargs: Any) -> Any:
+        from erre_sandbox.inference.ollama_adapter import OllamaUnavailableError
+
+        self.attempts += 1
+        if self.attempts <= self.fail_times:
+            raise OllamaUnavailableError(self.message)
+        return await super().chat(messages, **kwargs)
+
+
+def test_h1_transport_failure_is_retried_not_fatal(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """transport 失敗 1 回で 2.5 時間が全損しない (H1).
+
+    `run_bank_mloop` は `llm.chat` を try していないので、retry が無いと
+    4,800 回中 1 回の timeout で traceback + 成果物ゼロになる。
+    """
+    monkeypatch.setattr(driver.asyncio, "sleep", _no_sleep)
+    flaky = _FlakyChat(fail_times=2, message="Ollama /api/chat timeout after 300.0s")
+    rendered, metrics = _capture(
+        driver, sealed, driver.load_frozen_bank(bank_path), inner_chat=flaky
     )
+    assert metrics["transport_retries"] == 2
+    assert metrics["transport_retry_reasons"], "理由を残さない retry は記録でない"
+    assert _manifest_of(rendered)["run"]["m_draws"] == 2
+
+
+async def _no_sleep(_seconds: float) -> None:
+    return None
+
+
+def test_h1_content_failure_is_never_retried(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """内容の失敗は retry しない — 見た応答を捨てて引き直すのは応答の選択である.
+
+    transport 失敗は「要求が答えられなかった」なので引き直しても estimand は
+    汚れない。内容の失敗で引き直すと汚れる。この境界が retry の設計の核である。
+    """
+    from erre_sandbox.inference.ollama_adapter import OllamaUnavailableError
+
+    monkeypatch.setattr(driver.asyncio, "sleep", _no_sleep)
+    flaky = _FlakyChat(fail_times=1, message="Ollama /api/chat returned non-JSON")
+    with pytest.raises(OllamaUnavailableError, match="non-JSON"):
+        _capture(driver, sealed, driver.load_frozen_bank(bank_path), inner_chat=flaky)
+    assert flaky.attempts == 1, "内容の失敗を引き直してはならない"
+
+
+def test_h1_retries_are_bounded(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """retry は有界である (無限に粘って 5 時間を溶かさない)."""
+    from erre_sandbox.inference.ollama_adapter import OllamaUnavailableError
+
+    monkeypatch.setattr(driver.asyncio, "sleep", _no_sleep)
+    flaky = _FlakyChat(fail_times=99, message="Ollama /api/chat unreachable")
+    with pytest.raises(OllamaUnavailableError, match="unreachable"):
+        _capture(driver, sealed, driver.load_frozen_bank(bank_path), inner_chat=flaky)
+    assert flaky.attempts == driver._TRANSPORT_RETRIES + 1
+
+
+def test_h1_partial_records_are_flushed_as_they_arrive(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """応答は届くたび追記される — 途中で落ちても raw が 1 バイトも残らない事態を避ける.
+
+    部分データは `_observed_m_draws` が完全なセルを要求するので採点できず、
+    チェリーピックには使えない。
+    """
+    partial = tmp_path / "run_records.partial.jsonl"
+    _capture(
+        driver,
+        sealed,
+        driver.load_frozen_bank(bank_path),
+        partial_path=partial,
+    )
+    lines = [
+        json.loads(line)
+        for line in partial.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(lines) == 2 * 2 * 2  # 2 条件 × 2 context × 2 draws
+    assert lines[0]["call_index"] == 1
+    assert "content" in lines[0]
+
+
+def test_h2_aborted_run_quarantines_its_raw_data(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """実走後ガードが生データを道連れにしない (H2).
+
+    版ドリフトは正しく停止するが、以前は 2.5 時間分の raw が診断材料ごと消えた。
+    """
+
+    async def moved(_endpoint: str) -> Any:
+        return driver.OllamaObservation(
+            version="0.33.0", digests=_observation(driver).digests
+        )
+
+    bank = driver.load_frozen_bank(bank_path)
+    with pytest.raises(driver.CaptureAbortedError) as excinfo:
+        _capture(driver, sealed, bank, reobserve=moved)
+    # 例外が records を携えている = 呼び出し側が隔離保存できる
+    assert len(excinfo.value.records) == 2 * 2 * 2
+
+    out = tmp_path / "aborted"
+    driver._write_quarantine(out, excinfo.value)
+    assert (out / "run_records.quarantine.jsonl").exists()
+    assert "版が変わった" in (out / "quarantine-reason.txt").read_text(encoding="utf-8")
+    # **bundle と誤認されるものは書かない**
+    assert not (out / "run-manifest.json").exists()
+    assert not (out / "run_annotation.jsonl").exists()
+
+
+def test_h5_attempts_are_appended_not_overwritten(driver: Any, tmp_path: Path) -> None:
+    """試行の痕跡は append-only である (H5).
+
+    落ちた後に走らせ直すのは自然な対応だが、成果物は上書きされるので最終 bundle は
+    一発目と区別できなくなる。ここに残る行だけが「何回目か」を知っている。
+    """
+    attempts = tmp_path / "attempts.jsonl"
+    driver._append_attempt(attempts, {"event": "start", "n": 1})
+    driver._append_attempt(attempts, {"event": "aborted", "n": 1})
+    driver._append_attempt(attempts, {"event": "start", "n": 2})
+    rows = [
+        json.loads(line)
+        for line in attempts.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert [r["event"] for r in rows] == ["start", "aborted", "start"]
+    assert all("recorded_at" in r for r in rows)
+
+
+# --------------------------------------------------------------------------- #
+# MEDIUM への回帰ケース
+# --------------------------------------------------------------------------- #
+
+
+def test_m1_recorded_seed_is_load_bearing(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """採点は manifest が記録した seed を使う (M1).
+
+    定数を使うと、封印の seed 照合は「記録の一致」しか示さず、解析が実際に何を
+    使ったかとは独立になる。
+    """
+    out = tmp_path / "primary"
+    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+    manifest = json.loads((out / "run-manifest.json").read_text(encoding="utf-8"))
+    recorded_seed = manifest["run"]["seed"]
+
+    seen: list[int] = []
+    original = driver.score_bank_annotation
+
+    def spy(**kwargs: Any) -> Any:
+        seen.append(kwargs["seed"])
+        return original(**kwargs)
+
+    monkeypatch.setattr(driver, "score_bank_annotation", spy)
+    asyncio.run(driver.verify(out, arm="primary"))
+    assert seen == [recorded_seed]
+
+
+def test_m2_bank_checksum_is_rederived_from_the_bank_at_verify(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """`--bank` を渡すと消費した凍結 bank を独立に突き合わせる (M2)."""
+    out = tmp_path / "primary"
+    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+
+    # 陽性対照: 正しい bank なら通る (sub-sealed なので 2)
+    code = asyncio.run(driver.verify(out, arm="primary", bank_path=bank_path))
+    assert code == driver.VERIFY_SUB_SEALED
+
+    # 別の bank を渡すと落ちる
+    other = tmp_path / "other.jsonl"
+    rows = _bank_rows(k=2, m=2)
+    rows[0]["raw_response"] = json.dumps({**_PLAN, "thought": "tampered"})
+    other.write_text(
+        "".join(f"{driver.handoff.canonical_dumps(r)}\n" for r in rows),
+        encoding="utf-8",
+        newline="\n",
+    )
+    assert (
+        asyncio.run(driver.verify(out, arm="primary", bank_path=other))
+        == driver.VERIFY_FAIL
+    )
+
+
+def test_m5_capture_refuses_to_overwrite_without_force(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """空でない出力先へ黙って上書きしない (M5).
+
+    smoke と本番の default 出力先が同じなので、古い run-verdict.json が残ると
+    手で検査器へ渡したときに組み合わせがずれる。
+    """
+    paper_repo = _paper_repo_with(sealed, tmp_path / "paper")
+    _patch_observers(driver, monkeypatch)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "run-verdict.json").write_text("{}", encoding="utf-8")
+
+    argv = [
+        "--capture",
+        "--arm",
+        "primary",
+        "--paper-repo",
+        str(paper_repo),
+        "--bank",
+        str(bank_path),
+        "--k-contexts",
+        "2",
+        "--m-draws",
+        "2",
+        "--smoke",
+        "--artifact-dir",
+        str(out),
+    ]
+    assert driver.main(argv) == 1
+    # --force を明示すれば進む (ここでは stub で実走を差し替える)
+    monkeypatch.setattr(driver, "OllamaChatClient", _StubClientFactory)
+    assert driver.main([*argv, "--force"]) == 0
+    # 古い verdict は残らない
+    assert not (out / "run-verdict.json").exists()
+
+
+def test_m6_end_to_end_main_capture_then_verify(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """**実走で実際に通る経路**にテストを当てる (M6).
+
+    これまで `main --capture` の書き出しと `main --verify` 全体は一度も呼ばれて
+    いなかった。5 時間後に初めて実行される行が未検査だった。
+    """
+    paper_repo = _paper_repo_with(sealed, tmp_path / "paper")
+    _patch_observers(driver, monkeypatch)
+    monkeypatch.setattr(driver, "OllamaChatClient", _StubClientFactory)
+    out = tmp_path / "out"
+
+    common = [
+        "--arm",
+        "primary",
+        "--paper-repo",
+        str(paper_repo),
+        "--bank",
+        str(bank_path),
+        "--k-contexts",
+        "2",
+    ]
+    assert (
+        driver.main(
+            [
+                "--capture",
+                *common,
+                "--m-draws",
+                "2",
+                "--smoke",
+                "--artifact-dir",
+                str(out),
+            ]
+        )
+        == 0
+    )
+    for name in (
+        "run-manifest.json",
+        "run_records.jsonl",
+        "run_annotation.jsonl",
+        "run-metrics.json",
+        "attempts.jsonl",
+    ):
+        assert (out / name).exists(), name
+
+    # 封印規模でない bundle なので exit 2 (前向き結果ではない)
+    assert driver.main(["--verify", *common, "--artifact-dir", str(out)]) == 2
+    assert (out / "run-verdict.json").exists()
+
+
+def test_m7_preflight_result_is_recorded_in_the_sidecar(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """draw 0 の時点で何が分かっていたかを成果物に残す (M7)."""
+    broken = copy.deepcopy(sealed)
+    broken["environment"]["ollama_version"] = "0.99.0"
+    paper_repo = _paper_repo_with(broken, tmp_path / "paper")
+    _patch_observers(driver, monkeypatch)
+    monkeypatch.setattr(driver, "OllamaChatClient", _StubClientFactory)
+    out = tmp_path / "out"
 
     assert (
-        asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo)) is False
+        driver.main(
+            [
+                "--capture",
+                "--arm",
+                "primary",
+                "--paper-repo",
+                str(paper_repo),
+                "--bank",
+                str(bank_path),
+                "--k-contexts",
+                "2",
+                "--m-draws",
+                "2",
+                "--smoke",
+                "--artifact-dir",
+                str(out),
+            ]
+        )
+        == 0
+    )
+    metrics = json.loads((out / "run-metrics.json").read_text(encoding="utf-8"))
+    assert metrics["smoke"] is True
+    assert metrics["requested_m_draws"] == 2
+    assert any("ollama_version" in p for p in metrics["preflight_problems"])
+    assert metrics["driver_provenance"]["path"] == "paper02_run_arms.py"
+
+
+def test_l2_cost_ceiling_is_enforced_live(driver: Any) -> None:
+    """呼び出し上限は live に効く (事後集計では発火しえない — L2)."""
+    spy = driver.ThinkAndModelSpy(inner=_StubChat(), call_cap=1)
+    asyncio.run(spy.chat([], sampling=None, think=False))
+    with pytest.raises(RuntimeError, match="呼び出し上限"):
+        asyncio.run(spy.chat([], sampling=None, think=False))
+
+
+def test_l1_unreadable_bundle_fails_cleanly(driver: Any, tmp_path: Path) -> None:
+    """壊れた bundle は traceback でなく `[verify] FAIL` で落ちる (L1)."""
+    out = tmp_path / "broken"
+    out.mkdir()
+    (out / "run-manifest.json").write_text("{not json", encoding="utf-8")
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_FAIL
+
+
+def test_l4_malformed_tags_response_is_refused(driver: Any) -> None:
+    """`/api/tags` が digest を欠いたら traceback でなく明示的に停止する (L4)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/version":
+            return httpx.Response(200, json={"version": "0.32.12"})
+        if request.url.path == "/api/tags":
+            return httpx.Response(200, json={"models": [{"name": "llama3.1:8b"}]})
+        return httpx.Response(404)
+
+    client = httpx.AsyncClient(
+        base_url="http://stub", transport=httpx.MockTransport(handler)
+    )
+    with pytest.raises(SystemExit, match="name/digest"):
+        asyncio.run(driver.observe_ollama("http://stub", client=client))
+    asyncio.run(client.aclose())
+
+
+def test_h4_flag_that_understates_the_scale_also_fails(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """自己申告と再計算の食い違いは、**どちら向きでも**落ちる (H4).
+
+    逆向き (封印規模でないのに「封印規模だ」と名乗る) だけを見ていると、
+    照合そのものを外しても気づけない。
+    """
+    out = tmp_path / "primary"
+    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+    manifest_path = out / "run-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["sub_sealed_scale"] is True  # M=2 なので本来は真
+    manifest["sub_sealed_scale"] = False  # 攻撃: 封印規模だと名乗る
+    manifest_path.write_text(
+        driver.handoff.canonical_dumps(manifest) + "\n", encoding="utf-8", newline="\n"
     )
 
-    # 対照: 同じ bundle でも封印検査が通れば OK になる (落ちるだけの検査ではない)
-    (scripts / "verify_seal.py").write_text(
-        "print('[seal] OK synthetic')\n", encoding="utf-8"
+    paper_repo = tmp_path / "paper-ok"
+    _fake_seal_checker(paper_repo, passes=True)
+    code = asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo))
+    # 照合が無ければ SUB_SEALED (2) で済んでしまう。照合があるので FAIL (1)。
+    assert code == driver.VERIFY_FAIL
+
+
+def test_m1_a_non_default_seed_is_the_one_the_scorer_uses(
+    driver: Any,
+    sealed: dict[str, Any],
+    bank_path: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """既定値と**違う** seed で記録すると、採点もその seed を使う (M1).
+
+    既定値と一致する seed だけで確かめると、定数へ退行しても気づけない。
+    """
+    out = tmp_path / "primary"
+    rendered, _ = _capture(
+        driver, sealed, driver.load_frozen_bank(bank_path), seed=12345
     )
-    assert asyncio.run(driver.verify(out, arm="primary", paper_repo=paper_repo)) is True
+    driver._write(out, rendered)
+    assert json.loads(rendered["run-manifest.json"])["run"]["seed"] == 12345
+    assert driver.POWER_SEED_DEFAULT != 12345
+
+    seen: list[int] = []
+    original = driver.score_bank_annotation
+
+    def spy(**kwargs: Any) -> Any:
+        seen.append(kwargs["seed"])
+        return original(**kwargs)
+
+    monkeypatch.setattr(driver, "score_bank_annotation", spy)
+    asyncio.run(driver.verify(out, arm="primary"))
+    assert seen == [12345]
+
+
+def test_m1_missing_seed_is_an_error_not_a_default(
+    driver: Any, sealed: dict[str, Any], bank_path: Path, tmp_path: Path
+) -> None:
+    """seed が無い manifest は既定値で採点せず落ちる."""
+    out = tmp_path / "primary"
+    _capture_to(driver, sealed, driver.load_frozen_bank(bank_path), out)
+    manifest_path = out / "run-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["run"]["seed"]
+    manifest_path.write_text(
+        driver.handoff.canonical_dumps(manifest) + "\n", encoding="utf-8", newline="\n"
+    )
+    assert asyncio.run(driver.verify(out, arm="primary")) == driver.VERIFY_FAIL
