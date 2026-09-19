@@ -1,0 +1,6 @@
+# 論文 02 の論文 repo (collapsed-decision-space) の data/prospective/{control,primary}/ に、
+# byte のまま出荷済みの成果物。正本は論文 repo 側にあり、sha256 は同 repo の
+# data/prospective/README.md と analysis/heldout-stay/freeze.json に pin されている。
+# ここでは重複を追跡しない。
+artifacts/*/run_records.jsonl
+artifacts/*/run_annotation.jsonl

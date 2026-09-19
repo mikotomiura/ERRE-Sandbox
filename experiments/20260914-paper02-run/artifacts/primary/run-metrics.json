@@ -1,0 +1,21 @@
+{
+  "arm": "primary",
+  "driver_provenance": {
+    "git_dirty": true,
+    "git_head": "4e45adb33d7472d2adf6da29a800bde9b8f58f9e",
+    "path": "paper02_run_arms.py",
+    "sha256": "c244ac41ebe4f8bb782e0cb959f7ffcc99c3fa76847d084a57da8e8b84183c78"
+  },
+  "llm_calls": 4800,
+  "note": "壁時計は自己申告である。ここに書かれた時刻は run manifest の外にあり、何かが何かより前に起きたことを証明しない (manifest は決定性のため 固定時計を持つ)。",
+  "preflight_problems": [],
+  "recorded_at": "2026-09-14T18:44:35.207511+00:00",
+  "requested_k_contexts": 8,
+  "requested_m_draws": 300,
+  "resident_models_before": [],
+  "smoke": false,
+  "sub_sealed_scale": false,
+  "transport_retries": 0,
+  "transport_retry_reasons": [],
+  "wall_clock_seconds": 8472.047
+}
