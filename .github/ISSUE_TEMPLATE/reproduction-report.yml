@@ -24,9 +24,34 @@ body:
     attributes:
       label: Outcome
       options:
-        - Passed (exit code 0)
-        - Failed (non-zero exit code)
+        - Passed (exit code 0, full run)
+        - Failed (non-zero exit code, full run)
+        - Partial (ran with --only)
         - Could not get far enough to run it
+    validations:
+      required: true
+
+  - type: dropdown
+    id: acquired_via
+    attributes:
+      label: How did you get the code?
+      options:
+        - git clone
+        - GitHub "Download ZIP"
+        - Zenodo archive
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: independence
+    attributes:
+      label: Independence
+      description: This is not about trust — it is what the report can be counted as evidence of.
+      options:
+        - I am not the author and followed REPRODUCING.md on my own
+        - I am not the author but got help from the author along the way
+        - I am the author
     validations:
       required: true
 
@@ -34,15 +59,23 @@ body:
     id: os
     attributes:
       label: Operating system
+      description: Only if the environment block is missing.
       placeholder: "e.g. Ubuntu 24.04 / Windows 11 / macOS 15 (Apple silicon)"
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: output
     attributes:
       label: Output
-      description: Paste the command's output. If it failed, the whole thing; if it passed, the last few lines are enough.
+      description: >-
+        Paste the whole output, from the `=== environment (public-safe) ===`
+        line to the end. That block contains no paths, usernames or
+        hostnames by design — but if a traceback shows a path containing your
+        username, replace it with `<REDACTED>` before pasting. If you could
+        not get far enough to run the verifier, run
+        `python scripts/report_environment.py` instead and paste that,
+        plus where you got stuck.
       render: shell
     validations:
       required: true
