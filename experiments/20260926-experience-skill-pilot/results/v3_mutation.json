@@ -1,0 +1,905 @@
+{
+  "target_sha256": {
+    "skill_experience_scorer.py": "94041105894767ddc16171c2d80639a1e1d3a980e6833b307f684519e574875d",
+    "skill_experience_battery.py": "9867bb96009793879473d68d3557ad1daf03721bfbed53fbb37d26217432e027",
+    "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+    "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8"
+  },
+  "mutants": [
+    {
+      "label": "ms1  対照 arm を判定 arm の指す選択肢に写像しない",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_component_uses_judge_pointing"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_control_component_uses_judge_pointing",
+        "test_control_does_not_change_the_verdict",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "ms2  ⊥ を分母から落とす",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_counts_in_denominator"
+      ],
+      "failed": [
+        "test_bottom_counts_in_denominator"
+      ]
+    },
+    {
+      "label": "ms3  PASS の下限を τ でなく 0 に (p_zero で判定)",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_small_effect_is_no_go"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_small_effect_is_no_go"
+      ]
+    },
+    {
+      "label": "ms4  PASS でなければ全て NO_GO",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_effect_at_threshold_is_inconclusive",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass"
+      ]
+    },
+    {
+      "label": "ms5  4 成分の符号条件を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_one_arm_failure_is_not_pass"
+      ],
+      "failed": [
+        "test_one_arm_failure_is_not_pass"
+      ]
+    },
+    {
+      "label": "ms6  判定を対照 arm で計算する",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_does_not_change_the_verdict",
+        "test_no_go_with_control_pass_is_attributed"
+      ],
+      "failed": [
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_one_arm_failure_is_not_pass",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy"
+      ]
+    },
+    {
+      "label": "ms7  対照 verdict を判定 arm で計算する",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_does_not_change_the_verdict",
+        "test_no_go_with_control_pass_is_attributed"
+      ],
+      "failed": [
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_no_go_with_control_pass_is_attributed"
+      ]
+    },
+    {
+      "label": "ms8  対照 PASS の条件を外す (NO_GO を常に対照 PASS 側へ)",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_claim_branch_table",
+        "test_no_go_with_control_no_go_stays_narrow"
+      ],
+      "failed": [
+        "test_claim_branch_table",
+        "test_control_bottom_gate_only_affects_control",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_no_go_with_control_no_go_stays_narrow"
+      ]
+    },
+    {
+      "label": "ms9  claim 分岐に対照 verdict を渡さない",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_no_go_with_control_pass_is_attributed"
+      ],
+      "failed": [
+        "test_no_go_with_control_pass_is_attributed"
+      ]
+    },
+    {
+      "label": "ms10 対照の ⊥ gate を判定 verdict に効かせる",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_bottom_gate_only_affects_control"
+      ],
+      "failed": [
+        "test_control_bottom_gate_only_affects_control"
+      ]
+    },
+    {
+      "label": "ms11 対照行の欠けを検査しない",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_control_rows_leave_the_verdict"
+      ],
+      "failed": [
+        "test_missing_control_rows_leave_the_verdict"
+      ]
+    },
+    {
+      "label": "ms12 判定 arm / 対照の ⊥ gate を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_bottom_gate_only_affects_control",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_control_bottom_gate_only_affects_control",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_bottom_rate_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "ms13 C0 ⊥ gate を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows"
+      ],
+      "failed": [
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows"
+      ]
+    },
+    {
+      "label": "ms14 transport 失敗を ⊥ に畳む",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_transport_failure_is_not_computed"
+      ],
+      "failed": [
+        "test_transport_failure_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms15 certification 照合を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_certification_must_cover_all_six_files",
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms16 certification から v2 scorer を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_must_cover_all_six_files"
+      ],
+      "failed": [
+        "test_certification_must_cover_all_six_files"
+      ]
+    },
+    {
+      "label": "ms37 certification から旧 Stage B battery を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_must_cover_all_six_files"
+      ],
+      "failed": [
+        "test_certification_must_cover_all_six_files"
+      ]
+    },
+    {
+      "label": "ms38 C0 行の欠けを検査しない",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_c0_rows_is_not_computed"
+      ],
+      "failed": [
+        "test_missing_c0_rows_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms39 判定 arm 行の欠けを検査しない",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_judge_rows_is_not_computed"
+      ],
+      "failed": [
+        "test_missing_judge_rows_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms17 battery 検査を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_violation_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_battery_violation_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms18 要求条件の照合を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_request_meta_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_request_meta_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms19 seed 照合を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_wrong_seed_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms20 凍結 renderer との照合を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_v2_prompt_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_v2_prompt_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms21 期待 prompt を v2 の lever renderer で描く",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_v2_prompt_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_v2_prompt_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms22 再 parse 照合を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_recorded_parse_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_recorded_parse_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms23 重複 sample の検出を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicate_sample_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_duplicate_sample_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms24 想定外 key の検出を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unexpected_replicate_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_unexpected_replicate_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms25 C0 先行の監査を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_state_call_before_c0_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_state_call_before_c0_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms26 call_index の一意性検査を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicate_call_index_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_duplicate_call_index_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms27 凍結した呼び出し順の検査を削除",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_out_of_order_state_calls_are_invalid_scorer"
+      ],
+      "failed": [
+        "test_arms_rotate_within_each_block",
+        "test_out_of_order_state_calls_are_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms36 block 内の arm 巡回を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_arms_rotate_within_each_block",
+        "test_block_arm_order_is_a_rotation"
+      ],
+      "failed": [
+        "test_arms_rotate_within_each_block",
+        "test_block_arm_order_is_a_rotation"
+      ]
+    },
+    {
+      "label": "ms28 schema 違反を verdict 体系の外 (例外) に落とす",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms29 clip 補正を外す (名目値 = 真の C)",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_simulation_plants_the_clipped_expectation"
+      ],
+      "failed": [
+        "test_simulation_plants_the_clipped_expectation"
+      ]
+    },
+    {
+      "label": "ms30 clipped normal の期待値から sd 項を落とす",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_clipped_effect_matches_monte_carlo",
+        "test_nominal_effect_inverts_clipping"
+      ],
+      "failed": [
+        "test_clipped_effect_matches_monte_carlo",
+        "test_no_power_plateau_at_wide_spread",
+        "test_nominal_effect_inverts_clipping",
+        "test_simulation_plants_the_clipped_expectation"
+      ]
+    },
+    {
+      "label": "ms31 模擬から ⊥ gate を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_simulation_applies_bottom_gate"
+      ],
+      "failed": [
+        "test_simulation_applies_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms32 模擬の下限検定を τ でなく 0 に",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plant_is_distinct_from_threshold"
+      ],
+      "failed": [
+        "test_null_reaches_no_go",
+        "test_plant_is_distinct_from_threshold",
+        "test_simulation_plants_the_clipped_expectation"
+      ]
+    },
+    {
+      "label": "ms33 sd の広い点の size 上限を緩める",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_values",
+        "test_size_cap_depends_on_spread"
+      ],
+      "failed": [
+        "test_frozen_values",
+        "test_size_cap_depends_on_spread"
+      ]
+    },
+    {
+      "label": "ms34 sd によらず緩い上限を使う",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_cap_depends_on_spread"
+      ],
+      "failed": [
+        "test_size_cap_depends_on_spread"
+      ]
+    },
+    {
+      "label": "ms35 選定条件から NO_GO 側の size を外す",
+      "target": "skill_experience_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_criteria_ok_requires_all_four"
+      ],
+      "failed": [
+        "test_criteria_ok_requires_all_four"
+      ]
+    },
+    {
+      "label": "mb1  block 内巡回を削除",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_block_rotation_uses_render_order_index",
+        "test_success_positions_balanced_within_each_r"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_block_rotation_uses_render_order_index",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_success_positions_balanced_within_each_r",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb2  巡回の block 番号を描画順でなく正準 signature 順に",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_block_rotation_uses_render_order_index"
+      ],
+      "failed": [
+        "test_block_rotation_uses_render_order_index",
+        "test_outcome_reading_weather_unbound_policy"
+      ]
+    },
+    {
+      "label": "mb3  成否を label 固定にする (weather を見ない)",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_state_has_36_rows_with_12_successes",
+        "test_success_follows_the_arm_rule"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_control_is_filler_swap_of_judge_state",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_family_states_identical_outside_outcomes",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_state_has_36_rows_with_12_successes",
+        "test_success_follows_the_arm_rule",
+        "test_success_positions_balanced_within_each_r",
+        "test_success_row_text_equals_v2_lever_line",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb4  失敗行を落とす (v2 lever への退化)",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_states_identical_outside_outcomes",
+        "test_max_prompt_bytes_is_pinned"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_family_states_identical_outside_outcomes",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_max_prompt_bytes_is_pinned",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_blind_policy_sees_identical_family_prompts",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_prompt_budget_detects_overflow",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb5  族内で試行列をずらす",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_states_identical_outside_outcomes",
+        "test_trial_sequences_shared_within_family"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_control_is_filler_swap_of_judge_state",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_b_trials_are_sigma_image",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_family_states_identical_outside_outcomes",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_blind_policy_sees_identical_family_prompts",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_trial_sequences_shared_within_family",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb6  族内一致検査を削除",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_identity_detects_shifted_trials"
+      ],
+      "failed": [
+        "test_family_identity_detects_shifted_trials"
+      ]
+    },
+    {
+      "label": "mb7  成功行の位置均衡検査を削除",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_outcome_balance_detects_unrotated_blocks"
+      ],
+      "failed": [
+        "test_outcome_balance_detects_unrotated_blocks"
+      ]
+    },
+    {
+      "label": "mb8  対照 filler を語彙 label にする",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fillers_are_out_of_vocabulary_and_parse_to_bottom"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_control_is_filler_swap_of_judge_state",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_fillers_are_out_of_vocabulary_and_parse_to_bottom",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb9  対照の失敗行 label を置き換えない",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_is_filler_swap_of_judge_state"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_control_is_filler_swap_of_judge_state",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go",
+        "test_weather_matched_success_is_the_positive_control"
+      ]
+    },
+    {
+      "label": "mb10 対照構成検査を削除",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_check_detects_unswapped_labels"
+      ],
+      "failed": [
+        "test_control_check_detects_unswapped_labels"
+      ]
+    },
+    {
+      "label": "mb11 byte 予算の検査を削除",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prompt_budget_detects_overflow"
+      ],
+      "failed": [
+        "test_prompt_budget_detects_overflow"
+      ]
+    },
+    {
+      "label": "mb12 成功行の文面を v2 lever 行から変える",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_success_row_text_equals_v2_lever_line"
+      ],
+      "failed": [
+        "test_max_prompt_bytes_is_pinned",
+        "test_success_row_text_equals_v2_lever_line"
+      ]
+    },
+    {
+      "label": "mb13 C0 にも状態を入れる",
+      "target": "skill_experience_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_has_no_state_and_shares_probe_part"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arm_names_do_not_leak",
+        "test_arms_rotate_within_each_block",
+        "test_battery_report_clean_at_r_max",
+        "test_battery_violation_is_invalid_scorer",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_has_no_state_and_shares_probe_part",
+        "test_certification_must_cover_all_six_files",
+        "test_control_bottom_gate_only_affects_control",
+        "test_control_does_not_change_the_verdict",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_duplicate_sample_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_label_presence_reads_control_but_not_judge",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer",
+        "test_max_prompt_bytes_is_pinned",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_certification_is_invalid_scorer",
+        "test_missing_control_rows_leave_the_verdict",
+        "test_missing_judge_rows_is_not_computed",
+        "test_neighbour_policy_is_conservative",
+        "test_no_go_with_control_no_go_stays_narrow",
+        "test_no_go_with_control_pass_is_attributed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_out_of_order_state_calls_are_invalid_scorer",
+        "test_outcome_blind_policy_cancels_in_every_unit",
+        "test_outcome_reading_weather_unbound_policy",
+        "test_prompt_budget_detects_overflow",
+        "test_recorded_parse_mismatch_is_invalid_scorer",
+        "test_records_roundtrip_matches_evaluate",
+        "test_request_meta_mismatch_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_stale_certification_is_invalid_scorer",
+        "test_state_call_before_c0_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_uncertified_harness_is_invalid_scorer",
+        "test_unexpected_replicate_is_invalid_scorer",
+        "test_uniform_null_is_no_go",
+        "test_v2_prompt_is_invalid_scorer",
+        "test_weather_matched_success_is_the_positive_control",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    }
+  ],
+  "all_killed": true
+}
