@@ -12,6 +12,15 @@ bundles that actually carry the cross-platform byte-parity claim
 it, so a reader told to "run this" verified a smaller, different artifact than
 the one being claimed.
 
+Before it replay-verifies anything, a real run (full or ``--only``, not
+``--list-targets``/``--write-hashes``) prints a public-safe environment block
+from ``scripts/report_environment.py`` -- see that module's docstring and
+``REPRODUCING.md`` section 2 -- so a single pasted log carries both the
+environment an external report was run under and the result, with no extra
+step for the reporter. Each target's PASS/FAIL line also carries its elapsed
+seconds. Both are diagnostic-only: the verdict stays the exit code and the
+summary/hash lines (``REPRODUCING.md`` section 7).
+
 What it does
 ------------
 Five targets, each run as its own subprocess so that per-bundle environment
@@ -70,6 +79,7 @@ import os
 import subprocess  # noqa: S404 -- runs this repo's own scripts, argv is fixed below
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -78,6 +88,24 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
+
+# ``scripts`` has no ``__init__.py`` (a deliberate namespace package -- see
+# ``scripts/policy_banned_imports.py``), and this module is reached two
+# different ways that put two different things on ``sys.path``: a bare
+# ``python scripts/verify_committed_artifacts.py`` (what REPRODUCING.md
+# documents) puts ``scripts/`` itself at ``sys.path[0]``, where only a plain
+# ``import report_environment`` resolves; ``tests/test_architecture`` imports
+# this module as ``scripts.verify_committed_artifacts`` with the repository
+# root on ``sys.path``, where only ``from scripts.report_environment import
+# ...`` resolves. Trying the qualified form first and falling back to the bare
+# one covers both without touching ``sys.path`` in the common case.
+try:
+    from scripts.report_environment import collect as _collect_environment
+    from scripts.report_environment import render as _render_environment
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from report_environment import collect as _collect_environment  # type: ignore[import-not-found]
+    from report_environment import render as _render_environment  # type: ignore[import-not-found]
 HASH_TABLE_RELATIVE: Final[str] = "docs/artifact-hashes.md"
 HASH_TABLE_PATH: Final[Path] = REPO_ROOT / "docs" / "artifact-hashes.md"
 
@@ -425,6 +453,7 @@ def run_target(target: Target) -> bool:
     # ``ignore_cleanup_errors``: on Windows an indexer or anti-virus can still
     # hold a handle when the block exits, and a PermissionError there would turn
     # a successful verification into a red job.
+    started = time.perf_counter()
     with tempfile.TemporaryDirectory(
         prefix="erre-verify-", ignore_cleanup_errors=True
     ) as annotation_dir:
@@ -452,10 +481,12 @@ def run_target(target: Target) -> bool:
             check=False,
         )
         annotations_ok = compare_side_annotations(target, Path(annotation_dir))
+    elapsed = time.perf_counter() - started
     ok = completed.returncode == 0 and annotations_ok
     note = "" if annotations_ok else " (side annotations differ)"
     print(
-        f"{'PASS' if ok else 'FAIL'} [{target.name}] exit {completed.returncode}{note}"
+        f"{'PASS' if ok else 'FAIL'} [{target.name}] exit {completed.returncode}"
+        f"{note} ({elapsed:.1f}s)"
     )
     return ok
 
@@ -510,6 +541,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error(str(exc))
     else:
         selected = TARGETS
+
+    # Printed only for a real run (full or ``--only``), and printed first, so
+    # a reporter who pastes "the whole log" carries the environment the
+    # result below was produced under in the same paste
+    # (.steering/20260926-public-env-diagnostics/decisions.md D1).
+    print(_render_environment(_collect_environment()))
+    sys.stdout.flush()
 
     results = [(target.name, run_target(target)) for target in selected]
 
