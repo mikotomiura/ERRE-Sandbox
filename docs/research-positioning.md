@@ -1056,6 +1056,28 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   user spend ratify 取得後、別セッションで `run.ps1` 実行 → sealed capture → `repro.ps1`/`repro.sh` byte-parity
   実測（空振りなら 1 回まで pre-register 再走、結果選別しない、Phase 4b run1 と同型）。
 
+- **個性化 door 条件① — weight-space seed floor spike (2026-09-26、CPU・既存 artifact 再解析・非 spend・GPU/Qwen3
+  forward/追加学習なし)**: 評価指標 well-posedness spike が conditional-DEFER とした個性化 door の条件① (construct
+  validity from-scratch) を、**「weight-space は M11-C3b の behavioral space が与えなかった noise floor を与えるのか」**
+  の 1 点に絞って判定。named target は glossary「個体化」に合わせ個体レベル (persona-LoRA P + 個体差分 δ_i) に固定し、
+  d(base, persona-LoRA) は persona 適応であって個体化でないと明記。mock adapter は ΔW≡0 で計量検査に使えないため、
+  同一 corpus・seed 違いの学習済み kant LoRA 3 本 (Qwen3-8B、r=16) を再解析。判定計量は出力側 Gram G=ΔWΔWᵀ
+  (LoRA の A が seed 固有の乱数初期値付近に留まり raw ΔW を seed ゲージが支配しうるため)。rule は計算前に凍結
+  (`experiments/20260926-individuation-metric-wellposedness/prereg.md`、sha256 `d7c786d1…`): H1 = 同一 module 位置の
+  cos_G 中央値 > 層ずらし null p99、H2 = cos_G 中央値 > 0.5 かつ ρ_G 中央値 < 1 (いずれも「複製間距離 < base からの
+  距離」の幾何から導出、go-no-go-adr §9 の behavioral frozen 値は非流用)。**verdict = `NO_GO_EFFECT_ABSENT`**:
+  G0 4/4、H1 成立 (cos_G 0.42〜0.48 vs null p99 0.16〜0.20)、H2 不成立 (cos_G < 0.5、ρ_G 1.04〜1.28 > 1) = seed 複製の
+  散らばりが base からの変位を下回る floor は観測されず、behavioral collapse と同型の failure mode がこの scorer でも
+  観測された。→ **個性化 door = CLOSED、条件②③は起動しない**。claim は kant 単一 persona・1 学習設定・3 seed・ΔW-space
+  のこの scorer に限定し、weight-space 一般・J-space・個体化そのものは否定しない。着手後に判明した限界 = 陽性対照の
+  checkpoint が最終 adapter と byte 同一 (early stopping) で情報を持たなかったこと、early stopping の選ぶ step が seed で
+  違い floor が手続き全体の散らばりであること。reactivate は別 ADR 経由のみ (新規学習した手続き固定の複製 / 事前登録した
+  module 型 / J-space の安価な証拠)、同一空間の再試行は禁止。process = Plan mode + reimagine (v1 raw ΔW 破棄 → v2 機構
+  first、hybrid 採用) + user 裁定 + Codex (gpt-5.5/xhigh) 3 周 (計算前 2 周: Revise → Adopt-with-changes、結果読み 1 周:
+  Adopt-with-changes、全反映)。door② (非循環な評価指標) は UNMET のまま、aha は close のまま。詳細 =
+  `.steering/20260926-individuation-door-condition1/` (design / decisions DA-1〜10 / design-v1/v2/comparison /
+  codex-review verbatim)。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:

@@ -42,6 +42,9 @@ EOL_PINNED_PATHS: Final[tuple[str, ...]] = (
     "experiments/20260907-m13-society-live/artifacts/manifest.json",
     "experiments/20260907-m13-society-live/artifacts/ecl_trace.jsonl",
     "experiments/20260904-m13-live-loop-live/artifacts/manifest.json",
+    # Individuation door condition-1 prereg; its SHA-256 is written into
+    # results.json and the ADR binds the verdict to it (not to commit ancestry).
+    "experiments/20260926-individuation-metric-wellposedness/prereg.md",
 )
 
 
