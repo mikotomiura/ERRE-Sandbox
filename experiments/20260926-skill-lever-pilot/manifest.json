@@ -1,0 +1,22 @@
+{
+  "experiments/20260926-skill-lever-pilot/SEED": "a77c4c1322602b5275861739c41eb9ef761c972e4986a5c2659a0aae8951801c",
+  "experiments/20260926-skill-lever-pilot/prereg.md": "7970a598a8c6cef209f62cb3ed6a0e9db4cbb006c6ed9987bae38b0342af6c5b",
+  "experiments/20260926-skill-lever-pilot/results/power_table.json": "a3b025524cd74a1c694e87ae5c71c2b740d00f78e073fc6f58d5bb8cbeea8a01",
+  "experiments/20260926-skill-lever-pilot/results/v2_mutation.json": "36432c44bb8900895f7526d96eb1bf1b976095f711a10298c19c4ab23cdd877d",
+  "experiments/20260926-skill-lever-pilot/run.sh": "4f100d6d84dea001c3492589c7f919ae1e5b426685625185c7aeb970ff960dae",
+  "scripts/skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+  "scripts/skill_lever_evaluate.py": "61854e1ed7ad7e61d2bce4ad61e1c97c5b29c2841f5a5754369d7b03e46d81c5",
+  "scripts/skill_lever_manifest.py": "c6d3a18898a7d2ff435251cd6fd4c60de9c1aecbd0d9606f69a825816b7821ec",
+  "scripts/skill_lever_mutation_check.py": "dc89e2f1e4de87c019ac441ea3a904782ccc4f732889c317ac5e9c73c3e87007",
+  "scripts/skill_lever_power_table.py": "0d3f8f37a53da76d8a4e1bbf3b06452c371efc13c983408990ed78059609053a",
+  "scripts/skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+  "scripts/stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8",
+  "scripts/stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+  "tests/test_skill_lever/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "tests/test_skill_lever/conftest.py": "6a26268eb214763e31e55200acec08832833e7d466d0b69a68aafc14d2852e46",
+  "tests/test_skill_lever/test_battery.py": "252e90f4cdf62d483e3d9dee7d42072ce4ec9406986f9b05fc24ee436545792a",
+  "tests/test_skill_lever/test_manifest.py": "2083ea301f323d637bec77ddd9bb99f6121c0c801b205d9d7322ecb9a28b499c",
+  "tests/test_skill_lever/test_parse.py": "b5e1d27154815546f47d3ded51d88f7c39be12cee59fb4833927ba1724e34b8b",
+  "tests/test_skill_lever/test_power.py": "b062e30730deb4534cd187918c634a32567a6591c23ffba28cd49f24b5721faa",
+  "tests/test_skill_lever/test_scorer.py": "1796b663da4ee93824a121cfa7bea869721e98c5f78c93a9455b236050744829"
+}

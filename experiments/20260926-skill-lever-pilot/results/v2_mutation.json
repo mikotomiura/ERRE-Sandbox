@@ -1,0 +1,552 @@
+{
+  "target_sha256": {
+    "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+    "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8"
+  },
+  "mutants": [
+    {
+      "label": "ms1  foil を反対族 (旧 A vs B 対比) に",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_priming_only_is_not_pass"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_foil_label_swap_flips_unit_sign",
+        "test_one_arm_failure_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_recency_only_is_not_pass",
+        "test_small_effect_is_no_go"
+      ]
+    },
+    {
+      "label": "ms2  ⊥ を分母から落とす",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_counts_in_denominator"
+      ],
+      "failed": [
+        "test_bottom_counts_in_denominator"
+      ]
+    },
+    {
+      "label": "ms3  4 成分の符号条件を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_one_arm_failure_is_not_pass"
+      ],
+      "failed": [
+        "test_one_arm_failure_is_not_pass"
+      ]
+    },
+    {
+      "label": "ms4  PASS の下限を τ でなく 0 に",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_small_effect_is_no_go"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_small_effect_is_no_go"
+      ]
+    },
+    {
+      "label": "ms5  PASS でなければ全て NO_GO",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_effect_at_threshold_is_inconclusive",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass"
+      ]
+    },
+    {
+      "label": "ms6  NO_GO の上限検定を τ でなく 0 に",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_small_effect_is_no_go",
+        "test_uniform_null_is_no_go"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_recency_only_is_not_pass",
+        "test_small_effect_is_no_go",
+        "test_uniform_null_is_no_go"
+      ]
+    },
+    {
+      "label": "ms7  植える効果 = 閾値 (DB-1 の再現)",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_values",
+        "test_plant_is_distinct_from_threshold"
+      ],
+      "failed": [
+        "test_frozen_design_is_the_power_table_choice",
+        "test_frozen_values",
+        "test_plant_is_distinct_from_threshold"
+      ]
+    },
+    {
+      "label": "ms8  lever ⊥ gate を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_simulation_applies_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms9  族内 ⊥ 率差の条項を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_bottom_gap_is_invalid_battery"
+      ],
+      "failed": [
+        "test_family_bottom_gap_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "ms10 arm ごと ⊥ 率上限を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lever_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_simulation_applies_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms11 C0 ⊥ gate を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows"
+      ],
+      "failed": [
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows"
+      ]
+    },
+    {
+      "label": "ms12 transport 失敗を ⊥ に畳む",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_transport_failure_is_not_computed"
+      ],
+      "failed": [
+        "test_transport_failure_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms13 certification 照合を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms14 seed 照合を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_wrong_seed_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms15 凍結 renderer との照合を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unfrozen_prompt_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_unfrozen_prompt_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms16 再 parse 照合を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_recorded_parse_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_recorded_parse_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms17 重複 sample の検出を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicate_sample_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_duplicate_sample_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms18 想定外 key の検出を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unexpected_replicate_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_unexpected_replicate_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms19 要求条件 (model / sampling) の照合を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_request_meta_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_request_meta_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms20 2 種以上の label で先頭を採る",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_two_labels_is_bottom"
+      ],
+      "failed": [
+        "test_bottom",
+        "test_parse_two_labels_is_bottom"
+      ]
+    },
+    {
+      "label": "ms21 閉じていない think を許す",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unclosed_think_is_bottom"
+      ],
+      "failed": [
+        "test_bottom",
+        "test_unclosed_think_is_bottom"
+      ]
+    },
+    {
+      "label": "ms22 模擬から ⊥ gate を外す",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_simulation_applies_bottom_gate"
+      ],
+      "failed": [
+        "test_simulation_applies_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms23 模擬の下限検定を τ でなく 0 に",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plant_is_distinct_from_threshold"
+      ],
+      "failed": [
+        "test_null_reaches_no_go",
+        "test_plant_is_distinct_from_threshold"
+      ]
+    },
+    {
+      "label": "ms24 C0 先行の監査を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lever_before_c0_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_lever_before_c0_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms25 call_index の一意性検査を削除",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicate_call_index_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_duplicate_call_index_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms26 int 欄の型検査を緩める (bool / float を通す)",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_malformed_record_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_malformed_record_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms27 schema 違反を verdict 体系の外 (例外) に落とす",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms28 think 除去を正規化の前に戻す",
+      "target": "skill_lever_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_accepted"
+      ],
+      "failed": [
+        "test_accepted"
+      ]
+    },
+    {
+      "label": "mb6  族内 signature 順の検査を削除",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_label_balance_detects_signature_order"
+      ],
+      "failed": [
+        "test_label_balance_detects_signature_order"
+      ]
+    },
+    {
+      "label": "mb1  Ω_q 位置の巡回を削除",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_report_clean_at_frozen_r",
+        "test_position_balance_requires_multiple_of_four"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_battery_report_clean_at_frozen_r",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_before_c0_is_invalid_scorer",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_lever_rows_is_not_computed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_position_balance_requires_multiple_of_four",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_recency_only_is_not_pass",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go"
+      ]
+    },
+    {
+      "label": "mb2  A_rot の規則を A と同じに",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_four_arms_point_to_distinct_options",
+        "test_rotation_rule_differs_only_in_mapping"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_battery_report_clean_at_frozen_r",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_foil_label_swap_flips_unit_sign",
+        "test_four_arms_point_to_distinct_options",
+        "test_lever_before_c0_is_invalid_scorer",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_lever_rows_is_not_computed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_recency_only_is_not_pass",
+        "test_records_roundtrip_matches_evaluate",
+        "test_rotation_rule_differs_only_in_mapping",
+        "test_small_effect_is_no_go",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go"
+      ]
+    },
+    {
+      "label": "mb3  Skill エントリ順を arm ごとに変える",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_states_share_label_multiset"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_battery_report_clean_at_frozen_r",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_family_states_share_label_multiset",
+        "test_lever_before_c0_is_invalid_scorer",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_lever_rows_is_not_computed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_recency_only_is_not_pass",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go"
+      ]
+    },
+    {
+      "label": "mb4  num_ctx が byte 予算を収めない",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prompt_budget_is_static"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_battery_report_clean_at_frozen_r",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_lever_before_c0_is_invalid_scorer",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_lever_rows_is_not_computed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_prompt_budget_is_static",
+        "test_recency_only_is_not_pass",
+        "test_records_roundtrip_matches_evaluate",
+        "test_small_effect_is_no_go",
+        "test_transport_failure_is_not_computed",
+        "test_uniform_null_is_no_go"
+      ]
+    },
+    {
+      "label": "mb5  C0 にも状態を入れる",
+      "target": "skill_lever_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_has_no_state_and_shares_probe_part"
+      ],
+      "failed": [
+        "test_all_verdict_words_are_reachable",
+        "test_arm_names_do_not_leak",
+        "test_battery_report_clean_at_frozen_r",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_lever_rows",
+        "test_c0_has_no_state_and_shares_probe_part",
+        "test_duplicate_call_index_is_invalid_scorer",
+        "test_duplicate_sample_is_invalid_scorer",
+        "test_effect_above_threshold_is_pass",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_foil_label_swap_flips_unit_sign",
+        "test_lever_before_c0_is_invalid_scorer",
+        "test_lever_bottom_rate_is_invalid_battery",
+        "test_lookup_is_pass",
+        "test_malformed_meta_is_invalid_scorer",
+        "test_malformed_record_is_invalid_scorer",
+        "test_missing_c0_rows_is_not_computed",
+        "test_missing_certification_is_invalid_scorer",
+        "test_missing_lever_rows_is_not_computed",
+        "test_noisy_effect_straddling_threshold_is_inconclusive",
+        "test_one_arm_failure_is_not_pass",
+        "test_position_only_is_not_pass",
+        "test_priming_only_is_not_pass",
+        "test_prompt_budget_is_static",
+        "test_recency_only_is_not_pass",
+        "test_recorded_parse_mismatch_is_invalid_scorer",
+        "test_records_roundtrip_matches_evaluate",
+        "test_request_meta_mismatch_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_stale_certification_is_invalid_scorer",
+        "test_transport_failure_is_not_computed",
+        "test_uncertified_harness_is_invalid_scorer",
+        "test_unexpected_replicate_is_invalid_scorer",
+        "test_unfrozen_prompt_is_invalid_scorer",
+        "test_uniform_null_is_no_go",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    }
+  ],
+  "all_killed": true
+}
