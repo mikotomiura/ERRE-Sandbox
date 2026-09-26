@@ -1,0 +1,24 @@
+{
+  "c0_bottom_rate_driver": 0.0,
+  "driver_sha256_end": "3a78477aad1b71d286ecde63d067a0f49154a81d873997a623ad3eb62298be47",
+  "driver_sha256_start": "3a78477aad1b71d286ecde63d067a0f49154a81d873997a623ad3eb62298be47",
+  "endpoint": "http://127.0.0.1:11434",
+  "error": null,
+  "exit_reason": "completed",
+  "finished_at": "2026-09-26T11:47:18.071052+00:00",
+  "git_dirty": true,
+  "git_head": "95b2eb47dba8a270862b33dbcab069daa6c4617a",
+  "manifest_sha256": "973859f2a0f0653745d47aebe91b47c79717b0562f8fe1948a47b17797d7010f",
+  "meta_error": null,
+  "meta_matches_frozen": true,
+  "model_digest_end": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "model_digest_start": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "n_finish_length": 0,
+  "n_resends": 0,
+  "n_samples": 1200,
+  "ollama_version": "0.32.12",
+  "response_models": [
+    "qwen3:8b"
+  ],
+  "started_at": "2026-09-26T11:44:01.182638+00:00"
+}

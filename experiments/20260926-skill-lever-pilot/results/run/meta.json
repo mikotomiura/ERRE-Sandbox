@@ -1,0 +1,9 @@
+{
+  "model": "qwen3:8b",
+  "num_ctx": 4096,
+  "num_predict": 32,
+  "repeat_penalty": 1.0,
+  "temperature": 0.7,
+  "think": false,
+  "top_p": 0.8
+}
