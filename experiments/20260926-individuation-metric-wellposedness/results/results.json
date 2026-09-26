@@ -1,0 +1,147 @@
+{
+  "config_signature": {
+    "alpha_pattern": {},
+    "lora_alpha": 32,
+    "r": 16,
+    "rank_pattern": {},
+    "target_modules": [
+      "gate_proj",
+      "k_proj",
+      "o_proj",
+      "q_proj",
+      "v_proj"
+    ],
+    "use_rslora": false
+  },
+  "descriptive_d0_a_drift": {
+    "seed42": {
+      "a_frac_over_init_bound_median": 0.159996,
+      "a_row_norm_ratio_median": 1.232507,
+      "aat_offdiag_to_diag_median": 0.136107
+    },
+    "seed43": {
+      "a_frac_over_init_bound_median": 0.118004,
+      "a_row_norm_ratio_median": 1.132564,
+      "aat_offdiag_to_diag_median": 0.096179
+    },
+    "seed44": {
+      "a_frac_over_init_bound_median": 0.114128,
+      "a_row_norm_ratio_median": 1.12806,
+      "aat_offdiag_to_diag_median": 0.094545
+    }
+  },
+  "g0": {
+    "G0_a_inputs_and_shapes": true,
+    "G0_b_self_pair_is_one": true,
+    "G0_c_mock_is_undefined": true,
+    "G0_d_positive_control_detects": true
+  },
+  "h1": true,
+  "h2": false,
+  "h2_rho_threshold": 1.0,
+  "h2_threshold": 0.5,
+  "inputs": {
+    "negative_mock": {
+      "path": "checkpoints/mock_kant_r8/adapter_model.safetensors",
+      "sha256": "9653b88bae1f428da6c8b67086c7c0e053259584b78cb45de2dcf2a0944758c0"
+    },
+    "positive_ckpt1000_seed42": {
+      "path": "data/lora/m9-c-adopt-v2/kant_constrained_mlp_gate_seed42_v1/checkpoint-1000/adapter_model.safetensors",
+      "sha256": "259409e07fc0c55fb5922fe6c11922c3157742a1f4343a1a6da1aa30a3cb318a"
+    },
+    "seed42": {
+      "path": "data/lora/m9-c-adopt-v2/kant_constrained_mlp_gate_seed42_v1/adapter_model.safetensors",
+      "sha256": "259409e07fc0c55fb5922fe6c11922c3157742a1f4343a1a6da1aa30a3cb318a"
+    },
+    "seed43": {
+      "path": "data/lora/m9-c-adopt-v2/kant_constrained_mlp_gate_seed43_v1/adapter_model.safetensors",
+      "sha256": "703ba896147b55f655048fa484fc4236467023e0386a787e7c45db439f848c9b"
+    },
+    "seed44": {
+      "path": "data/lora/m9-c-adopt-v2/kant_constrained_mlp_gate_seed44_v1/adapter_model.safetensors",
+      "sha256": "973db565eddcf4d937134b4edf60010622270412a960b53ae551a7682d7e0756"
+    }
+  },
+  "null_percentile": 99.0,
+  "pairs": {
+    "42-43": {
+      "descriptive_median_cos_raw": 0.208845,
+      "descriptive_median_delta_w_fro": 1.349695,
+      "descriptive_median_rho_raw": 1.303293,
+      "descriptive_min_delta_w_fro": 0.511606,
+      "median_cos_gram": 0.434679,
+      "median_cos_gram_by_type": {
+        "gate_proj": 0.544584,
+        "k_proj": 0.356854,
+        "o_proj": 0.447324,
+        "q_proj": 0.392773,
+        "v_proj": 0.41331
+      },
+      "median_rho_gram": 1.271259,
+      "n_modules": 180,
+      "n_null": 6300,
+      "null_median_cos_gram": 0.000954,
+      "null_p99_cos_gram": 0.166748
+    },
+    "42-44": {
+      "descriptive_median_cos_raw": 0.205322,
+      "descriptive_median_delta_w_fro": 1.334488,
+      "descriptive_median_rho_raw": 1.310871,
+      "descriptive_min_delta_w_fro": 0.47695,
+      "median_cos_gram": 0.420961,
+      "median_cos_gram_by_type": {
+        "gate_proj": 0.553177,
+        "k_proj": 0.340422,
+        "o_proj": 0.435406,
+        "q_proj": 0.365246,
+        "v_proj": 0.398654
+      },
+      "median_rho_gram": 1.279228,
+      "n_modules": 180,
+      "n_null": 6300,
+      "null_median_cos_gram": 0.000937,
+      "null_p99_cos_gram": 0.160428
+    },
+    "43-44": {
+      "descriptive_median_cos_raw": 0.222769,
+      "descriptive_median_delta_w_fro": 1.116516,
+      "descriptive_median_rho_raw": 1.247626,
+      "descriptive_min_delta_w_fro": 0.47695,
+      "median_cos_gram": 0.478406,
+      "median_cos_gram_by_type": {
+        "gate_proj": 0.57651,
+        "k_proj": 0.391738,
+        "o_proj": 0.477782,
+        "q_proj": 0.441803,
+        "v_proj": 0.4763
+      },
+      "median_rho_gram": 1.039394,
+      "n_modules": 180,
+      "n_null": 6300,
+      "null_median_cos_gram": 0.000945,
+      "null_p99_cos_gram": 0.200626
+    }
+  },
+  "positive_control": {
+    "descriptive_median_cos_raw": 1.0,
+    "descriptive_median_delta_w_fro": 1.691113,
+    "descriptive_median_rho_raw": 0.0,
+    "descriptive_min_delta_w_fro": 0.762223,
+    "median_cos_gram": 1.0,
+    "median_cos_gram_by_type": {
+      "gate_proj": 1.0,
+      "k_proj": 1.0,
+      "o_proj": 1.0,
+      "q_proj": 1.0,
+      "v_proj": 1.0
+    },
+    "median_rho_gram": 0.0,
+    "n_modules": 180,
+    "n_null": 6300,
+    "null_median_cos_gram": 0.000939,
+    "null_p99_cos_gram": 0.207302
+  },
+  "prereg_path": "experiments/20260926-individuation-metric-wellposedness/prereg.md",
+  "prereg_sha256": "d7c786d1fe2e755594d0a427c36b1b8d81c3a2b00e02608a7eca4aa40a7b971f",
+  "verdict": "NO_GO_EFFECT_ABSENT"
+}
