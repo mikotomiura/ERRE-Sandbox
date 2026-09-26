@@ -1,0 +1,446 @@
+{
+  "target_sha256": {
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_pre.py": "e76b74e7b8d5eee532e177ac2fed19a87148f355e9af1e4c0f05439b994cab82"
+  },
+  "mutants": [
+    {
+      "label": "m1   置換単位を個体から sample に",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n2_individual_displacement_unrelated_to_stream",
+        "test_n2_random_direction_is_not_pass"
+      ],
+      "failed": [
+        "test_n2_individual_displacement_unrelated_to_stream",
+        "test_n2_random_direction_is_not_pass"
+      ]
+    },
+    {
+      "label": "m2   整合対応 g_A / g_B を反転",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_alignment_direction_positive_control",
+        "test_positive_control_passes"
+      ],
+      "failed": [
+        "test_ablation_paired_test_required",
+        "test_ablation_point_estimate_required",
+        "test_ablation_retaining_effect_is_not_pass",
+        "test_alignment_direction_positive_control",
+        "test_anti_aligned_is_not_pass",
+        "test_anti_aligned_is_one_sided_not_significant",
+        "test_b_pre_not_established_is_invalid_battery",
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery",
+        "test_c_below_delta_min_is_not_pass",
+        "test_ci_separation_is_invalid_scorer",
+        "test_contrast_matches_definition",
+        "test_delta_min_is_read_from_lever_record",
+        "test_high_realized_power_is_absent",
+        "test_k_mismatch_is_invalid_scorer",
+        "test_literal_prereg_power_blocks_lever",
+        "test_low_realized_power_is_inconclusive",
+        "test_n1_no_effect_is_not_pass",
+        "test_n2_individual_displacement_unrelated_to_stream",
+        "test_n2_random_direction_is_not_pass",
+        "test_n3_one_sided_effect_is_not_pass",
+        "test_perm_p_exact_includes_observed",
+        "test_positive_control_passes",
+        "test_rates_count_bottom_in_denominator_only",
+        "test_unbalanced_di_is_invalid_scorer",
+        "test_weak_lever_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "m3   ablation 条項を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_ablation_retaining_effect_is_not_pass"
+      ],
+      "failed": [
+        "test_ablation_paired_test_required",
+        "test_ablation_point_estimate_required",
+        "test_ablation_retaining_effect_is_not_pass",
+        "test_c_below_delta_min_is_not_pass",
+        "test_n2_random_direction_is_not_pass"
+      ]
+    },
+    {
+      "label": "m4   C の代わりに |C|",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_anti_aligned_is_one_sided_not_significant",
+        "test_contrast_matches_definition"
+      ],
+      "failed": [
+        "test_anti_aligned_is_not_pass",
+        "test_anti_aligned_is_one_sided_not_significant",
+        "test_n1_false_positive_rate_matches_alpha"
+      ]
+    },
+    {
+      "label": "m5a  両成分の符号条件を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n3_one_sided_effect_is_not_pass"
+      ],
+      "failed": [
+        "test_n3_one_sided_effect_is_not_pass"
+      ]
+    },
+    {
+      "label": "m5b  C_A だけで判定",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n3_one_sided_effect_is_not_pass"
+      ],
+      "failed": [
+        "test_n3_one_sided_effect_is_not_pass"
+      ]
+    },
+    {
+      "label": "m6a  ⊥ を整合選択に数える",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rates_count_bottom_in_denominator_only"
+      ],
+      "failed": [
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery",
+        "test_rates_count_bottom_in_denominator_only"
+      ]
+    },
+    {
+      "label": "m6b  ⊥ を分母から落とす",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rates_count_bottom_in_denominator_only"
+      ],
+      "failed": [
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery",
+        "test_power_ceiling_under_prereg_definition",
+        "test_rates_count_bottom_in_denominator_only",
+        "test_simulated_individuals_stay_in_simplex"
+      ]
+    },
+    {
+      "label": "m7   δ_min を lever 記録から読まずリテラル",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_delta_min_is_read_from_lever_record"
+      ],
+      "failed": [
+        "test_c_below_delta_min_is_not_pass",
+        "test_delta_min_is_read_from_lever_record",
+        "test_n2_random_direction_is_not_pass"
+      ]
+    },
+    {
+      "label": "m8   CI 陰性対照の行を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_ci_separation_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_ci_separation_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "m9   δ_min 条項を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c_below_delta_min_is_not_pass",
+        "test_delta_min_is_read_from_lever_record"
+      ],
+      "failed": [
+        "test_c_below_delta_min_is_not_pass",
+        "test_delta_min_is_read_from_lever_record"
+      ]
+    },
+    {
+      "label": "m10  ⊥ 上界条項を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery"
+      ],
+      "failed": [
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "m11a power 分岐を削除 (常に NO_GO)",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_low_realized_power_is_inconclusive"
+      ],
+      "failed": [
+        "test_low_realized_power_is_inconclusive"
+      ]
+    },
+    {
+      "label": "m11b power 分岐を削除 (常に INCONCLUSIVE)",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_high_realized_power_is_absent",
+        "test_n1_no_effect_is_not_pass"
+      ],
+      "failed": [
+        "test_ablation_paired_test_required",
+        "test_ablation_point_estimate_required",
+        "test_ablation_retaining_effect_is_not_pass",
+        "test_anti_aligned_is_not_pass",
+        "test_c_below_delta_min_is_not_pass",
+        "test_delta_min_is_read_from_lever_record",
+        "test_high_realized_power_is_absent",
+        "test_n1_no_effect_is_not_pass",
+        "test_n2_random_direction_is_not_pass",
+        "test_n3_one_sided_effect_is_not_pass"
+      ]
+    },
+    {
+      "label": "m12  観測割当を p の分子・分母から落とす",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_perm_p_exact_includes_observed"
+      ],
+      "failed": [
+        "test_ablation_paired_test_required",
+        "test_ablation_point_estimate_required",
+        "test_ablation_retaining_effect_is_not_pass",
+        "test_ablation_with_other_seed_is_invalid",
+        "test_anti_aligned_is_not_pass",
+        "test_b_pre_not_established_is_invalid_battery",
+        "test_bottom_gap_in_di_is_invalid_battery",
+        "test_bottom_gap_in_lever_is_invalid_battery",
+        "test_c_below_delta_min_is_not_pass",
+        "test_ci_separation_is_invalid_scorer",
+        "test_delta_min_is_read_from_lever_record",
+        "test_high_realized_power_is_absent",
+        "test_internal_sanity_gate_passes",
+        "test_k_mismatch_is_invalid_scorer",
+        "test_lever_record_inconsistent_is_invalid_scorer",
+        "test_literal_prereg_power_blocks_lever",
+        "test_low_realized_power_is_inconclusive",
+        "test_n1_no_effect_is_not_pass",
+        "test_n2_individual_displacement_unrelated_to_stream",
+        "test_n2_random_direction_is_not_pass",
+        "test_n3_one_sided_effect_is_not_pass",
+        "test_n4_leaked_snapshot_is_invalid_scorer",
+        "test_perm_p_exact_includes_observed",
+        "test_positive_control_passes",
+        "test_unbalanced_di_is_invalid_scorer",
+        "test_weak_lever_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "m13a ablation を unpaired (別 seed) に",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_ablation_with_other_seed_is_invalid"
+      ],
+      "failed": [
+        "test_ablation_with_other_seed_is_invalid"
+      ]
+    },
+    {
+      "label": "m13b ablation の点推定条件を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_ablation_point_estimate_required"
+      ],
+      "failed": [
+        "test_ablation_point_estimate_required"
+      ]
+    },
+    {
+      "label": "m13c ablation の paired 検定を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_ablation_paired_test_required"
+      ],
+      "failed": [
+        "test_ablation_paired_test_required"
+      ]
+    },
+    {
+      "label": "m14  非漏洩 integrity 検査を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n4_leaked_snapshot_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_n4_leaked_snapshot_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "m15  power 模擬の効果注入を s への直接加算に",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_simulated_individuals_stay_in_simplex"
+      ],
+      "failed": [
+        "test_power_ceiling_under_prereg_definition",
+        "test_simulated_individuals_stay_in_simplex"
+      ]
+    },
+    {
+      "label": "mc1  B1 certification の確認を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_b1_certification_is_required"
+      ],
+      "failed": [
+        "test_b1_certification_is_required"
+      ]
+    },
+    {
+      "label": "mc2  certification の scorer sha256 照合を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_b1_certification_is_required"
+      ],
+      "failed": [
+        "test_b1_certification_is_required"
+      ]
+    },
+    {
+      "label": "mc3  K / R 整合 guard を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_k_mismatch_is_invalid_scorer",
+        "test_unbalanced_di_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_k_mismatch_is_invalid_scorer",
+        "test_unbalanced_di_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mc4  lever 十分性の plan_r 条件を削除",
+      "target": "stage_b_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_literal_prereg_power_blocks_lever",
+        "test_weak_lever_is_invalid_battery"
+      ],
+      "failed": [
+        "test_literal_prereg_power_blocks_lever",
+        "test_weak_lever_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "mb1  B-pre: 成立を >= に (strict でない)",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_equal_median_and_floor_is_not_established"
+      ],
+      "failed": [
+        "test_both_conditions_required",
+        "test_equal_median_and_floor_is_not_established",
+        "test_floor_is_max_within"
+      ]
+    },
+    {
+      "label": "mb2  B-pre: 床を within の平均に",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_floor_is_max_within"
+      ],
+      "failed": [
+        "test_floor_is_max_within",
+        "test_none_zone_is_counted_as_bottom_category"
+      ]
+    },
+    {
+      "label": "mb3  B-pre: between を半分 1 × 半分 2 に",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_between_uses_half1_only"
+      ],
+      "failed": [
+        "test_between_uses_half1_only",
+        "test_context_free_choice_is_not_established"
+      ]
+    },
+    {
+      "label": "mb4  B-pre: 両条件 AND を OR に",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_both_conditions_required"
+      ],
+      "failed": [
+        "test_both_conditions_required"
+      ]
+    },
+    {
+      "label": "mb5  B-pre: 分割を mc_index 偶奇に",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_context_free_choice_is_not_established",
+        "test_floor_is_max_within"
+      ],
+      "failed": [
+        "test_between_uses_half1_only",
+        "test_context_free_choice_is_not_established",
+        "test_floor_is_max_within",
+        "test_none_zone_is_counted_as_bottom_category"
+      ]
+    },
+    {
+      "label": "mb7  B-pre: None の zone を落とす",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_none_zone_is_counted_as_bottom_category"
+      ],
+      "failed": [
+        "test_none_zone_is_counted_as_bottom_category"
+      ]
+    },
+    {
+      "label": "mb6  B-pre: 入力 sha256 照合を削除",
+      "target": "stage_b_pre.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_hash_mismatch_is_not_computed"
+      ],
+      "failed": [
+        "test_hash_mismatch_is_not_computed",
+        "test_missing_bank_is_not_computed"
+      ]
+    }
+  ],
+  "all_killed": true
+}

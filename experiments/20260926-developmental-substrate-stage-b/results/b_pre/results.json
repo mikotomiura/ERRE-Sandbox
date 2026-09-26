@@ -1,0 +1,129 @@
+{
+  "b_pre_established": false,
+  "conditions": {
+    "off": {
+      "between": {
+        "cproper-ctx-0|cproper-ctx-1": 0.02,
+        "cproper-ctx-0|cproper-ctx-2": 0.08,
+        "cproper-ctx-0|cproper-ctx-3": 0.06,
+        "cproper-ctx-0|cproper-ctx-4": 0.093333,
+        "cproper-ctx-0|cproper-ctx-5": 0.053333,
+        "cproper-ctx-0|cproper-ctx-6": 0.066667,
+        "cproper-ctx-0|cproper-ctx-7": 0.026667,
+        "cproper-ctx-1|cproper-ctx-2": 0.073333,
+        "cproper-ctx-1|cproper-ctx-3": 0.066667,
+        "cproper-ctx-1|cproper-ctx-4": 0.093333,
+        "cproper-ctx-1|cproper-ctx-5": 0.053333,
+        "cproper-ctx-1|cproper-ctx-6": 0.053333,
+        "cproper-ctx-1|cproper-ctx-7": 0.02,
+        "cproper-ctx-2|cproper-ctx-3": 0.026667,
+        "cproper-ctx-2|cproper-ctx-4": 0.02,
+        "cproper-ctx-2|cproper-ctx-5": 0.026667,
+        "cproper-ctx-2|cproper-ctx-6": 0.02,
+        "cproper-ctx-2|cproper-ctx-7": 0.08,
+        "cproper-ctx-3|cproper-ctx-4": 0.033333,
+        "cproper-ctx-3|cproper-ctx-5": 0.02,
+        "cproper-ctx-3|cproper-ctx-6": 0.02,
+        "cproper-ctx-3|cproper-ctx-7": 0.073333,
+        "cproper-ctx-4|cproper-ctx-5": 0.04,
+        "cproper-ctx-4|cproper-ctx-6": 0.04,
+        "cproper-ctx-4|cproper-ctx-7": 0.093333,
+        "cproper-ctx-5|cproper-ctx-6": 0.013333,
+        "cproper-ctx-5|cproper-ctx-7": 0.053333,
+        "cproper-ctx-6|cproper-ctx-7": 0.066667
+      },
+      "between_median": 0.053333,
+      "bottom_rate": {
+        "cproper-ctx-0": 0.056667,
+        "cproper-ctx-1": 0.06,
+        "cproper-ctx-2": 0.043333,
+        "cproper-ctx-3": 0.053333,
+        "cproper-ctx-4": 0.046667,
+        "cproper-ctx-5": 0.05,
+        "cproper-ctx-6": 0.056667,
+        "cproper-ctx-7": 0.046667
+      },
+      "established": false,
+      "floor": 0.126667,
+      "n_pairs": 28,
+      "within": {
+        "cproper-ctx-0": 0.066667,
+        "cproper-ctx-1": 0.046667,
+        "cproper-ctx-2": 0.073333,
+        "cproper-ctx-3": 0.02,
+        "cproper-ctx-4": 0.066667,
+        "cproper-ctx-5": 0.126667,
+        "cproper-ctx-6": 0.02,
+        "cproper-ctx-7": 0.006667
+      }
+    },
+    "on": {
+      "between": {
+        "cproper-ctx-0|cproper-ctx-1": 0.113333,
+        "cproper-ctx-0|cproper-ctx-2": 0.053333,
+        "cproper-ctx-0|cproper-ctx-3": 0.053333,
+        "cproper-ctx-0|cproper-ctx-4": 0.1,
+        "cproper-ctx-0|cproper-ctx-5": 0.073333,
+        "cproper-ctx-0|cproper-ctx-6": 0.066667,
+        "cproper-ctx-0|cproper-ctx-7": 0.066667,
+        "cproper-ctx-1|cproper-ctx-2": 0.06,
+        "cproper-ctx-1|cproper-ctx-3": 0.06,
+        "cproper-ctx-1|cproper-ctx-4": 0.013333,
+        "cproper-ctx-1|cproper-ctx-5": 0.08,
+        "cproper-ctx-1|cproper-ctx-6": 0.08,
+        "cproper-ctx-1|cproper-ctx-7": 0.06,
+        "cproper-ctx-2|cproper-ctx-3": 0.013333,
+        "cproper-ctx-2|cproper-ctx-4": 0.046667,
+        "cproper-ctx-2|cproper-ctx-5": 0.033333,
+        "cproper-ctx-2|cproper-ctx-6": 0.053333,
+        "cproper-ctx-2|cproper-ctx-7": 0.02,
+        "cproper-ctx-3|cproper-ctx-4": 0.046667,
+        "cproper-ctx-3|cproper-ctx-5": 0.026667,
+        "cproper-ctx-3|cproper-ctx-6": 0.04,
+        "cproper-ctx-3|cproper-ctx-7": 0.02,
+        "cproper-ctx-4|cproper-ctx-5": 0.066667,
+        "cproper-ctx-4|cproper-ctx-6": 0.073333,
+        "cproper-ctx-4|cproper-ctx-7": 0.046667,
+        "cproper-ctx-5|cproper-ctx-6": 0.066667,
+        "cproper-ctx-5|cproper-ctx-7": 0.02,
+        "cproper-ctx-6|cproper-ctx-7": 0.06
+      },
+      "between_median": 0.056667,
+      "bottom_rate": {
+        "cproper-ctx-0": 0.073333,
+        "cproper-ctx-1": 0.083333,
+        "cproper-ctx-2": 0.073333,
+        "cproper-ctx-3": 0.083333,
+        "cproper-ctx-4": 0.1,
+        "cproper-ctx-5": 0.063333,
+        "cproper-ctx-6": 0.123333,
+        "cproper-ctx-7": 0.086667
+      },
+      "established": false,
+      "floor": 0.06,
+      "n_pairs": 28,
+      "within": {
+        "cproper-ctx-0": 0.06,
+        "cproper-ctx-1": 0.04,
+        "cproper-ctx-2": 0.026667,
+        "cproper-ctx-3": 0.046667,
+        "cproper-ctx-4": 0.046667,
+        "cproper-ctx-5": 0.02,
+        "cproper-ctx-6": 0.046667,
+        "cproper-ctx-7": 0.033333
+      }
+    }
+  },
+  "inputs": {
+    "bank": {
+      "path": "experiments/20260710-m13-c-proper/artifacts/bank_annotation.jsonl",
+      "sha256": "378b5423d5b9d927f884e4381c80dd2116ef9342b6f05a92a07b12cd17bdc6fc"
+    },
+    "bank_sha256_prereg": "378b5423d5b9d927f884e4381c80dd2116ef9342b6f05a92a07b12cd17bdc6fc"
+  },
+  "prereg_sha256": "ba7b16a5f5b7edd091ece4bcdaa593d7662857e87ebcf5083979adc4ac3e304c",
+  "reason": "between_median_not_above_floor",
+  "split_seed": 20260926,
+  "status": "computed",
+  "verdict": "INVALID_TASK_BATTERY"
+}

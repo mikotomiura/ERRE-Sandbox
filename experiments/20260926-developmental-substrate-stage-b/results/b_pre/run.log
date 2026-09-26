@@ -1,0 +1,5 @@
+[run.sh] PYTHON=.venv/Scripts/python.exe PYTHONHASHSEED=20260926
+{"event": "STAGE_B_PRE_DONE", "status": "computed", "b_pre_established": false, "verdict": "INVALID_TASK_BATTERY"}
+{"event": "STAGE_B_PRE_DONE", "status": "computed", "b_pre_established": false, "verdict": "INVALID_TASK_BATTERY"}
+[run.sh] repeat byte-identical
+{"event": "STAGE_B_PRE_RUN_COMPLETE", "status": "ok"}
