@@ -1078,6 +1078,27 @@ v2 (2x-bake 決定的)、substrate は live/長尺/多体に耐える determinis
   `.steering/20260926-individuation-door-condition1/` (design / decisions DA-1〜10 / design-v1/v2/comparison /
   codex-review verbatim)。
 
+- **developmental substrate scoping 判断 — Stage B 事前登録 (2026-09-26、doc-only・実装/GPU/sealed run/spend なし)**:
+  条件① の door-close 後、`.idea/developmental-skill-mental-model-individuation.md` (PROPOSED) §9 順序 2 として、frozen
+  base のまま経験から育つ外部 Skill 状態で同一 base の個体が分化するか (Stage B) の独立 scoping ADR を起こすかを判断。
+  crux = M11-C3b と条件① は同じ形 (個体内の揺らぎ ≈ 個体の変位) で落ちたが、外部状態はその揺らぎを下回る分離を
+  自由文 encoder 無しで測れる構成概念として定義できるか。**判断 = 起こす (ゲート列の事前登録として)**。crux への答えは
+  条件付き Yes: Skill を閉じた primitive 系列 + 離散 preconditions に限り、estimand を held-out probe 上の閉集合選択の
+  **経験整合方向への符号付き対比 C** (鏡像規則表の 2 stream、個体単位の置換検定) に取れば encoder も judge も要らない。
+  「過去 2 回は符号なし距離 (noise で正になる) で落ちた」は仮説として扱い結論にしない。位置づけは M11-C3b の問いの
+  測り直しでなく、§2.2 (a) 系 envelope 変更による**より狭い構成概念の新規 scoping**。null = 同じ経験で sampling seed
+  だけ違う発達複製 (条件① の手続き混入の教訓で手続きを固定)。事前登録
+  (`experiments/20260926-developmental-substrate-stage-b/prereg.md`、sha256 `ba7b16a5…`): 2×2 (DI primary / DC 判定外 /
+  CI 陰性対照 / CC seed null)、δ_min = C_lever/2 (null と人手注入 lever の中点)、B2 は one-shot calibration、非漏洩
+  contract の機械検査、paired ablation (効果の担体が Skill 状態か)、verdict は §8 の 5 語のみ。ゲート = B-pre (C-proper
+  bank の CPU 再解析) → B1 (scorer の合成対照 + 変異 15 種) → B2 (小規模 GPU、user 裁定) → B3 (Skill 機構の別実装 ADR +
+  sealed run、user 裁定)。どこで止まっても arc を閉じて Done。PASS でも「環境が教えた規則を外部状態経由で書いて読めた」
+  と区別できない部分が残り、「思考分散」「個体化 (一般)」とは書かない。PROCEDURAL memory は writer 無し・既定 retrieval
+  外の空の保存枠で、Skill は新規機構。mental model は新層を立てない。weight-space door (条件①) と M13 measurement-line
+  CLOSE は再開・supersede しない。論文本数は決めない。process = Plan mode + reimagine (v1 符号なし TV の入れ子 null /
+  v2 独立 agent の符号付き対比 → hybrid) + Codex (gpt-5.5/xhigh) 2 周 (いずれも Adopt-with-changes、HIGH 6 件全反映) +
+  user 承認で FROZEN。詳細 = `.steering/20260926-developmental-substrate-scoping/`。
+
 ## 9. スコープ / 非スコープ
 
 - **やる**:
