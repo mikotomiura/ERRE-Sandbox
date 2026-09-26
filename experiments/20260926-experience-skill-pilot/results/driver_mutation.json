@@ -1,0 +1,1102 @@
+{
+  "target_sha256": {
+    "skill_experience_driver.py": "8caa313698f09832e058a1ea111970b0745c1b6776407f82182e578ae9a024b2",
+    "skill_experience_describe.py": "0cd28252d5ac56828dab8ed35f9c1e140c5726445929d8c683916124976e7e2c",
+    "skill_experience_run_gate.py": "92b0d84e2979b3f2187989f5a465957be12077d2f6511f46e3ab120033628d0a",
+    "skill_experience_driver_mutation_check.py": "639cfa1a75253bbc31a68aa0861f14cd7c61ad7d855302645736ed028a8697b4",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/conftest.py": "1ea3b2cf78cd9da3ad4c2727d55f6a1aaf60121346d71bae1406ac17c4b494a6",
+    "tests/test_describe.py": "1c83352c95cb64e68b33a5b34f8d2b6255438cffbb521f7d1146c7e5faddfbf3",
+    "tests/test_driver.py": "6925e76e2e5a2cbcc9032dbea53ae8c94784fefcd1cc43ae31a979e040866df7",
+    "tests/test_run_gate.py": "f1522c3c6e1d8a3b706e946045c614180dd4b8732add75e0dc443fe5be431270"
+  },
+  "mutants": [
+    {
+      "label": "md1  C0 gate を >= に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_at_the_limit_runs_state_arms"
+      ],
+      "failed": [
+        "test_c0_gate_at_the_limit_runs_state_arms"
+      ]
+    },
+    {
+      "label": "md2  C0 gate を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate"
+      ],
+      "failed": [
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate"
+      ]
+    },
+    {
+      "label": "md3  C0 ⊥ 率を r=0 だけで",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_counts_the_last_replicate"
+      ],
+      "failed": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_counts_the_last_replicate"
+      ]
+    },
+    {
+      "label": "md4  C0 gate の対象 arm を取り違える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_blocks_state_arms"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_model_digest_change_aborts",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md5  状態 arm を C0 より先に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_records_c0_before_state_with_serial_call_index"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_observed_and_matches_frozen",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_records_c0_before_state_with_serial_call_index",
+        "test_sent_bodies_equal_frozen_request",
+        "test_truncated_samples_are_stopped",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md6  状態 phase で call_index を振り直す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_records_c0_before_state_with_serial_call_index"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_records_c0_before_state_with_serial_call_index",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md7  block 内の arm 巡回を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md8  巡回を mod 4 に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md9  巡回の block 番号を k に依らせない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_state_arms_rotate_evenly_over_slots",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md10 対照 arm を呼ばない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_is_the_frozen_grid_with_c0_first",
+        "test_state_arms_rotate_evenly_over_slots"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_control_minus_judge_and_filler_rate",
+        "test_effects_are_suppressed_unless_the_verdict_is_valid",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_extracting_run_description",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_observed_and_matches_frozen",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_run_records_c0_before_state_with_serial_call_index",
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_schedule_is_the_frozen_grid_with_c0_first",
+        "test_state_arms_rotate_evenly_over_slots",
+        "test_truncated_samples_are_stopped",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md11 C0 の順を probe 優先に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_schedule_is_the_frozen_grid_with_c0_first"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_blocks_state_arms",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers",
+        "test_schedule_agrees_with_the_scorer_call_rank",
+        "test_schedule_is_the_frozen_grid_with_c0_first",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md12 再送 3 → 2",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "failed": [
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md13 再送 3 → 4",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "failed": [
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md14 再送で seed を変える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_with_the_same_seed_recovers"
+      ],
+      "failed": [
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md15 再送が尽きても続行",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "failed": [
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md16 再送が尽きたら null でなく空文字",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "failed": [
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md17 transport 以外の例外も再送",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_shifted_sampling_aborts_before_sending"
+      ],
+      "failed": [
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_shifted_sampling_aborts_before_sending"
+      ]
+    },
+    {
+      "label": "md18 非文字列 content を成功扱い",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_null_content_is_a_transport_failure_not_bottom"
+      ],
+      "failed": [
+        "test_null_content_is_a_transport_failure_not_bottom"
+      ]
+    },
+    {
+      "label": "md19 meta を request_meta() から写す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_is_written_from_sent_values_not_constants"
+      ],
+      "failed": [
+        "test_meta_is_written_from_sent_values_not_constants"
+      ]
+    },
+    {
+      "label": "md20 型の厳密一致を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_observed_meta_requires_one_condition"
+      ]
+    },
+    {
+      "label": "md21 送信前照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_mismatch_is_detected_before_the_inner_transport",
+        "test_shifted_sampling_aborts_before_sending"
+      ],
+      "failed": [
+        "test_mismatch_is_detected_before_the_inner_transport",
+        "test_shifted_sampling_aborts_before_sending"
+      ]
+    },
+    {
+      "label": "md22 照合を送信の後に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_mismatch_is_detected_before_the_inner_transport",
+        "test_shifted_sampling_aborts_before_sending"
+      ],
+      "failed": [
+        "test_mismatch_is_detected_before_the_inner_transport"
+      ]
+    },
+    {
+      "label": "md23 messages の照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_missing_seed_and_other_prompt"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_missing_seed_and_other_prompt"
+      ]
+    },
+    {
+      "label": "md24 body の余分な key を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_extra_keys"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_extra_keys"
+      ]
+    },
+    {
+      "label": "md25 options の余分な key を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_extra_keys"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_extra_keys"
+      ]
+    },
+    {
+      "label": "md26 /api/chat 以外の POST を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_chat_post_is_refused_before_sending"
+      ],
+      "failed": [
+        "test_non_chat_post_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "md27 think=None で送る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_uniform_model_is_no_go"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_model_digest_change_aborts",
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_shifted_sampling_aborts_before_sending",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md28 options から seed を落とす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_uniform_model_is_no_go"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_check_sent_body_rejects_missing_seed_and_other_prompt",
+        "test_check_sent_body_rejects_value_and_type",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_model_digest_change_aborts",
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md29 v2 の renderer で送る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_request_uses_the_v3_renderer_not_v2"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_check_sent_body_rejects_missing_seed_and_other_prompt",
+        "test_check_sent_body_rejects_value_and_type",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_model_digest_change_aborts",
+        "test_raw_is_recorded_verbatim",
+        "test_request_uses_the_v3_renderer_not_v2",
+        "test_resend_with_the_same_seed_recovers",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go"
+      ]
+    },
+    {
+      "label": "md30 raw を strip して記録",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_raw_is_recorded_verbatim"
+      ],
+      "failed": [
+        "test_raw_is_recorded_verbatim"
+      ]
+    },
+    {
+      "label": "md31 parsed を parse せずに記録",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_raw_is_recorded_verbatim"
+      ],
+      "failed": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_raw_is_recorded_verbatim"
+      ]
+    },
+    {
+      "label": "md32 seed を定数から記録",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_and_prompt_are_recorded_from_the_sent_body"
+      ],
+      "failed": [
+        "test_seed_and_prompt_are_recorded_from_the_sent_body"
+      ]
+    },
+    {
+      "label": "md33 prompt_sha256 を定数から記録",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_and_prompt_are_recorded_from_the_sent_body"
+      ],
+      "failed": [
+        "test_seed_and_prompt_are_recorded_from_the_sent_body"
+      ]
+    },
+    {
+      "label": "md34 probe_id を取り違える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_records_match_expected_sample_and_parse"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_blocks_state_arms",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_records_match_expected_sample_and_parse",
+        "test_resend_with_the_same_seed_recovers",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md35 非空の run dir を拒否しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_refuses_a_non_empty_run_dir"
+      ],
+      "failed": [
+        "test_run_refuses_a_non_empty_run_dir"
+      ]
+    },
+    {
+      "label": "md36 preflight を飛ばす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_failure_writes_nothing"
+      ],
+      "failed": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_observed_and_matches_frozen",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_preflight_failure_writes_nothing",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_records_c0_before_state_with_serial_call_index",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md37 meta.json を実走中に書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_is_on_disk_while_the_run_is_going"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_each_provenance_field_is_checked",
+        "test_extracting_model_passes_the_frozen_scorer",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_observed_and_matches_frozen",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_records_c0_before_state_with_serial_call_index",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_truncated_samples_are_stopped",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "md38 model digest の変化を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_model_digest_change_aborts"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_model_digest_change_aborts"
+      ]
+    },
+    {
+      "label": "md39 manifest 検査を起動条件に入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_include_manifest_and_certification"
+      ],
+      "failed": [
+        "test_launch_problems_include_manifest_and_certification"
+      ]
+    },
+    {
+      "label": "md40 manifest の exit code だけを見る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_manifest_ok"
+      ],
+      "failed": [
+        "test_manifest_problems_require_manifest_ok"
+      ]
+    },
+    {
+      "label": "md41 manifest の末尾行だけを見る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_manifest_ok"
+      ],
+      "failed": [
+        "test_manifest_problems_require_manifest_ok"
+      ]
+    },
+    {
+      "label": "md42 manifest の OK を末尾以外でも受ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_manifest_ok"
+      ],
+      "failed": [
+        "test_manifest_problems_require_manifest_ok"
+      ]
+    },
+    {
+      "label": "md43 起動拒否を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_refuses_to_launch_without_touching_the_run_dir"
+      ],
+      "failed": [
+        "test_main_refuses_to_launch_without_touching_the_run_dir"
+      ]
+    },
+    {
+      "label": "md44 未合格の certification を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_detects_stale_or_failing"
+      ],
+      "failed": [
+        "test_driver_certification_detects_stale_or_failing"
+      ]
+    },
+    {
+      "label": "md45 certification の sha256 を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_detects_stale_or_failing"
+      ],
+      "failed": [
+        "test_driver_certification_detects_stale_or_failing"
+      ]
+    },
+    {
+      "label": "md46 要求条件の不一致を aborted にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_is_written_from_sent_values_not_constants"
+      ],
+      "failed": [
+        "test_meta_is_written_from_sent_values_not_constants"
+      ]
+    },
+    {
+      "label": "md47 実走中の driver 変更を aborted にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_change_during_the_run_aborts"
+      ],
+      "failed": [
+        "test_driver_change_during_the_run_aborts"
+      ]
+    },
+    {
+      "label": "md48 想定外の応答 model を aborted にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unexpected_response_model_aborts"
+      ],
+      "failed": [
+        "test_unexpected_response_model_aborts"
+      ]
+    },
+    {
+      "label": "md49 来歴の異常を終了理由に反映しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_change_during_the_run_aborts",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_unexpected_response_model_aborts"
+      ],
+      "failed": [
+        "test_driver_change_during_the_run_aborts",
+        "test_meta_is_written_from_sent_values_not_constants",
+        "test_unexpected_response_model_aborts"
+      ]
+    },
+    {
+      "label": "md50 PINNED の追跡を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ],
+      "failed": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ]
+    },
+    {
+      "label": "md51 PINNED と HEAD の差分を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ],
+      "failed": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ]
+    },
+    {
+      "label": "md52 期待 key の無い送信を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chat_without_an_expected_key_is_refused"
+      ],
+      "failed": [
+        "test_chat_without_an_expected_key_is_refused"
+      ]
+    },
+    {
+      "label": "md53 非 transport 例外を握りつぶす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_other_exceptions_abort_without_a_null_row"
+      ],
+      "failed": [
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_shifted_sampling_aborts_before_sending"
+      ]
+    },
+    {
+      "label": "md54 model の照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "md55 think の照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "md56 stream の照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "md57 num_ctx を変えて送る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_uniform_model_is_no_go"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_c0_gate_at_the_limit_runs_state_arms",
+        "test_c0_gate_blocks_state_arms",
+        "test_c0_gate_counts_the_last_replicate",
+        "test_c0_gate_stop_passes_the_gate",
+        "test_check_sent_body_rejects_missing_seed_and_other_prompt",
+        "test_check_sent_body_rejects_value_and_type",
+        "test_completed_run_passes_the_gate",
+        "test_control_does_not_change_the_judge_verdict",
+        "test_driver_change_during_the_run_aborts",
+        "test_each_provenance_field_is_checked",
+        "test_filler_answers_are_recorded_and_gate_only_the_control",
+        "test_judge_uniform_control_extracting_is_the_control_claim",
+        "test_meta_is_on_disk_while_the_run_is_going",
+        "test_model_digest_change_aborts",
+        "test_non_json_payload_counts_as_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_meta_requires_one_condition",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_raw_is_recorded_verbatim",
+        "test_resend_with_the_same_seed_recovers",
+        "test_seed_and_prompt_are_recorded_from_the_sent_body",
+        "test_truncated_samples_are_stopped",
+        "test_unexpected_response_model_aborts",
+        "test_uniform_model_is_no_go",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "g1   exit_reason を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_each_provenance_field_is_checked"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_each_provenance_field_is_checked"
+      ]
+    },
+    {
+      "label": "g2   aborted を受け入れる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aborted_run_with_complete_records_is_stopped"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped"
+      ]
+    },
+    {
+      "label": "g3   meta 不明 (None) を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_each_provenance_field_is_checked"
+      ],
+      "failed": [
+        "test_each_provenance_field_is_checked"
+      ]
+    },
+    {
+      "label": "g4   driver sha の欠落を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_each_provenance_field_is_checked"
+      ],
+      "failed": [
+        "test_each_provenance_field_is_checked"
+      ]
+    },
+    {
+      "label": "g5   model digest を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_each_provenance_field_is_checked"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped",
+        "test_each_provenance_field_is_checked"
+      ]
+    },
+    {
+      "label": "g6   応答 model の空を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_each_provenance_field_is_checked"
+      ],
+      "failed": [
+        "test_each_provenance_field_is_checked"
+      ]
+    },
+    {
+      "label": "g7   行数を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_truncated_samples_are_stopped"
+      ],
+      "failed": [
+        "test_each_provenance_field_is_checked",
+        "test_main_applies_the_run_gate",
+        "test_truncated_samples_are_stopped"
+      ]
+    },
+    {
+      "label": "g8   不合格でも exit 0",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aborted_run_with_complete_records_is_stopped"
+      ],
+      "failed": [
+        "test_aborted_run_with_complete_records_is_stopped"
+      ]
+    },
+    {
+      "label": "g9   空行も行数に数える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_completed_run_passes_the_gate"
+      ],
+      "failed": [
+        "test_c0_gate_stop_passes_the_gate",
+        "test_completed_run_passes_the_gate",
+        "test_each_provenance_field_is_checked",
+        "test_main_reads_the_v2_anchor_and_tolerates_its_absence",
+        "test_truncated_samples_are_stopped"
+      ]
+    },
+    {
+      "label": "ds1  判定の効果を常に出す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_effects_are_suppressed_unless_the_verdict_is_valid"
+      ],
+      "failed": [
+        "test_effects_are_suppressed_unless_the_verdict_is_valid",
+        "test_main_applies_the_run_gate",
+        "test_run_gate_problems_suppress_every_effect"
+      ]
+    },
+    {
+      "label": "ds2  INVALID でも効果を出す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_effects_are_suppressed_when_the_control_is_invalid",
+        "test_effects_are_suppressed_unless_the_verdict_is_valid"
+      ],
+      "failed": [
+        "test_control_effects_are_suppressed_when_the_control_is_invalid",
+        "test_effects_are_suppressed_unless_the_verdict_is_valid"
+      ]
+    },
+    {
+      "label": "ds3  対照 verdict を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_effects_are_suppressed_when_the_control_is_invalid"
+      ],
+      "failed": [
+        "test_control_effects_are_suppressed_when_the_control_is_invalid"
+      ]
+    },
+    {
+      "label": "ds4  gate の不合格を無視",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_applies_the_run_gate",
+        "test_run_gate_problems_suppress_every_effect"
+      ],
+      "failed": [
+        "test_main_applies_the_run_gate",
+        "test_run_gate_problems_suppress_every_effect"
+      ]
+    },
+    {
+      "label": "ds5  main で gate を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_applies_the_run_gate"
+      ],
+      "failed": [
+        "test_main_applies_the_run_gate"
+      ]
+    },
+    {
+      "label": "ds6  records と results の結び付けを見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_refuses_results_of_other_records"
+      ],
+      "failed": [
+        "test_main_refuses_results_of_other_records"
+      ]
+    },
+    {
+      "label": "ds7  filler 率を言及率で",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_minus_judge_and_filler_rate"
+      ],
+      "failed": [
+        "test_control_minus_judge_and_filler_rate"
+      ]
+    },
+    {
+      "label": "ds8  filler 回答に ⊥ を要求しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_answered_filler_needs_bottom_and_exactly_one_filler"
+      ],
+      "failed": [
+        "test_answered_filler_needs_bottom_and_exactly_one_filler",
+        "test_control_minus_judge_and_filler_rate"
+      ]
+    },
+    {
+      "label": "ds9  INCONCLUSIVE の注記を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_inconclusive_keeps_numbers_with_a_note"
+      ],
+      "failed": [
+        "test_inconclusive_keeps_numbers_with_a_note"
+      ]
+    },
+    {
+      "label": "ds10 対照の推定量を判定 arm で",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_extracting_run_description"
+      ],
+      "failed": [
+        "test_extracting_run_description"
+      ]
+    },
+    {
+      "label": "ds11 対照 arm の指す先を写像しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_extracting_run_description"
+      ],
+      "failed": [
+        "test_c0_only_and_verbose_answers",
+        "test_c0_positions_separate_bottom_and_out_of_omega",
+        "test_control_effects_are_suppressed_when_the_control_is_invalid",
+        "test_control_minus_judge_and_filler_rate",
+        "test_effects_are_suppressed_unless_the_verdict_is_valid",
+        "test_extracting_run_description",
+        "test_inconclusive_keeps_numbers_with_a_note",
+        "test_main_applies_the_run_gate",
+        "test_main_reads_the_v2_anchor_and_tolerates_its_absence",
+        "test_run_gate_problems_suppress_every_effect"
+      ]
+    },
+    {
+      "label": "ds12 位置の ⊥ と OOΩ を混ぜる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_positions_separate_bottom_and_out_of_omega"
+      ],
+      "failed": [
+        "test_c0_positions_separate_bottom_and_out_of_omega"
+      ]
+    }
+  ],
+  "all_killed": true
+}
