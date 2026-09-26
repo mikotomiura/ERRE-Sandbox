@@ -1,0 +1,33 @@
+{
+  "C": 0.7854166666666667,
+  "battery_violations": [],
+  "c0_bottom_rate": 0.0,
+  "components": {
+    "A": 0.7250000000000001,
+    "A_rot": 0.7916666666666666,
+    "B": 0.75,
+    "B_rot": 0.875
+  },
+  "inputs": {
+    "cert_sha256": "36432c44bb8900895f7526d96eb1bf1b976095f711a10298c19c4ab23cdd877d",
+    "meta_sha256": "2b3439b75c9b574a5022c233ada2d9fe1af45454ced4c37db96c5a56215722a9",
+    "n_lines": 1200,
+    "prereg_sha256": "7970a598a8c6cef209f62cb3ed6a0e9db4cbb006c6ed9987bae38b0342af6c5b",
+    "records_sha256": "d0cf5084201a138f92f391ba60d4c66bd9cab6ce7f0c95d8af0b4b8692f7125a"
+  },
+  "lever_bottom_rates": {
+    "A": 0.0,
+    "A_rot": 0.0,
+    "B": 0.0,
+    "B_rot": 0.0
+  },
+  "p_lower": 0.00390625,
+  "p_upper": 1.0,
+  "p_zero": 0.00390625,
+  "reasons": [
+    "decided"
+  ],
+  "status": "computed",
+  "structure_violations": [],
+  "verdict": "PASS"
+}

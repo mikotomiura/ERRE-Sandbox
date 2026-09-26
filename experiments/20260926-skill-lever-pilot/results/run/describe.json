@@ -1,0 +1,104 @@
+{
+  "c0": {
+    "bottom_rate": 0.0,
+    "label_rates": {
+      "read_book": 0.041666666666666664,
+      "rest_eyes": 0.08333333333333333,
+      "sit_quiet": 0.4583333333333333,
+      "talk_peer": 0.0625,
+      "tend_moss": 0.041666666666666664,
+      "walk_path": 0.3125
+    },
+    "n": 240,
+    "pointed_rates": {
+      "A": 0.3,
+      "A_rot": 0.09583333333333334,
+      "B": 0.325,
+      "B_rot": 0.2791666666666667
+    },
+    "position_rates": {
+      "0": 0.09166666666666666,
+      "1": 0.2375,
+      "2": 0.2833333333333333,
+      "3": 0.3875
+    }
+  },
+  "effects_suppressed": null,
+  "estimand": {
+    "C": 0.7854166666666667,
+    "components": {
+      "A": 0.7250000000000001,
+      "A_rot": 0.7916666666666666,
+      "B": 0.75,
+      "B_rot": 0.875
+    },
+    "p_zero": 0.00390625,
+    "units": [
+      0.75,
+      1.0,
+      0.6083333333333334,
+      0.675,
+      0.75,
+      1.0,
+      0.8333333333333333,
+      0.6666666666666666
+    ]
+  },
+  "lever_arms": {
+    "A": {
+      "bot_rate": 0.0,
+      "foil_rate": 0.041666666666666664,
+      "n": 240,
+      "oov_rate": 0.0,
+      "other_rate": 0.19166666666666668,
+      "w_rate": 0.7666666666666667,
+      "w_rate_minus_c0": 0.46666666666666673
+    },
+    "A_rot": {
+      "bot_rate": 0.0,
+      "foil_rate": 0.041666666666666664,
+      "n": 240,
+      "oov_rate": 0.041666666666666664,
+      "other_rate": 0.08333333333333333,
+      "w_rate": 0.8333333333333334,
+      "w_rate_minus_c0": 0.7375
+    },
+    "B": {
+      "bot_rate": 0.0,
+      "foil_rate": 0.125,
+      "n": 240,
+      "oov_rate": 0.0,
+      "other_rate": 0.0,
+      "w_rate": 0.875,
+      "w_rate_minus_c0": 0.55
+    },
+    "B_rot": {
+      "bot_rate": 0.0,
+      "foil_rate": 0.041666666666666664,
+      "n": 240,
+      "oov_rate": 0.041666666666666664,
+      "other_rate": 0.0,
+      "w_rate": 0.9166666666666666,
+      "w_rate_minus_c0": 0.6375
+    }
+  },
+  "n_samples": 1200,
+  "n_transport_failures": 0,
+  "non_exact_label_rate": {
+    "A": 0.0,
+    "A_rot": 0.0,
+    "B": 0.0,
+    "B_rot": 0.0,
+    "C0": 0.0
+  },
+  "note": "記述報告のみ (prereg v2 §10)。判定は results.json。旧型対比は label priming と交絡する。",
+  "old_contrast_confounded_with_priming": {
+    "A_state_gA_minus_gB": 0.7666666666666667,
+    "B_state_gB_minus_gA": 0.875,
+    "mean": 0.8208333333333333
+  },
+  "verdict": {
+    "status": "computed",
+    "verdict": "PASS"
+  }
+}
