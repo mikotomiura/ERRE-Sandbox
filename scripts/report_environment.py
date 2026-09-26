@@ -10,18 +10,17 @@ free-text field never captured: the checkout path (clone vs. zip, and
 ``core.autocrlf`` / ``core.eol``), the C runtime (glibc / musl / UCRT /
 libSystem, because the six-digit float quantisation exists specifically to
 absorb cross-libm drift), the CPU architecture, and the exact Python build.
-Hardware fields (CPU model, core count, RAM) are collected too because a
-reporter asked for them, but they are diagnostic-only -- the verdict is the
+Hardware fields (CPU model, core count, RAM) are collected too, but they are
+diagnostic-only -- the verdict is the
 verifier's exit code and its ``=== summary ===``/``[hashes]`` lines, not
 anything printed here
-(``.idea/verification/public-environment-diagnostics.md`` sections 2 and 4).
+(``REPRODUCING.md`` sections 2 and 7).
 
 What this deliberately does not collect
 ----------------------------------------
 This module reads **only** the keys in ``ALLOWLIST_ORDER`` below -- an
 allowlist, not a denylist, because a denylist cannot promise it caught
-everything it should have hidden
-(``.idea/verification/public-environment-diagnostics.md`` section 5). In
+everything it should have hidden. In
 particular it never calls ``platform.node()``, ``getpass.getuser()`` or
 ``socket.gethostname()``, never prints a filesystem path, and reads the
 process environment only to check whether ``PYTHONUTF8`` is set (never its
@@ -185,7 +184,17 @@ def _encoding_pythonutf8() -> str:
 
 
 def _source_git_checkout() -> str:
-    return "yes" if (_REPO_ROOT / ".git").exists() else "no"
+    return "yes" if _is_own_checkout() else "no"
+
+
+def _is_own_checkout() -> bool:
+    # A ZIP/Zenodo copy unpacked *inside* some other git repository would
+    # otherwise answer every ``git`` query below with that outer repository's
+    # commit and status. Only this tree's own ``.git`` counts.
+    return (_REPO_ROOT / ".git").exists()
+
+
+_NOT_A_CHECKOUT: Final[str] = "n/a (not a git checkout)"
 
 
 def _source_git_version() -> str:
@@ -220,14 +229,20 @@ def _git_config_get(key: str) -> str:
 
 
 def _source_core_autocrlf() -> str:
+    if not _is_own_checkout():
+        return _NOT_A_CHECKOUT
     return _git_config_get("core.autocrlf")
 
 
 def _source_core_eol() -> str:
+    if not _is_own_checkout():
+        return _NOT_A_CHECKOUT
     return _git_config_get("core.eol")
 
 
 def _source_commit() -> str:
+    if not _is_own_checkout():
+        return _NOT_A_CHECKOUT
     try:
         completed = subprocess.run(  # noqa: S603, S607 -- fixed argv
             ["git", "rev-parse", "--short", "HEAD"],
@@ -246,6 +261,8 @@ def _source_commit() -> str:
 
 
 def _source_tree_clean() -> str:
+    if not _is_own_checkout():
+        return _NOT_A_CHECKOUT
     # ``--untracked-files=no``: a reporter's own stray files (build output, an
     # editor swap file) must not paint an otherwise-clean checkout as dirty
     # (decisions.md / the task spec for this field, explicitly).

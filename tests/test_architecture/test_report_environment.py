@@ -251,3 +251,23 @@ def test_ecl_v0_golden_pass_line_reports_elapsed_seconds(
         f"expected exactly one PASS/FAIL line for ecl-v0-golden, got {matches!r}"
     )
     assert _PASS_OR_FAIL_LINE_RE.match(matches[0]), matches[0]
+
+
+def test_git_fields_are_not_borrowed_from_an_enclosing_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A ZIP/Zenodo copy unpacked inside some other git repository has no
+    # ``.git`` of its own; every git-derived field must then say so rather than
+    # report the outer repository's commit or status.
+    from scripts import report_environment
+
+    monkeypatch.setattr(report_environment, "_REPO_ROOT", tmp_path)
+    data = collect()
+    assert data["source.git_checkout"] == "no"
+    for key in (
+        "source.core_autocrlf",
+        "source.core_eol",
+        "source.commit",
+        "source.tree_clean",
+    ):
+        assert data[key] == "n/a (not a git checkout)", key

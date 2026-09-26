@@ -64,8 +64,8 @@ allowlist: OS family/release/version and CPU architecture, the C runtime
 (glibc/musl/UCRT/macOS libSystem — the six-digit float quantisation exists to
 absorb drift here), the exact Python build and `uv` version, locale/stdout
 encoding and whether `PYTHONUTF8` is set, and how the checkout was obtained
-(`git`, a git version, `core.autocrlf`/`core.eol`, the commit, whether the
-tree is clean). It never contains a filesystem path, hostname, username, or
+(whether it is a git checkout, the git version,
+`core.autocrlf`/`core.eol`, the commit, whether the tree is clean). It never contains a filesystem path, hostname, username, or
 any environment variable other than that one set/unset flag. A handful of
 hardware lines (CPU model, logical core count, RAM) are printed too, and each
 target's PASS/FAIL line below carries its elapsed seconds — both are
@@ -237,7 +237,8 @@ pass.
 
 **What the paper may claim.** Any published count is a table of
 PASS/FAIL/PARTIAL/NOT_RUN broken down by independence
-(`third_party` / `third_party_assisted` / `author_other_machine`) and by
+(not the author, unaided / not the author, helped by the author / the
+author — the issue template's "Independence" dropdown) and by
 whether the environment cell is one of the three section 5 already names
 (the author's Windows machine, `ubuntu-latest`, `windows-latest`) or is
 genuinely new (a different OS/arch/libc, or a checkout obtained a different

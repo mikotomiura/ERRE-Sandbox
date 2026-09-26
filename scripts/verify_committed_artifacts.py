@@ -18,9 +18,8 @@ from ``scripts/report_environment.py`` -- see that module's docstring and
 ``REPRODUCING.md`` section 2 -- so a single pasted log carries both the
 environment an external report was run under and the result, with no extra
 step for the reporter. Each target's PASS/FAIL line also carries its elapsed
-seconds, since a report that could not finish is as informative as one that
-did (``.idea/verification/public-environment-diagnostics.md`` section 4:
-wall-clock time is diagnostic-only, never part of the verdict).
+seconds. Both are diagnostic-only: the verdict stays the exit code and the
+summary/hash lines (``REPRODUCING.md`` section 7).
 
 What it does
 ------------
