@@ -1,0 +1,1172 @@
+{
+  "target_sha256": {
+    "closed_loop_scorer.py": "dd55bf516698af96cd0bd9fc2874739bf1a3bec87f02da15c0f2e6f8aaa9e731",
+    "closed_loop_battery.py": "de3b60b1327f1f91f7b13c454d31a44fa270eed436b2ee3a3cf1151c6ac9ac16",
+    "closed_loop_sim.py": "8c4863b04dcc99606cee78154740f8e311f85b33f87f8009287d76c6f64ebdf2",
+    "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+    "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8"
+  },
+  "mutants": [
+    {
+      "label": "ms1  連鎖 replay の loop 段 sha 照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_tampered_prompt"
+      ],
+      "failed": [
+        "test_chain_detects_tampered_prompt"
+      ]
+    },
+    {
+      "label": "ms2  連鎖 replay で状態を更新しない (記録の行動を使わない)",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_replay_reconstructs_final_states",
+        "test_full_lookup_is_pass_with_claim"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_chain_replay_reconstructs_final_states",
+        "test_describe_reports_strata_and_tv",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_record_schema_violations",
+        "test_small_effect_is_no_go",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms3  probe の sha 照合 (終状態から) を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_detects_probe_from_wrong_state"
+      ],
+      "failed": [
+        "test_chain_detects_probe_from_wrong_state"
+      ]
+    },
+    {
+      "label": "ms4  C0 の sha 照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_detects_tampered_c0"
+      ],
+      "failed": [
+        "test_chain_detects_tampered_c0"
+      ]
+    },
+    {
+      "label": "ms5  replay の sha 照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_detects_replay_prompt_mismatch"
+      ],
+      "failed": [
+        "test_chain_detects_replay_prompt_mismatch"
+      ]
+    },
+    {
+      "label": "ms6  plan の key 照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_state_before_c0_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_schedule_swapped_worlds_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms7  接頭辞 (call_index = 0..n-1) の検査を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_schedule_gap_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_schedule_gap_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms8  seed の照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_probe_seed_is_checked",
+        "test_wrong_seed_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_probe_seed_is_checked",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms9  transport 失敗の後に続く記録を検査しない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_records_after_transport_failure_are_invalid"
+      ],
+      "failed": [
+        "test_records_after_transport_failure_are_invalid"
+      ]
+    },
+    {
+      "label": "ms10 再 parse の照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_parse_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms11 ループ段の ⊥ gate を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_loop_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_loop_bottom_rate_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "ms12 ループ段の ⊥ の上限を緩める",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_loop_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_loop_bottom_rate_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "ms13 C0 ⊥ gate を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows"
+      ]
+    },
+    {
+      "label": "ms14 C0 gate を状態側の完了の後にする",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_gate_precedes_missing_state_rows"
+      ],
+      "failed": [
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_main_incomplete_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms15 probe の ⊥ gate を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_probe_bottom_rate_is_invalid_battery"
+      ],
+      "failed": [
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_probe_bottom_rate_is_invalid_battery"
+      ]
+    },
+    {
+      "label": "ms16 transport 失敗を ⊥ に畳む",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_transport_failure_is_not_computed"
+      ],
+      "failed": [
+        "test_transport_failure_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms17 本体の欠けを検査しない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_incomplete_is_not_computed"
+      ],
+      "failed": [
+        "test_main_incomplete_is_not_computed"
+      ]
+    },
+    {
+      "label": "ms18 PASS の下限を τ でなく 0 に (p_zero で判定)",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_small_effect_is_no_go"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_small_effect_is_no_go"
+      ]
+    },
+    {
+      "label": "ms19 NO_GO を出さない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_small_effect_is_no_go",
+        "test_state_blind_policy_is_no_go_with_zero_units"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_small_effect_is_no_go",
+        "test_state_blind_policy_is_no_go_with_zero_units"
+      ]
+    },
+    {
+      "label": "ms20 4 成分の符号条件を外す",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_one_world_failure_is_not_pass"
+      ],
+      "failed": [
+        "test_one_world_failure_is_not_pass"
+      ]
+    },
+    {
+      "label": "ms21 coverage を gate にする",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_no_go_with_low_coverage_is_exploration_limited"
+      ],
+      "failed": [
+        "test_no_go_with_low_coverage_is_exploration_limited"
+      ]
+    },
+    {
+      "label": "ms22 claim 分岐の境界を変える",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_claim_branch_table"
+      ],
+      "failed": [
+        "test_claim_branch_table"
+      ]
+    },
+    {
+      "label": "ms23 PASS の文から coverage を落とす",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_full_lookup_is_pass_with_claim"
+      ],
+      "failed": [
+        "test_full_lookup_is_pass_with_claim"
+      ]
+    },
+    {
+      "label": "ms24 PASS の文を出さない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_full_lookup_is_pass_with_claim"
+      ],
+      "failed": [
+        "test_full_lookup_is_pass_with_claim"
+      ]
+    },
+    {
+      "label": "ms25 certification から sim を外す",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_covers_all_seven_files",
+        "test_stale_certification_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_certification_covers_all_seven_files",
+        "test_consistency_detects_code_changed_after_certification",
+        "test_stale_certification_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms26 certification 照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_missing_certification_is_invalid_scorer",
+        "test_stale_certification_is_invalid_scorer",
+        "test_uncertified_harness_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms27 battery 検査を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_violation_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_battery_violation_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms28 要求条件の照合を削除",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_mismatch_is_invalid_scorer"
+      ],
+      "failed": [
+        "test_meta_mismatch_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "ms29 凍結 renderer を変える",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_design_values"
+      ],
+      "failed": [
+        "test_consistency_detects_design_mismatch",
+        "test_frozen_design_values"
+      ]
+    },
+    {
+      "label": "ms30 決定性の格下げ規則を外す",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_determinism_rates"
+      ],
+      "failed": [
+        "test_determinism_rates"
+      ]
+    },
+    {
+      "label": "ms31 phase と欄の組み合わせを検査しない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_record_schema_violations"
+      ],
+      "failed": [
+        "test_record_schema_violations"
+      ]
+    },
+    {
+      "label": "ms32 int 欄の型を検査しない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_record_schema_violations"
+      ],
+      "failed": [
+        "test_record_schema_violations"
+      ]
+    },
+    {
+      "label": "mb1  Ω_dev の巡回を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_dev_options_are_world_rules_rotated"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_dev_options_are_world_rules_rotated",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb2  Ω_dev の巡回を r だけにする",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_dev_options_are_world_rules_rotated"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_dev_options_are_world_rules_rotated",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb3  ループの seed を probe の値域に重ねる",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_loop_seed_shared_and_disjoint_from_probe_seeds"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_loop_seed_shared_and_disjoint_from_probe_seeds",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb4  世界の順を回転しない",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_world_order_rotates_per_replicate"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed",
+        "test_world_order_rotates_per_replicate",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb5  ⊥ を成功にする",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_update_success_bottom_and_oov"
+      ],
+      "failed": [
+        "test_update_success_bottom_and_oov",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mb6  Ω 外の label を試行に数えない",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_update_success_bottom_and_oov"
+      ],
+      "failed": [
+        "test_update_success_bottom_and_oov"
+      ]
+    },
+    {
+      "label": "mb7  失敗も成功行として描く",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rows_follow_pi_r_and_only_presence_changes"
+      ],
+      "failed": [
+        "test_rows_follow_pi_r_and_only_presence_changes",
+        "test_state_keys_follow_prompt_identity",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mb8  試行 label を語彙順でなく逆順に",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tried_labels_in_action_order_not_trial_order"
+      ],
+      "failed": [
+        "test_tried_labels_in_action_order_not_trial_order"
+      ]
+    },
+    {
+      "label": "mb9  行の文言に回数を入れる",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_row_wording_is_pinned"
+      ],
+      "failed": [
+        "test_row_wording_is_pinned"
+      ]
+    },
+    {
+      "label": "mb10 空状態の文字列を世界ごとに変える",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_empty_state_strings"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_empty_state_strings",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_r1_lines_embedded_in_r1plus",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_state_keys_follow_prompt_identity",
+        "test_transport_failure_is_not_computed",
+        "test_vectorized_dev_matches_reference",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb11 byte 予算の検査を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prompt_budget_detects_overflow"
+      ],
+      "failed": [
+        "test_prompt_budget_detects_overflow"
+      ]
+    },
+    {
+      "label": "mb12 seed の衝突検査を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_check_detects_collision"
+      ],
+      "failed": [
+        "test_seed_check_detects_collision"
+      ]
+    },
+    {
+      "label": "mb13 Ω_dev の巡回の均衡検査を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_dev_rotation_check_detects_fixed_order"
+      ],
+      "failed": [
+        "test_dev_rotation_check_detects_fixed_order"
+      ]
+    },
+    {
+      "label": "mb14 世界名の漏洩検査を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_leakage_clean_and_detects_arm_name"
+      ],
+      "failed": [
+        "test_non_leakage_clean_and_detects_arm_name"
+      ]
+    },
+    {
+      "label": "mb15 C0 に状態を入れる",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_c0_is_v2_c0_and_situation_matches_v2_probe"
+      ],
+      "failed": [
+        "test_all_verdict_words_reachable",
+        "test_battery_report_clean",
+        "test_bottom_counts_in_denominator",
+        "test_c0_bottom_rate_is_invalid_battery",
+        "test_c0_gate_precedes_missing_state_rows",
+        "test_c0_incomplete_is_not_computed",
+        "test_c0_is_v2_c0_and_situation_matches_v2_probe",
+        "test_chain_detects_forged_outcome",
+        "test_chain_detects_probe_from_wrong_state",
+        "test_chain_detects_replay_prompt_mismatch",
+        "test_chain_detects_tampered_c0",
+        "test_chain_detects_tampered_prompt",
+        "test_chain_detects_wrong_renderer",
+        "test_describe_reports_strata_and_tv",
+        "test_effect_at_threshold_is_inconclusive",
+        "test_family_bottom_gap_is_invalid_battery",
+        "test_full_lookup_is_pass_with_claim",
+        "test_loop_bottom_rate_is_invalid_battery",
+        "test_main_incomplete_is_not_computed",
+        "test_meta_mismatch_is_invalid_scorer",
+        "test_missing_replay_does_not_block_verdict",
+        "test_moderate_effect_is_pass",
+        "test_no_go_with_low_coverage_is_exploration_limited",
+        "test_one_world_failure_is_not_pass",
+        "test_parse_mismatch_is_invalid_scorer",
+        "test_physical_line_swap_is_invalid_scorer",
+        "test_probe_bottom_rate_is_invalid_battery",
+        "test_probe_seed_is_checked",
+        "test_record_schema_violations",
+        "test_records_after_transport_failure_are_invalid",
+        "test_schedule_gap_is_invalid_scorer",
+        "test_schedule_swapped_worlds_is_invalid_scorer",
+        "test_small_effect_is_no_go",
+        "test_state_before_c0_is_invalid_scorer",
+        "test_state_blind_policy_is_no_go_with_zero_units",
+        "test_transport_failure_is_not_computed",
+        "test_wrong_seed_is_invalid_scorer"
+      ]
+    },
+    {
+      "label": "mb16 ループ段の block 内の世界順を逆にする",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_layout_and_counts"
+      ],
+      "failed": [
+        "test_plan_layout_and_counts"
+      ]
+    },
+    {
+      "label": "mb17 replay の登録部分集合を変える",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_targets"
+      ],
+      "failed": [
+        "test_replay_targets"
+      ]
+    },
+    {
+      "label": "mb18 世界順の均衡検査を削除",
+      "target": "closed_loop_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_world_order_check_detects_unrotated"
+      ],
+      "failed": [
+        "test_world_order_check_detects_unrotated"
+      ]
+    },
+    {
+      "label": "mz1  同一状態の世界で一様乱数を共有しない",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_identical_states_share_uniforms",
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_identical_states_share_uniforms",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz2  R1+ の状態 key から試行を落とす",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_state_keys_follow_prompt_identity",
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_state_keys_follow_prompt_identity"
+      ]
+    },
+    {
+      "label": "mz27 状態 key から世界の印を落とす (Codex HIGH の再発)",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_state_keys_follow_prompt_identity",
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_state_keys_follow_prompt_identity",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz3  γ を κ から切り離す",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz4  graded を flat にする",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lambda_versions_and_graded_is_lower"
+      ],
+      "failed": [
+        "test_lambda_versions_and_graded_is_lower"
+      ]
+    },
+    {
+      "label": "mz5  同じ signature の行を特別扱いしない",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz6  R1+ の回避を削除",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_r1plus_avoidance_raises_coverage_and_gamma_factor",
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_r1plus_avoidance_raises_coverage_and_gamma_factor",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz7  模擬の ⊥ gate を削除",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gates_act_in_simulation"
+      ],
+      "failed": [
+        "test_bottom_gates_act_in_simulation"
+      ]
+    },
+    {
+      "label": "mz8  模擬のループ段 ⊥ gate を削除",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pipeline_gates_each_stage"
+      ],
+      "failed": [
+        "test_pipeline_gates_each_stage"
+      ]
+    },
+    {
+      "label": "mz9  閉形式の負側を 0 に",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_clipped_parts_match_monte_carlo",
+        "test_expected_c_at_kappa_zero_is_zero"
+      ],
+      "failed": [
+        "test_clipped_parts_match_monte_carlo",
+        "test_expected_c_at_kappa_zero_is_zero",
+        "test_expected_c_matches_sampled_mean"
+      ]
+    },
+    {
+      "label": "mz10 抽選で e < 0 の foil 質量を落とす",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_c_matches_sampled_mean"
+      ],
+      "failed": [
+        "test_expected_c_matches_sampled_mean"
+      ]
+    },
+    {
+      "label": "mz11 植えられない点を検出しない",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_curve_solve_interpolates_and_detects_unreachable",
+        "test_unreachable_plant_fails_design"
+      ],
+      "failed": [
+        "test_curve_solve_interpolates_and_detects_unreachable",
+        "test_unreachable_plant_fails_design"
+      ]
+    },
+    {
+      "label": "mz12 到達可能を合格条件から外す",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ],
+      "failed": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ]
+    },
+    {
+      "label": "mz24 植えた C の再確認を合格条件から外す",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ],
+      "failed": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ]
+    },
+    {
+      "label": "mz25 fixture の硬い gate を緩める",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_is_positive_side_only"
+      ],
+      "failed": [
+        "test_consistency_recomputes_gate_from_rows",
+        "test_fixture_gate_is_positive_side_only"
+      ]
+    },
+    {
+      "label": "mz26 τ/4 を超えた fixture を列挙しない",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_is_positive_side_only"
+      ],
+      "failed": [
+        "test_consistency_passes_when_bound",
+        "test_fixture_gate_is_positive_side_only"
+      ]
+    },
+    {
+      "label": "ms33 PASS の文に列挙 fixture の注記を入れない",
+      "target": "closed_loop_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_full_lookup_is_pass_with_claim"
+      ],
+      "failed": [
+        "test_full_lookup_is_pass_with_claim"
+      ]
+    },
+    {
+      "label": "mz28 Ω 外を試行に数えない (模擬)",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_out_of_omega_is_tried_but_never_success",
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_out_of_omega_is_tried_but_never_success",
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz13 sd 広域の size 上限を狭い方にする",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_cap_rule"
+      ],
+      "failed": [
+        "test_size_cap_rule"
+      ]
+    },
+    {
+      "label": "mz14 size 上限の sd 境界",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_cap_rule"
+      ],
+      "failed": [
+        "test_size_cap_rule"
+      ]
+    },
+    {
+      "label": "mz15 null の power 条件を削除",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ],
+      "failed": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ]
+    },
+    {
+      "label": "mz16 τ での PASS の size 条件を削除",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ],
+      "failed": [
+        "test_criteria_requires_reachability_planting_and_all_four"
+      ]
+    },
+    {
+      "label": "mz17 fixture gate を両側にする",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_is_positive_side_only"
+      ],
+      "failed": [
+        "test_consistency_passes_when_bound",
+        "test_consistency_recomputes_gate_from_rows",
+        "test_fixture_gate_is_positive_side_only"
+      ]
+    },
+    {
+      "label": "mz18 fixture gate に陽性対照を含める",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_is_positive_side_only"
+      ],
+      "failed": [
+        "test_consistency_passes_when_bound",
+        "test_fixture_gate_is_positive_side_only"
+      ]
+    },
+    {
+      "label": "mz19 実測 base の定数を変える",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_refit_equals_sealed_constants"
+      ],
+      "failed": [
+        "test_refit_equals_sealed_constants"
+      ]
+    },
+    {
+      "label": "mz20 Ω 外の割合を変える",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_constants_are_pinned"
+      ],
+      "failed": [
+        "test_constants_are_pinned"
+      ]
+    },
+    {
+      "label": "mz21 参照実装の追従を壊す",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_dev_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_dev_matches_reference"
+      ]
+    },
+    {
+      "label": "mz22 植える目標を 2τ でなく τ に",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unreachable_plant_fails_design"
+      ],
+      "failed": [
+        "test_unreachable_plant_fails_design"
+      ]
+    },
+    {
+      "label": "mz23 近傍 fixture を登録から外す",
+      "target": "closed_loop_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_registry",
+        "test_neighbor_fixture_points_to_the_foil"
+      ],
+      "failed": [
+        "test_fixture_registry",
+        "test_neighbor_fixture_points_to_the_foil"
+      ]
+    }
+  ],
+  "all_killed": true
+}
