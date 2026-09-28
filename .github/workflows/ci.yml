@@ -58,19 +58,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # es4 の mock-run テスト (多数 seed のサンプリング = 純計算 CPU 負荷) が
-          # suite 全体を ~10 分に押し上げ、遅い runner を引くと 10 分 timeout で
-          # cancel される (PR #51 で 2 回連続再現、runner 変動でなく systemic)。
-          # 恒久策として 50% の headroom を確保する。es4 slow test の分離/軽量化は
-          # 別途フォローアップ (coverage を落とさない範囲で検討)。
+          # timeout の方針は「最悪実測 × 1.5」(50% headroom)。
+          # 実測 (成功 38 run、2026-09-13〜09-28、job の started→completed):
+          #   ubuntu は runner により 6〜8 分 / 11〜14.5 分の二峰。遅い峰が
+          #   11 → 14.5 分へ伸び、PR #129 の 1 回目は 15 分 timeout で cancel
+          #   (89% 地点)。14.5 × 1.5 = 21.75 → 22。
+          # 経緯: PR #51 で es4 mock-run が 10 分 timeout を踏み 15 に上げた。
+          # xdist 等の新依存は uv.lock を変え、封印 manifest の
+          # env_pins.uv_lock_sha256 と食い違うので採らない
+          # (.steering/20260928-ci-pytest-headroom/decisions.md)。
           - os: ubuntu-latest
-            timeout: 15
+            timeout: 22
           # windows-latest leg は論文 03 の gate G1 のために追加した
           # (.steering/20260911-ci-selection-ssot/decisions.md DA-CIS-2)。
           # committed bundle の replay-verify を Windows でも公開 CI で機械強制する。
-          # 45 分は初期値 — 実測が出たら「実測 + 50% headroom」へ寄せる。
+          # 実測 (同 38 run): 18〜23 分 (〜09-26) → 35〜41 分 (09-27〜)。
+          # 41 × 1.5 = 61.5 → 62。
           - os: windows-latest
-            timeout: 45
+            timeout: 62
     timeout-minutes: ${{ matrix.timeout }}
     env:
       # 両 leg の text decode を揃える。Windows runner の既定 console codepage は
@@ -105,7 +110,10 @@ jobs:
         # Adapter unit tests (Phase H) and hard-fail gate tests (Phase I /
         # Phase J refusal-guard) stay on the default selection because they
         # mock httpx and use synthetic DuckDB fixtures with no GPU imports.
-        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference"
+        #
+        # ``--durations=25`` は選択を変えない。次に headroom が痩せたとき、
+        # どの test が伸びたかを CI ログから直接読むためのもの。
+        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference" --durations=25
 
   repro:
     # Paper 03 gate G5 ("a reproduction procedure a third party can run, checked
