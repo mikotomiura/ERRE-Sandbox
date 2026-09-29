@@ -1,0 +1,991 @@
+{
+  "target_sha256": {
+    "closed_loop_v5_battery.py": "3e7be7428369b987ffa6091ee1379b4b5738f2e7848429014307870664fe3fc1",
+    "closed_loop_v5_pilot_scorer.py": "367a9133f7f4792af8e7d798c78c9637d2747e5c1457f295e1322bc7187eea5b",
+    "closed_loop_v5_sim.py": "d66e9401336a4f54d69f87bb5e5edfcfd68b441fa8e41435810cefe57e91dfbd",
+    "closed_loop_v5_select.py": "a05aa6379b0e94341a0c49fe003693be9abf213493d17fd66db810c0267c6431",
+    "closed_loop_battery.py": "de3b60b1327f1f91f7b13c454d31a44fa270eed436b2ee3a3cf1151c6ac9ac16",
+    "closed_loop_sim.py": "8c4863b04dcc99606cee78154740f8e311f85b33f87f8009287d76c6f64ebdf2",
+    "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+    "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8"
+  },
+  "mutants": [
+    {
+      "label": "mb1  B の回転から周の項を落とす",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_rotation"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy",
+        "test_rotation",
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ]
+    },
+    {
+      "label": "mb2  C の回転を v4 からずらす",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_rotation"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy",
+        "test_rotation"
+      ]
+    },
+    {
+      "label": "mb3  指示文の文言を変える",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_frozen_constants"
+      ]
+    },
+    {
+      "label": "mb4  指示文を状況部の後ろに置く",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_messages_layout"
+      ],
+      "failed": [
+        "test_messages_layout"
+      ]
+    },
+    {
+      "label": "mb5  B にも指示文を置く",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy"
+      ]
+    },
+    {
+      "label": "mb6  pilot の r を ADR の {8..11} に戻す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_frozen_constants",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_plan_order",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy",
+        "test_seed_check_catches_collision"
+      ]
+    },
+    {
+      "label": "mb7  pilot の M を 4 に",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_frozen_constants",
+        "test_same_prompt_with_oov_response_falls_to_changed",
+        "test_windows_restrict_steps"
+      ]
+    },
+    {
+      "label": "mb8  seed 基点を v4 と同じに",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_frozen_constants",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy"
+      ]
+    },
+    {
+      "label": "mb9  軸の順を r によらず固定",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_plan_order"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_plan_order",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy"
+      ]
+    },
+    {
+      "label": "mb10 B の renderer を R1+ に",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_messages_layout"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_battery_checks_pass",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_lambda_and_base",
+        "test_messages_layout",
+        "test_oov_rate",
+        "test_record_schema_and_meta",
+        "test_repeat_previous_policy",
+        "test_same_prompt_with_oov_response_falls_to_changed",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mb11 r の重なり検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replicate_check_catches_overlap"
+      ],
+      "failed": [
+        "test_replicate_check_catches_overlap"
+      ]
+    },
+    {
+      "label": "mb12 v4 ループ段 seed との衝突検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_check_catches_collision"
+      ],
+      "failed": [
+        "test_seed_check_catches_collision"
+      ]
+    },
+    {
+      "label": "mb13 v2 probe seed との衝突検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_check_catches_collision"
+      ],
+      "failed": [
+        "test_seed_check_catches_collision"
+      ]
+    },
+    {
+      "label": "mb14 B の周ごとの回転変化の検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rotation_check_catches_lap_invariant_b"
+      ],
+      "failed": [
+        "test_rotation_check_catches_lap_invariant_b"
+      ]
+    },
+    {
+      "label": "mb15 system prompt への漏洩検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_renderer_check_catches_leaks"
+      ],
+      "failed": [
+        "test_renderer_check_catches_leaks"
+      ]
+    },
+    {
+      "label": "mb16 指示文が答えを含む検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_renderer_check_catches_answer_in_sentence"
+      ],
+      "failed": [
+        "test_renderer_check_catches_answer_in_sentence"
+      ]
+    },
+    {
+      "label": "mb17 B への指示文混入の検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_renderer_check_catches_sentence_in_b"
+      ],
+      "failed": [
+        "test_renderer_check_catches_sentence_in_b"
+      ]
+    },
+    {
+      "label": "mb18 plan の網羅検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_check_catches_missing_key"
+      ],
+      "failed": [
+        "test_plan_check_catches_missing_key"
+      ]
+    },
+    {
+      "label": "mb19 軸の順の均衡検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_check_catches_missing_key"
+      ],
+      "failed": [
+        "test_plan_check_catches_missing_key"
+      ]
+    },
+    {
+      "label": "mb20 byte 予算の検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_budget_check_catches_overflow"
+      ],
+      "failed": [
+        "test_budget_check_catches_overflow"
+      ]
+    },
+    {
+      "label": "mb21 世界名 token の検査を外す",
+      "target": "closed_loop_v5_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_leakage_catches_world_name"
+      ],
+      "failed": [
+        "test_non_leakage_catches_world_name"
+      ]
+    },
+    {
+      "label": "ms1  schedule の key 照合を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms2  seed 照合を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms3  transport 失敗後の継続の検査を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_records_after_transport_failure_are_invalid"
+      ],
+      "failed": [
+        "test_records_after_transport_failure_are_invalid"
+      ]
+    },
+    {
+      "label": "ms4  再 parse の照合を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms5  連鎖 replay の sha 照合を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_replay_catches_forged_choice",
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_chain_replay_catches_forged_choice",
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms6  欠けを computed にする",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_incomplete_and_transport_failure_are_not_computed"
+      ],
+      "failed": [
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_not_computed_pilot_is_not_mapped"
+      ]
+    },
+    {
+      "label": "ms7  要求条件の照合を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_record_schema_and_meta"
+      ],
+      "failed": [
+        "test_record_schema_and_meta"
+      ]
+    },
+    {
+      "label": "ms8  (prompt, seed) の重複を畳まない",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_counts_first_visits_without_same_weather_rows_once_per_prompt",
+        "test_tally_collapses_duplicates_and_takes_outer_bound"
+      ],
+      "failed": [
+        "test_tally_collapses_duplicates_and_takes_outer_bound"
+      ]
+    },
+    {
+      "label": "ms9  cluster 単位の区間を捨てる",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tally_collapses_duplicates_and_takes_outer_bound"
+      ],
+      "failed": [
+        "test_tally_collapses_duplicates_and_takes_outer_bound"
+      ]
+    },
+    {
+      "label": "ms10 ŝ_changed の一致を反転",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_first_option_policy",
+        "test_repeat_previous_policy"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid",
+        "test_first_option_policy",
+        "test_repeat_previous_policy",
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ]
+    },
+    {
+      "label": "ms11 同一 prompt の再訪を prompt 変化に数える",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_b_phase_return_is_same_prompt",
+        "test_first_option_policy"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_first_option_policy",
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ]
+    },
+    {
+      "label": "ms23 同一 prompt の以前の応答が Ω 外でも同一 prompt に数える",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ],
+      "failed": [
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ]
+    },
+    {
+      "label": "ms12 ε̂ の未試行判定を反転",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_explore_policy_sets_eps_one",
+        "test_repeat_previous_policy"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_repeat_previous_policy"
+      ]
+    },
+    {
+      "label": "ms14 λ̂ の正規化を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lambda_and_base"
+      ],
+      "failed": [
+        "test_lambda_and_base"
+      ]
+    },
+    {
+      "label": "ms15 h0 と h_sw を入れ替え",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_counts_first_visits_without_same_weather_rows_once_per_prompt",
+        "test_lambda_and_base"
+      ],
+      "failed": [
+        "test_base_counts_first_visits_without_same_weather_rows_once_per_prompt",
+        "test_duplicate_representative_is_first_call",
+        "test_end_to_end_small_grid",
+        "test_lambda_and_base"
+      ]
+    },
+    {
+      "label": "ms16 base の平滑化を外す",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_smoothing"
+      ],
+      "failed": [
+        "test_base_smoothing",
+        "test_same_prompt_with_oov_response_falls_to_changed"
+      ]
+    },
+    {
+      "label": "ms17 ⊥ gate を ≥ 0.25 に緩める",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_boundary"
+      ],
+      "failed": [
+        "test_bottom_gate_boundary"
+      ]
+    },
+    {
+      "label": "ms18 ⊥ 上限を世界の最小にする",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_boundary"
+      ],
+      "failed": [
+        "test_bottom_gate_boundary"
+      ]
+    },
+    {
+      "label": "ms19 Ω 外の判定を反転",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oov_rate"
+      ],
+      "failed": [
+        "test_oov_rate"
+      ]
+    },
+    {
+      "label": "ms20 窓の境界をずらす",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_windows_restrict_steps"
+      ],
+      "failed": [
+        "test_b_phase_return_is_same_prompt",
+        "test_base_counts_first_visits_without_same_weather_rows_once_per_prompt",
+        "test_bottom_gate_boundary",
+        "test_complete_run_is_computed",
+        "test_duplicate_representative_is_first_call",
+        "test_end_to_end_small_grid",
+        "test_explore_policy_sets_eps_one",
+        "test_first_option_policy",
+        "test_lambda_and_base",
+        "test_oov_rate",
+        "test_repeat_previous_policy",
+        "test_same_prompt_with_oov_response_falls_to_changed",
+        "test_windows_restrict_steps"
+      ]
+    },
+    {
+      "label": "ms21 Wilson の z を片側にする",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_wilson_known_values"
+      ],
+      "failed": [
+        "test_wilson_known_values"
+      ]
+    },
+    {
+      "label": "ms22 重複の代表を call_index 順にしない",
+      "target": "closed_loop_v5_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicate_representative_is_first_call"
+      ],
+      "failed": [
+        "test_duplicate_representative_is_first_call"
+      ]
+    },
+    {
+      "label": "mz1  世界間の乱数結合を外す",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz3  同一 prompt の記憶を使わない",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_same_prompt_memory_is_used_in_b",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz4  同 weather の分岐で λ を無視",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz5  写しの分岐を外す",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz6  探索の率を半分に",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_explore_eps_raises_untried_rate",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_explore_eps_raises_untried_rate",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz7  base 制限の未試行選択を一様にする",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_untried_modes_differ",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_untried_modes_differ",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz8  成功済みでも Ω 外に落とす",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz9  成功済みの規則を外す",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz10 ループ段の ⊥ を gate に数えない",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_in_verdicts"
+      ],
+      "failed": [
+        "test_bottom_gate_in_verdicts"
+      ]
+    },
+    {
+      "label": "mz11 k_rep を無視",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_k_rep_repeats_first_draw"
+      ],
+      "failed": [
+        "test_k_rep_repeats_first_draw"
+      ]
+    },
+    {
+      "label": "mz12 probe の植え付けを半分に",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_closed_form_matches_draws",
+        "test_verdict_directions_and_planting"
+      ],
+      "failed": [
+        "test_closed_form_matches_draws",
+        "test_verdict_directions_and_planting"
+      ]
+    },
+    {
+      "label": "mz13 閉形式から Ω 外を落とす",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_units_equals_v4"
+      ],
+      "failed": [
+        "test_expected_units_equals_v4"
+      ]
+    },
+    {
+      "label": "mz14 検定の向きを入れ替え",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_verdict_directions_and_planting"
+      ],
+      "failed": [
+        "test_verdict_directions_and_planting"
+      ]
+    },
+    {
+      "label": "mz15 植える効果を τ にする",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_verdict_directions_and_planting"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid",
+        "test_verdict_directions_and_planting"
+      ]
+    },
+    {
+      "label": "mz16 seed の JSON を正準化しない",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_point_seed_is_canonical"
+      ],
+      "failed": [
+        "test_point_seed_is_canonical"
+      ]
+    },
+    {
+      "label": "mz17 同一 prompt の反復で s_same を無視",
+      "target": "closed_loop_v5_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mx1  B の保守値を下限にする",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values"
+      ]
+    },
+    {
+      "label": "mx2  C の保守値を上限にする",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values",
+        "test_end_to_end_small_grid",
+        "test_measures_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx3  Ω 外の床を外す",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values"
+      ]
+    },
+    {
+      "label": "mx4  b = 0 の格子点を外す",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_grid"
+      ]
+    },
+    {
+      "label": "mx5  k_rep の格子を 0 だけに",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_grid"
+      ]
+    },
+    {
+      "label": "mx6  候補を呼び出し数の逆順に",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_candidate_order"
+      ],
+      "failed": [
+        "test_candidate_order",
+        "test_smallest_candidate_wins_and_tie_goes_to_b"
+      ]
+    },
+    {
+      "label": "mx7  軸を C → B の順に",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_smallest_candidate_wins_and_tie_goes_to_b"
+      ],
+      "failed": [
+        "test_final_failure_continues",
+        "test_smallest_candidate_wins_and_tie_goes_to_b"
+      ]
+    },
+    {
+      "label": "mx8  screening 不合格でも本確認へ",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_door_close"
+      ],
+      "failed": [
+        "test_door_close"
+      ]
+    },
+    {
+      "label": "mx9  採用後も探索を続ける",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_smallest_candidate_wins_and_tie_goes_to_b"
+      ],
+      "failed": [
+        "test_smallest_candidate_wins_and_tie_goes_to_b"
+      ]
+    },
+    {
+      "label": "mx10 不採用の軸も審査する",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rejected_axis_is_skipped_per_m"
+      ],
+      "failed": [
+        "test_rejected_axis_is_skipped_per_m"
+      ]
+    },
+    {
+      "label": "mx11 dev 段の測定量を M = 4 の窓で固定",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_measures_are_taken_from_the_candidate_window"
+      ],
+      "failed": [
+        "test_measures_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx12 λ̂ が無いとき v4 の値を使う",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_behaviour_uses_conservative_values"
+      ],
+      "failed": [
+        "test_behaviour_uses_conservative_values"
+      ]
+    },
+    {
+      "label": "mx13 v4 の較正値を書き換える",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_v4_calibration_constants_are_observed"
+      ],
+      "failed": [
+        "test_v4_calibration_constants_are_observed"
+      ]
+    },
+    {
+      "label": "mx14 最初の違反で不合格にしない",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_small_grid"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid"
+      ]
+    },
+    {
+      "label": "mx15 certification の照合を外す",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx16 計算できない pilot でも写像する",
+      "target": "closed_loop_v5_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_not_computed_pilot_is_not_mapped"
+      ],
+      "failed": [
+        "test_not_computed_pilot_is_not_mapped"
+      ]
+    }
+  ],
+  "all_killed": true
+}
