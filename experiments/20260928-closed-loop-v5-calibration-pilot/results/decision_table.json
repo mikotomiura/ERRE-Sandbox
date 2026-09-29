@@ -1,0 +1,2072 @@
+{
+ "note": "判定に使わない見取り図。仮想の挙動値・λ_dev と base は v4 の値",
+ "rows": [
+  {
+   "chosen": {
+    "K": 5,
+    "M": 6,
+    "R": 8,
+    "axis": "C",
+    "calls": 3504
+   },
+   "conservative_values": {
+    "4": {
+     "B": {
+      "bot_hi": 0.019615,
+      "oov": 0.05,
+      "s_changed": 0.0
+     },
+     "C": {
+      "bot_hi": 0.019615,
+      "eps": 0.8,
+      "oov": 0.05
+     }
+    },
+    "6": {
+     "B": {
+      "bot_hi": 0.013163,
+      "oov": 0.05,
+      "s_changed": 0.0
+     },
+     "C": {
+      "bot_hi": 0.013163,
+      "eps": 0.8,
+      "oov": 0.05
+     }
+    },
+    "8": {
+     "B": {
+      "bot_hi": 0.009905,
+      "oov": 0.05,
+      "s_changed": 0.0
+     },
+     "C": {
+      "bot_hi": 0.009905,
+      "eps": 0.8,
+      "oov": 0.05
+     }
+    }
+   },
+   "eps_lo": 0.8,
+   "final": [
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "evaluated_points": 1152,
+     "first_violation": null,
+     "ok": true,
+     "worst": {
+      "no_go_at_tau_max": 0.0546,
+      "no_go_at_zero_min": 0.8956,
+      "pass_at_plant_min": 0.9173,
+      "pass_at_tau_max": 0.0611
+     }
+    }
+   ],
+   "rejected_axes": {
+    "4": [],
+    "6": [],
+    "8": []
+   },
+   "s_changed_hi": 0.0,
+   "screening": [
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "B",
+     "calls": 2736,
+     "evaluated_points": 59,
+     "first_violation": {
+      "c_at_kappa1": 0.599,
+      "coverage": 0.848514,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.019615,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.43438,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "C",
+     "calls": 2736,
+     "evaluated_points": 20,
+     "first_violation": {
+      "c_at_kappa1": 0.794009,
+      "coverage": 0.998208,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.708445,
+      "kappa_tau": 0.345668,
+      "no_go_at_tau": 0.043,
+      "no_go_at_zero": 0.991,
+      "ok": false,
+      "pass_at_plant": 0.992,
+      "pass_at_tau": 0.0655,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.597434,
+      "realized_tau": 0.30286,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "B",
+     "calls": 3504,
+     "evaluated_points": 203,
+     "first_violation": {
+      "c_at_kappa1": 0.597848,
+      "coverage": 0.817035,
+      "dev_point": {
+       "base_src": "v4_c0",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.427642,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "calls": 3504,
+     "evaluated_points": 1152,
+     "first_violation": null,
+     "ok": true
+    }
+   ],
+   "sims": {
+    "curve": 1000,
+    "final": 10000,
+    "screen": 2000
+   },
+   "status": "chosen"
+  },
+  {
+   "chosen": null,
+   "conservative_values": {
+    "4": {
+     "B": {
+      "bot_hi": 0.019615,
+      "oov": 0.05,
+      "s_changed": 0.5
+     },
+     "C": {
+      "bot_hi": 0.019615,
+      "eps": 0.5,
+      "oov": 0.05
+     }
+    },
+    "6": {
+     "B": {
+      "bot_hi": 0.013163,
+      "oov": 0.05,
+      "s_changed": 0.5
+     },
+     "C": {
+      "bot_hi": 0.013163,
+      "eps": 0.5,
+      "oov": 0.05
+     }
+    },
+    "8": {
+     "B": {
+      "bot_hi": 0.009905,
+      "oov": 0.05,
+      "s_changed": 0.5
+     },
+     "C": {
+      "bot_hi": 0.009905,
+      "eps": 0.5,
+      "oov": 0.05
+     }
+    }
+   },
+   "eps_lo": 0.5,
+   "final": [
+    {
+     "K": 10,
+     "M": 8,
+     "R": 12,
+     "axis": "C",
+     "evaluated_points": 260,
+     "first_violation": {
+      "c_at_kappa1": 0.839355,
+      "coverage": 0.999729,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": 0.65624,
+      "kappa_tau": 0.320887,
+      "no_go_at_tau": 0.0473,
+      "no_go_at_zero": 0.9995,
+      "ok": false,
+      "pass_at_plant": 0.9997,
+      "pass_at_tau": 0.0566,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.600181,
+      "realized_tau": 0.300328,
+      "size_cap": 0.056538
+     },
+     "ok": false,
+     "worst": {
+      "no_go_at_tau_max": 0.0553,
+      "no_go_at_zero_min": 0.9785,
+      "pass_at_plant_min": 0.9751,
+      "pass_at_tau_max": 0.0618
+     }
+    }
+   ],
+   "rejected_axes": {
+    "4": [],
+    "6": [],
+    "8": []
+   },
+   "s_changed_hi": 0.5,
+   "screening": [
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "B",
+     "calls": 2736,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.575173,
+      "coverage": 0.765347,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.514749,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "C",
+     "calls": 2736,
+     "evaluated_points": 17,
+     "first_violation": {
+      "c_at_kappa1": 0.850762,
+      "coverage": 0.966764,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.637408,
+      "kappa_tau": 0.311549,
+      "no_go_at_tau": 0.0455,
+      "no_go_at_zero": 0.9995,
+      "ok": false,
+      "pass_at_plant": 1.0,
+      "pass_at_tau": 0.0655,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.601751,
+      "realized_tau": 0.302193,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "B",
+     "calls": 3504,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.580278,
+      "coverage": 0.826757,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.451762,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "calls": 3504,
+     "evaluated_points": 259,
+     "first_violation": {
+      "c_at_kappa1": 0.790655,
+      "coverage": 0.993097,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": 0.710331,
+      "kappa_tau": 0.346266,
+      "no_go_at_tau": 0.05,
+      "no_go_at_zero": 0.9995,
+      "ok": false,
+      "pass_at_plant": 1.0,
+      "pass_at_tau": 0.0655,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.600748,
+      "realized_tau": 0.301611,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 8,
+     "axis": "B",
+     "calls": 3936,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.575173,
+      "coverage": 0.765347,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.514749,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 8,
+     "axis": "C",
+     "calls": 3936,
+     "evaluated_points": 19,
+     "first_violation": {
+      "c_at_kappa1": 0.703474,
+      "coverage": 0.966764,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.82502,
+      "kappa_tau": 0.399725,
+      "no_go_at_tau": 0.0415,
+      "no_go_at_zero": 0.999,
+      "ok": false,
+      "pass_at_plant": 0.9995,
+      "pass_at_tau": 0.065,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.60017,
+      "realized_tau": 0.302281,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 12,
+     "axis": "B",
+     "calls": 4104,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.574587,
+      "coverage": 0.765347,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.515294,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 12,
+     "axis": "C",
+     "calls": 4104,
+     "evaluated_points": 59,
+     "first_violation": {
+      "c_at_kappa1": 0.599188,
+      "coverage": 0.923431,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.447941,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 8,
+     "axis": "B",
+     "calls": 4272,
+     "evaluated_points": 176,
+     "first_violation": {
+      "c_at_kappa1": 0.684428,
+      "coverage": 0.859417,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.833458,
+      "kappa_tau": 0.392726,
+      "no_go_at_tau": 0.065,
+      "no_go_at_zero": 0.988,
+      "ok": false,
+      "pass_at_plant": 0.9325,
+      "pass_at_tau": 0.035,
+      "probe_point": {
+       "base": "label_skew",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.599987,
+      "realized_tau": 0.297531,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 8,
+     "axis": "C",
+     "calls": 4272,
+     "evaluated_points": 114,
+     "first_violation": {
+      "c_at_kappa1": 0.871562,
+      "coverage": 0.999917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.620894,
+      "kappa_tau": 0.304067,
+      "no_go_at_tau": 0.0495,
+      "no_go_at_zero": 0.9835,
+      "ok": false,
+      "pass_at_plant": 0.99,
+      "pass_at_tau": 0.0685,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "flat",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.599501,
+      "realized_tau": 0.302419,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 8,
+     "axis": "B",
+     "calls": 4704,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.580278,
+      "coverage": 0.826757,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.451762,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "calls": 4704,
+     "evaluated_points": 140,
+     "first_violation": {
+      "c_at_kappa1": 0.779748,
+      "coverage": 0.997486,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.013163,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.723454,
+      "kappa_tau": 0.352449,
+      "no_go_at_tau": 0.0445,
+      "no_go_at_zero": 0.9875,
+      "ok": false,
+      "pass_at_plant": 0.9885,
+      "pass_at_tau": 0.065,
+      "probe_point": {
+       "base": "position_skew",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.599796,
+      "realized_tau": 0.302566,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 12,
+     "axis": "B",
+     "calls": 5256,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.58015,
+      "coverage": 0.826757,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.451833,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 12,
+     "axis": "C",
+     "calls": 5256,
+     "evaluated_points": 223,
+     "first_violation": {
+      "c_at_kappa1": 0.790585,
+      "coverage": 0.997681,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.712264,
+      "kappa_tau": 0.347056,
+      "no_go_at_tau": 0.0675,
+      "no_go_at_zero": 1.0,
+      "ok": false,
+      "pass_at_plant": 0.996,
+      "pass_at_tau": 0.0375,
+      "probe_point": {
+       "base": "label_skew",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.599299,
+      "realized_tau": 0.297673,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 8,
+     "axis": "B",
+     "calls": 5472,
+     "evaluated_points": 199,
+     "first_violation": {
+      "c_at_kappa1": 0.567119,
+      "coverage": 0.761507,
+      "dev_point": {
+       "base_src": "v4_c0",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.469006,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 8,
+     "axis": "C",
+     "calls": 5472,
+     "evaluated_points": 16,
+     "first_violation": {
+      "c_at_kappa1": 0.924075,
+      "coverage": 0.999917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.638832,
+      "kappa_tau": 0.319416,
+      "no_go_at_tau": 0.044,
+      "no_go_at_zero": 1.0,
+      "ok": false,
+      "pass_at_plant": 1.0,
+      "pass_at_tau": 0.065,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": true,
+      "realized_plant": 0.60208,
+      "realized_tau": 0.301448,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 12,
+     "axis": "B",
+     "calls": 5904,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.574587,
+      "coverage": 0.765347,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.515294,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 12,
+     "axis": "C",
+     "calls": 5904,
+     "evaluated_points": 59,
+     "first_violation": {
+      "c_at_kappa1": 0.599188,
+      "coverage": 0.923431,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.447941,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 12,
+     "axis": "B",
+     "calls": 6408,
+     "evaluated_points": 199,
+     "first_violation": {
+      "c_at_kappa1": 0.568131,
+      "coverage": 0.761507,
+      "dev_point": {
+       "base_src": "v4_c0",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.468112,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 12,
+     "axis": "C",
+     "calls": 6408,
+     "evaluated_points": 784,
+     "first_violation": {
+      "c_at_kappa1": 0.923697,
+      "coverage": 0.999896,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.0,
+       "lam_src": "v4",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.63911,
+      "kappa_tau": 0.319555,
+      "no_go_at_tau": 0.045,
+      "no_go_at_zero": 1.0,
+      "ok": false,
+      "pass_at_plant": 1.0,
+      "pass_at_tau": 0.066,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": true,
+      "realized_plant": 0.60094,
+      "realized_tau": 0.301951,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 12,
+     "axis": "B",
+     "calls": 7056,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.58015,
+      "coverage": 0.826757,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.451833,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 12,
+     "axis": "C",
+     "calls": 7056,
+     "evaluated_points": 206,
+     "first_violation": {
+      "c_at_kappa1": 0.97778,
+      "coverage": 0.997681,
+      "dev_point": {
+       "base_src": "v4_loop",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.601395,
+      "kappa_tau": 0.300697,
+      "no_go_at_tau": 0.045,
+      "no_go_at_zero": 1.0,
+      "ok": false,
+      "pass_at_plant": 1.0,
+      "pass_at_tau": 0.067,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": true,
+      "realized_plant": 0.600442,
+      "realized_tau": 0.30157,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 12,
+     "axis": "B",
+     "calls": 8208,
+     "evaluated_points": 199,
+     "first_violation": {
+      "c_at_kappa1": 0.568131,
+      "coverage": 0.761507,
+      "dev_point": {
+       "base_src": "v4_c0",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.468112,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.3
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 12,
+     "axis": "C",
+     "calls": 8208,
+     "evaluated_points": 1152,
+     "first_violation": null,
+     "ok": true
+    }
+   ],
+   "sims": {
+    "curve": 1000,
+    "final": 10000,
+    "screen": 2000
+   },
+   "status": "door_close"
+  },
+  {
+   "chosen": null,
+   "conservative_values": {
+    "4": {
+     "B": {
+      "bot_hi": 0.019615,
+      "oov": 0.05,
+      "s_changed": 0.9
+     },
+     "C": {
+      "bot_hi": 0.019615,
+      "eps": 0.2,
+      "oov": 0.05
+     }
+    },
+    "6": {
+     "B": {
+      "bot_hi": 0.013163,
+      "oov": 0.05,
+      "s_changed": 0.9
+     },
+     "C": {
+      "bot_hi": 0.013163,
+      "eps": 0.2,
+      "oov": 0.05
+     }
+    },
+    "8": {
+     "B": {
+      "bot_hi": 0.009905,
+      "oov": 0.05,
+      "s_changed": 0.9
+     },
+     "C": {
+      "bot_hi": 0.009905,
+      "eps": 0.2,
+      "oov": 0.05
+     }
+    }
+   },
+   "eps_lo": 0.2,
+   "final": [],
+   "rejected_axes": {
+    "4": [],
+    "6": [],
+    "8": []
+   },
+   "s_changed_hi": 0.9,
+   "screening": [
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "B",
+     "calls": 2736,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.558927,
+      "coverage": 0.639993,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.523673,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 8,
+     "axis": "C",
+     "calls": 2736,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.552072,
+      "coverage": 0.822597,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.540394,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "B",
+     "calls": 3504,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.594365,
+      "coverage": 0.673542,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.492381,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "calls": 3504,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.575326,
+      "coverage": 0.913917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.475306,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 8,
+     "axis": "B",
+     "calls": 3936,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.558927,
+      "coverage": 0.639993,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.523673,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 8,
+     "axis": "C",
+     "calls": 3936,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.552072,
+      "coverage": 0.822597,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.540394,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 12,
+     "axis": "B",
+     "calls": 4104,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.558827,
+      "coverage": 0.639993,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.523761,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 4,
+     "R": 12,
+     "axis": "C",
+     "calls": 4104,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.552781,
+      "coverage": 0.822597,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.539699,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 8,
+     "axis": "B",
+     "calls": 4272,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.483444,
+      "coverage": 0.691694,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.614463,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 8,
+     "axis": "C",
+     "calls": 4272,
+     "evaluated_points": 114,
+     "first_violation": {
+      "c_at_kappa1": 0.83835,
+      "coverage": 0.961347,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": 0.647881,
+      "kappa_tau": 0.31619,
+      "no_go_at_tau": 0.05,
+      "no_go_at_zero": 0.9835,
+      "ok": false,
+      "pass_at_plant": 0.99,
+      "pass_at_tau": 0.067,
+      "probe_point": {
+       "base": "uniform",
+       "k_rep": 0.944,
+       "lam": "flat",
+       "sd": 0.3
+      },
+      "reachable": true,
+      "realized_plant": 0.597846,
+      "realized_tau": 0.300649,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 8,
+     "axis": "B",
+     "calls": 4704,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.594365,
+      "coverage": 0.673542,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.492381,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 8,
+     "axis": "C",
+     "calls": 4704,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.575326,
+      "coverage": 0.913917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.475306,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 12,
+     "axis": "B",
+     "calls": 5256,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.594159,
+      "coverage": 0.673542,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.492548,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 6,
+     "R": 12,
+     "axis": "C",
+     "calls": 5256,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.574893,
+      "coverage": 0.913917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.475703,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 8,
+     "axis": "B",
+     "calls": 5472,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.483444,
+      "coverage": 0.691694,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.614463,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 8,
+     "axis": "C",
+     "calls": 5472,
+     "evaluated_points": 155,
+     "first_violation": {
+      "c_at_kappa1": 0.59578,
+      "coverage": 0.923667,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.450974,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 12,
+     "axis": "B",
+     "calls": 5904,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.558827,
+      "coverage": 0.639993,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.523761,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 4,
+     "R": 12,
+     "axis": "C",
+     "calls": 5904,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.552781,
+      "coverage": 0.822597,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.539699,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 12,
+     "axis": "B",
+     "calls": 6408,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.481508,
+      "coverage": 0.691694,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.616963,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 5,
+     "M": 8,
+     "R": 12,
+     "axis": "C",
+     "calls": 6408,
+     "evaluated_points": 155,
+     "first_violation": {
+      "c_at_kappa1": 0.596172,
+      "coverage": 0.923667,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.450692,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 12,
+     "axis": "B",
+     "calls": 7056,
+     "evaluated_points": 1,
+     "first_violation": {
+      "c_at_kappa1": 0.594159,
+      "coverage": 0.673542,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.492548,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "flat",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 6,
+     "R": 12,
+     "axis": "C",
+     "calls": 7056,
+     "evaluated_points": 11,
+     "first_violation": {
+      "c_at_kappa1": 0.574893,
+      "coverage": 0.913917,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.475703,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 12,
+     "axis": "B",
+     "calls": 8208,
+     "evaluated_points": 3,
+     "first_violation": {
+      "c_at_kappa1": 0.481508,
+      "coverage": 0.691694,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.0,
+       "lam_src": "pilot",
+       "untried": "uniform"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.616963,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.05
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.06462
+     },
+     "ok": false
+    },
+    {
+     "K": 10,
+     "M": 8,
+     "R": 12,
+     "axis": "C",
+     "calls": 8208,
+     "evaluated_points": 155,
+     "first_violation": {
+      "c_at_kappa1": 0.596172,
+      "coverage": 0.923667,
+      "dev_point": {
+       "base_src": "pilot",
+       "bot": 0.009905,
+       "lam_src": "pilot",
+       "untried": "base_restricted"
+      },
+      "kappa_plant": null,
+      "kappa_tau": 0.450692,
+      "no_go_at_tau": 1.0,
+      "no_go_at_zero": 0.0,
+      "ok": false,
+      "pass_at_plant": 0.0,
+      "pass_at_tau": 1.0,
+      "probe_point": {
+       "base": "measured",
+       "k_rep": 0.0,
+       "lam": "graded",
+       "sd": 0.5
+      },
+      "reachable": false,
+      "realized_plant": null,
+      "realized_tau": null,
+      "size_cap": 0.075
+     },
+     "ok": false
+    }
+   ],
+   "sims": {
+    "curve": 1000,
+    "final": 10000,
+    "screen": 2000
+   },
+   "status": "door_close"
+  }
+ ],
+ "target_sha256": {
+  "closed_loop_battery.py": "de3b60b1327f1f91f7b13c454d31a44fa270eed436b2ee3a3cf1151c6ac9ac16",
+  "closed_loop_sim.py": "8c4863b04dcc99606cee78154740f8e311f85b33f87f8009287d76c6f64ebdf2",
+  "closed_loop_v5_battery.py": "3e7be7428369b987ffa6091ee1379b4b5738f2e7848429014307870664fe3fc1",
+  "closed_loop_v5_pilot_scorer.py": "367a9133f7f4792af8e7d798c78c9637d2747e5c1457f295e1322bc7187eea5b",
+  "closed_loop_v5_select.py": "a05aa6379b0e94341a0c49fe003693be9abf213493d17fd66db810c0267c6431",
+  "closed_loop_v5_sim.py": "d66e9401336a4f54d69f87bb5e5edfcfd68b441fa8e41435810cefe57e91dfbd",
+  "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+  "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+  "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8",
+  "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2"
+ }
+}
