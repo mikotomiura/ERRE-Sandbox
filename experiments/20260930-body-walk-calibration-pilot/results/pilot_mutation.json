@@ -1,0 +1,1365 @@
+{
+  "target_sha256": {
+    "body_walk_battery.py": "ab8a1a42c82d3fe621d38fa4de3eb22911d3e262741991491488d3de3aa39647",
+    "body_walk_pilot_scorer.py": "3d90ed45d30e08945480aa116b3b96c952a26ea6f1d7782a8029fd1f95971bf6",
+    "body_walk_sim.py": "3db1adc91fddc683a6921cb29e0e0a17d84b27f3f8937a6eabf20397feb01b42",
+    "body_walk_select.py": "7ab91846b1ca89e55858e3b6d949cd9b656a2003484522699899ec29cfe6a614",
+    "closed_loop_v5_battery.py": "3e7be7428369b987ffa6091ee1379b4b5738f2e7848429014307870664fe3fc1",
+    "closed_loop_v5_pilot_scorer.py": "367a9133f7f4792af8e7d798c78c9637d2747e5c1457f295e1322bc7187eea5b",
+    "closed_loop_v5_sim.py": "d66e9401336a4f54d69f87bb5e5edfcfd68b441fa8e41435810cefe57e91dfbd",
+    "closed_loop_v5_select.py": "a05aa6379b0e94341a0c49fe003693be9abf213493d17fd66db810c0267c6431",
+    "closed_loop_battery.py": "de3b60b1327f1f91f7b13c454d31a44fa270eed436b2ee3a3cf1151c6ac9ac16",
+    "closed_loop_sim.py": "8c4863b04dcc99606cee78154740f8e311f85b33f87f8009287d76c6f64ebdf2",
+    "skill_lever_scorer.py": "245af4299b67c79b9712bbd914df329f84feb5b66c4cfba952bea18e6bcd4db4",
+    "skill_lever_battery.py": "9fa2927da0d9f87641f6866e655703f8d0cb4f2c652dcc25520a51388173c0d1",
+    "stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "stage_b_battery.py": "382070d0f8d4595c17f86282092e89d3bc1fc0996a69ad31442e221a4a0059e8"
+  },
+  "tests_sha256": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "conftest.py": "e93d288bbd0b92ba2e98d75185f1d494173bc17605cd840f06612652722147a7",
+    "test_battery.py": "e6015df2a21ef86e1524a695e2da167a70d050511c83b29b3a78b9cda726a99a",
+    "test_manifest.py": "70cd4bd8c4a42ebf32fb1e71f74eeb056512d80d721bec21215ebe778fa348da",
+    "test_scorer.py": "ae478fec4896733f9411e56d6b547fd13b00048785df929602575d9f81cf7314",
+    "test_select.py": "cf9a52f9d4072a1fb71e6820c705cdbc8ea230fed4369cbe5613054bf5e95f9a",
+    "test_sim.py": "caf8a0fa60f7a909957f2a2bd5e767747e6d9a9b74e0995bce1395ebc564f696"
+  },
+  "harness_sha256": "153c39c5d3f42dff955d34b6e1894a91ffe895927acef5f35bedb005cb723971",
+  "mutants": [
+    {
+      "label": "mb1  λ を endpoint から外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_frozen_constants",
+        "test_grid",
+        "test_hypothetical_behaviour",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_sampling_check_catches_a_broken_direction",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ]
+    },
+    {
+      "label": "mb2  凍結時の観測値を手書きの 0.95 にする",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_grid",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_sampling_check_catches_a_broken_direction",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ]
+    },
+    {
+      "label": "mb3  観測値の封印の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sampling_check_catches_a_broken_direction"
+      ],
+      "failed": [
+        "test_sampling_check_catches_a_broken_direction"
+      ]
+    },
+    {
+      "label": "mb4  peripatetic delta を落とす",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_grid",
+        "test_hypothetical_behaviour",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_sampling_check_catches_a_broken_direction",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction",
+        "test_walk_sampling_is_the_composed_endpoint"
+      ]
+    },
+    {
+      "label": "mb5  meta から Ollama の版を落とす",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_request_meta_walk"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_grid",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_request_meta_walk",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_sampling_check_catches_a_broken_direction",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction"
+      ]
+    },
+    {
+      "label": "mb6  Ollama の版を変える",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_frozen_constants"
+      ]
+    },
+    {
+      "label": "mb7  model parameters の top_k を変える",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_frozen_constants",
+        "test_meta_mismatch_is_invalid"
+      ]
+    },
+    {
+      "label": "mb8  pilot の r を v5 pilot に重ねる",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_denominators_partition_the_counted_visits",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_frozen_constants",
+        "test_grid",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_plan_order",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_replicates",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction"
+      ]
+    },
+    {
+      "label": "mb9  pilot の M を 4 に",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_frozen_constants",
+        "test_oov_is_counted_per_world",
+        "test_plan_check_catches_a_wrong_world_order",
+        "test_plan_order",
+        "test_seed_disjoint"
+      ]
+    },
+    {
+      "label": "mb10 seed 基点を v4 と同じに",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_frozen_constants"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_complete_run_is_computed",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_frozen_constants",
+        "test_grid",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_seed_disjoint",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction"
+      ]
+    },
+    {
+      "label": "mb11 renderer を R1+ にする",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_messages_are_v4_r1"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_messages_are_v4_r1",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mb12 表示回転を周で変える",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_rotation"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_base_and_low_prior",
+        "test_battery_checks_pass",
+        "test_battery_violations_aggregates_every_check",
+        "test_behaviour_uses_conservative_values",
+        "test_bottom_gate_and_bounds",
+        "test_chains_are_the_end_states",
+        "test_complete_run_is_computed",
+        "test_decision_table_feeds_synthetic_pilots",
+        "test_denominators_partition_the_counted_visits",
+        "test_determinism_rates",
+        "test_door_close",
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_final_failure_continues",
+        "test_first_option_pilot_is_mapped",
+        "test_first_option_repeats_everywhere",
+        "test_grid",
+        "test_incomplete_and_transport_failure_are_not_computed",
+        "test_invalid_records",
+        "test_measures_and_chains_are_taken_from_the_candidate_window",
+        "test_meta_mismatch_is_invalid",
+        "test_not_computed_pilot_is_not_mapped",
+        "test_oov_is_counted_per_world",
+        "test_pilot_low_uses_the_scorer_low_prior",
+        "test_records_after_transport_failure_are_invalid",
+        "test_rejected_m_is_skipped",
+        "test_replay_part_does_not_stop_the_measurement",
+        "test_rotation",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r",
+        "test_same_prompt_is_the_exact_rendered_prompt",
+        "test_smallest_candidate_wins",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction",
+        "test_synthetic_records_are_a_deterministic_model",
+        "test_tallies_match_an_independent_recount",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mb13 replay の対象 step をずらす",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_order"
+      ],
+      "failed": [
+        "test_plan_order"
+      ]
+    },
+    {
+      "label": "mb14 本登録との r の重なりの検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replicates_check_catches"
+      ],
+      "failed": [
+        "test_replicates_check_catches"
+      ]
+    },
+    {
+      "label": "mb15 v5 pilot との r の重なりの検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replicates_check_catches"
+      ],
+      "failed": [
+        "test_replicates_check_catches"
+      ]
+    },
+    {
+      "label": "mb16 r mod 4 の均衡の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replicates_check_catches"
+      ],
+      "failed": [
+        "test_replicates_check_catches"
+      ]
+    },
+    {
+      "label": "mb17 v5 pilot の seed との照合を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_check_catches_collisions"
+      ],
+      "failed": [
+        "test_seed_check_catches_collisions"
+      ]
+    },
+    {
+      "label": "mb18 v4 のループ段 seed の検査範囲を本登録の r に狭める",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_check_catches_collisions"
+      ],
+      "failed": [
+        "test_seed_check_catches_collisions"
+      ]
+    },
+    {
+      "label": "mb19 周で不変の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rotation_check_catches_a_lap_rotation"
+      ],
+      "failed": [
+        "test_rotation_check_catches_a_lap_rotation"
+      ]
+    },
+    {
+      "label": "mb20 世界名の token の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_leakage_catches_world_names"
+      ],
+      "failed": [
+        "test_non_leakage_catches_world_names"
+      ]
+    },
+    {
+      "label": "mb21 歩行の向きの検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sampling_check_catches_a_broken_direction"
+      ],
+      "failed": [
+        "test_sampling_check_catches_a_broken_direction"
+      ]
+    },
+    {
+      "label": "mb22 replay 部分の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_check_catches_a_broken_plan"
+      ],
+      "failed": [
+        "test_plan_check_catches_a_broken_plan"
+      ]
+    },
+    {
+      "label": "mb23 ループ部分の順の検査を外す",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_check_catches_a_broken_plan",
+        "test_plan_check_catches_a_wrong_world_order"
+      ],
+      "failed": [
+        "test_plan_check_catches_a_broken_plan",
+        "test_plan_check_catches_a_wrong_world_order"
+      ]
+    },
+    {
+      "label": "mb24 battery 違反から seed の検査を落とす",
+      "target": "body_walk_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_violations_aggregates_every_check"
+      ],
+      "failed": [
+        "test_battery_violations_aggregates_every_check"
+      ]
+    },
+    {
+      "label": "ms1  schedule の key の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms2  schedule の seed の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms3  transport 失敗の後に続く記録を許す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_records_after_transport_failure_are_invalid"
+      ],
+      "failed": [
+        "test_records_after_transport_failure_are_invalid"
+      ]
+    },
+    {
+      "label": "ms4  再 parse の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms5  連鎖 replay の sha の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chain_replay_catches_forged_choice",
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_chain_replay_catches_forged_choice"
+      ]
+    },
+    {
+      "label": "ms6  replay の prompt の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_records"
+      ],
+      "failed": [
+        "test_invalid_records"
+      ]
+    },
+    {
+      "label": "ms7  要求条件と実行環境の照合を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_mismatch_is_invalid"
+      ],
+      "failed": [
+        "test_meta_mismatch_is_invalid",
+        "test_not_computed_pilot_is_not_mapped"
+      ]
+    },
+    {
+      "label": "ms8  replay の transport 失敗でも止める",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_part_does_not_stop_the_measurement"
+      ],
+      "failed": [
+        "test_replay_part_does_not_stop_the_measurement"
+      ]
+    },
+    {
+      "label": "ms9  replay の欠けでも止める",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_part_does_not_stop_the_measurement"
+      ],
+      "failed": [
+        "test_replay_part_does_not_stop_the_measurement"
+      ]
+    },
+    {
+      "label": "ms10 重複を畳まない",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicates_are_collapsed_but_world_rates_are_not",
+        "test_tallies_match_an_independent_recount"
+      ],
+      "failed": [
+        "test_denominators_partition_the_counted_visits",
+        "test_duplicates_are_collapsed_but_world_rates_are_not",
+        "test_tallies_match_an_independent_recount"
+      ]
+    },
+    {
+      "label": "ms11 世界別の ⊥ も畳む",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_duplicates_are_collapsed_but_world_rates_are_not"
+      ],
+      "failed": [
+        "test_bottom_gate_and_bounds",
+        "test_duplicates_are_collapsed_but_world_rates_are_not"
+      ]
+    },
+    {
+      "label": "ms12 同一 prompt を判定しない (全て prompt 変化に)",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_alternating_policy_never_repeats",
+        "test_same_prompt_is_the_exact_rendered_prompt",
+        "test_tallies_match_an_independent_recount"
+      ],
+      "failed": [
+        "test_alternating_policy_never_repeats",
+        "test_end_to_end_small_grid",
+        "test_first_option_repeats_everywhere",
+        "test_same_prompt_is_the_exact_rendered_prompt",
+        "test_synthetic_behaviour_is_recovered_in_the_conservative_direction",
+        "test_tallies_match_an_independent_recount"
+      ]
+    },
+    {
+      "label": "ms13 初訪の h0 / h_sw を weather でなく成功の有無で分ける",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_denominators_partition_the_counted_visits",
+        "test_tallies_match_an_independent_recount"
+      ],
+      "failed": [
+        "test_tallies_match_an_independent_recount"
+      ]
+    },
+    {
+      "label": "ms14 base を h_sw の初訪でも数える",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_denominators_partition_the_counted_visits"
+      ],
+      "failed": [
+        "test_denominators_partition_the_counted_visits"
+      ]
+    },
+    {
+      "label": "ms15 base の平滑化を変える",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_probs_smoothing"
+      ],
+      "failed": [
+        "test_base_probs_smoothing"
+      ]
+    },
+    {
+      "label": "ms16 低事前 label を最大の label にする",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_and_low_prior",
+        "test_base_probs_smoothing",
+        "test_low_prior_ties_take_the_canonical_order"
+      ],
+      "failed": [
+        "test_base_and_low_prior",
+        "test_base_probs_smoothing"
+      ]
+    },
+    {
+      "label": "ms17 低事前 label の限界を呼び出し単位だけにする",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_and_low_prior"
+      ],
+      "failed": [
+        "test_base_and_low_prior"
+      ]
+    },
+    {
+      "label": "ms18 保守限界を内側にする",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_wilson_and_outer_bounds"
+      ],
+      "failed": [
+        "test_wilson_and_outer_bounds"
+      ]
+    },
+    {
+      "label": "ms19 λ̂_dev の 0 の床を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lam_dev"
+      ],
+      "failed": [
+        "test_lam_dev"
+      ]
+    },
+    {
+      "label": "ms20 ⊥ gate の閾値を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_and_bounds"
+      ],
+      "failed": [
+        "test_bottom_gate_and_bounds"
+      ]
+    },
+    {
+      "label": "ms21 ⊥ の上限を cluster 単位にする",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_and_bounds"
+      ],
+      "failed": [
+        "test_bottom_gate_and_bounds"
+      ]
+    },
+    {
+      "label": "ms22 窓を候補 M でなく全 step にする",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_and_bounds"
+      ],
+      "failed": [
+        "test_bottom_gate_and_bounds"
+      ]
+    },
+    {
+      "label": "ms23 経験点の入力で ⊥ を数えない",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chains_are_the_end_states",
+        "test_chains_count_bottoms"
+      ],
+      "failed": [
+        "test_chains_count_bottoms"
+      ]
+    },
+    {
+      "label": "ms24 経験点の入力の窓を 1 step 延ばす",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chains_are_the_end_states",
+        "test_chains_count_bottoms"
+      ],
+      "failed": [
+        "test_chains_are_the_end_states",
+        "test_chains_count_bottoms"
+      ]
+    },
+    {
+      "label": "ms25 replay を常に一致とみなす",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_determinism_rates"
+      ],
+      "failed": [
+        "test_determinism_rates"
+      ]
+    },
+    {
+      "label": "ms26 厳密な相殺の判定を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_determinism_rates"
+      ],
+      "failed": [
+        "test_determinism_rates"
+      ]
+    },
+    {
+      "label": "ms27 meta の型の一致を外す",
+      "target": "body_walk_pilot_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_mismatch_is_invalid"
+      ],
+      "failed": [
+        "test_meta_mismatch_is_invalid"
+      ]
+    },
+    {
+      "label": "mz1  同一 prompt の反復を落とす",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_full_repetition_freezes_the_state",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz2  同一 prompt でも s_changed を使う",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz3  λ_dev を同 weather の成功なしでも使う",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_coupling_ends",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz4  成功済みにも Ω 外を当てる",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz5  結合を常に使う",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_coupling_ends",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_coupling_ends",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz6  結合を使わない",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_coupling_ends",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_coupling_ends",
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz7  記憶を ⊥ でも更新する",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz8  参照の同一 prompt を描画でなく訪問の有無で判定する",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz9  参照の結合を描画の一致でなく世界番号で決める",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz10 参照の Ω 外の label を固定する",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_reference_branches",
+        "test_vectorized_matches_reference"
+      ],
+      "failed": [
+        "test_vectorized_matches_reference"
+      ]
+    },
+    {
+      "label": "mz11 経験点で世界の並びを崩す",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_empirical_dev_resamples_whole_blocks"
+      ],
+      "failed": [
+        "test_empirical_dev_resamples_whole_blocks"
+      ]
+    },
+    {
+      "label": "mz12 経験点の step 数を窓でなく pilot 全体にする",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_empirical_dev_resamples_whole_blocks",
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ],
+      "failed": [
+        "test_empirical_dev_resamples_whole_blocks",
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mz13 合成 replay の非決定性を植えない",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_determinism_rates"
+      ],
+      "failed": [
+        "test_determinism_rates"
+      ]
+    },
+    {
+      "label": "mz14 仮想の平らにする指数を逆にする",
+      "target": "body_walk_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_hypothetical_behaviour",
+        "test_tempered_table"
+      ],
+      "failed": [
+        "test_tempered_table"
+      ]
+    },
+    {
+      "label": "mx1  s_same を下限にする",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_behaviour_uses_conservative_values",
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values",
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx2  s_changed を下限にする",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values"
+      ]
+    },
+    {
+      "label": "mx3  Ω 外の床を外す",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_conservative_values"
+      ],
+      "failed": [
+        "test_conservative_values"
+      ]
+    },
+    {
+      "label": "mx4  pilot_low で最小 label を下げない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_low_formula",
+        "test_pilot_low_uses_the_scorer_low_prior"
+      ],
+      "failed": [
+        "test_pilot_low_formula",
+        "test_pilot_low_uses_the_scorer_low_prior"
+      ]
+    },
+    {
+      "label": "mx5  pilot_low で他の label を補わない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_low_formula"
+      ],
+      "failed": [
+        "test_pilot_low_formula"
+      ]
+    },
+    {
+      "label": "mx6  結合を coupled だけにする",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_grid"
+      ]
+    },
+    {
+      "label": "mx7  経験点を格子から落とす",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid",
+        "test_exploring_pilot_is_plantable_on_the_empirical_point",
+        "test_grid",
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx8  pilot_low を格子から落とす",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_grid"
+      ]
+    },
+    {
+      "label": "mx9  b_hi を格子から落とす",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_grid"
+      ],
+      "failed": [
+        "test_grid",
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r"
+      ]
+    },
+    {
+      "label": "mx10 λ_dev の出所を取り違える",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_behaviour_uses_conservative_values"
+      ],
+      "failed": [
+        "test_behaviour_uses_conservative_values"
+      ]
+    },
+    {
+      "label": "mx11 結合の点を無視する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_behaviour_uses_conservative_values"
+      ],
+      "failed": [
+        "test_behaviour_uses_conservative_values"
+      ]
+    },
+    {
+      "label": "mx12 pilot_low の点で pilot の base を使う",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_behaviour_uses_conservative_values"
+      ],
+      "failed": [
+        "test_behaviour_uses_conservative_values"
+      ]
+    },
+    {
+      "label": "mx13 経験点の入力を常に M = 8 の窓から取る",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ],
+      "failed": [
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx14 測定量を常に M = 8 の窓から取る",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ],
+      "failed": [
+        "test_measures_and_chains_are_taken_from_the_candidate_window"
+      ]
+    },
+    {
+      "label": "mx15 ⊥ gate に落ちた M も審査する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rejected_m_is_skipped"
+      ],
+      "failed": [
+        "test_rejected_m_is_skipped"
+      ]
+    },
+    {
+      "label": "mx16 合格しても審査を続ける",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_smallest_candidate_wins"
+      ],
+      "failed": [
+        "test_smallest_candidate_wins"
+      ]
+    },
+    {
+      "label": "mx17 screening に落ちても本確認する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_door_close"
+      ],
+      "failed": [
+        "test_door_close"
+      ]
+    },
+    {
+      "label": "mx18 本確認に落ちても選ぶ",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_failure_continues"
+      ],
+      "failed": [
+        "test_final_failure_continues"
+      ]
+    },
+    {
+      "label": "mx19 違反点で打ち切らない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_small_grid"
+      ],
+      "failed": [
+        "test_end_to_end_small_grid"
+      ]
+    },
+    {
+      "label": "mx20 certification の照合を外す",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx21 計算できない pilot でも写像する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_not_computed_pilot_is_not_mapped"
+      ],
+      "failed": [
+        "test_not_computed_pilot_is_not_mapped"
+      ]
+    },
+    {
+      "label": "mx22 候補を大きい順に審査する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_candidate_order",
+        "test_smallest_candidate_wins"
+      ],
+      "failed": [
+        "test_candidate_order",
+        "test_final_failure_continues",
+        "test_smallest_candidate_wins"
+      ]
+    },
+    {
+      "label": "mx23 見取り図の平らにする比を逆にする",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_hypothetical_behaviour"
+      ],
+      "failed": [
+        "test_hypothetical_behaviour"
+      ]
+    },
+    {
+      "label": "mx24 見取り図の meta を着座の値にする",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decision_table_feeds_synthetic_pilots"
+      ],
+      "failed": [
+        "test_decision_table_feeds_synthetic_pilots"
+      ]
+    },
+    {
+      "label": "mx25 見取り図の行を減らす",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decision_table_feeds_synthetic_pilots",
+        "test_hypothetical_behaviour"
+      ],
+      "failed": [
+        "test_consistency_checks_the_decision_table_rows",
+        "test_hypothetical_behaviour"
+      ]
+    },
+    {
+      "label": "mx26 κ 曲線に dev 点の ⊥ を渡さない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r"
+      ],
+      "failed": [
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r"
+      ]
+    },
+    {
+      "label": "mx27 候補の R でなく曲線の R で審査する",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r"
+      ],
+      "failed": [
+        "test_row_passes_the_dev_point_bot_and_the_candidate_r"
+      ]
+    },
+    {
+      "label": "mx28 certification の明細の KILLED を見ない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx29 certification の test の sha を見ない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx30 certification の harness の sha を見ない",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx31 certification の空の明細を許す",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    },
+    {
+      "label": "mx32 certification の label の重複を許す",
+      "target": "body_walk_select.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_gate_of_the_mapping"
+      ],
+      "failed": [
+        "test_certification_gate_of_the_mapping"
+      ]
+    }
+  ],
+  "all_killed": true
+}
