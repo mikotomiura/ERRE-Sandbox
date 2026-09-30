@@ -18,10 +18,10 @@
   (`feedback_never_freeze_not_yet_run` と同じ扱い: 期限切れ記述は削除でなく事後版へ反転する)
 - **現時点で生きている投稿計画は §11** (論文 02 / 03)。まずそちらを読むこと
 
-| 論文 | 投稿ステータス (2026-09-13) |
+| 論文 | 投稿ステータス (02 は 2026-10-01、01・03 は 2026-09-13) |
 |---|---|
 | 01 scorer circularity | **単独投稿しない** (確定)。結果とハーネスは 03 に畳む |
-| 02 collapsed-decision-space | **PCI RR が desk reject** (2026-09-13、投稿当日・外部査読なし・理由の特定なし)。~~PCI RR → Peer Community Journal~~ は**閉じた**。→ **fallback 発動 = Zenodo 自前封印 → llama3.1 実走 → TMLR** (`DA-P2-22`、user 裁定)。**実走のゲートは「IPA 取得後」から「Zenodo 封印後」へ置き直す** → §11.3 |
+| 02 collapsed-decision-space | **2026-10-01 事後版**: fallback の順に **Zenodo 自前封印 (09-13) → 前向き 2 arm 実走 (封印済の分岐 = R4) → held-out 検査 → 改稿 (題 "Three gates, three proxies: …")** まで済んだ。**投稿先での経過は判定の後に記す** → §11.3 冒頭の事後版。<br>**(以下 2026-09-13 時点)** **PCI RR が desk reject** (2026-09-13、投稿当日・外部査読なし・理由の特定なし)。~~PCI RR → Peer Community Journal~~ は**閉じた**。→ **fallback 発動 = Zenodo 自前封印 → llama3.1 実走 → TMLR** (`DA-P2-22`、user 裁定)。**実走のゲートは「IPA 取得後」から「Zenodo 封印後」へ置き直す** → §11.3 |
 | 03 two-plane determinism | **本文初稿あり** (`joss/paper.md`、1,749 words)。投稿先 = **JOSS 確定**。ただし **JOSS の公開 6 か月条項と community 条項に届いていない**ため、**先に Zenodo preprint** → JOSS は 2026-11-30 頃以降 (DA-P03M-6) → §11.1 / §11.2 |
 
 ---
@@ -270,6 +270,8 @@ paper repo は **PUBLIC**、ERRE-Sandbox は非公開 (OSS 公開 Phase 2-6 未�
 > 調査日 2026-09-12。一次情報の出典と確認方法を各行に明記した。
 >
 > **論文 02 の投稿先は依然として未確定** (→ §11.3)。
+> — これは 2026-09-12 時点の記述。翌 09-13 に PCI RR へ投稿し、同日その経路は閉じた。
+> 以後の経過は §11.3 冒頭の事後版 (2026-10-01) を読むこと。
 
 ### 11.0 3 つの制約 (どのルートを選んでも効く)
 
@@ -440,7 +442,27 @@ matters for your research application ... beyond a superficial code structure de
 > **preprint 先行は時間を買う手でもある。** 公開されれば外部が `REPRODUCING.md` を
 > 回す到達可能性が上がり、それが 2 つ目の解消経路そのものになる。
 
-### 11.3 論文 02 (collapsed-decision-space) の投稿先 — **2026-09-13 更新**
+### 11.3 論文 02 (collapsed-decision-space) の投稿先 — **2026-09-13 更新 / 2026-10-01 事後版**
+
+#### 2026-10-01 事後版 — PCI RR の経路が閉じた後
+
+> この事後版より下 (調査の要約・状態表・確定ルート・一次情報の要点・締切・リスク) は **2026-09-13 時点の記述**である。
+> 削除せず残す (§0 の規則: 期限切れの記述は削除でなく事後版へ反転する)。
+> PCI RR は投稿当日に desk reject され、表の fallback の側 (Zenodo 自前封印 → 実走 → 次の投稿先) へ移った。
+> **投稿先での経過 (投稿と判定) は判定の後に記す。** それまでに済んだことは下表のとおりで、
+> どれも公開の論文 repo と Zenodo の公開記録で確かめられる。
+
+| 日付 (UTC、論文 repo の merge 日) | 済んだこと | 所在 |
+|---|---|---|
+| 2026-09-13〜14 | 事前登録を**自前で封印**した。決定規則は機械可読の封印ファイルにだけ書き、本文の規則は生成ブロックにする。封印 11 件と manifest を Zenodo に 1 件ずつ deposit (concept DOI `10.5281/zenodo.22735436`)。`repro.sh` の step 14 が deposit の公開記録の控えと照合する | 論文 repo PR #1〜#4 |
+| 2026-09-14 | 2 arm の実走 driver と、前向き verdict の受け皿 (F1/F2) を、実走の前に作った | Sandbox PR #113 / 論文 repo PR #5 |
+| 2026-09-15 | **前向き 2 arm を実走** (control `qwen3:8b` / primary `llama3.1:8b`、各 4,800 draws、実走は 09-14)。封印済の規則が到達した分岐 = **R4 (apparatus validity)**: primary は 8 context のどれも entropy floor を越えず、推定量がその族では得られない。control は R5 の 6 述語をすべて満たした | 論文 repo PR #6 |
+| 2026-09-18 | R4 に着地した論文の位置づけを本文に入れた。その後の監査で、登録した推定量が落としていた成分 (記録上の None) と、旧題の主張の一部 (集中で帰無の基準値が上がる) の方向が逆であることが分かった | 論文 repo PR #7 |
+| 2026-09-18 | 事後に立った仮説 (None は channel-on で多い) を、仕様を凍結してから前向き 2 arm で **1 回だけ held-out に検査** → 両 arm で棄却 (凍結した解釈表の行 A)。前向きの per-draw データを出荷した | 論文 repo PR #8・#9 |
+| 2026-09-24〜29 | **改稿**: 中核命題を「封印済の 3 つの gate は書かれたとおりに動き、それぞれ読みが依存する量とは別の量 (proxy) を読んでいた」に張り替え (B1)、compendium の出荷 (B2)、判定パイプラインの事後 simulation (B3)、関連研究 (B4)、投稿形式の匿名 PDF の生成と検査 (C) | 論文 repo PR #10〜#15 |
+| 2026-09-30〜10-01 | 本文の再構成・参考文献の原典照合・匿名 PDF の検査の強化・投稿前のプレ査読の反映・最終 PDF の通読 | 論文 repo PR #16〜#18 |
+
+#### 2026-09-13 時点の記述
 
 > **2026-09-12 に候補を一次情報で調査し、投稿ルートを user 裁定で確定した。**
 > 調査の全文 (出典 URL + 確認日を各行に付したもの) = `.steering/20260912-paper02-route/venue-survey.md`。
@@ -574,6 +596,10 @@ defensible な読みであって明文の保証ではない (Codex 必須変更 
   tag を切る前に repository を enable する順序を守ること (§G2 手順書)
 
 **論文 02 側 (2026-09-12 追加。詳細 = `.steering/20260912-paper02-route/design-final.md` §5)**
+
+> **2026-10-01 事後版**: U-1・U-2 (PCI RR) は経路が閉じて要らなくなった。U-4 は Phase 0 pilot と
+> 前向き実走で実測した (論文 付録 §B.2)。ollama の版ドリフトは、control arm の R5 一致検査が
+> 6 述語すべて満たして吸収した。U-3 (JOTE の RR の継続) は確かめていない。下の各項は 2026-09-12 時点の記述。
 
 - **PCI RR が CS/AI 分野の RR を recommend した実績件数** (U-1)。方針上は「full spectrum of
   STEM」だが、recommender の分野的な手当てがあるかは未調査。**Stage 1 投稿前に
