@@ -1,0 +1,1995 @@
+{
+ "mapping": {
+  "chosen": null,
+  "conservative_values": {
+   "4": {
+    "B": {
+     "bot_hi": 0.019615,
+     "oov": 0.073901,
+     "s_changed": 0.704252
+    },
+    "C": {
+     "bot_hi": 0.019615,
+     "eps": 0.002195,
+     "oov": 0.08201
+    }
+   },
+   "6": {
+    "B": {
+     "bot_hi": 0.013163,
+     "oov": 0.078177,
+     "s_changed": 0.716336
+    },
+    "C": {
+     "bot_hi": 0.013163,
+     "eps": 0.000862,
+     "oov": 0.071872
+    }
+   },
+   "8": {
+    "B": {
+     "bot_hi": 0.009905,
+     "oov": 0.083018,
+     "s_changed": 0.71778
+    },
+    "C": {
+     "bot_hi": 0.009905,
+     "eps": 0.000458,
+     "oov": 0.065957
+    }
+   }
+  },
+  "final": [],
+  "rejected_axes": {
+   "4": [],
+   "6": [],
+   "8": []
+  },
+  "screening": [
+   {
+    "K": 5,
+    "M": 4,
+    "R": 8,
+    "axis": "B",
+    "calls": 2736,
+    "evaluated_points": 1,
+    "first_violation": {
+     "c_at_kappa1": 0.584636,
+     "coverage": 0.661479,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.500653,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "flat",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 4,
+    "R": 8,
+    "axis": "C",
+    "calls": 2736,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.429423,
+     "coverage": 0.638917,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.698121,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 6,
+    "R": 8,
+    "axis": "B",
+    "calls": 3504,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.542659,
+     "coverage": 0.708292,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.545231,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 6,
+    "R": 8,
+    "axis": "C",
+    "calls": 3504,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.448435,
+     "coverage": 0.657049,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.668442,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 4,
+    "R": 8,
+    "axis": "B",
+    "calls": 3936,
+    "evaluated_points": 1,
+    "first_violation": {
+     "c_at_kappa1": 0.584636,
+     "coverage": 0.661479,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.500653,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "flat",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 4,
+    "R": 8,
+    "axis": "C",
+    "calls": 3936,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.429423,
+     "coverage": 0.638917,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.698121,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 4,
+    "R": 12,
+    "axis": "B",
+    "calls": 4104,
+    "evaluated_points": 1,
+    "first_violation": {
+     "c_at_kappa1": 0.583587,
+     "coverage": 0.661479,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.501557,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "flat",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 4,
+    "R": 12,
+    "axis": "C",
+    "calls": 4104,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.429729,
+     "coverage": 0.638917,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.697621,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 8,
+    "R": 8,
+    "axis": "B",
+    "calls": 4272,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.596466,
+     "coverage": 0.740514,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.495159,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 8,
+    "R": 8,
+    "axis": "C",
+    "calls": 4272,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.464815,
+     "coverage": 0.675757,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.644775,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 6,
+    "R": 8,
+    "axis": "B",
+    "calls": 4704,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.542659,
+     "coverage": 0.708292,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.545231,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 6,
+    "R": 8,
+    "axis": "C",
+    "calls": 4704,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.448435,
+     "coverage": 0.657049,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.668442,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 6,
+    "R": 12,
+    "axis": "B",
+    "calls": 5256,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.542301,
+     "coverage": 0.708292,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.54558,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 6,
+    "R": 12,
+    "axis": "C",
+    "calls": 5256,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.448369,
+     "coverage": 0.657049,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.668545,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 8,
+    "R": 8,
+    "axis": "B",
+    "calls": 5472,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.596466,
+     "coverage": 0.740514,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.495159,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 8,
+    "R": 8,
+    "axis": "C",
+    "calls": 5472,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.464815,
+     "coverage": 0.675757,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.644775,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 4,
+    "R": 12,
+    "axis": "B",
+    "calls": 5904,
+    "evaluated_points": 1,
+    "first_violation": {
+     "c_at_kappa1": 0.583587,
+     "coverage": 0.661479,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.501557,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "flat",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 4,
+    "R": 12,
+    "axis": "C",
+    "calls": 5904,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.429729,
+     "coverage": 0.638917,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.697621,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 8,
+    "R": 12,
+    "axis": "B",
+    "calls": 6408,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.595368,
+     "coverage": 0.740514,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.496074,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 5,
+    "M": 8,
+    "R": 12,
+    "axis": "C",
+    "calls": 6408,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.465427,
+     "coverage": 0.675757,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.643941,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 6,
+    "R": 12,
+    "axis": "B",
+    "calls": 7056,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.542301,
+     "coverage": 0.708292,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.54558,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 6,
+    "R": 12,
+    "axis": "C",
+    "calls": 7056,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.448369,
+     "coverage": 0.657049,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.668545,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 8,
+    "R": 12,
+    "axis": "B",
+    "calls": 8208,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.595368,
+     "coverage": 0.740514,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.496074,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   },
+   {
+    "K": 10,
+    "M": 8,
+    "R": 12,
+    "axis": "C",
+    "calls": 8208,
+    "evaluated_points": 3,
+    "first_violation": {
+     "c_at_kappa1": 0.465427,
+     "coverage": 0.675757,
+     "dev_point": {
+      "base_src": "pilot",
+      "bot": 0.0,
+      "lam_src": "pilot",
+      "untried": "uniform"
+     },
+     "kappa_plant": null,
+     "kappa_tau": 0.643941,
+     "no_go_at_tau": 1.0,
+     "no_go_at_zero": 0.0,
+     "ok": false,
+     "pass_at_plant": 0.0,
+     "pass_at_tau": 1.0,
+     "probe_point": {
+      "base": "measured",
+      "k_rep": 0.0,
+      "lam": "graded",
+      "sd": 0.05
+     },
+     "reachable": false,
+     "realized_plant": null,
+     "realized_tau": null,
+     "size_cap": 0.06462
+    },
+    "ok": false
+   }
+  ],
+  "sims": {
+   "curve": 1000,
+   "final": 10000,
+   "screen": 2000
+  },
+  "status": "door_close"
+ },
+ "pilot": {
+  "measures": {
+   "4": {
+    "B": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.294872,
+       "talk_peer": 0.064103,
+       "tend_moss": 0.115385,
+       "walk_path": 0.525641
+      },
+      "rain": {
+       "read_book": 0.036585,
+       "sit_quiet": 0.646341,
+       "talk_peer": 0.060976,
+       "walk_path": 0.256098
+      },
+      "wind": {
+       "read_book": 0.064103,
+       "rest_eyes": 0.269231,
+       "sit_quiet": 0.628205,
+       "tend_moss": 0.038462
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 11,
+       "talk_peer": 2,
+       "tend_moss": 4,
+       "walk_path": 20
+      },
+      "rain": {
+       "read_book": 1,
+       "sit_quiet": 26,
+       "talk_peer": 2,
+       "walk_path": 10
+      },
+      "wind": {
+       "read_book": 2,
+       "rest_eyes": 10,
+       "sit_quiet": 24,
+       "tend_moss": 1
+      }
+     },
+     "bottom_hi": 0.019615,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.683942,
+      "k": 129,
+      "lo": 0.245301,
+      "n": 305,
+      "rate": 0.422951
+     },
+     "eta": {
+      "clusters": 16,
+      "hi": 0.723137,
+      "k": 69,
+      "lo": 0.283139,
+      "n": 129,
+      "rate": 0.534884
+     },
+     "h0": {
+      "clusters": 16,
+      "hi": 0.397174,
+      "k": 16,
+      "lo": 0.050311,
+      "n": 113,
+      "rate": 0.141593
+     },
+     "h_sw": {
+      "clusters": 13,
+      "hi": 0.825532,
+      "k": 31,
+      "lo": 0.358538,
+      "n": 49,
+      "rate": 0.632653
+     },
+     "lam_dev": 0.57206,
+     "oov_hi": 0.073901,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 0.9656,
+      "k": 154,
+      "lo": 0.641285,
+      "n": 176,
+      "rate": 0.875
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.704252,
+      "k": 154,
+      "lo": 0.26451,
+      "n": 304,
+      "rate": 0.506579
+     },
+     "s_same": {
+      "clusters": 0,
+      "hi": 1.0,
+      "k": 0,
+      "lo": 0.0,
+      "n": 0,
+      "rate": null
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.504675,
+       "k": 2,
+       "lo": 0.000219,
+       "n": 115,
+       "rate": 0.017391
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.497126,
+       "k": 1,
+       "lo": 5.2e-05,
+       "n": 163,
+       "rate": 0.006135
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 110,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.515355,
+       "k": 3,
+       "lo": 0.000648,
+       "n": 115,
+       "rate": 0.026087
+      }
+     }
+    },
+    "C": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.109375,
+       "talk_peer": 0.234375,
+       "tend_moss": 0.328125,
+       "walk_path": 0.328125
+      },
+      "rain": {
+       "read_book": 0.431034,
+       "sit_quiet": 0.431034,
+       "talk_peer": 0.12069,
+       "walk_path": 0.017241
+      },
+      "wind": {
+       "read_book": 0.1625,
+       "rest_eyes": 0.4875,
+       "sit_quiet": 0.0375,
+       "tend_moss": 0.3125
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 3,
+       "talk_peer": 7,
+       "tend_moss": 10,
+       "walk_path": 10
+      },
+      "rain": {
+       "read_book": 12,
+       "sit_quiet": 12,
+       "talk_peer": 3,
+       "walk_path": 0
+      },
+      "wind": {
+       "read_book": 6,
+       "rest_eyes": 19,
+       "sit_quiet": 1,
+       "tend_moss": 12
+      }
+     },
+     "bottom_hi": 0.019615,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.231937,
+      "k": 9,
+      "lo": 0.002195,
+      "n": 420,
+      "rate": 0.021429
+     },
+     "eta": {
+      "clusters": 8,
+      "hi": 0.811221,
+      "k": 5,
+      "lo": 0.215216,
+      "n": 9,
+      "rate": 0.555556
+     },
+     "h0": {
+      "clusters": 15,
+      "hi": 0.518362,
+      "k": 22,
+      "lo": 0.108263,
+      "n": 95,
+      "rate": 0.231579
+     },
+     "h_sw": {
+      "clusters": 14,
+      "hi": 0.52336,
+      "k": 17,
+      "lo": 0.102712,
+      "n": 56,
+      "rate": 0.303571
+     },
+     "lam_dev": 0.093689,
+     "oov_hi": 0.08201,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 411,
+      "lo": 0.806392,
+      "n": 411,
+      "rate": 1.0
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.991994,
+      "k": 165,
+      "lo": 0.731062,
+      "n": 174,
+      "rate": 0.948276
+     },
+     "s_same": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 246,
+      "lo": 0.806392,
+      "n": 246,
+      "rate": 1.0
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 192,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.52827,
+       "k": 5,
+       "lo": 0.001473,
+       "n": 138,
+       "rate": 0.036232
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.508667,
+       "k": 3,
+       "lo": 0.000353,
+       "n": 168,
+       "rate": 0.017857
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 141,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 174,
+       "rate": 0.0
+      }
+     }
+    }
+   },
+   "6": {
+    "B": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.294872,
+       "talk_peer": 0.064103,
+       "tend_moss": 0.115385,
+       "walk_path": 0.525641
+      },
+      "rain": {
+       "read_book": 0.036585,
+       "sit_quiet": 0.646341,
+       "talk_peer": 0.060976,
+       "walk_path": 0.256098
+      },
+      "wind": {
+       "read_book": 0.064103,
+       "rest_eyes": 0.269231,
+       "sit_quiet": 0.628205,
+       "tend_moss": 0.038462
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 11,
+       "talk_peer": 2,
+       "tend_moss": 4,
+       "walk_path": 20
+      },
+      "rain": {
+       "read_book": 1,
+       "sit_quiet": 26,
+       "talk_peer": 2,
+       "walk_path": 10
+      },
+      "wind": {
+       "read_book": 2,
+       "rest_eyes": 10,
+       "sit_quiet": 24,
+       "tend_moss": 1
+      }
+     },
+     "bottom_hi": 0.013163,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.654628,
+      "k": 157,
+      "lo": 0.218998,
+      "n": 421,
+      "rate": 0.372922
+     },
+     "eta": {
+      "clusters": 16,
+      "hi": 0.76113,
+      "k": 91,
+      "lo": 0.323059,
+      "n": 157,
+      "rate": 0.579618
+     },
+     "h0": {
+      "clusters": 16,
+      "hi": 0.397174,
+      "k": 16,
+      "lo": 0.050311,
+      "n": 113,
+      "rate": 0.141593
+     },
+     "h_sw": {
+      "clusters": 13,
+      "hi": 0.825532,
+      "k": 31,
+      "lo": 0.358538,
+      "n": 49,
+      "rate": 0.632653
+     },
+     "lam_dev": 0.57206,
+     "oov_hi": 0.078177,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 0.952487,
+      "k": 222,
+      "lo": 0.609164,
+      "n": 264,
+      "rate": 0.840909
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.716336,
+      "k": 220,
+      "lo": 0.276342,
+      "n": 413,
+      "rate": 0.532688
+     },
+     "s_same": {
+      "clusters": 1,
+      "hi": 1.0,
+      "k": 4,
+      "lo": 0.206549,
+      "n": 4,
+      "rate": 1.0
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.501101,
+       "k": 2,
+       "lo": 0.000126,
+       "n": 130,
+       "rate": 0.015385
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.51454,
+       "k": 5,
+       "lo": 0.000608,
+       "n": 217,
+       "rate": 0.023041
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 133,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.522394,
+       "k": 5,
+       "lo": 0.001057,
+       "n": 145,
+       "rate": 0.034483
+      }
+     }
+    },
+    "C": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.109375,
+       "talk_peer": 0.234375,
+       "tend_moss": 0.328125,
+       "walk_path": 0.328125
+      },
+      "rain": {
+       "read_book": 0.431034,
+       "sit_quiet": 0.431034,
+       "talk_peer": 0.12069,
+       "walk_path": 0.017241
+      },
+      "wind": {
+       "read_book": 0.1625,
+       "rest_eyes": 0.4875,
+       "sit_quiet": 0.0375,
+       "tend_moss": 0.3125
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 3,
+       "talk_peer": 7,
+       "tend_moss": 10,
+       "walk_path": 10
+      },
+      "rain": {
+       "read_book": 12,
+       "sit_quiet": 12,
+       "talk_peer": 3,
+       "walk_path": 0
+      },
+      "wind": {
+       "read_book": 6,
+       "rest_eyes": 19,
+       "sit_quiet": 1,
+       "tend_moss": 12
+      }
+     },
+     "bottom_hi": 0.013163,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.217325,
+      "k": 9,
+      "lo": 0.000862,
+      "n": 698,
+      "rate": 0.012894
+     },
+     "eta": {
+      "clusters": 8,
+      "hi": 0.811221,
+      "k": 5,
+      "lo": 0.215216,
+      "n": 9,
+      "rate": 0.555556
+     },
+     "h0": {
+      "clusters": 15,
+      "hi": 0.518362,
+      "k": 22,
+      "lo": 0.108263,
+      "n": 95,
+      "rate": 0.231579
+     },
+     "h_sw": {
+      "clusters": 14,
+      "hi": 0.52336,
+      "k": 17,
+      "lo": 0.102712,
+      "n": 56,
+      "rate": 0.303571
+     },
+     "lam_dev": 0.093689,
+     "oov_hi": 0.071872,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 689,
+      "lo": 0.806392,
+      "n": 689,
+      "rate": 1.0
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.991994,
+      "k": 165,
+      "lo": 0.731062,
+      "n": 174,
+      "rate": 0.948276
+     },
+     "s_same": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 524,
+      "lo": 0.806392,
+      "n": 524,
+      "rate": 1.0
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 288,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.528942,
+       "k": 7,
+       "lo": 0.001526,
+       "n": 196,
+       "rate": 0.035714
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.511415,
+       "k": 5,
+       "lo": 0.000463,
+       "n": 246,
+       "rate": 0.020325
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 203,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 258,
+       "rate": 0.0
+      }
+     }
+    }
+   },
+   "8": {
+    "B": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.294872,
+       "talk_peer": 0.064103,
+       "tend_moss": 0.115385,
+       "walk_path": 0.525641
+      },
+      "rain": {
+       "read_book": 0.036585,
+       "sit_quiet": 0.646341,
+       "talk_peer": 0.060976,
+       "walk_path": 0.256098
+      },
+      "wind": {
+       "read_book": 0.064103,
+       "rest_eyes": 0.269231,
+       "sit_quiet": 0.628205,
+       "tend_moss": 0.038462
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 11,
+       "talk_peer": 2,
+       "tend_moss": 4,
+       "walk_path": 20
+      },
+      "rain": {
+       "read_book": 1,
+       "sit_quiet": 26,
+       "talk_peer": 2,
+       "walk_path": 10
+      },
+      "wind": {
+       "read_book": 2,
+       "rest_eyes": 10,
+       "sit_quiet": 24,
+       "tend_moss": 1
+      }
+     },
+     "bottom_hi": 0.009905,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.640118,
+      "k": 172,
+      "lo": 0.206569,
+      "n": 498,
+      "rate": 0.345382
+     },
+     "eta": {
+      "clusters": 16,
+      "hi": 0.774955,
+      "k": 103,
+      "lo": 0.33847,
+      "n": 172,
+      "rate": 0.598837
+     },
+     "h0": {
+      "clusters": 16,
+      "hi": 0.397174,
+      "k": 16,
+      "lo": 0.050311,
+      "n": 113,
+      "rate": 0.141593
+     },
+     "h_sw": {
+      "clusters": 13,
+      "hi": 0.825532,
+      "k": 31,
+      "lo": 0.358538,
+      "n": 49,
+      "rate": 0.632653
+     },
+     "lam_dev": 0.57206,
+     "oov_hi": 0.083018,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 0.942082,
+      "k": 268,
+      "lo": 0.586308,
+      "n": 326,
+      "rate": 0.822086
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.71778,
+      "k": 252,
+      "lo": 0.277776,
+      "n": 468,
+      "rate": 0.538462
+     },
+     "s_same": {
+      "clusters": 4,
+      "hi": 1.0,
+      "k": 25,
+      "lo": 0.510109,
+      "n": 25,
+      "rate": 1.0
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.500195,
+       "k": 2,
+       "lo": 0.000106,
+       "n": 134,
+       "rate": 0.014925
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.520138,
+       "k": 7,
+       "lo": 0.000915,
+       "n": 248,
+       "rate": 0.028226
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 155,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.529244,
+       "k": 7,
+       "lo": 0.001549,
+       "n": 169,
+       "rate": 0.04142
+      }
+     }
+    },
+    "C": {
+     "base": {
+      "clear": {
+       "rest_eyes": 0.109375,
+       "talk_peer": 0.234375,
+       "tend_moss": 0.328125,
+       "walk_path": 0.328125
+      },
+      "rain": {
+       "read_book": 0.431034,
+       "sit_quiet": 0.431034,
+       "talk_peer": 0.12069,
+       "walk_path": 0.017241
+      },
+      "wind": {
+       "read_book": 0.1625,
+       "rest_eyes": 0.4875,
+       "sit_quiet": 0.0375,
+       "tend_moss": 0.3125
+      }
+     },
+     "base_counts": {
+      "clear": {
+       "rest_eyes": 3,
+       "talk_peer": 7,
+       "tend_moss": 10,
+       "walk_path": 10
+      },
+      "rain": {
+       "read_book": 12,
+       "sit_quiet": 12,
+       "talk_peer": 3,
+       "walk_path": 0
+      },
+      "wind": {
+       "read_book": 6,
+       "rest_eyes": 19,
+       "sit_quiet": 1,
+       "tend_moss": 12
+      }
+     },
+     "bottom_hi": 0.009905,
+     "bottom_max": 0.0,
+     "eps": {
+      "clusters": 16,
+      "hi": 0.21079,
+      "k": 9,
+      "lo": 0.000458,
+      "n": 976,
+      "rate": 0.009221
+     },
+     "eta": {
+      "clusters": 8,
+      "hi": 0.811221,
+      "k": 5,
+      "lo": 0.215216,
+      "n": 9,
+      "rate": 0.555556
+     },
+     "h0": {
+      "clusters": 15,
+      "hi": 0.518362,
+      "k": 22,
+      "lo": 0.108263,
+      "n": 95,
+      "rate": 0.231579
+     },
+     "h_sw": {
+      "clusters": 14,
+      "hi": 0.52336,
+      "k": 17,
+      "lo": 0.102712,
+      "n": 56,
+      "rate": 0.303571
+     },
+     "lam_dev": 0.093689,
+     "oov_hi": 0.065957,
+     "rejected_bottom": false,
+     "rho": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 967,
+      "lo": 0.806392,
+      "n": 967,
+      "rate": 1.0
+     },
+     "s_changed": {
+      "clusters": 16,
+      "hi": 0.991994,
+      "k": 165,
+      "lo": 0.731062,
+      "n": 174,
+      "rate": 0.948276
+     },
+     "s_same": {
+      "clusters": 16,
+      "hi": 1.0,
+      "k": 802,
+      "lo": 0.806392,
+      "n": 802,
+      "rate": 1.0
+     },
+     "world_bottom": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 384,
+       "rate": 0.0
+      }
+     },
+     "world_bottom_rates": {
+      "A": 0.0,
+      "A_rot": 0.0,
+      "B": 0.0,
+      "B_rot": 0.0
+     },
+     "world_oov": {
+      "A": {
+       "clusters": 4,
+       "hi": 0.529326,
+       "k": 9,
+       "lo": 0.001556,
+       "n": 254,
+       "rate": 0.035433
+      },
+      "A_rot": {
+       "clusters": 4,
+       "hi": 0.512855,
+       "k": 7,
+       "lo": 0.000527,
+       "n": 324,
+       "rate": 0.021605
+      },
+      "B": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 265,
+       "rate": 0.0
+      },
+      "B_rot": {
+       "clusters": 4,
+       "hi": 0.489891,
+       "k": 0,
+       "lo": 0.0,
+       "n": 342,
+       "rate": 0.0
+      }
+     }
+    }
+   }
+  },
+  "reasons": [],
+  "status": "computed"
+ }
+}
