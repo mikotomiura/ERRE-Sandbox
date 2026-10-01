@@ -58,9 +58,12 @@
 | [45] | arXiv:2310.11324 | Sclar, M., Choi, Y., Tsvetkov, Y. & Suhr, A. — *Quantifying Language Models' Sensitivity to Spurious Features in Prompt Design or: How I learned to start worrying about prompt formatting* | arXiv:2310.11324 [cs.CL] (v2), 2023 (arXiv comment: ICLR 2024 camera ready) | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1.3・§2、意味を保つ prompt 書式の変更で LLM の評価結果が動くこと) | active |
 | [46] | arXiv:2309.03882 | Zheng, C., Zhou, H., Meng, F., Zhou, J. & Huang, M. — *Large Language Models Are Not Robust Multiple Choice Selectors* | arXiv:2309.03882 [cs.CL] (v4), 2023 (arXiv comment: ICLR 2024 Spotlight) | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §2、選択肢の位置・ID で LLM の選択が動くこと) | active |
 | [47] | DOI:10.18653/v1/2024.emnlp-industry.91 | Tam, Z. R., Wu, C.-K., Tsai, Y.-L., Lin, C.-Y., Lee, H.-y. & Chen, Y.-N. — *Let Me Speak Freely? A Study On The Impact Of Format Restrictions On Large Language Model Performance* | Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track, pp. 1218–1236, 2024 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1.3・§2、JSON 等の出力書式を強制すると LLM の推論性能が下がること) | active |
-| [48] | DOI:10.18653/v1/P18-1128 | Dror, R., Baumer, G., Shlomov, S. & Reichart, R. — *The Hitchhiker's Guide to Testing Statistical Significance in Natural Language Processing* | Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 1383–1392, 2018 | C:\ERRE-Papers\collapsed-decision-space\manuscriptefs.md (論文02 §7.1 診断 1、有意性検定の選び方は評価量と設定に依る) | active |
-| [49] | DOI:10.1002/sim.8086 | Morris, T. P., White, I. R. & Crowther, M. J. — *Using simulation studies to evaluate statistical methods* | Statistics in Medicine, 38(11), 2074–2102, 2019 | C:\ERRE-Papers\collapsed-decision-space\manuscriptefs.md (論文02 §4.2・§7.1 診断 1、模擬で手法の性質を評価する標準) | active |
-| [50] | DOI:10.1002/9781119482260 | Little, R. & Rubin, D. — *Statistical Analysis with Missing Data, Third Edition* | Wiley, 2019 (Crossref の given は "Roderick"・"Donald" のみなので頭文字 1 つ。版は題の中にあり、edition-number 欄の "1" と矛盾) | C:\ERRE-Papers\collapsed-decision-space\manuscriptefs.md (論文02 §7.1 診断 3、complete-case 解析は偏りうる。第 3 章の abstract) | active |
+| [48] | DOI:10.18653/v1/P18-1128 | Dror, R., Baumer, G., Shlomov, S. & Reichart, R. — *The Hitchhiker's Guide to Testing Statistical Significance in Natural Language Processing* | Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 1383–1392, 2018 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.1 診断 1、有意性検定の選び方は評価量と設定に依る) | active |
+| [49] | DOI:10.1002/sim.8086 | Morris, T. P., White, I. R. & Crowther, M. J. — *Using simulation studies to evaluate statistical methods* | Statistics in Medicine, 38(11), 2074–2102, 2019 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §4.2・§7.1 診断 1、模擬で手法の性質を評価する標準) | active |
+| [50] | DOI:10.1002/9781119482260 | Little, R. & Rubin, D. — *Statistical Analysis with Missing Data, Third Edition* | Wiley, 2019 (Crossref の given は "Roderick"・"Donald" のみなので頭文字 1 つ。版は題の中にあり、edition-number 欄の "1" と矛盾) | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.1 診断 3、complete-case 解析は偏りうる。第 3 章の abstract) | active |
+| [51] | DOI:10.3390/jintelligence13060064 | Saretzki, J., Knopf, T., Forthmann, B., Goecke, B., Jaggy, A.-K., Benedek, M. & Weiss, S. — *Scoring German Alternate Uses Items Applying Large Language Models* | Journal of Intelligence, 13(6), 64, 2025 | research-positioning §8 (自由文 scorer の資格試験の段階 T0 のコーパス C9。データの置き場は OSF eaqtb) | active |
+| [52] | arXiv:2206.08932 | Stevenson, C., Smal, I., Baas, M., Grasman, R. & van der Maas, H. — *Putting GPT-3's Creativity to the (Alternative Uses) Test* | arXiv:2206.08932 [cs.AI] (v1), 2022 (arXiv comment: ICCC 2022 Short Paper) | research-positioning §8 (資格試験の段階 T1・T2 の候補のコーパス C1。公開の置き場にデータが無く不適格) | active |
+| [53] | DOI:10.1038/s41598-023-40858-3 | Koivisto, M. & Grassini, S. — *Best humans still outperform artificial intelligence in a creative divergent thinking task* | Scientific Reports, 13, 13601, 2023 | research-positioning §8 (資格試験の T1/T2 の条件つきの候補のコーパス C3。データの license を確かめられず不適格) | active |
 
 ## 追加・撤回ルール
 
@@ -173,3 +176,15 @@
   journal_ref も DOI も無いので arXiv で引く (ICLR 2024 は arXiv の comment 欄の自己申告)。URL と取得内容の一覧は
   `.steering/20260925-paper02-b4-related-work/source-verification.md` (ローカル)。不採用: Cochran 1954 (最終頁を
   原典で閉じられない)、Koehler & Larntz 1980・Wang et al. 2024 (本文に支える文が無い)。
+
+- **[51]〜[53] — 2026-10-01 確認 (タスク `20261001-measurement-bench-ssot-record`)**: [51]・[53] は Crossref API
+  (`https://api.crossref.org/works/<doi>`) の生 JSON、[52] は arXiv Export API
+  (`https://export.arxiv.org/api/query?id_list=2206.08932`) の XML を python で直接パースして書誌を写した (WebFetch の中間要約には
+  依らない)。[51] の 64 は Crossref の page 欄の値 (MDPI の論文番号)。[53] の 13601 は Crossref の article-number 欄の値。
+  [52] は ICCC 2022 の DOI を確かめていないので arXiv で引く (ICCC 2022 は arXiv の comment 欄の自己申告)。
+  コーパスの license・適格性を原文で確かめた記録は `.steering/20261001-free-text-qualification-precheck/source-check.md` (ローカル)。
+
+- **[22] Organisciak et al. 2023 の再使用 (2026-10-01)**: research-positioning §8 (自由文 scorer の資格試験の前段、既知の最良の
+  CPU の scorer の応答単位の相関) で引く。DOI が既存 [22] と同一なので、新規番号を発行しない (追加・撤回ルール 3)。既存行の
+  「使用箇所」列は変えず、ここに追記する (I-010 の前例)。値は ERIC の pre-print (ED629879) の PDF から読んだもの
+  (`.steering/20261001-free-text-qualification-precheck/literature-correlations.md`、ローカル)。
