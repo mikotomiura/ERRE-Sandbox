@@ -1,12 +1,12 @@
 {
   "target_sha256": {
-    "scripts/generalization_probe_driver.py": "3a24d42f603de8285e778e53e08c76f9b0db5d3aadad19cf60650b63d78fe876"
+    "scripts/generalization_probe_driver.py": "fc5146d3d5c0f6e9774ddcd676afd85cbd94a23de9115758755ef79af80d140b"
   },
   "tests_sha256": {
-    "tests/test_generalization_probe/test_driver.py": "31edea68c8aaea228d1568390b417083a1605f4ccb5cc6a9cf95050045cf145e"
+    "tests/test_generalization_probe/test_driver.py": "9ac2b36736dba59e1cfb88844b518fbd6dc5c5f39032cc33878028cc861eef9a"
   },
   "harness_sha256": {
-    "scripts/generalization_probe_driver_mutation_check.py": "b0d76051b325b95d40bacc397ec0325f95868e784cfd8679a7dfc13a8ae173c0"
+    "scripts/generalization_probe_driver_mutation_check.py": "3dd0ae2aaaae0fef0c64c63c371a01043f6ffab2cac819376ab38d93cd297a19"
   },
   "meta_test": [
     {
@@ -62,12 +62,22 @@
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "単位の順 (r, 族, つ組) が prereg §4 と違う (判定は順序を見ないので plan の test だけが捕まえる)",
       "failed": [
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [(50, 1, 0), ...0, 1, 5), ...] == [(50, 0, 0), ...0, 0, 5), ...]\n  \n  At index 0 diff: (50, 1, 0) != (50, 0, 0)\n  Use -v to get more diff"
+      }
     },
     {
       "label": "p2  族内の 2 arm の順を逆に",
@@ -76,12 +86,22 @@
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "族内の 2 arm の交互が族の正準順と逆",
       "failed": [
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ('A_rot', 'A') in (('A', 'A_rot'), ('B', 'B_rot'))\n +  where (('A', 'A_rot'), ('B', 'B_rot')) = bat.FAMILIES"
+      }
     },
     {
       "label": "p3  つ組の順を逆に",
@@ -90,12 +110,22 @@
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "単位の順が bat.units と違う",
       "failed": [
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_pilot_plan_is_the_frozen_grid_in_order"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [(50, 0, 7), ...0, 0, 2), ...] == [(50, 0, 0), ...0, 0, 5), ...]\n  \n  At index 0 diff: (50, 0, 7) != (50, 0, 0)\n  Use -v to get more diff"
+      }
     },
     {
       "label": "p4  KNOW を後ろに",
@@ -103,11 +133,21 @@
       "expected_any_of": [
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "KNOW を先に置く決定 (DD-4) と違う",
       "failed": [
         "test_pilot_plan_is_the_frozen_grid_in_order"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (('M_A', 50, ...q02', 0), ...) == (('KNOW', 0, ...k01', 2), ...)\n  \n  At index 0 diff: ('M_A', 50, 'q00', 0) != ('KNOW', 0, 'k00', 0)\n  Use -v to get more diff"
+      }
     },
     {
       "label": "p5  pilot の r を 0 から",
@@ -116,7 +156,10 @@
         "test_every_planned_body_passes_the_frozen_checks",
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "pilot の r が本走の r と交わる (grid の外。予定表の検査で止まる)",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -163,7 +206,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {('KNOW', 0, ...k01', 2), ...} == {('KNOW', 0, ...k01', 2), ...}\n  \n  Extra items in the left set:\n  ('M_A_rot', 3, 'q05', 0)\n  ('M_A', 0, 'q05', 0)\n  ('M_A', 4, 'q17', 0)\n  ('M_A', 0, 'q09', 0)\n  ('M_A', 1, 'q10', 0)...\n  \n  ...Full output truncated (1149 lines hidden), use '-vv' to show"
+      }
     },
     {
       "label": "p6  KNOW の試行を 1 回減らす",
@@ -172,7 +222,10 @@
         "test_every_planned_body_passes_the_frozen_checks",
         "test_pilot_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "知識確認の 3 試行 (正答の位置の一巡) が欠ける",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -189,7 +242,14 @@
         "test_shifted_body_is_refused_before_sending",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 648 == 684\n +  where 648 = len((('KNOW', 0, 'k00', 0), ('KNOW', 0, 'k00', 1), ('KNOW', 0, 'k01', 0), ('KNOW', 0, 'k01', 1), ('KNOW', 0, 'k02', 0), ('KNOW', 0, 'k02', 1), ...))"
+      }
     },
     {
       "label": "p7  本走の r を 1 つ減らす",
@@ -198,14 +258,24 @@
         "test_every_planned_body_passes_the_frozen_checks",
         "test_main_plan_is_the_frozen_grid_in_order"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の grid (R = 18) が欠ける",
       "failed": [
         "test_every_planned_body_passes_the_frozen_checks",
         "test_main_plan_is_the_frozen_grid_in_order",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_schedule_checks_meta_against_the_frozen_values"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_plan_is_the_frozen_grid_in_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 1632 == 1728\n +  where 1632 = len((('A', 0, 'q00', 0), ('A_rot', 0, 'q00', 0), ('A', 0, 'q01', 0), ('A_rot', 0, 'q01', 0), ('A', 0, 'q02', 0), ('A_rot', 0, 'q02', 0), ...))"
+      }
     },
     {
       "label": "b1  pilot の状態を masked でなく描く",
@@ -213,7 +283,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "null pilot の状態が key を含む (prompt が凍結 renderer と違う)",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -257,7 +330,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: p...lot renderer'] == []\n  \n  Left contains one more item: 'schedule: prompt differs from the pilot renderer'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b2  pilot の seed を本走の名前空間で",
@@ -265,7 +345,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "pilot と本走の seed が交わる",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -309,7 +392,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: s...lot schedule'] == []\n  \n  Left contains one more item: 'schedule: seed differs from the pilot schedule'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b3  pilot の seed の slot を probe 番号に",
@@ -317,7 +407,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "seed が分類を運ぶ (つ組で共有しない、Codex 2 回目 HIGH-1)",
       "failed": [
         "test_check_uses_the_plan_position",
@@ -360,7 +453,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: s...lot schedule'] == []\n  \n  Left contains one more item: 'schedule: seed differs from the pilot schedule'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b4  KNOW の seed の key と試行を取り違える",
@@ -368,7 +468,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "知識確認の seed が凍結 schedule と違う",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -411,7 +514,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: s...lot schedule'] == []\n  \n  Left contains one more item: 'schedule: seed differs from the pilot schedule'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b5  KNOW の試行 k を描かない",
@@ -419,7 +529,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "正答の位置が 3 試行で一巡しない",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -461,7 +574,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: p...lot renderer'] == []\n  \n  Left contains one more item: 'schedule: prompt differs from the pilot renderer'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b6  本走の seed を pilot の名前空間で",
@@ -469,14 +589,24 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の seed が凍結 schedule と違う",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
         "test_every_planned_body_passes_the_frozen_checks",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_publication_problems_read_the_written_meta"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: s...zen schedule'] == []\n  \n  Left contains one more item: 'schedule: seed differs from the frozen schedule'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b7  本走の状態を masked で描く",
@@ -484,14 +614,24 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の状態から key が消える",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
         "test_every_planned_body_passes_the_frozen_checks",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_publication_problems_read_the_written_meta"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: p...zen renderer'] == []\n  \n  Left contains one more item: 'schedule: prompt differs from the frozen renderer'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b8  model を変える",
@@ -499,7 +639,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "凍結 model と違う model を呼ぶ",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -548,7 +691,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [\"schedule: c...n3:14b'\", ...] == []\n  \n  Left contains 684 more items, first extra item: \"schedule: call 0: model='qwen3:14b'\"\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b9  think を逆に",
@@ -556,7 +706,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "thinking が有効になる (着座が v2 と違う)",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -605,7 +758,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: c...nk=True', ...] == []\n  \n  Left contains 684 more items, first extra item: 'schedule: call 0: think=True'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b10 stream を True に",
@@ -613,7 +773,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "stream の応答は 1 つの JSON にならない",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -660,7 +823,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: c...am=True', ...] == []\n  \n  Left contains 684 more items, first extra item: 'schedule: call 0: stream=True'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b11 num_predict の定数を誤る",
@@ -668,7 +838,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "driver の定数の誤りは形の検査 (同じ定数と比べる) を通る。凍結 scorer の request で捕まえる",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -713,7 +886,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: r...rozen values'] == []\n  \n  Left contains 2 more items, first extra item: 'schedule: request conditions differ from the frozen values'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "b12 num_ctx の定数を float に",
@@ -721,7 +901,10 @@
       "expected_any_of": [
         "test_every_planned_body_passes_the_frozen_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "4096.0 は凍結 scorer の meta_violations (辞書の等値) を通る。型まで比べる照合で捕まえる",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -764,7 +947,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: r...rozen values'] == []\n  \n  Left contains one more item: 'schedule: request conditions differ from the frozen values'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "c1  plan と grid の照合を外す",
@@ -772,11 +962,24 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>",
+      "expected_witness": {
+        "item": "missing",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>",
+        "assert_stmt": false
+      },
       "why": "欠けた plan (重複・grid 外は凍結の構造の検査が捕まえるが、欠けは捕まえない) で走り始める",
       "failed": [
         "test_bad_schedule_makes_no_call"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_bad_schedule_makes_no_call",
+        "param": "missing",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>"
+      }
     },
     {
       "label": "c2  body の数と plan の照合を外す",
@@ -784,11 +987,24 @@
       "expected_any_of": [
         "test_schedule_checks_meta_against_the_frozen_values"
       ],
-      "expected_reason": "zip() argument 2 is shorter than argument 1",
+      "expected_witness": {
+        "when": "call",
+        "exc": "ValueError",
+        "text": "zip() argument 2 is shorter than argument 1",
+        "via": "schedule_violations",
+        "assert_stmt": false
+      },
       "why": "plan と数の違う予定表を、照合の表を作らずに受け入れる",
       "failed": [
         "test_schedule_checks_meta_against_the_frozen_values"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_schedule_checks_meta_against_the_frozen_values",
+        "param": null,
+        "when": "call",
+        "type": "builtins.ValueError",
+        "text": "zip() argument 2 is shorter than argument 1"
+      }
     },
     {
       "label": "c3  予定表で形の検査をしない",
@@ -796,11 +1012,25 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": "SentBodyMismatchError: call ",
+      "expected_witness": {
+        "item": "stream",
+        "when": "call",
+        "exc": "SentBodyMismatchError",
+        "text": "call 500 ",
+        "via": "check_sent_body",
+        "assert_stmt": false
+      },
       "why": "stream などの形の誤りに、送る直前まで気づかない (GPU を使ってから止まる)",
       "failed": [
         "test_bad_schedule_makes_no_call"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_bad_schedule_makes_no_call",
+        "param": "stream",
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.SentBodyMismatchError",
+        "text": "call 500 ('M_A', 54, 'q04', 0): stream=True"
+      }
     },
     {
       "label": "c4  形の問題があっても続ける",
@@ -808,12 +1038,26 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": "KeyError: 'options'",
+      "expected_witness": {
+        "item": "no_options",
+        "when": "call",
+        "exc": "KeyError",
+        "text": "'options'",
+        "via": "skeleton",
+        "assert_stmt": false
+      },
       "why": "形の崩れた body で候補記録を作り、ScheduleError でなく KeyError で落ちる",
       "failed": [
         "test_bad_schedule_makes_no_call",
         "test_schedule_checks_meta_against_the_frozen_values"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_bad_schedule_makes_no_call",
+        "param": "no_options",
+        "when": "call",
+        "type": "builtins.KeyError",
+        "text": "'options'"
+      }
     },
     {
       "label": "c5  予定表で凍結の構造の検査をしない",
@@ -821,11 +1065,25 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": "SentBodyMismatchError: call ",
+      "expected_witness": {
+        "item": "seed",
+        "when": "call",
+        "exc": "SentBodyMismatchError",
+        "text": "call 400 ",
+        "via": "check_sent_body",
+        "assert_stmt": false
+      },
       "why": "seed・prompt の誤りに、送る直前まで気づかない",
       "failed": [
         "test_bad_schedule_makes_no_call"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_bad_schedule_makes_no_call",
+        "param": "seed",
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.SentBodyMismatchError",
+        "text": "call 400 ('M_A', 53, 'q02', 0): seed differs from the pilot schedule"
+      }
     },
     {
       "label": "c6  request の型の照合を外す",
@@ -835,12 +1093,22 @@
         "test_every_planned_body_passes_the_frozen_checks",
         "test_schedule_rejects_a_wrong_fixed_option"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "4096.0 のような型の誤りを、凍結 scorer の meta_violations は通す",
       "failed": [
         "test_bad_schedule_makes_no_call",
         "test_schedule_rejects_a_wrong_fixed_option"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_schedule_rejects_a_wrong_fixed_option",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'schedule: request conditions differ from the frozen values' in ['schedule: meta: request differs from the frozen values']"
+      }
     },
     {
       "label": "c7  meta の照合で pilot の observed を見ない",
@@ -848,11 +1116,21 @@
       "expected_any_of": [
         "test_schedule_checks_meta_against_the_frozen_values"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の observed が pilot と違っても予定表を通す",
       "failed": [
         "test_schedule_checks_meta_against_the_frozen_values"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_schedule_checks_meta_against_the_frozen_values",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'schedule: meta: observed environment differs from the pilot' in []\n +  where [] = <function schedule_violations at 0x?>(Stage(name='main', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5839/test_schedule_ch..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f"
+      }
     },
     {
       "label": "c8  meta の observed を空に",
@@ -861,7 +1139,10 @@
         "test_every_planned_body_passes_the_frozen_checks",
         "test_schedule_checks_meta_against_the_frozen_values"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "meta.json が実行環境の同定を持たない (判定で INVALID_SCORER)",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -906,7 +1187,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_every_planned_body_passes_the_frozen_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['schedule: m...or malformed'] == []\n  \n  Left contains one more item: 'schedule: meta: observed environment is missing or malformed'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "w1  送る直前の照合を削除",
@@ -915,12 +1203,25 @@
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "mismatch",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "送る経路でずれた body をそのまま送る",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observer_refuses_before_the_inner_transport",
+        "param": "mismatch",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w2  照合を送信の後に",
@@ -929,12 +1230,22 @@
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "ずれた body をモデルに送ってから止まる",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observer_refuses_before_the_inner_transport",
+        "param": "mismatch",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [{'messages':...: False, ...}] == []\n  \n  Left contains one more item: {'messages': [{'content': 'あなたは与えられた生き物の分類を、示された選択肢から 1 つ選ぶ。', 'role': 'system'}, {'content': '生き物: trout\\n次の分類から 1 つだ...', 'options': {'num_ctx': 4096, 'num_predict': 32, 'repeat_penalty': 1.0, 'seed': 26261102, ...}, 'st"
+      }
     },
     {
       "label": "w3  照合のキーを plan の位置から取らない",
@@ -943,7 +1254,13 @@
         "test_check_sent_body_rejects_value_and_type",
         "test_check_uses_the_plan_position"
       ],
-      "expected_reason": "seed differs from the pilot schedule",
+      "expected_witness": {
+        "when": "call",
+        "exc": "SentBodyMismatchError",
+        "text": "call 200 ",
+        "via": "check_sent_body",
+        "assert_stmt": false
+      },
       "why": "別の位置のキーで照合する",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -979,7 +1296,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_uses_the_plan_position",
+        "param": null,
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.SentBodyMismatchError",
+        "text": "call 200 ('KNOW', 0, 'k00', 0): prompt differs from the pilot renderer; seed differs from the pilot schedule"
+      }
     },
     {
       "label": "w4  送る直前に形を検査しない",
@@ -987,11 +1311,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-missing_option",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "think・stream・型の誤りを送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-missing_option",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w5  送る直前に凍結の構造の検査をしない",
@@ -1001,14 +1338,27 @@
         "test_check_uses_the_plan_position",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-prompt",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "seed・prompt のずれを送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
         "test_check_uses_the_plan_position",
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-prompt",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w6  seed の型を検査しない",
@@ -1016,11 +1366,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-seed_float",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "float の seed (20261001.0) は凍結の構造の検査 (!=) を通る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-seed_float",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w7  型の厳密一致を外す",
@@ -1028,11 +1391,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-num_ctx_float",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "False と 0、4096.0 と 4096 を同じとみなす",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-num_ctx_float",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w8  body の余分な key を許す",
@@ -1040,11 +1416,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-extra_key",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "keep_alive などの登録外の要求を送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-extra_key",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w9  options の余分な key を許す",
@@ -1052,11 +1441,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-extra_option",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "top_k などの登録外の decoding 条件を送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-extra_option",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w10 messages の形を検査しない",
@@ -1064,11 +1466,25 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "'int' object is not iterable",
+      "expected_witness": {
+        "item": "pilot-messages_not_list",
+        "when": "call",
+        "exc": "TypeError",
+        "text": "'int' object is not iterable",
+        "via": "skeleton",
+        "assert_stmt": false
+      },
       "why": "list でない messages で SentBodyMismatchError でなく TypeError になる",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-messages_not_list",
+        "when": "call",
+        "type": "builtins.TypeError",
+        "text": "'int' object is not iterable"
+      }
     },
     {
       "label": "w11 model を照合しない",
@@ -1076,11 +1492,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-model",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "別の model への送信を通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-model",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w12 think を照合しない",
@@ -1088,11 +1517,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-think",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "think の誤りを通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-think",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w13 stream を照合しない",
@@ -1100,12 +1542,25 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-stream",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "stream の誤りを通す",
       "failed": [
         "test_bad_schedule_makes_no_call",
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-stream",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w14 固定の options を照合しない",
@@ -1113,11 +1568,24 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "pilot-temperature",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "temperature・num_ctx の誤りを通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_check_sent_body_rejects_value_and_type",
+        "param": "pilot-temperature",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w15 /api/chat 以外の POST を通す",
@@ -1125,12 +1593,25 @@
       "expected_any_of": [
         "test_observer_refuses_before_the_inner_transport"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "generate_path",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "照合をすり抜ける経路を開ける",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
         "test_show_is_allowed_only_while_reading_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observer_refuses_before_the_inner_transport",
+        "param": "generate_path",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w16 /api/show を常に通す",
@@ -1139,12 +1620,25 @@
         "test_observer_refuses_before_the_inner_transport",
         "test_show_is_allowed_only_while_reading_observed"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+      "expected_witness": {
+        "item": "show_path",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
+        "assert_stmt": false
+      },
       "why": "observed を読む間以外にも /api/show を通す",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
         "test_show_is_allowed_only_while_reading_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observer_refuses_before_the_inner_transport",
+        "param": "show_path",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>"
+      }
     },
     {
       "label": "w17 期待の無い送信を通す",
@@ -1152,11 +1646,25 @@
       "expected_any_of": [
         "test_observer_refuses_before_the_inner_transport"
       ],
-      "expected_reason": "tuple indices must be integers or slices, not NoneType",
+      "expected_witness": {
+        "item": "no_expected",
+        "when": "call",
+        "exc": "TypeError",
+        "text": "tuple indices must be integers or slices, not NoneType",
+        "via": "check_sent_body",
+        "assert_stmt": false
+      },
       "why": "位置の無い送信を照合せずに通す (TypeError になる)",
       "failed": [
         "test_observer_refuses_before_the_inner_transport"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observer_refuses_before_the_inner_transport",
+        "param": "no_expected",
+        "when": "call",
+        "type": "builtins.TypeError",
+        "text": "tuple indices must be integers or slices, not NoneType"
+      }
     },
     {
       "label": "w18 observed を読む間に /api/show を許さない",
@@ -1172,7 +1680,13 @@
         "test_show_is_allowed_only_while_reading_observed",
         "test_written_files_use_lf"
       ],
-      "expected_reason": "unexpected POST path",
+      "expected_witness": {
+        "when": "call",
+        "exc": "SentBodyMismatchError",
+        "text": "unexpected POST path '/api/show'",
+        "via": "read_observed",
+        "assert_stmt": false
+      },
       "why": "chat template を読めず、どの run も始まらない",
       "failed": [
         "test_bad_schedule_makes_no_call",
@@ -1217,7 +1731,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_show_is_allowed_only_while_reading_observed",
+        "param": null,
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.SentBodyMismatchError",
+        "text": "unexpected POST path '/api/show'"
+      }
     },
     {
       "label": "w19 /api/show の許可を閉じない",
@@ -1225,11 +1746,21 @@
       "expected_any_of": [
         "test_show_is_allowed_only_while_reading_observed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "observed を読んだ後も /api/show が開いたまま",
       "failed": [
         "test_show_is_allowed_only_while_reading_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_show_is_allowed_only_while_reading_observed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert True is False\n +  where True = <scripts.generalization_probe_driver.ObservingTransport object at 0x?>.allow_show"
+      }
     },
     {
       "label": "o1  template の sha を版から",
@@ -1238,7 +1769,10 @@
         "test_complete_pilot_run_is_published_and_computed",
         "test_meta_is_on_disk_before_the_first_call"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "chat template を同定しない",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1247,7 +1781,14 @@
         "test_meta_is_on_disk_before_the_first_call",
         "test_observed_change_during_the_run_blocks_publication",
         "test_show_is_allowed_only_while_reading_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'observed': ...hink': False}} == {'observed': ...hink': False}}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'observed': {'model_digest': 'sha256:0000000000000000000000000000000000000000000000000000000000000000', 'ollama_version': '0.0-mock', 'template_sha256': '450"
+      }
     },
     {
       "label": "o2  digest の model 名を照合しない",
@@ -1255,11 +1796,24 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
+      "expected_witness": {
+        "item": "other_model",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
+        "assert_stmt": false
+      },
       "why": "別の model の digest を記録する",
       "failed": [
         "test_preflight_requires_the_environment_identity"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_preflight_requires_the_environment_identity",
+        "param": "other_model",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>"
+      }
     },
     {
       "label": "o3  空の版を許す",
@@ -1267,11 +1821,25 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": "observed environment is missing or malformed",
+      "expected_witness": {
+        "item": "no_version",
+        "when": "call",
+        "exc": "ScheduleError",
+        "text": "observed environment is missing or malformed",
+        "via": "run",
+        "assert_stmt": false
+      },
       "why": "版の無い環境で走る",
       "failed": [
         "test_preflight_requires_the_environment_identity"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_preflight_requires_the_environment_identity",
+        "param": "no_version",
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.ScheduleError",
+        "text": "schedule: meta: observed environment is missing or malformed"
+      }
     },
     {
       "label": "o4  digest が無くても続ける",
@@ -1279,11 +1847,25 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": "observed environment is missing or malformed",
+      "expected_witness": {
+        "item": "no_model",
+        "when": "call",
+        "exc": "ScheduleError",
+        "text": "observed environment is missing or malformed",
+        "via": "run",
+        "assert_stmt": false
+      },
       "why": "model の無い環境で PreflightError でなく予定表の検査まで進む",
       "failed": [
         "test_preflight_requires_the_environment_identity"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_preflight_requires_the_environment_identity",
+        "param": "no_model",
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.ScheduleError",
+        "text": "schedule: meta: observed environment is missing or malformed"
+      }
     },
     {
       "label": "o5  template が無くても続ける",
@@ -1291,11 +1873,25 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": "'NoneType' object has no attribute 'encode'",
+      "expected_witness": {
+        "item": "null_template",
+        "when": "call",
+        "exc": "AttributeError",
+        "text": "'NoneType' object has no attribute 'encode'",
+        "via": "read_observed",
+        "assert_stmt": false
+      },
       "why": "chat template の無い応答で PreflightError でなく AttributeError になる",
       "failed": [
         "test_preflight_requires_the_environment_identity"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_preflight_requires_the_environment_identity",
+        "param": "null_template",
+        "when": "call",
+        "type": "builtins.AttributeError",
+        "text": "'NoneType' object has no attribute 'encode'"
+      }
     },
     {
       "label": "o6  preflight で HTTP の状態を見ない",
@@ -1303,11 +1899,24 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
+      "expected_witness": {
+        "item": "show_404",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
+        "assert_stmt": false
+      },
       "why": "404 の応答の値を observed として使う",
       "failed": [
         "test_preflight_requires_the_environment_identity"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_preflight_requires_the_environment_identity",
+        "param": "show_404",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>"
+      }
     },
     {
       "label": "o8  /api/show に model を渡さない",
@@ -1316,7 +1925,13 @@
         "test_meta_is_on_disk_before_the_first_call",
         "test_show_is_allowed_only_while_reading_observed"
       ],
-      "expected_reason": "PreflightError",
+      "expected_witness": {
+        "when": "call",
+        "exc": "PreflightError",
+        "text": "/api/show returned HTTP 404",
+        "via": "read_observed",
+        "assert_stmt": false
+      },
       "why": "凍結 model の chat template を読まない (偽の Ollama は 404 を返す)",
       "failed": [
         "test_bad_schedule_makes_no_call",
@@ -1360,7 +1975,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_show_is_allowed_only_while_reading_observed",
+        "param": null,
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.PreflightError",
+        "text": "/api/show returned HTTP 404"
+      }
     },
     {
       "label": "o7  本走の observed を pilot と照合しない",
@@ -1368,11 +1990,24 @@
       "expected_any_of": [
         "test_main_refuses_an_observed_environment_different_from_the_pilot"
       ],
-      "expected_reason": "observed environment differs from the pilot",
+      "expected_witness": {
+        "when": "call",
+        "exc": "ScheduleError",
+        "text": "observed environment differs from the pilot",
+        "via": "run",
+        "assert_stmt": false
+      },
       "why": "pilot と違う環境で本走を始めかける (予定表の検査が ScheduleError で止めるが、理由が違う)",
       "failed": [
         "test_main_refuses_an_observed_environment_different_from_the_pilot"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_refuses_an_observed_environment_different_from_the_pilot",
+        "param": null,
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.ScheduleError",
+        "text": "schedule: meta: observed environment differs from the pilot"
+      }
     },
     {
       "label": "t1  再送 3 → 2",
@@ -1381,14 +2016,25 @@
         "test_resend_with_the_same_seed_recovers",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": "resent more or fewer than 3 times",
+      "expected_witness": {
+        "when": "call",
+        "text": "resent more or fewer than 3 times",
+        "assert_stmt": true
+      },
       "why": "prereg §4 の再送 3 回より少ない",
       "failed": [
         "test_final_observed_is_resent",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_resend_with_the_same_seed_recovers",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "resent more or fewer than 3 times\nassert 8 == ((5 + 1) + 3)\n +  where 8 = len([{'messages': [{'content': 'あなたは与えられた生き物の分類を、示された選択肢から 1 つ選ぶ。', 'role': 'system'}, {'content': '生き物: sparrow\\n次の分類から 1...tions': {'num_ctx': 4096, 'num_predict': 32, 'repeat_penalty': 1.0, 'seed': 26261103, ...}, 'stream':"
+      }
     },
     {
       "label": "t2  再送 3 → 4 (待ちの表も延ばす)",
@@ -1397,13 +2043,24 @@
         "test_final_observed_failure_aborts_a_finished_run",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": "resent more or fewer than 3 times",
+      "expected_witness": {
+        "when": "call",
+        "text": "resent more or fewer than 3 times",
+        "assert_stmt": true
+      },
       "why": "prereg §4 の再送 3 回より多い (待ちの表を延ばさないと IndexError で落ち、回数の検査に届かない。Codex MEDIUM-4)",
       "failed": [
         "test_final_observed_failure_aborts_a_finished_run",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "resent more or fewer than 3 times\nassert 10 == ((5 + 1) + 3)\n +  where 10 = len([{'messages': [{'content': 'あなたは与えられた生き物の分類を、示された選択肢から 1 つ選ぶ。', 'role': 'system'}, {'content': '生き物: sparrow\\n次の分類から 1...tions': {'num_ctx': 4096, 'num_predict': 32, 'repeat_penalty': 1.0, 'seed': 26261103, ...}, 'stream"
+      }
     },
     {
       "label": "t3  再送で seed を変える",
@@ -1412,7 +2069,13 @@
         "test_failed_responses_are_resent",
         "test_resend_with_the_same_seed_recovers"
       ],
-      "expected_reason": "seed differs from the pilot schedule",
+      "expected_witness": {
+        "when": "call",
+        "exc": "SentBodyMismatchError",
+        "text": "seed differs from the pilot schedule",
+        "via": "check_sent_body",
+        "assert_stmt": false
+      },
       "why": "再送が同じ seed でない (送る直前の照合が止める)",
       "failed": [
         "test_failed_responses_are_resent",
@@ -1421,7 +2084,14 @@
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_resend_with_the_same_seed_recovers",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_resend_with_the_same_seed_recovers",
+        "param": null,
+        "when": "call",
+        "type": "scripts.generalization_probe_driver.SentBodyMismatchError",
+        "text": "call 5 ('M_A_rot', 50, 'q00', 0): seed differs from the pilot schedule"
+      }
     },
     {
       "label": "t4  再送が尽きても続行",
@@ -1430,13 +2100,23 @@
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "transport 失敗の後も呼び続ける",
       "failed": [
         "test_final_observed_failure_keeps_a_transport_failure",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'aborted' == 'transport_failure'\n  \n  - transport_failure\n  + aborted"
+      }
     },
     {
       "label": "t5  解けない transport 失敗を空文字 (⊥) に",
@@ -1445,14 +2125,24 @@
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "transport 失敗を ⊥ に畳む (prereg §4 違反)",
       "failed": [
         "test_final_observed_failure_keeps_a_transport_failure",
         "test_interrupted_transport_failure_keeps_not_computed",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5872/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "t6  transport 以外の例外も再送",
@@ -1461,13 +2151,25 @@
         "test_other_exceptions_abort_without_a_null_row",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": "DID NOT RAISE <class 'ValueError'>",
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'ValueError'>",
+        "assert_stmt": false
+      },
       "why": "照合の不一致や想定外の例外を transport 失敗に畳む",
       "failed": [
         "test_other_exceptions_abort_without_a_null_row",
         "test_provenance_failure_keeps_the_original_exception",
         "test_shifted_body_is_refused_before_sending"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_other_exceptions_abort_without_a_null_row",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'ValueError'>"
+      }
     },
     {
       "label": "t7  HTTP の状態を見ない",
@@ -1475,11 +2177,21 @@
       "expected_any_of": [
         "test_failed_responses_are_resent"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "500 の応答の本文を答えとして使う",
       "failed": [
         "test_failed_responses_are_resent"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_failed_responses_are_resent",
+        "param": "http500",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'aborted' == 'completed'\n  \n  - completed\n  + aborted"
+      }
     },
     {
       "label": "t8  JSON でない応答を例外のまま上げる",
@@ -1487,11 +2199,24 @@
       "expected_any_of": [
         "test_failed_responses_are_resent"
       ],
-      "expected_reason": "JSONDecodeError",
+      "expected_witness": {
+        "item": "non_json",
+        "when": "call",
+        "exc": "JSONDecodeError",
+        "via": "send_chat",
+        "assert_stmt": false
+      },
       "why": "JSON でない応答で再送せずに止まる",
       "failed": [
         "test_failed_responses_are_resent"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_failed_responses_are_resent",
+        "param": "non_json",
+        "when": "call",
+        "type": "json.decoder.JSONDecodeError",
+        "text": "Expecting value: line 1 column 1 (char 0)"
+      }
     },
     {
       "label": "t9  文字列でない content を受ける",
@@ -1500,12 +2225,22 @@
         "test_failed_responses_are_resent",
         "test_null_content_is_a_transport_failure_not_bottom"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "null の content を再送せずに受ける",
       "failed": [
         "test_failed_responses_are_resent",
         "test_null_content_is_a_transport_failure_not_bottom"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_null_content_is_a_transport_failure_not_bottom",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['ok'] == ['transport_f...port_failure']\n  \n  At index 0 diff: 'ok' != 'transport_failure'\n  Right contains 3 more items, first extra item: 'transport_failure'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "t10 object でない応答を前提にする",
@@ -1513,11 +2248,25 @@
       "expected_any_of": [
         "test_failed_responses_are_resent"
       ],
-      "expected_reason": "'list' object has no attribute 'get'",
+      "expected_witness": {
+        "item": "non_object",
+        "when": "call",
+        "exc": "AttributeError",
+        "text": "'list' object has no attribute 'get'",
+        "via": "send_chat",
+        "assert_stmt": false
+      },
       "why": "配列の応答で AttributeError になる",
       "failed": [
         "test_failed_responses_are_resent"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_failed_responses_are_resent",
+        "param": "non_object",
+        "when": "call",
+        "type": "builtins.AttributeError",
+        "text": "'list' object has no attribute 'get'"
+      }
     },
     {
       "label": "t11 応答の model を数えない",
@@ -1525,11 +2274,21 @@
       "expected_any_of": [
         "test_unexpected_response_model_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "別の model の応答に気づかない",
       "failed": [
         "test_unexpected_response_model_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unexpected_response_model_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5878/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "t14 num_predict で切れた応答を数えない",
@@ -1537,11 +2296,21 @@
       "expected_any_of": [
         "test_finish_length_is_counted"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "来歴の n_finish_length が 0 のまま",
       "failed": [
         "test_finish_length_is_counted"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_finish_length_is_counted",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 2"
+      }
     },
     {
       "label": "t12 試行の記録を書かない",
@@ -1550,13 +2319,23 @@
         "test_failed_responses_are_resent",
         "test_resend_with_the_same_seed_recovers"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "再送の経過が残らない",
       "failed": [
         "test_failed_responses_are_resent",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_resend_with_the_same_seed_recovers"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_resend_with_the_same_seed_recovers",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['transport_f...ailure', 'ok']\n  \n  Right contains 4 more items, first extra item: 'transport_failure'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "t13 再送の回数を数えない",
@@ -1564,11 +2343,21 @@
       "expected_any_of": [
         "test_resend_with_the_same_seed_recovers"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "来歴の再送の回数が 0 のまま",
       "failed": [
         "test_resend_with_the_same_seed_recovers"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_resend_with_the_same_seed_recovers",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 3"
+      }
     },
     {
       "label": "r1  raw を strip して記録",
@@ -1576,12 +2365,23 @@
       "expected_any_of": [
         "test_raw_is_recorded_verbatim"
       ],
-      "expected_reason": "raw is not recorded verbatim",
+      "expected_witness": {
+        "when": "call",
+        "text": "raw is not recorded verbatim",
+        "assert_stmt": true
+      },
       "why": "応答をそのまま残さない",
       "failed": [
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_raw_is_recorded_verbatim"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_raw_is_recorded_verbatim",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "raw is not recorded verbatim\nassert 'bird.' == ' bird.\\n'\n  \n  -  bird.\n  ? -     -\n  + bird."
+      }
     },
     {
       "label": "r2  KNOW も行動 label として parse",
@@ -1590,7 +2390,11 @@
         "test_complete_pilot_run_is_published_and_computed",
         "test_parse_follows_the_arm"
       ],
-      "expected_reason": "the complete run was not published",
+      "expected_witness": {
+        "when": "call",
+        "text": "the complete run was not published",
+        "assert_stmt": true
+      },
       "why": "知識確認の答えが全て ⊥ になる (凍結 pilot 判定の re-parse と違い、公開されない)",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1614,7 +2418,14 @@
         "test_swapped_files_are_not_published",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5883/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.REC"
+      }
     },
     {
       "label": "r3  parsed を parse せずに raw で",
@@ -1623,7 +2434,11 @@
         "test_complete_pilot_run_is_published_and_computed",
         "test_parse_follows_the_arm"
       ],
-      "expected_reason": "the complete run was not published",
+      "expected_witness": {
+        "when": "call",
+        "text": "the complete run was not published",
+        "assert_stmt": true
+      },
       "why": "記録の parse が凍結の re-parse と違う",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1634,7 +2449,14 @@
         "test_raw_is_recorded_verbatim",
         "test_records_follow_the_schema_and_the_plan",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5884/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.REC"
+      }
     },
     {
       "label": "r4  記録を ensure_ascii=False で書く",
@@ -1648,7 +2470,13 @@
         "test_records_follow_the_schema_and_the_plan",
         "test_written_files_use_lf"
       ],
-      "expected_reason": "record is not JSON",
+      "expected_witness": {
+        "when": "setup",
+        "exc": "RecordError",
+        "text": "record is not JSON",
+        "via": "absorb",
+        "assert_stmt": false
+      },
       "why": "U+2028 などで 1 記録が 2 行に割れる (読み戻しが止める)",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1659,7 +2487,14 @@
         "test_raw_is_recorded_verbatim",
         "test_records_follow_the_schema_and_the_plan",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "setup",
+        "type": "scripts.generalization_probe_scorer.RecordError",
+        "text": "record is not JSON"
+      }
     },
     {
       "label": "r5  call_index を 1 から",
@@ -1673,7 +2508,13 @@
         "test_records_follow_the_schema_and_the_plan",
         "test_written_files_use_lf"
       ],
-      "expected_reason": "IndexError",
+      "expected_witness": {
+        "when": "setup",
+        "exc": "IndexError",
+        "text": "tuple index out of range",
+        "via": "run_calls",
+        "assert_stmt": false
+      },
       "why": "call_index と予定表の位置がずれる",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1708,7 +2549,14 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "setup",
+        "type": "builtins.IndexError",
+        "text": "tuple index out of range"
+      }
     },
     {
       "label": "r6  記録のキーを plan の先頭に固定",
@@ -1717,7 +2565,11 @@
         "test_complete_pilot_run_is_published_and_computed",
         "test_raw_is_recorded_verbatim"
       ],
-      "expected_reason": "the complete run was not published",
+      "expected_witness": {
+        "when": "call",
+        "text": "the complete run was not published",
+        "assert_stmt": true
+      },
       "why": "記録のキーが送った呼び出しと違う (重複、公開されない)",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1741,7 +2593,14 @@
         "test_swapped_files_are_not_published",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5887/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.REC"
+      }
     },
     {
       "label": "r7  読み戻した記録を数えない",
@@ -1749,13 +2608,24 @@
       "expected_any_of": [
         "test_complete_pilot_run_is_published_and_computed"
       ],
-      "expected_reason": "n_records differs from the plan",
+      "expected_witness": {
+        "when": "call",
+        "text": "n_records differs from the plan",
+        "assert_stmt": true
+      },
       "why": "来歴の記録数が 0",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
         "test_interrupted_transport_failure_keeps_not_computed",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "n_records differs from the plan\nassert 0 == 684"
+      }
     },
     {
       "label": "u1  常に公開",
@@ -1765,7 +2635,11 @@
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": "records.jsonl was published",
+      "expected_witness": {
+        "when": "call",
+        "text": "records.jsonl was published",
+        "assert_stmt": true
+      },
       "why": "transport 失敗・異常のある run を公開する",
       "failed": [
         "test_driver_swap_is_detected",
@@ -1783,7 +2657,14 @@
         "test_shifted_body_is_refused_before_sending",
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5889/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u2  公開前の読み戻しの結果を見ない",
@@ -1791,11 +2672,21 @@
       "expected_any_of": [
         "test_read_back_failure_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "凍結の検査を通らない記録を公開する",
       "failed": [
         "test_read_back_failure_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_read_back_failure_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5890/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u3  公開前に読み戻さない",
@@ -1803,13 +2694,23 @@
       "expected_any_of": [
         "test_read_back_failure_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "読み戻さずに公開する",
       "failed": [
         "test_pinned_change_during_the_read_back_blocks_publication",
         "test_read_back_failure_blocks_publication",
         "test_swapped_files_are_not_published"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_read_back_failure_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5891/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u4  公開しない",
@@ -1819,7 +2720,10 @@
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "完了した run を公開しない",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1838,7 +2742,14 @@
         "test_resend_with_the_same_seed_recovers",
         "test_run_compares_with_the_pinned_values_taken_at_launch",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5892/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.REC"
+      }
     },
     {
       "label": "u5  1 相目の来歴を completed で書く",
@@ -1846,11 +2757,21 @@
       "expected_any_of": [
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "rename の前に kill されると、未公開の run が completed に見える",
       "failed": [
         "test_publication_is_two_phase"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_is_two_phase",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'completed' == 'aborted'\n  \n  - aborted\n  + completed"
+      }
     },
     {
       "label": "u6  1 相目に pending の注記を書かない",
@@ -1858,11 +2779,21 @@
       "expected_any_of": [
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開の前に中断した run を見分けられない",
       "failed": [
         "test_publication_is_two_phase"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_is_two_phase",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the pending note is missing\nassert 'publication pending (interrupted before the rename if this remains)' in ((None or ''))\n +  where 'publication pending (interrupted before the rename if this remains)' = drv.PENDING_NOTE"
+      }
     },
     {
       "label": "u7  3 項目を 1 相目にも書く",
@@ -1871,7 +2802,10 @@
         "test_publication_is_two_phase",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開していない run の来歴が第 2 段の照合を通りうる (DD-5)",
       "failed": [
         "test_driver_swap_is_detected",
@@ -1893,7 +2827,14 @@
         "test_swapped_files_are_not_published",
         "test_unexpected_response_model_blocks_publication",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'driver_sha256' not in {'anomalies': [], 'driver_sha256': 'efd394aa050b6186b43aad42b4e4d18a7331f29ec0f74102dcf3a2767b9c7100', 'error': None, 'exit_reason': 'transport_failure', ...}"
+      }
     },
     {
       "label": "u8  2 相目の来歴を書かない",
@@ -1903,7 +2844,10 @@
         "test_pilot_gate_cli_and_provenance_contract",
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開済みの run の来歴が未公開のまま",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1914,7 +2858,14 @@
         "test_provenance_hashes_are_the_written_bytes",
         "test_publication_failure_is_recorded_as_aborted",
         "test_publication_is_two_phase"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'aborted' == 'completed'\n  \n  - completed\n  + aborted"
+      }
     },
     {
       "label": "u9  公開の失敗を来歴に書かない",
@@ -1922,11 +2873,21 @@
       "expected_any_of": [
         "test_publication_failure_is_recorded_as_aborted"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開の失敗の理由が残らない",
       "failed": [
         "test_publication_failure_is_recorded_as_aborted"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_failure_is_recorded_as_aborted",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'publication failed: OSError: disk full' in 'publication pending (interrupted before the rename if this remains)'"
+      }
     },
     {
       "label": "u10 公開の失敗を completed のまま返す",
@@ -1934,11 +2895,21 @@
       "expected_any_of": [
         "test_publication_failure_is_recorded_as_aborted"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開されていない run が completed で終わる",
       "failed": [
         "test_publication_failure_is_recorded_as_aborted"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_failure_is_recorded_as_aborted",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'completed' == 'aborted'\n  \n  - aborted\n  + completed"
+      }
     },
     {
       "label": "u11 判定と違う reader (改行だけで分割) で読み戻す",
@@ -1946,11 +2917,21 @@
       "expected_any_of": [
         "test_publication_problems_read_like_the_judge"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "判定 (splitlines) では割れる記録を読めたことにする",
       "failed": [
         "test_publication_problems_read_like_the_judge"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_read_like_the_judge",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 1\n +  where 0 = len([])"
+      }
     },
     {
       "label": "u12 書いた meta を読まない",
@@ -1959,7 +2940,10 @@
         "test_publication_problems_check_completeness_and_structure",
         "test_publication_problems_read_the_written_meta"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "書いた meta.json でなく別の値を検査する",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -1984,7 +2968,14 @@
         "test_run_compares_with_the_pinned_values_taken_at_launch",
         "test_swapped_files_are_not_published",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_completeness_and_structure",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['meta: field...m the schema'] == []\n  \n  Left contains one more item: 'meta: fields differ from the schema'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "u13 読めない記録を問題なしに畳む",
@@ -1992,11 +2983,21 @@
       "expected_any_of": [
         "test_publication_problems_read_like_the_judge"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "読めない partial を公開する",
       "failed": [
         "test_publication_problems_read_like_the_judge"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_read_like_the_judge",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 1\n +  where 0 = len([])"
+      }
     },
     {
       "label": "u14 公開前に完全性を見ない",
@@ -2004,11 +3005,21 @@
       "expected_any_of": [
         "test_publication_problems_check_completeness_and_structure"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "欠けた記録を公開する",
       "failed": [
         "test_publication_problems_check_completeness_and_structure"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_completeness_and_structure",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'records do not cover the frozen grid' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5902/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_obser"
+      }
     },
     {
       "label": "u15 公開前に transport 失敗を見ない",
@@ -2016,11 +3027,21 @@
       "expected_any_of": [
         "test_publication_problems_check_completeness_and_structure"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "raw = null の記録を公開する",
       "failed": [
         "test_publication_problems_check_completeness_and_structure"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_completeness_and_structure",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'a transport failure is recorded' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5903/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=N"
+      }
     },
     {
       "label": "u16 公開前に凍結の構造の検査をしない",
@@ -2028,11 +3049,21 @@
       "expected_any_of": [
         "test_publication_problems_check_completeness_and_structure"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "seed の違う記録を公開する",
       "failed": [
         "test_publication_problems_check_completeness_and_structure"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_completeness_and_structure",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'seed differs from the pilot schedule' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5904/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_obser"
+      }
     },
     {
       "label": "u17 公開前の meta の照合で pilot の observed を見ない",
@@ -2040,11 +3071,21 @@
       "expected_any_of": [
         "test_publication_problems_read_the_written_meta"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の meta が pilot の observed と違っても公開する",
       "failed": [
         "test_publication_problems_read_the_written_meta"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_read_the_written_meta",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'meta: observed environment differs from the pilot' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='main', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5905/test_publication..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f645eb2c09"
+      }
     },
     {
       "label": "u18 公開済みで 2 相目の来歴が書けないと失敗にする",
@@ -2052,11 +3093,24 @@
       "expected_any_of": [
         "test_final_provenance_failure_keeps_records_but_aborts"
       ],
-      "expected_reason": "OSError: readonly",
+      "expected_witness": {
+        "when": "call",
+        "exc": "OSError",
+        "text": "readonly (second phase)",
+        "via": "_finish",
+        "assert_stmt": false
+      },
       "why": "公開済みの run を例外で終える",
       "failed": [
         "test_final_provenance_failure_keeps_records_but_aborts"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_final_provenance_failure_keeps_records_but_aborts",
+        "param": null,
+        "when": "call",
+        "type": "builtins.OSError",
+        "text": "readonly (second phase)"
+      }
     },
     {
       "label": "u19 来歴・公開の失敗で元の例外を隠す",
@@ -2064,11 +3118,24 @@
       "expected_any_of": [
         "test_provenance_failure_keeps_the_original_exception"
       ],
-      "expected_reason": "OSError: readonly",
+      "expected_witness": {
+        "when": "call",
+        "exc": "OSError",
+        "text": "readonly",
+        "via": "_finish",
+        "assert_stmt": false
+      },
       "why": "元の例外が来歴の書き込みの失敗に隠れる",
       "failed": [
         "test_provenance_failure_keeps_the_original_exception"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_provenance_failure_keeps_the_original_exception",
+        "param": null,
+        "when": "call",
+        "type": "builtins.OSError",
+        "text": "readonly"
+      }
     },
     {
       "label": "u20 driver の sha256 を公開の後にディスクから",
@@ -2076,11 +3143,21 @@
       "expected_any_of": [
         "test_provenance_binds_the_running_driver"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "照合の後に差し替わった driver の sha256 を来歴に書く (Codex HIGH-2)",
       "failed": [
         "test_provenance_binds_the_running_driver"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_provenance_binds_the_running_driver",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'f37383fa01c5...83e8819bdef14' == '0334545405b8...b72c052590fb2'\n  \n  - 0334545405b83f259baa50ee1453e1f358c7613534e1d566383b72c052590fb2\n  + f37383fa01c51cdc1d2e0f2a6866acaaa5bac18e62cda235dab83e8819bdef14"
+      }
     },
     {
       "label": "u21 records の sha256 を meta の bytes から",
@@ -2089,13 +3166,23 @@
         "test_pilot_gate_cli_and_provenance_contract",
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "provenance が公開した記録に結び付かない",
       "failed": [
         "test_pilot_gate_cli_and_provenance_contract",
         "test_provenance_hashes_are_the_written_bytes",
         "test_publication_is_two_phase"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_gate_cli_and_provenance_contract",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '6574c374336e...b3a6573a3210f' == '7c7e897fe5ac...53afed926def6'\n  \n  - 7c7e897fe5ac4ef04b85ffb8b9d2504ee9de86dde7c3ed50dda53afed926def6\n  + 6574c374336e3b13752963615441f936710bccc772cd86954ebb3a6573a3210f"
+      }
     },
     {
       "label": "u22 meta の sha256 を記録の bytes から",
@@ -2104,13 +3191,23 @@
         "test_pilot_gate_cli_and_provenance_contract",
         "test_publication_is_two_phase"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "provenance が meta に結び付かない",
       "failed": [
         "test_pilot_gate_cli_and_provenance_contract",
         "test_provenance_hashes_are_the_written_bytes",
         "test_publication_is_two_phase"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_gate_cli_and_provenance_contract",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '7c7e897fe5ac...53afed926def6' == '6574c374336e...b3a6573a3210f'\n  \n  - 6574c374336e3b13752963615441f936710bccc772cd86954ebb3a6573a3210f\n  + 7c7e897fe5ac4ef04b85ffb8b9d2504ee9de86dde7c3ed50dda53afed926def6"
+      }
     },
     {
       "label": "u25 書いた bytes と照合しない",
@@ -2118,11 +3215,21 @@
       "expected_any_of": [
         "test_swapped_files_are_not_published"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "同じ grid の別の run の記録・別の observed の meta を公開する (Codex HIGH-1)",
       "failed": [
         "test_swapped_files_are_not_published"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_swapped_files_are_not_published",
+        "param": "records",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['records.par...is run wrote']\n  \n  Right contains one more item: 'records.partial.jsonl differs from what this run wrote'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "u26 照合で meta を見ない",
@@ -2130,11 +3237,21 @@
       "expected_any_of": [
         "test_swapped_files_are_not_published"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "別の observed の meta を公開する",
       "failed": [
         "test_swapped_files_are_not_published"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_swapped_files_are_not_published",
+        "param": "meta",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5912/test_swapped_files_are_not_pub1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u27 rename の後に照合しない",
@@ -2142,12 +3259,22 @@
       "expected_any_of": [
         "test_files_changed_after_the_rename_are_not_bound"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "rename の後に差し替わった記録に 3 項目を結び付ける",
       "failed": [
         "test_files_changed_after_the_rename_are_not_bound",
         "test_provenance_hashes_are_the_written_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_files_changed_after_the_rename_are_not_bound",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'completed' == 'aborted'\n  \n  - aborted\n  + completed"
+      }
     },
     {
       "label": "u28 2 相目の来歴の失敗を completed で終える",
@@ -2155,11 +3282,21 @@
       "expected_any_of": [
         "test_final_provenance_failure_keeps_records_but_aborts"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "第 2 段に使えない run (来歴に 3 項目なし) が completed で終わる",
       "failed": [
         "test_final_provenance_failure_keeps_records_but_aborts"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_final_provenance_failure_keeps_records_but_aborts",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'completed' == 'aborted'\n  \n  - aborted\n  + completed"
+      }
     },
     {
       "label": "u29 transport 失敗の来歴に status を書かない",
@@ -2168,12 +3305,22 @@
         "test_interrupted_transport_failure_keeps_not_computed",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "prereg §4 の status=not_computed が残らない (Codex MEDIUM-3)",
       "failed": [
         "test_interrupted_transport_failure_keeps_not_computed",
         "test_unresolved_transport_failure_records_null_and_stops"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_transport_failure_records_null_and_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert None == 'not_computed'\n +  where 'not_computed' = sc.STATUS_NOT_COMPUTED"
+      }
     },
     {
       "label": "u30 どの run の来歴にも status を not_computed で書く",
@@ -2181,11 +3328,22 @@
       "expected_any_of": [
         "test_complete_pilot_run_is_published_and_computed"
       ],
-      "expected_reason": "'not_computed' is None",
+      "expected_witness": {
+        "when": "call",
+        "text": "'not_computed' is None",
+        "assert_stmt": true
+      },
       "why": "公開した run まで not_computed と書く",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'not_computed' is None"
+      }
     },
     {
       "label": "u34 status を終了理由から決める",
@@ -2193,11 +3351,21 @@
       "expected_any_of": [
         "test_interrupted_transport_failure_keeps_not_computed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "終了時の observed の取得中に中断すると not_computed が消える (Codex 再 review MEDIUM-2)",
       "failed": [
         "test_interrupted_transport_failure_keeps_not_computed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_interrupted_transport_failure_keeps_not_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "not_computed was lost\nassert None == 'not_computed'\n +  where 'not_computed' = sc.STATUS_NOT_COMPUTED"
+      }
     },
     {
       "label": "u31 records の sha256 を rename の後のファイルから",
@@ -2205,11 +3373,21 @@
       "expected_any_of": [
         "test_provenance_hashes_are_the_written_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "照合と hash の間に差し替わった記録を来歴に結び付ける (code-reviewer の再レビュー MEDIUM)",
       "failed": [
         "test_provenance_hashes_are_the_written_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_provenance_hashes_are_the_written_bytes",
+        "param": "records",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '43140dcbc143...1c30ce0776458' == '59bf96c74cff...29b135c13f873'\n  \n  - 59bf96c74cff1241fd1512604aa44d43a0367917440d5eaeccf29b135c13f873\n  + 43140dcbc1438f0fbd3e7f7d295ca22eb67539272bf880f75881c30ce0776458"
+      }
     },
     {
       "label": "u32 meta の sha256 を rename の後のファイルから",
@@ -2217,11 +3395,21 @@
       "expected_any_of": [
         "test_provenance_hashes_are_the_written_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "照合と hash の間に差し替わった meta を来歴に結び付ける",
       "failed": [
         "test_provenance_hashes_are_the_written_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_provenance_hashes_are_the_written_bytes",
+        "param": "meta",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'd9d5c71f8248...c31bd85aff629' == '6574c374336e...b3a6573a3210f'\n  \n  - 6574c374336e3b13752963615441f936710bccc772cd86954ebb3a6573a3210f\n  + d9d5c71f8248f6d0dac75b903dd5c23f058ff60376fbd59c285c31bd85aff629"
+      }
     },
     {
       "label": "u33 rename の後の照合に落ちた記録を公開名に残す",
@@ -2229,11 +3417,22 @@
       "expected_any_of": [
         "test_files_changed_after_the_rename_are_not_bound"
       ],
-      "expected_reason": "records.jsonl was published",
+      "expected_witness": {
+        "when": "call",
+        "text": "records.jsonl was published",
+        "assert_stmt": true
+      },
       "why": "書き換えられた記録が公開名に残り、凍結 run.sh が gate を計算する",
       "failed": [
         "test_files_changed_after_the_rename_are_not_bound"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_files_changed_after_the_rename_are_not_bound",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5920/test_files_changed_after_the_r0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u23 公開時の manifest の結果を見ない",
@@ -2241,11 +3440,21 @@
       "expected_any_of": [
         "test_manifest_failure_at_publication_blocks_it"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開の時点で manifest が崩れていても公開する",
       "failed": [
         "test_manifest_failure_at_publication_blocks_it"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_failure_at_publication_blocks_it",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5921/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "u24 公開時に manifest を照合しない",
@@ -2253,12 +3462,22 @@
       "expected_any_of": [
         "test_manifest_failure_at_publication_blocks_it"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "公開の時点の manifest を見ない",
       "failed": [
         "test_manifest_failure_at_publication_blocks_it",
         "test_pinned_change_during_the_manifest_check_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_failure_at_publication_blocks_it",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5922/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a1  固定ファイルの変化を異常にしない",
@@ -2266,14 +3485,24 @@
       "expected_any_of": [
         "test_pinned_file_change_during_the_run_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実走中に判定コードが変わっても公開する",
       "failed": [
         "test_pinned_change_during_the_manifest_check_blocks_publication",
         "test_pinned_change_during_the_read_back_blocks_publication",
         "test_pinned_file_change_during_the_run_blocks_publication",
         "test_run_compares_with_the_pinned_values_taken_at_launch"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_file_change_during_the_run_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5923/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a2  固定ファイルを終了時どうしで比べる",
@@ -2281,14 +3510,24 @@
       "expected_any_of": [
         "test_pinned_file_change_during_the_run_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "変化を検出できない",
       "failed": [
         "test_pinned_change_during_the_manifest_check_blocks_publication",
         "test_pinned_change_during_the_read_back_blocks_publication",
         "test_pinned_file_change_during_the_run_blocks_publication",
         "test_run_compares_with_the_pinned_values_taken_at_launch"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_file_change_during_the_run_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5924/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a3  想定外の応答 model を異常にしない",
@@ -2296,11 +3535,21 @@
       "expected_any_of": [
         "test_unexpected_response_model_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "別の model の応答を公開する",
       "failed": [
         "test_unexpected_response_model_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unexpected_response_model_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5925/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a4  observed の変化を異常にしない",
@@ -2308,11 +3557,21 @@
       "expected_any_of": [
         "test_observed_change_during_the_run_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実走中に重み・template が変わっても公開する",
       "failed": [
         "test_observed_change_during_the_run_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observed_change_during_the_run_blocks_publication",
+        "param": "digest",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5926/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a5  異常を終了理由に反映しない",
@@ -2322,12 +3581,22 @@
         "test_pinned_file_change_during_the_run_blocks_publication",
         "test_unexpected_response_model_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "異常のある run を公開する",
       "failed": [
         "test_observed_change_during_the_run_blocks_publication",
         "test_unexpected_response_model_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_unexpected_response_model_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5927/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a6  終了時の observed を読まない",
@@ -2336,14 +3605,24 @@
         "test_final_observed_failure_aborts_a_finished_run",
         "test_observed_change_during_the_run_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実走中の環境の変化を見ない",
       "failed": [
         "test_final_observed_failure_aborts_a_finished_run",
         "test_interrupted_transport_failure_keeps_not_computed",
         "test_observed_change_during_the_run_blocks_publication",
         "test_swapped_files_are_not_published"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_observed_change_during_the_run_blocks_publication",
+        "param": "digest",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5928/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a7  終了時の observed を再送しない",
@@ -2351,11 +3630,21 @@
       "expected_any_of": [
         "test_final_observed_is_resent"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "一時的な不調で完了した run を捨てる",
       "failed": [
         "test_final_observed_is_resent"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_final_observed_is_resent",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'aborted' == 'completed'\n  \n  - completed\n  + aborted"
+      }
     },
     {
       "label": "a8  transport 失敗の後の終了時の失敗を aborted に",
@@ -2363,11 +3652,21 @@
       "expected_any_of": [
         "test_final_observed_failure_keeps_a_transport_failure"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "transport 失敗の分類が変わる",
       "failed": [
         "test_final_observed_failure_keeps_a_transport_failure"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_final_observed_failure_keeps_a_transport_failure",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'aborted' == 'transport_failure'\n  \n  - transport_failure\n  + aborted"
+      }
     },
     {
       "label": "a9  終了時の observed の失敗を aborted にしない",
@@ -2375,11 +3674,21 @@
       "expected_any_of": [
         "test_final_observed_failure_aborts_a_finished_run"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "終了時に環境を同定できない run を公開する",
       "failed": [
         "test_final_observed_failure_aborts_a_finished_run"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_final_observed_failure_aborts_a_finished_run",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5931/test_final_observed_failure_ab0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a10 固定ファイルを公開時の manifest の照合の前に比べる",
@@ -2387,12 +3696,22 @@
       "expected_any_of": [
         "test_pinned_change_during_the_manifest_check_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "manifest の照合 (約 16 秒) の間の差し替えを見逃す (Codex HIGH-2)",
       "failed": [
         "test_pinned_change_during_the_manifest_check_blocks_publication",
         "test_pinned_change_during_the_read_back_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5932/test_pinned_change_during_the_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a11 起動時に取った固定ファイルの sha256 を使わない",
@@ -2400,11 +3719,21 @@
       "expected_any_of": [
         "test_run_compares_with_the_pinned_values_taken_at_launch"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動の検査から実走の開始までの差し替えを見逃す (Codex HIGH-2)",
       "failed": [
         "test_run_compares_with_the_pinned_values_taken_at_launch"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "param": "launch-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert True is False\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5933/test_run_compares_with_the_pin0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a12 終了時にディスクの driver を実行中の driver と比べない",
@@ -2412,11 +3741,21 @@
       "expected_any_of": [
         "test_driver_swap_is_detected"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行中に差し替わった driver の run を公開する",
       "failed": [
         "test_driver_swap_is_detected"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_driver_swap_is_detected",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5934/test_driver_swap_is_detected0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a13 固定ファイルを読み戻しの前に比べる",
@@ -2424,11 +3763,21 @@
       "expected_any_of": [
         "test_pinned_change_during_the_read_back_blocks_publication"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "読み戻しの間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
       "failed": [
         "test_pinned_change_during_the_read_back_blocks_publication"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_change_during_the_read_back_blocks_publication",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5935/test_pinned_change_during_the_1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+      }
     },
     {
       "label": "a14 読めない固定ファイルで例外にする",
@@ -2436,11 +3785,24 @@
       "expected_any_of": [
         "test_sha256_reports_an_unreadable_file_as_none"
       ],
-      "expected_reason": "PermissionError: locked",
+      "expected_witness": {
+        "when": "call",
+        "exc": "PermissionError",
+        "text": "locked",
+        "via": "_sha256",
+        "assert_stmt": false
+      },
       "why": "読めないファイルで来歴を書けなくなる (code-reviewer の再レビュー LOW)",
       "failed": [
         "test_sha256_reports_an_unreadable_file_as_none"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_sha256_reports_an_unreadable_file_as_none",
+        "param": null,
+        "when": "call",
+        "type": "builtins.PermissionError",
+        "text": "locked"
+      }
     },
     {
       "label": "a15 main が起動の検査の後に固定ファイルの sha256 を取る",
@@ -2448,11 +3810,21 @@
       "expected_any_of": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動の検査 (manifest の照合 約 16 秒) の間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
       "failed": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_runs_the_stage_and_returns_the_exit_code",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [{'after_laun...age': 'main'}] == [{'after_laun...age': 'main'}]\n  \n  At index 0 diff: {'stage': 'pilot', 'after_launch': True} != {'stage': 'pilot', 'after_launch': False}\n  Use -v to get more diff"
+      }
     },
     {
       "label": "q1  中身のある run dir を拒否しない",
@@ -2460,11 +3832,23 @@
       "expected_any_of": [
         "test_run_refuses_a_non_empty_run_dir"
       ],
-      "expected_reason": "DID NOT RAISE <class 'FileExistsError'>",
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'FileExistsError'>",
+        "assert_stmt": false
+      },
       "why": "前の run に重ねて書く (再開しない規律)",
       "failed": [
         "test_run_refuses_a_non_empty_run_dir"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_run_refuses_a_non_empty_run_dir",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'FileExistsError'>"
+      }
     },
     {
       "label": "q2  preflight を飛ばす",
@@ -2473,7 +3857,10 @@
         "test_meta_is_on_disk_before_the_first_call",
         "test_preflight_failure_writes_nothing"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行環境を同定せずに走る",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -2505,7 +3892,14 @@
         "test_run_compares_with_the_pinned_values_taken_at_launch",
         "test_swapped_files_are_not_published",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_meta_is_on_disk_before_the_first_call",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [{'observed':...ink': False}}] == [{'observed':...ink': False}}]\n  \n  At index 0 diff: {'observed': {'model_digest': 'x', 'ollama_version': 'x', 'template_sha256': 'x'}, 'request': {'model': 'qwen3:8b', 'options': {'num_ctx': 4096, 'num_predict': 32, 'repeat_penalty': 1.0, 'temperature': 0.7,"
+      }
     },
     {
       "label": "q3  meta.json を書かない",
@@ -2514,7 +3908,10 @@
         "test_complete_pilot_run_is_published_and_computed",
         "test_meta_is_on_disk_before_the_first_call"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "meta.json の無い run (公開されない)",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed",
@@ -2540,7 +3937,14 @@
         "test_swapped_files_are_not_published",
         "test_unresolved_transport_failure_records_null_and_stops",
         "test_written_files_use_lf"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_complete_pilot_run_is_published_and_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5940/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.REC"
+      }
     },
     {
       "label": "q4  main が段以外の引数を受け取る",
@@ -2548,11 +3952,24 @@
       "expected_any_of": [
         "test_main_takes_only_the_stage"
       ],
-      "expected_reason": "DID NOT RAISE <class 'SystemExit'>",
+      "expected_witness": {
+        "item": "argv0",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'SystemExit'>",
+        "assert_stmt": false
+      },
       "why": "run dir・endpoint を差し替える登録外の実走経路を開ける",
       "failed": [
         "test_main_takes_only_the_stage"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_takes_only_the_stage",
+        "param": "argv0",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'SystemExit'>"
+      }
     },
     {
       "label": "q5  起動拒否を外す",
@@ -2560,14 +3977,26 @@
       "expected_any_of": [
         "test_main_refuses_to_launch_without_touching_the_run_dir"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動の前提が崩れていても走る",
       "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_command_line_launch_runs_repo_code_from_hashed_bytes",
         "test_main_checks_the_executed_code_after_the_launch_checks",
         "test_main_refuses_to_launch_without_touching_the_run_dir"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_refuses_to_launch_without_touching_the_run_dir",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [(Stage(name=... 'transport')] == []\n  \n  Left contains one more item: (Stage(name='pilot', run_dir=WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/pytest-5942/test_main_refu...002D9D8672A20>, structure=<function structure_violations at 0x?>, reference_observed=None), 'transport')\n  U"
+      }
     },
     {
       "label": "q6  本走でも pilot の段を走らせる",
@@ -2575,11 +4004,21 @@
       "expected_any_of": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "段を取り違える",
       "failed": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_runs_the_stage_and_returns_the_exit_code",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'pilot' == 'main'\n  \n  - main\n  + pilot"
+      }
     },
     {
       "label": "q7  本走の observed を gate から読まない",
@@ -2587,11 +4026,21 @@
       "expected_any_of": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の observed を pilot と照合しない",
       "failed": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_runs_the_stage_and_returns_the_exit_code",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {} == {'model_diges...f5b56029e51a'}\n  \n  Right contains 3 more items:\n  {'model_digest': 'sha256:0000000000000000000000000000000000000000000000000000000000000000',\n   'ollama_version': '0.0-mock',\n   'template_sha256': 'db498f645eb2c094fbbfd85f0f13a873ed9c314f31bfcc535a16f5b56029e51a'}\n  Use"
+      }
     },
     {
       "label": "q8  exit code を終了理由から返さない",
@@ -2599,11 +4048,21 @@
       "expected_any_of": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "transport 失敗でも 0 で終わる",
       "failed": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_runs_the_stage_and_returns_the_exit_code",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--stage', 'pilot'])\n +    where <function main at 0x?> = drv.main"
+      }
     },
     {
       "label": "l1  manifest の exit code を見ない",
@@ -2611,11 +4070,21 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "exit 1 の照合を OK とみなす",
       "failed": [
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "pilot-result1-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l2  manifest の末尾行を見ない",
@@ -2623,11 +4092,21 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "NOT FROZEN (exit 0 の場合) を OK とみなす",
       "failed": [
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "pilot-result2-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l3  OK を末尾以外でも受ける",
@@ -2635,11 +4114,21 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "OK の後に続く行を見ない",
       "failed": [
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "pilot-result3-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l4  段の名前を照合しない",
@@ -2647,12 +4136,22 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の前提に pilot の段の OK を使う",
       "failed": [
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "main-result7-True",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (['manifest --...stage pilot)'] == []\n  \n  Left contains one more item: 'manifest --verify --stage main did not end with MANIFEST OK (stage pilot)'\n  Use -v to get more diff) is True"
+      }
     },
     {
       "label": "l5  manifest が走らないことを問題にしない",
@@ -2660,11 +4159,21 @@
       "expected_any_of": [
         "test_manifest_problems_report_a_failure_to_run"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "照合できないことを OK に畳む",
       "failed": [
         "test_manifest_problems_report_a_failure_to_run"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_report_a_failure_to_run",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] != []\n +  where [] = <function manifest_problems at 0x?>('main')\n +    where <function manifest_problems at 0x?> = drv.manifest_problems"
+      }
     },
     {
       "label": "l6  certification を起動の前提に入れない",
@@ -2672,12 +4181,23 @@
       "expected_any_of": [
         "test_launch_problems_combine_certification_git_manifest_and_gate"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "certify されていない driver で走る",
       "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
         "test_command_line_launch_runs_repo_code_from_hashed_bytes",
         "test_launch_problems_combine_certification_git_manifest_and_gate"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_launch_problems_combine_certification_git_manifest_and_gate",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['manifest pilot'] == ['cert', 'manifest pilot']\n  \n  At index 0 diff: 'manifest pilot' != 'cert'\n  Right contains one more item: 'manifest pilot'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l7  manifest を起動の前提に入れない",
@@ -2685,11 +4205,21 @@
       "expected_any_of": [
         "test_launch_problems_combine_certification_git_manifest_and_gate"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "封印の崩れた状態で走る",
       "failed": [
         "test_launch_problems_combine_certification_git_manifest_and_gate"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_launch_problems_combine_certification_git_manifest_and_gate",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['cert'] == ['cert', 'manifest pilot']\n  \n  Right contains one more item: 'manifest pilot'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l8  本走で gate を見ない",
@@ -2697,11 +4227,21 @@
       "expected_any_of": [
         "test_launch_problems_combine_certification_git_manifest_and_gate"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "pilot が GO でないのに本走を走らせる",
       "failed": [
         "test_launch_problems_combine_certification_git_manifest_and_gate"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_launch_problems_combine_certification_git_manifest_and_gate",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['cert', 'manifest main'] == ['cert', 'man...main', 'gate']\n  \n  Right contains one more item: 'gate'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l9  git の追跡を見ない",
@@ -2709,11 +4249,21 @@
       "expected_any_of": [
         "test_launch_problems_check_git_tracking_and_head"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "commit していないファイルで走る",
       "failed": [
         "test_launch_problems_check_git_tracking_and_head"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_launch_problems_check_git_tracking_and_head",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['not tracked...be_driver.py']\n  \n  Right contains one more item: 'not tracked by git: scripts/generalization_probe_driver.py'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l10 HEAD との差分を見ない",
@@ -2721,11 +4271,21 @@
       "expected_any_of": [
         "test_launch_problems_check_git_tracking_and_head"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "HEAD と違うファイルで走る",
       "failed": [
         "test_launch_problems_check_git_tracking_and_head"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_launch_problems_check_git_tracking_and_head",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pinned file...unavailable)']\n  \n  Right contains one more item: 'pinned files differ from HEAD (or git unavailable)'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l11 certification の契約を使わない",
@@ -2733,11 +4293,21 @@
       "expected_any_of": [
         "test_certification_problems_use_the_manifest_contract"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "壊れた certification を通す",
       "failed": [
         "test_certification_problems_use_the_manifest_contract"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_certification_problems_use_the_manifest_contract",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['contract']\n  \n  Right contains one more item: 'contract'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l12 読めない certification を問題にしない",
@@ -2745,12 +4315,23 @@
       "expected_any_of": [
         "test_certification_problems_use_the_manifest_contract"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "certification の無い driver で走る",
       "failed": [
         "test_certification_problems_use_the_manifest_contract",
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
         "test_command_line_launch_runs_repo_code_from_hashed_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_certification_problems_use_the_manifest_contract",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['driver cert...0\\\\cert.json']\n  \n  Right contains one more item: 'driver certification unreadable: <home>\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-5957\\\\test_certification_problems_us0\\\\cert.json'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l13 gate の GO を見ない",
@@ -2758,11 +4339,21 @@
       "expected_any_of": [
         "test_gate_problems_require_go_r_and_observed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "STOP の pilot の後に本走を走らせる",
       "failed": [
         "test_gate_problems_require_go_r_and_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_gate_problems_require_go_r_and_observed",
+        "param": "gate1-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l14 gate の R の型を見ない",
@@ -2770,11 +4361,21 @@
       "expected_any_of": [
         "test_gate_problems_require_go_r_and_observed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "R が整数でない gate を通す",
       "failed": [
         "test_gate_problems_require_go_r_and_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_gate_problems_require_go_r_and_observed",
+        "param": "gate2-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l15 gate の observed を見ない",
@@ -2782,11 +4383,21 @@
       "expected_any_of": [
         "test_gate_problems_require_go_r_and_observed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "observed の無い gate を通す",
       "failed": [
         "test_gate_problems_require_go_r_and_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_gate_problems_require_go_r_and_observed",
+        "param": "gate4-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l16 読めない gate を問題にしない",
@@ -2794,11 +4405,21 @@
       "expected_any_of": [
         "test_gate_problems_require_go_r_and_observed"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "gate の無い本走を走らせる",
       "failed": [
         "test_gate_problems_require_go_r_and_observed"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_gate_problems_require_go_r_and_observed",
+        "param": "None-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l17 固定ファイルに driver の証拠を入れない",
@@ -2806,11 +4427,21 @@
       "expected_any_of": [
         "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "harness・test・certification の変更に気づかない",
       "failed": [
         "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_covers_the_frozen_files_and_the_driver_evidence",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'experiments...st_driver.py'} <= {'experiments...on.json', ...}\n  \n  Extra items in the left set:\n  'scripts/generalization_probe_driver_mutation_check.py'\n  'experiments/20261001-generalization-probe-pilot/results/driver_certification.json'\n  'tests/test_generalization_probe/test_driver.py'"
+      }
     },
     {
       "label": "l18 本走で第 2 段の証拠を固定しない",
@@ -2818,11 +4449,21 @@
       "expected_any_of": [
         "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "pilot の記録・gate・第 2 段の manifest の変更に気づかない",
       "failed": [
         "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_covers_the_frozen_files_and_the_driver_evidence",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'experiments...ce.json', ...} <= {'experiments...le.json', ...}\n  \n  Extra items in the left set:\n  'experiments/20261001-generalization-probe-pilot/results/pilot/provenance.json'\n  'experiments/20261001-generalization-probe-pilot/results/pilot/meta.json'\n  'experiments/20261001-generalizati"
+      }
     },
     {
       "label": "l19 起動時にディスクの driver を実行中の driver と比べない",
@@ -2830,11 +4471,21 @@
       "expected_any_of": [
         "test_driver_swap_is_detected"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "import の後に差し替わった driver で起動する (Codex HIGH-2)",
       "failed": [
         "test_driver_swap_is_detected"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_driver_swap_is_detected",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['the driver ...nning driver']\n  \n  Right contains one more item: 'the driver on disk differs from the running driver'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l20 main が起動時の固定ファイルの sha256 を渡さない",
@@ -2842,11 +4493,21 @@
       "expected_any_of": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動の検査から実走の開始までの差し替えを見逃す",
       "failed": [
         "test_main_runs_the_stage_and_returns_the_exit_code"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_runs_the_stage_and_returns_the_exit_code",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [None, None] == [{'after_laun...age': 'main'}]\n  \n  At index 0 diff: None != {'stage': 'pilot', 'after_launch': False}\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l21 manifest の出力を strip してから末尾行を見る",
@@ -2854,11 +4515,21 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "末尾の空白・空行の付いた出力を OK とみなす",
       "failed": [
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "pilot-result9-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l25 manifest の末尾行を splitlines で切る",
@@ -2866,11 +4537,21 @@
       "expected_any_of": [
         "test_manifest_problems_require_the_exact_ok_line"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "LF 以外の区切り文字 (U+001C・U+0085・U+2028) の後ろを捨てて OK とみなす (Codex 再 review LOW-1)",
       "failed": [
         "test_manifest_problems_require_the_exact_ok_line"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_manifest_problems_require_the_exact_ok_line",
+        "param": "pilot-result11-False",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([] == []\n  \n  Use -v to get more diff) is False"
+      }
     },
     {
       "label": "l22 manifest の照合に PYTHONHASHSEED を渡さない",
@@ -2878,11 +4559,21 @@
       "expected_any_of": [
         "test_run_manifest_calls_the_frozen_check_like_run_sh"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "run.sh と違う環境で照合する",
       "failed": [
         "test_run_manifest_calls_the_frozen_check_like_run_sh"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_run_manifest_calls_the_frozen_check_like_run_sh",
+        "param": "pilot",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert None == '20261001'\n +  where None = <built-in method get of dict object at 0x?>('PYTHONHASHSEED')\n +    where <built-in method get of dict object at 0x?> = {'AI_AGENT': 'claude-code_2-1-285_agent', 'ALLUSERSPROFILE': 'C:\\\\ProgramData', 'APPDATA': '<home>\\\\AppData\\...UGPY_PATH': '<home>\\\\.vsco"
+      }
     },
     {
       "label": "l23 manifest を固定の段で照合する",
@@ -2890,11 +4581,21 @@
       "expected_any_of": [
         "test_run_manifest_calls_the_frozen_check_like_run_sh"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "本走の前提に pilot の段の照合を使う",
       "failed": [
         "test_run_manifest_calls_the_frozen_check_like_run_sh"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_run_manifest_calls_the_frozen_check_like_run_sh",
+        "param": "main",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['C:\\\\ERRE-Sa...age', 'pilot'] == ['C:\\\\ERRE-Sa...tage', 'main']\n  \n  At index 4 diff: 'pilot' != 'main'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "l24 git の失敗を None にしない",
@@ -2902,11 +4603,21 @@
       "expected_any_of": [
         "test_git_reports_a_failure_as_none"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "git が失敗しても「追跡済み」「HEAD と一致」に畳む (code-reviewer MEDIUM-5)",
       "failed": [
         "test_git_reports_a_failure_as_none"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_git_reports_a_failure_as_none",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '' is None\n +  where '' = <function _git at 0x?>('ls-files', '--error-unmatch', 'no/such/file.py')\n +    where <function _git at 0x?> = drv._git"
+      }
     },
     {
       "label": "x1  コンパイル結果の比較を常に真にする",
@@ -2915,12 +4626,22 @@
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_compiles_to_compares_the_program"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "別のプログラムを、来歴の hash の bytes のコンパイル結果とみなす",
       "failed": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_compiles_to_compares_the_program"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_compiles_to_compares_the_program",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function _compiles_to at 0x?>(<code object <module> at 0x?, file \"a.py\", line 1>, b'X = 1\\n\\n\\ndef f() -> int:\\n    return 42\\n', WindowsPath('a.py'))\n +    where <function _compiles_to at 0x?> = drv._compiles_to\n +    and   b'X = 1\\n\\n\\ndef f() -> int:\\n    return "
+      }
     },
     {
       "label": "x2  コンパイルできない bytes を同じプログラムとみなす",
@@ -2928,11 +4649,21 @@
       "expected_any_of": [
         "test_compiles_to_compares_the_program"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "構文の通らない bytes を、実行中のプログラムと同じとみなす",
       "failed": [
         "test_compiles_to_compares_the_program"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_compiles_to_compares_the_program",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function _compiles_to at 0x?>(<code object <module> at 0x?, file \"a.py\", line 1>, b'def (:\\n', WindowsPath('a.py'))\n +    where <function _compiles_to at 0x?> = drv._compiles_to\n +    and   WindowsPath('a.py') = Path('a.py')"
+      }
     },
     {
       "label": "x3  driver の検証を常に真にする",
@@ -2940,11 +4671,21 @@
       "expected_any_of": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動の窓で差し替わった driver (実行したのは別版) を見逃す",
       "failed": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "[driver] refuse to launch: driver certification unreadable: <home>\\AppData\\Local\\Temp\\pytest-of-<user>\\pytest-5973\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-g"
+      }
     },
     {
       "label": "x4  driver の検証に別の code object を使う",
@@ -2953,13 +4694,24 @@
         "test_command_line_launch_runs_repo_code_from_hashed_bytes",
         "test_imported_driver_runs_its_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行中のモジュールでない code object と比べる (正しい driver を拒否する)",
       "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
         "test_command_line_launch_runs_repo_code_from_hashed_bytes",
         "test_executed_problems_check_driver_modules_and_pins",
         "test_imported_driver_runs_its_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_imported_driver_runs_its_bytes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False is True\n +  where False = drv._DRIVER_RUNS_ITS_BYTES"
+      }
     },
     {
       "label": "x5  loader がディスクを読み直して実行する",
@@ -2967,11 +4719,21 @@
       "expected_any_of": [
         "test_pinned_finder_runs_the_bytes_it_read"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "hash した bytes と、実行した bytes が別になりうる",
       "failed": [
         "test_pinned_finder_runs_the_bytes_it_read"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_finder_runs_the_bytes_it_read",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "the loader read the file again\nassert 'B' == 'A'\n  \n  - A\n  + B"
+      }
     },
     {
       "label": "x6  loader の sha256 をディスクから取る",
@@ -2979,12 +4741,22 @@
       "expected_any_of": [
         "test_pinned_finder_runs_the_bytes_it_read"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行する bytes でなく、その時点のディスクを hash する",
       "failed": [
         "test_executed_problems_check_driver_modules_and_pins",
         "test_pinned_finder_runs_the_bytes_it_read"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_finder_runs_the_bytes_it_read",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "hashed the disk\nassert 'ed4d202c27aa...33b7038a90805' == '50255bb560c2...cc40afccc5ef1'\n  \n  - 50255bb560c22871fda3eb92da65cea7ac15a0eb8f624b47e2fcc40afccc5ef1\n  + ed4d202c27aaa2e0018e07c83fc4aed8394ffccbb0b7c2f1bff33b7038a90805"
+      }
     },
     {
       "label": "x7  finder が他の package の名前も読む",
@@ -2992,11 +4764,21 @@
       "expected_any_of": [
         "test_pinned_finder_runs_the_bytes_it_read"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "対象外の import を、root のファイルで置き換える",
       "failed": [
         "test_pinned_finder_runs_the_bytes_it_read"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_finder_runs_the_bytes_it_read",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ModuleSpec(name='other_pkg.mod_a', loader=<scripts.generalization_probe_driver._PinnedLoader object at 0x?...\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-5977\\\\test_pinned_finder_runs_the_by0\\\\gp_driver_pinned_pkg\\\\mod_a.py') is None\n +  where ModuleSpec(name='other_pkg.mod_a', loader=<sc"
+      }
     },
     {
       "label": "x8  起動のときに finder を入れない",
@@ -3004,11 +4786,25 @@
       "expected_any_of": [
         "test_command_line_launch_runs_repo_code_from_hashed_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "repo のモジュールを通常の import (pyc を含む) で読み、実行した bytes を同定しない",
       "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_command_line_launch_refuses_to_import_a_shadow",
         "test_command_line_launch_runs_repo_code_from_hashed_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "Traceback (most recent call last):\n    File \"<home>\\AppData\\Local\\Temp\\pytest-of-<user>\\pytest-5978\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 269, in <module>\n      from scripts import generalization_probe_battery as bat\n    File \"<home>\\AppData\\Local\\Temp\\pytest-"
+      }
     },
     {
       "label": "x9  driver の検証の結果を見ない",
@@ -3017,12 +4813,22 @@
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_executed_problems_check_driver_modules_and_pins"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行中の driver が来歴の hash の bytes でなくても起動する",
       "failed": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_executed_problems_check_driver_modules_and_pins"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['the running...es it hashed']\n  \n  Right contains one more item: 'the running driver is not the compilation of the driver bytes it hashed'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x10 driver の bytes を起動の検査の前の値と比べない",
@@ -3030,11 +4836,21 @@
       "expected_any_of": [
         "test_executed_problems_check_driver_modules_and_pins"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動から起動の検査までの driver の差し替えを見逃す",
       "failed": [
         "test_executed_problems_check_driver_modules_and_pins"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['the driver ...aunch checks']\n  \n  Right contains one more item: 'the driver on disk changed between start-up and the launch checks'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x11 finder を通らないモジュールを問題にしない",
@@ -3043,12 +4859,22 @@
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_executed_problems_check_driver_modules_and_pins"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "通常の import で読んだモジュール (実行した bytes が分からない) で起動する",
       "failed": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_executed_problems_check_driver_modules_and_pins"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['run bytes d...e_battery.py'] == ['not run fro...robe_battery']\n  \n  At index 0 diff: 'run bytes differ from the pinned file at start-up: scripts/generalization_probe_battery.py' != 'not run from the bytes it was hashed by: scripts.generalization_probe_battery'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x12 固定ファイルでないモジュールを問題にしない",
@@ -3056,11 +4882,21 @@
       "expected_any_of": [
         "test_executed_problems_check_driver_modules_and_pins"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "封印・certification の外のコードを実行して起動する",
       "failed": [
         "test_executed_problems_check_driver_modules_and_pins"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['run bytes d...ot_pinned.py'] == ['run but not...ot_pinned.py']\n  \n  At index 0 diff: 'run bytes differ from the pinned file at start-up: scripts/not_pinned.py' != 'run but not pinned: scripts/not_pinned.py'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x13 実行した bytes を起動の検査の前の値と比べない",
@@ -3068,11 +4904,21 @@
       "expected_any_of": [
         "test_executed_problems_check_driver_modules_and_pins"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "import から起動の検査までのモジュールの差し替えを見逃す",
       "failed": [
         "test_executed_problems_check_driver_modules_and_pins"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run bytes d...e_battery.py']\n  \n  Right contains one more item: 'run bytes differ from the pinned file at start-up: scripts/generalization_probe_battery.py'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x14 実行中のモジュールを見ない",
@@ -3080,11 +4926,22 @@
       "expected_any_of": [
         "test_command_line_launch_refuses_code_that_is_not_its_bytes"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "起動で実際に読まれたモジュールを照合しない",
       "failed": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
         "test_command_line_launch_refuses_code_that_is_not_its_bytes"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "[driver] refuse to launch: driver certification unreadable: <home>\\AppData\\Local\\Temp\\pytest-of-<user>\\pytest-5984\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-g"
+      }
     },
     {
       "label": "x15 main が実行中のコードを照合しない",
@@ -3092,12 +4949,23 @@
       "expected_any_of": [
         "test_main_checks_the_executed_code_after_the_launch_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "実行したコードが来歴の hash を指さなくても起動する",
       "failed": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
         "test_command_line_launch_refuses_code_that_is_not_its_bytes",
         "test_main_checks_the_executed_code_after_the_launch_checks"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_checks_the_executed_code_after_the_launch_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "checked the executed code before the launch checks\nassert ['launch'] == ['launch', 'executed']\n  \n  Right contains one more item: 'executed'\n  Use -v to get more diff"
+      }
     },
     {
       "label": "x16 main が実行中のコードを起動の検査の前に照合する",
@@ -3105,11 +4973,440 @@
       "expected_any_of": [
         "test_main_checks_the_executed_code_after_the_launch_checks"
       ],
-      "expected_reason": null,
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
       "why": "certification の検査が import する driver の harness を照合しない",
       "failed": [
         "test_main_checks_the_executed_code_after_the_launch_checks"
-      ]
+      ],
+      "witnessed_by": {
+        "function": "test_main_checks_the_executed_code_after_the_launch_checks",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "checked the executed code before the launch checks\nassert ['executed', 'launch'] == ['launch', 'executed']\n  \n  At index 0 diff: 'executed' != 'launch'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g1  起動のときに門を入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_to_import_a_shadow"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "scripts/ に置いた numpy.py が sys.path[0] から import されて実行される",
+      "failed": [
+        "test_command_line_launch_refuses_to_import_a_shadow"
+      ],
+      "witnessed_by": {
+        "function": "test_command_line_launch_refuses_to_import_a_shadow",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "UNPINNED CODE RAN\n  [driver] refuse to launch: driver certification unreadable: <home>\\AppData\\Local\\Temp\\pytest-of-<user>\\pytest-5987\\test_command_line_launch_refus1\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: ex"
+      }
+    },
+    {
+      "label": "g2  門が環境の外も通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_launch_gate_refuses_code_outside_the_environment"
+      ],
+      "expected_witness": {
+        "item": "numpy",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'ImportError'>",
+        "assert_stmt": false
+      },
+      "why": "環境の外に所在がある module を import させる",
+      "failed": [
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_launch_gate_refuses_code_outside_the_environment"
+      ],
+      "witnessed_by": {
+        "function": "test_launch_gate_refuses_code_outside_the_environment",
+        "param": "numpy",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'ImportError'>"
+      }
+    },
+    {
+      "label": "g3  環境の判定が常に真",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo",
+        "test_in_environment_compares_whole_path_components",
+        "test_launch_gate_refuses_code_outside_the_environment",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "どこにあるコードも環境として通す",
+      "failed": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo",
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_in_environment_compares_whole_path_components",
+        "test_launch_gate_refuses_code_outside_the_environment",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('C:\\\\ERRE-Sand_Box\\\\scripts\\\\x.py', ('c:\\\\erre-sand_box\\\\.venv', '<home>\\\\appdata\\\\roaming\\\\uv\\\\python\\\\cpython-3.11.15-windows-x86_64-none'))\n +    where <function _in_environment at 0x?> = drv._in_environment\n +    and   'C:\\\\ERRE-"
+      }
+    },
+    {
+      "label": "g4  repo を含む prefix も環境に数える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "venv を repo root そのものに作ると、repo の全てのコードが環境になる",
+      "failed": [
+        "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo"
+      ],
+      "witnessed_by": {
+        "function": "test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '<home>\\\\appdata\\\\roaming\\\\uv\\\\python\\\\cpython-3.11.15-windows-x86_64-none' not in ('c:\\\\erre-sand_box\\\\.venv', '<home>\\\\appdata\\\\roaming\\\\uv\\\\python\\\\cpython-3.11.15-windows-x86_64-none')\n +  where '<home>\\\\appdata\\\\roaming\\\\uv\\\\python\\\\cpython-3.11.15-windows-x86_64-none' = <function _norm "
+      }
+    },
+    {
+      "label": "g5  門が自分自身に尋ねる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_launch_gate_passes_the_environment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "門が自分を呼んで再帰し、起動のたびに RecursionError で落ちる",
+      "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_launch_gate_passes_the_environment"
+      ],
+      "witnessed_by": {
+        "function": "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "Traceback (most recent call last):\n    File \"<home>\\AppData\\Local\\Temp\\pytest-of-<user>\\pytest-5991\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 164, in <module>\n      import argparse\n    File \"<frozen importlib._bootstrap>\", line 1176, in _find_and_load\n    File \"<f"
+      }
+    },
+    {
+      "label": "g6  下にあるかを文字列の前方一致で見る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_in_environment_compares_whole_path_components"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "prefix と同じ文字列で始まる隣の dir (env2) を環境に数える",
+      "failed": [
+        "test_in_environment_compares_whole_path_components"
+      ],
+      "witnessed_by": {
+        "function": "test_in_environment_compares_whole_path_components",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('<home>\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-5992\\\\test_in_environment_compares_w0\\\\env2\\\\m.py', ('<home>\\\\appdata\\\\local\\\\temp\\\\pytest-of-<user>\\\\pytest-5992\\\\test_in_environment_compares_w0\\\\env',))\n +    where <function"
+      }
+    },
+    {
+      "label": "g7  比べられない組で例外を出す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_in_environment_compares_whole_path_components"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "ValueError",
+        "via": "_under",
+        "assert_stmt": false
+      },
+      "why": "別ドライブ・相対と絶対の組で ValueError になり、門が import を止める理由が変わる",
+      "failed": [
+        "test_in_environment_compares_whole_path_components"
+      ],
+      "witnessed_by": {
+        "function": "test_in_environment_compares_whole_path_components",
+        "param": null,
+        "when": "call",
+        "type": "builtins.ValueError",
+        "text": "Can't mix absolute and relative paths"
+      }
+    },
+    {
+      "label": "g8  spec の所在に package の探索場所を含めない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_gate_refuses_code_outside_the_environment"
+      ],
+      "expected_witness": {
+        "item": "ns",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE <class 'ImportError'>",
+        "assert_stmt": false
+      },
+      "why": "環境の外の package (名前空間) を import させる",
+      "failed": [
+        "test_launch_gate_refuses_code_outside_the_environment"
+      ],
+      "witnessed_by": {
+        "function": "test_launch_gate_refuses_code_outside_the_environment",
+        "param": "ns",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'ImportError'>"
+      }
+    },
+    {
+      "label": "g9  spec の所在に origin を含めない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_launch_gate_refuses_code_outside_the_environment",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "環境の外の file の module を import させる・走査が見逃す",
+      "failed": [
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_launch_gate_refuses_code_outside_the_environment",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_outside_problems_require_the_environment_and_the_scripts_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<home>\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-5995\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "n1  scripts を名前空間として持たない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_pinned_finder_makes_the_package_a_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "scripts の __init__.py が実行されうる (門が repo の scripts を止めて起動できない)",
+      "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_command_line_launch_refuses_to_import_a_shadow",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_pinned_finder_makes_the_package_a_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_pinned_finder_makes_the_package_a_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert None is not None"
+      }
+    },
+    {
+      "label": "s1  起動の検査で走査をしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "門より前に取り込まれた環境の外のコードで起動する",
+      "failed": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside...s\\\\numpy.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: numpy (C:\\\\ERRE-Sand_Box\\\\scripts\\\\numpy.py)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s2  走査が scripts の __init__.py を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "初期化のコードを実行した scripts で起動する",
+      "failed": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_outside_problems_require_the_environment_and_the_scripts_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['scripts is ...pinned files']\n  \n  Right contains one more item: 'scripts is not the namespace of the pinned files'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s3  走査が scripts の探索場所を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "root/scripts 以外も探す scripts で起動する",
+      "failed": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_outside_problems_require_the_environment_and_the_scripts_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['scripts is ...pinned files']\n  \n  Right contains one more item: 'scripts is not the namespace of the pinned files'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s4  走査が __file__ を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "spec の無い module の file を見逃す",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside...s\\\\numpy.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: numpy (C:\\\\ERRE-Sand_Box\\\\scripts\\\\numpy.py)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s5  走査が spec の所在を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "spec だけが所在を持つ module を見逃す",
+      "failed": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_outside_problems_require_the_environment_and_the_scripts_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<home>\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-6001\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s6  走査が __path__ を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "探索場所だけを持つ package を見逃す",
+      "failed": [
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_outside_problems_require_the_environment_and_the_scripts_namespace",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside..._0\\\\by_path)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_path (<home>\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-6002\\\\test_outside_problems_require_0\\\\by_path)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s7  走査が環境の外を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "環境の外のコードを実行したまま起動する",
+      "failed": [
+        "test_command_line_launch_refuses_code_imported_before_the_gate",
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_outside_problems_require_the_environment_and_the_scripts_namespace"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['run outside...s\\\\numpy.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: numpy (C:\\\\ERRE-Sand_Box\\\\scripts\\\\numpy.py)'\n  Use -v to get more diff"
+      }
     }
   ],
   "all_killed": true

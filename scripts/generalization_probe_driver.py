@@ -49,7 +49,14 @@
   (code object の等値。bytes の一致ではなく、末尾のコメントだけの差は等しい)。repo のモジュール (封印済みの依存と、
   certification の検査が import する driver の harness) は、起動のときだけ ``_PinnedFinder`` が 1 回だけ読んだ bytes から
   実行する (pyc を読まない)。起動の検査の後に、その bytes が固定ファイルで、起動の検査の前のディスクと同じことを照合する。
-  保証の外: 第三者のライブラリ・標準ライブラリ・インタプリタ (版は uv.lock が固定する)、意図的な不正 (偽の endpoint 等)。
+  それ以外のコードは、環境 (インタプリタと venv の prefix の下、repo を含む prefix は除く) のものだけを実行する
+  (Codex 3 回目 MEDIUM-2)。起動のときは、driver の最初の文で import の門 (``_LaunchGate``) を入れ、環境の外に所在がある
+  module (``scripts/`` に置いた ``numpy.py`` 等) を import させない (ImportError で exit 1、何も書かない)。``scripts`` は
+  ``root/scripts`` だけを探す名前空間として作る (``__init__.py`` を実行しない)。門より前に取り込まれたもの (site・
+  sitecustomize・PYTHONPATH) は、``executed_problems`` が ``sys.modules`` の所在を走査して起動を拒否する。
+  主張: 実行した repo のコードは、来歴の hash が指す固定ファイルの bytes のコンパイル結果。
+  保証の外: 環境の中のコード (第三者のライブラリ・標準ライブラリ・インタプリタ、版は uv.lock が固定する)、
+  意図的な不正 (偽の endpoint・門より前に取り込まれて自分を ``sys.modules`` から消すコード等)。
 
 実行 (repo root から、GPU 実走は user 裁定の後)。run dir と endpoint は固定で、引数は段だけ::
 
@@ -59,16 +66,110 @@
 
 from __future__ import annotations
 
+# ruff: noqa: E402 — import の門 (下) を、他の import より前に入れる
+import os
+import sys
+
+# ------------------------------------------------ import の門 (他の import の前、Codex 3 回目 MEDIUM-2)
+# 起動 (__main__) のとき、環境 (インタプリタ・venv) と固定ファイルの外のコードを import させない (decisions DT-2・DT-4)。
+# sys・os は起動時に読み込み済みなので、ここまでに driver の外のコードは実行されていない。固定ファイルの
+# scripts.* は、門の前に入れる _PinnedFinder が先に引き受ける (門まで来た scripts.* は固定ファイルでない)。
+
+_ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # noqa: PTH120
+
+
+def _norm(path: str) -> str:
+    return os.path.normcase(os.path.realpath(path))
+
+
+def _under(path: str, root: str) -> bool:
+    """``path`` が ``root`` の下 (同じを含む) か。別ドライブ・相対と絶対の組は False.
+
+    引数は両方とも ``_norm`` 済みであること (比べるのは正規化した文字列の path の要素)。
+    """
+    try:
+        return os.path.commonpath([path, root]) == root
+    except ValueError:
+        return False
+
+
+def _environment_roots(repo: str = _ROOT_DIR) -> tuple[str, ...]:
+    """環境 = インタプリタと venv の prefix (版は uv.lock が固定する)。repo を含む prefix は環境に数えない."""
+    repo_n = _norm(repo)
+    prefixes = (sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix)
+    roots = {_norm(p) for p in prefixes}
+    return tuple(sorted(r for r in roots if not _under(repo_n, r)))
+
+
+def _in_environment(location: str, roots: Sequence[str]) -> bool:
+    loc = _norm(location)
+    return any(_under(loc, r) for r in roots)
+
+
+def _spec_locations(spec: object) -> list[str]:
+    """所在 = spec の origin (``has_location`` のとき) と package の探索場所。built-in・frozen は空."""
+    out: list[str] = []
+    origin = getattr(spec, "origin", None)
+    if getattr(spec, "has_location", False) and isinstance(origin, str):
+        out.append(origin)
+    out.extend(str(p) for p in getattr(spec, "submodule_search_locations", None) or ())
+    return out
+
+
+class _LaunchGate:
+    """環境の外に所在がある module を import させない門 (``sys.meta_path`` の先頭に入れる).
+
+    他の finder に spec を探させ、最初に見つかった spec の所在が全て環境の中ならその spec を返す。外なら ImportError。
+    """
+
+    def __init__(
+        self, roots: Sequence[str], finders: Sequence[object] | None = None
+    ) -> None:
+        self.roots = tuple(roots)
+        self.finders = finders  # None なら sys.meta_path (自分を除く)
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: Sequence[str] | None = None,
+        target: ModuleType | None = None,
+    ) -> ModuleSpec | None:
+        for finder in list(sys.meta_path if self.finders is None else self.finders):
+            find = getattr(finder, "find_spec", None)
+            if finder is self or find is None:
+                continue
+            spec = find(fullname, path, target)
+            if spec is None:
+                continue
+            outside = [
+                loc
+                for loc in _spec_locations(spec)
+                if not _in_environment(loc, self.roots)
+            ]
+            if outside:
+                msg = (
+                    "refusing to import code outside the pinned files and the environment: "
+                    f"{fullname} ({outside[0]})"
+                )
+                raise ImportError(msg, name=fullname)
+            return spec
+        return None
+
+
+if __name__ == "__main__":
+    # 門を先に入れる。後で _PinnedFinder を門の前 (meta_path[0]) に入れるので、固定ファイルの scripts.* と
+    # scripts の名前空間は門まで行かない (下の _PinnedFinder を入れる所と対)
+    sys.meta_path.insert(0, _LaunchGate(_environment_roots()))
+
 import argparse
 import asyncio
 import hashlib
 import importlib.abc
+import importlib.machinery
 import importlib.util
 import json
-import os
 import pathlib
 import subprocess
-import sys
 import traceback
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -130,7 +231,11 @@ class _PinnedLoader(importlib.abc.Loader):
 
 
 class _PinnedFinder(importlib.abc.MetaPathFinder):
-    """``<package>.<name>`` を、``root/<package>/<name>.py`` から 1 回だけ読んだ bytes で import させる."""
+    """``<package>.<name>`` を、``root/<package>/<name>.py`` から 1 回だけ読んだ bytes で import させる.
+
+    ``<package>`` 自体は、``root/<package>`` だけを探す名前空間として作る (``__init__.py`` があっても実行しない、
+    Codex 3 回目 MEDIUM-2)。
+    """
 
     def __init__(self, root: pathlib.Path, package: str = "scripts") -> None:
         self.root = root
@@ -142,6 +247,10 @@ class _PinnedFinder(importlib.abc.MetaPathFinder):
         path: object = None,  # noqa: ARG002
         target: object = None,  # noqa: ARG002
     ) -> ModuleSpec | None:
+        if fullname == self.package:
+            spec = importlib.machinery.ModuleSpec(fullname, None, is_package=True)
+            spec.submodule_search_locations = [str(self.root / self.package)]
+            return spec
         head, _, name = fullname.partition(".")
         if head != self.package or not name or "." in name:
             return None
@@ -153,13 +262,14 @@ class _PinnedFinder(importlib.abc.MetaPathFinder):
 
 
 if __name__ == "__main__":
-    # 実走の起動: repo のモジュールを、1 回だけ読んだ bytes から実行する (照合は起動の検査の後の executed_problems)
+    # 実走の起動: repo のモジュールを、1 回だけ読んだ bytes から実行する (照合は起動の検査の後の executed_problems)。
+    # 門の前に入れる (固定ファイルの scripts.* と scripts の名前空間は、門まで行かない)
     sys.meta_path.insert(0, _PinnedFinder(_REPO_ROOT))
 
-from scripts import generalization_probe_battery as bat  # noqa: E402
-from scripts import generalization_probe_manifest as man  # noqa: E402
-from scripts import generalization_probe_pilot_gate as pg  # noqa: E402
-from scripts import generalization_probe_scorer as sc  # noqa: E402
+from scripts import generalization_probe_battery as bat
+from scripts import generalization_probe_manifest as man
+from scripts import generalization_probe_pilot_gate as pg
+from scripts import generalization_probe_scorer as sc
 
 STAGE_PILOT: Final[str] = "pilot"
 STAGE_MAIN: Final[str] = "main"
@@ -905,17 +1015,57 @@ def launch_problems(stage_name: str) -> list[str]:
     return problems
 
 
+def _module_locations(module: object) -> list[str]:
+    """所在 = module の ``__spec__`` の所在と ``__file__``・``__path__``。built-in・frozen は空."""
+    out = _spec_locations(getattr(module, "__spec__", None))
+    file = getattr(module, "__file__", None)
+    if isinstance(file, str):
+        out.append(file)
+    out.extend(p for p in getattr(module, "__path__", None) or () if isinstance(p, str))
+    return out
+
+
+def outside_problems(modules: Mapping[str, object], roots: Sequence[str]) -> list[str]:
+    """``__main__`` と ``scripts.*`` 以外のモジュールが、環境の中か ``scripts`` の名前空間か (Codex 3 回目 MEDIUM-2).
+
+    門より前に取り込まれたもの (site・sitecustomize・PYTHONPATH) も捕まえる。``scripts`` は ``__file__`` が無く、
+    探索場所が ``root/scripts`` だけの名前空間でなければならない (``__init__.py`` を実行していない)。
+    """
+    problems: list[str] = []
+    namespace = [_norm(str(_REPO_ROOT / "scripts"))]
+    for name in sorted(modules):
+        if name == "__main__" or name.startswith("scripts."):
+            continue
+        module = modules[name]
+        if name == "scripts":
+            where = [_norm(str(p)) for p in getattr(module, "__path__", None) or ()]
+            if getattr(module, "__file__", None) is not None or where != namespace:
+                problems.append("scripts is not the namespace of the pinned files")
+            continue
+        outside = [
+            loc for loc in _module_locations(module) if not _in_environment(loc, roots)
+        ]
+        if outside:
+            problems.append(
+                "run outside the pinned files and the environment: "
+                f"{name} ({outside[0]})"
+            )
+    return problems
+
+
 def executed_problems(
     stage_name: str,
     pinned_start: Mapping[str, str | None],
     modules: Mapping[str, object] | None = None,
+    roots: Sequence[str] | None = None,
 ) -> list[str]:
     """実行中の repo のコードが、起動の検査の前のディスクの bytes をコンパイルしたもの (Codex 再 review HIGH-1).
 
     driver: 実行中の code object が起動時に読んだ bytes のコンパイル結果で、その bytes が ``pinned_start`` と同じ。
     ``scripts.*`` のモジュール: ``_PinnedFinder`` が 1 回だけ読んだ bytes から実行し、その bytes が固定ファイルで
-    ``pinned_start`` と同じ。``main`` が起動の検査の **後** に呼ぶ (certification の検査が import する driver の harness も含める)。
-    ``modules`` の既定は ``sys.modules``。
+    ``pinned_start`` と同じ。その他のモジュール: 環境の中 (``outside_problems``、Codex 3 回目 MEDIUM-2)。
+    ``main`` が起動の検査の **後** に呼ぶ (certification の検査が import する driver の harness も含める)。
+    ``modules`` の既定は ``sys.modules``、``roots`` の既定は ``_environment_roots()``。
     """
     mods = sys.modules if modules is None else modules
     problems: list[str] = []
@@ -938,6 +1088,7 @@ def executed_problems(
             problems.append(f"run but not pinned: {rel}")
         elif sha != pinned_start.get(rel):
             problems.append(f"run bytes differ from the pinned file at start-up: {rel}")
+    problems += outside_problems(mods, _environment_roots() if roots is None else roots)
     return problems
 
 

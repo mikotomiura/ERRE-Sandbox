@@ -506,9 +506,36 @@ def _variants(body: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     ]
 
 
+# 入力ごとに item を分ける (変異の証拠が、どの入力で落ちたかを
+# 名指せるように、Codex 3 回目 MEDIUM-1)
+_VARIANT_NAMES = (
+    "model",
+    "think",
+    "stream",
+    "num_ctx_float",
+    "temperature",
+    "seed_float",
+    "seed_other",
+    "extra_key",
+    "extra_option",
+    "missing_option",
+    "prompt",
+    "messages_extra_field",
+    "messages_not_str",
+    "messages_not_list",
+    "not_a_dict",
+)
+
+
+def test_variant_names_are_the_variants(tmp_path: Path) -> None:
+    body = _body(drv.pilot_stage(tmp_path), 0)
+    assert [name for name, _ in _variants(body)] == list(_VARIANT_NAMES)
+
+
+@pytest.mark.parametrize("variant", _VARIANT_NAMES)
 @pytest.mark.parametrize("stage_name", ["pilot", "main"])
 def test_check_sent_body_rejects_value_and_type(
-    tmp_path: Path, stage_name: str
+    tmp_path: Path, stage_name: str, variant: str
 ) -> None:
     stage = (
         drv.pilot_stage(tmp_path)
@@ -518,10 +545,9 @@ def test_check_sent_body_rejects_value_and_type(
     for index in (0, 300):
         body = _body(stage, index)
         drv.check_sent_body(stage, index, body)
-        for name, bad in _variants(body):
-            with pytest.raises(drv.SentBodyMismatchError):
-                drv.check_sent_body(stage, index, bad)
-            assert name
+        bad = dict(_variants(body))[variant]
+        with pytest.raises(drv.SentBodyMismatchError):
+            drv.check_sent_body(stage, index, bad)
 
 
 def test_check_uses_the_plan_position(tmp_path: Path) -> None:
@@ -536,21 +562,27 @@ async def _post(observer: drv.ObservingTransport, path: str, body: object) -> No
         await http.post(path, json=body)
 
 
-def test_observer_refuses_before_the_inner_transport(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "case", ["no_expected", "mismatch", "generate_path", "show_path"]
+)
+def test_observer_refuses_before_the_inner_transport(tmp_path: Path, case: str) -> None:
+    """拒否は内側の transport の前 (何も送らない)。拒否の後も、期待した body は通る."""
     stage = drv.pilot_stage(tmp_path)
     ollama = FakeOllama(first_shown)
     observer = drv.ObservingTransport(httpx.MockTransport(ollama), stage)
     good = _body(stage, 3)
-    with pytest.raises(drv.SentBodyMismatchError, match="without an expected call"):
-        asyncio.run(_post(observer, drv.CHAT_PATH, good))
-    observer.expected = 3
-    with pytest.raises(drv.SentBodyMismatchError):
-        asyncio.run(_post(observer, drv.CHAT_PATH, _variants(good)[6][1]))
-    with pytest.raises(drv.SentBodyMismatchError, match="unexpected POST path"):
-        asyncio.run(_post(observer, "/api/generate", good))
-    with pytest.raises(drv.SentBodyMismatchError, match="unexpected POST path"):
-        asyncio.run(_post(observer, drv.SHOW_PATH, {"model": bat.MODEL}))
+    path, body, match = {
+        "no_expected": (drv.CHAT_PATH, good, "without an expected call"),
+        "mismatch": (drv.CHAT_PATH, dict(_variants(good))["seed_other"], None),
+        "generate_path": ("/api/generate", good, "unexpected POST path"),
+        "show_path": (drv.SHOW_PATH, {"model": bat.MODEL}, "unexpected POST path"),
+    }[case]
+    if case != "no_expected":
+        observer.expected = 3
+    with pytest.raises(drv.SentBodyMismatchError, match=match):
+        asyncio.run(_post(observer, path, body))
     assert ollama.bodies == []
+    observer.expected = 3
     asyncio.run(_post(observer, drv.CHAT_PATH, good))
     assert ollama.bodies == [good]
     assert observer.sent == {3: [good]}
@@ -1238,7 +1270,9 @@ def test_final_provenance_failure_keeps_records_but_aborts(
 
     def flaky(path: Path, obj: object, *, exclusive: bool) -> None:
         if path.name == drv.PROVENANCE_NAME and not exclusive:
-            raise OSError("readonly")
+            raise OSError(
+                "readonly (second phase)"
+            )  # 二相目 (公開済みへの書き直し) だけ
         real(path, obj, exclusive=exclusive)
 
     monkeypatch.setattr(drv, "write_json_durable", flaky)
@@ -1791,7 +1825,33 @@ def test_pinned_finder_runs_the_bytes_it_read(tmp_path: Path) -> None:
     assert finder.find_spec("other_pkg.mod_a") is None
     assert finder.find_spec(f"{package}.missing") is None
     assert finder.find_spec(f"{package}.sub.mod_a") is None
-    assert finder.find_spec(package) is None
+
+
+def test_pinned_finder_makes_the_package_a_namespace(tmp_path: Path) -> None:
+    """package 自体は root/<package> だけを探す名前空間.
+
+    ``__init__.py`` を実行しない (Codex 3 回目 MEDIUM-2)。
+    """
+    package = "gp_driver_namespace_pkg"
+    (tmp_path / package).mkdir()
+    (tmp_path / package / "__init__.py").write_text(
+        "RAN = True\nraise RuntimeError('the package initializer ran')\n",
+        encoding="utf-8",
+    )
+    spec = drv._PinnedFinder(tmp_path, package).find_spec(package)
+    assert spec is not None
+    assert spec.origin is None
+    assert spec.loader is None
+    assert list(spec.submodule_search_locations or ()) == [str(tmp_path / package)]
+    # module_from_spec が名前空間の loader (CPython の NamespaceLoader) を
+    # spec に入れる。
+    # その exec_module は何もしない (__init__.py を読まない)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    assert not hasattr(module, "RAN"), "the package initializer ran"
+    assert module.__file__ is None
+    assert list(module.__path__) == [str(tmp_path / package)]
 
 
 def _module(loader: object) -> types.ModuleType:
@@ -1837,10 +1897,163 @@ def test_executed_problems_check_driver_modules_and_pins(
     assert problems({}, {**start, man.DRIVER: "0" * 64}) == [
         "the driver on disk changed between start-up and the launch checks"
     ]
+    # その他のモジュールは環境の中 (走査、Codex 3 回目 MEDIUM-2)
+    shadow = types.ModuleType("numpy")
+    shadow.__file__ = str(_ROOT / "scripts" / "numpy.py")
+    assert drv.executed_problems(drv.STAGE_PILOT, start, {"numpy": shadow}, ()) == [
+        f"run outside the pinned files and the environment: numpy ({shadow.__file__})"
+    ]
     monkeypatch.setattr(drv, "_DRIVER_RUNS_ITS_BYTES", False)
     assert problems({}) == [
         "the running driver is not the compilation of the driver bytes it hashed"
     ]
+
+
+# ------------------------------ 環境と固定ファイルの外のコード (Codex 3 回目 MEDIUM-2)
+
+
+def test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo() -> None:
+    roots = drv._environment_roots()
+    assert drv._norm(sys.prefix) in roots
+    assert drv._norm(sys.base_prefix) in roots
+    assert not drv._in_environment(str(_ROOT / "scripts" / "x.py"), roots)
+    # repo を含む prefix は環境に数えない (venv を repo root そのものに作った場合など)
+    inside_base = os.path.join(sys.base_prefix, "Lib", "repo")  # noqa: PTH118
+    held = drv._environment_roots(inside_base)
+    assert drv._norm(sys.base_prefix) not in held
+    if drv._norm(sys.prefix) != drv._norm(sys.base_prefix):
+        assert drv._norm(sys.prefix) in held
+
+
+def test_in_environment_compares_whole_path_components(tmp_path: Path) -> None:
+    env = tmp_path / "env"
+    (env / "lib").mkdir(parents=True)
+    roots = (drv._norm(str(env)),)
+    assert drv._in_environment(str(env / "lib" / "m.py"), roots)
+    assert drv._in_environment(str(env), roots)
+    assert not drv._in_environment(str(tmp_path / "env2" / "m.py"), roots)
+    assert not drv._in_environment(str(tmp_path / "m.py"), roots)
+    # 比べられない組 (別ドライブ・相対と絶対) は外
+    assert not drv._under("relative", roots[0])
+
+
+def _file_spec(name: str, path: Path) -> importlib.machinery.ModuleSpec:
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    return spec
+
+
+class _Finder:
+    def __init__(self, specs: dict[str, object]) -> None:
+        self.specs = specs
+        self.asked: list[str] = []
+
+    def find_spec(
+        self, name: str, _path: object = None, _target: object = None
+    ) -> object:
+        self.asked.append(name)
+        return self.specs.get(name)
+
+
+def _gate_finders(tmp_path: Path) -> tuple[tuple[str, ...], dict[str, object]]:
+    env, repo = tmp_path / "env", tmp_path / "repo"
+    namespace = importlib.machinery.ModuleSpec("ns", None, is_package=True)
+    namespace.submodule_search_locations = [str(repo / "ns")]
+    specs: dict[str, object] = {
+        "inside": _file_spec("inside", env / "inside.py"),
+        "builtin_like": importlib.machinery.ModuleSpec(
+            "builtin_like", None, origin="built-in"
+        ),
+        "numpy": _file_spec("numpy", repo / "scripts" / "numpy.py"),
+        "ns": namespace,
+        "scripts.extra": _file_spec("scripts.extra", repo / "scripts" / "extra.py"),
+    }
+    return (drv._norm(str(env)),), specs
+
+
+def test_launch_gate_passes_the_environment(tmp_path: Path) -> None:
+    roots, specs = _gate_finders(tmp_path)
+    first, second = (
+        _Finder({"later": None}),
+        _Finder({**specs, "later": specs["inside"]}),
+    )
+    gate = drv._LaunchGate(roots, [first, second])
+    assert gate.find_spec("inside") is specs["inside"]
+    assert gate.find_spec("builtin_like") is specs["builtin_like"]  # 所在の無い spec
+    assert gate.find_spec("later") is specs["inside"]  # 前の finder が None なら次へ
+    assert gate.find_spec("missing") is None
+    # 門は自分自身に尋ねない (sys.meta_path に自分が居ても再帰しない)
+    selfish = drv._LaunchGate(roots, [])
+    selfish.finders = [selfish, second]
+    assert selfish.find_spec("inside") is specs["inside"]
+
+
+@pytest.mark.parametrize("name", ["numpy", "ns", "scripts.extra"])
+def test_launch_gate_refuses_code_outside_the_environment(
+    tmp_path: Path, name: str
+) -> None:
+    """所在が環境の外なら ImportError (Codex 3 回目 MEDIUM-2).
+
+    所在 = file の origin・package の探索場所。
+    """
+    roots, specs = _gate_finders(tmp_path)
+    gate = drv._LaunchGate(roots, [_Finder(specs)])
+    with pytest.raises(
+        ImportError, match="outside the pinned files and the environment"
+    ):
+        gate.find_spec(name)
+
+
+def _namespace(path: list[str], file: str | None = None) -> types.ModuleType:
+    module = types.ModuleType("scripts")
+    module.__path__ = path
+    module.__file__ = file
+    return module
+
+
+def test_outside_problems_require_the_environment_and_the_scripts_namespace(
+    tmp_path: Path,
+) -> None:
+    env = tmp_path / "env"
+    roots = (drv._norm(str(env)),)
+    scripts_dir = str(_ROOT / "scripts")
+    in_env = types.ModuleType("in_env")
+    in_env.__file__ = str(env / "in_env.py")
+    no_location = types.ModuleType("no_location")
+    good = {
+        "__main__": types.ModuleType(
+            "__main__"
+        ),  # driver 自身 (code object で照合済み)
+        "scripts": _namespace([scripts_dir]),
+        "scripts.anything": types.ModuleType(
+            "scripts.anything"
+        ),  # 固定ファイルの照合が見る
+        "in_env": in_env,
+        "no_location": no_location,
+    }
+    assert drv.outside_problems(good, roots) == []
+    shadow = types.ModuleType("numpy")
+    shadow.__file__ = str(tmp_path / "scripts" / "numpy.py")
+    by_spec = types.ModuleType("by_spec")
+    by_spec.__spec__ = _file_spec("by_spec", tmp_path / "by_spec.py")
+    outside = "run outside the pinned files and the environment"
+    assert drv.outside_problems({**good, "numpy": shadow}, roots) == [
+        f"{outside}: numpy ({shadow.__file__})"
+    ]
+    assert drv.outside_problems({**good, "by_spec": by_spec}, roots) == [
+        f"{outside}: by_spec ({tmp_path / 'by_spec.py'})"
+    ]
+    by_path = types.ModuleType("by_path")  # spec も file も無い package (探索場所だけ)
+    by_path.__path__ = [str(tmp_path / "by_path")]
+    assert drv.outside_problems({**good, "by_path": by_path}, roots) == [
+        f"{outside}: by_path ({tmp_path / 'by_path'})"
+    ]
+    initialized = _namespace([scripts_dir], file=str(_ROOT / "scripts" / "__init__.py"))
+    elsewhere = _namespace([scripts_dir, str(tmp_path)])
+    for module in (initialized, elsewhere):
+        assert drv.outside_problems({**good, "scripts": module}, roots) == [
+            "scripts is not the namespace of the pinned files"
+        ]
 
 
 def test_main_checks_the_executed_code_after_the_launch_checks(
@@ -1884,9 +2097,10 @@ def test_main_checks_the_executed_code_after_the_launch_checks(
     assert "[driver] refuse to launch: code differs" in capsys.readouterr().out
 
 
-# 起動の通し: 起動の閉包を tmp に写し、endpoint を到達しない port に置き換えて、
-# __main__ で起動させる。certification・SEED が無く git の外なので、3 重に起動を
-# 拒否される (拒否を外す変異でも実の Ollama に届かない)
+# 起動の通し: 起動の閉包を tmp に写し、endpoint を到達しない port に、transport を
+# 接続しない MockTransport に置き換えて (独立の 2 重、Codex 3 回目 BL-1)、__main__ で
+# 起動させる。certification・SEED が無く git の外なので、3 重に起動を拒否される
+# (拒否を外す変異でも実の Ollama に届かない)
 _UNREACHABLE = "http://127.0.0.1:9"
 _EXECUTED_PHRASES = (
     "not the compilation of the driver bytes",
@@ -1894,7 +2108,10 @@ _EXECUTED_PHRASES = (
     "not run from the bytes it was hashed by",
     "run but not pinned",
     "run bytes differ from the pinned file",
+    "outside the pinned files and the environment",
+    "scripts is not the namespace of the pinned files",
 )
+_MARK = "UNPINNED CODE RAN"
 _RUN_AS_MAIN = (
     "import importlib, pathlib, sys\n"
     "a, b, pre = sys.argv[1], sys.argv[2], sys.argv[3:]\n"
@@ -1908,9 +2125,13 @@ _RUN_AS_MAIN = (
 
 
 def _replace_once(path: Path, old: str, new: str) -> None:
-    text = path.read_text(encoding="utf-8")
-    assert text.count(old) == 1, f"anchor not unique: {old}"
-    path.write_text(text.replace(old, new), encoding="utf-8", newline="")
+    """bytes のまま 1 回だけ置換する (Codex 3 回目 BL-1).
+
+    改行などの他の bytes を変えない。
+    """
+    data, before, after = path.read_bytes(), old.encode("utf-8"), new.encode("utf-8")
+    assert data.count(before) == 1, f"anchor not unique: {old}"
+    path.write_bytes(data.replace(before, after))
 
 
 def _launch_copy(root: Path) -> Path:
@@ -1929,15 +2150,23 @@ def _launch_copy(root: Path) -> Path:
         f'DEFAULT_ENDPOINT: Final[str] = "{drv.DEFAULT_ENDPOINT}"',
         f'DEFAULT_ENDPOINT: Final[str] = "{_UNREACHABLE}"',
     )
+    _replace_once(
+        driver,
+        "httpx.AsyncHTTPTransport()",
+        "httpx.MockTransport(lambda request: httpx.Response(599))",
+    )
     return driver
 
 
-def _run_copy(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def _run_copy(
+    root: Path, *args: str, extra_env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     env = dict(
         os.environ,
         PYTHONUTF8="1",
         PYTHONDONTWRITEBYTECODE="1",
         GIT_DIR=str(root / "no-git"),
+        **(extra_env or {}),
     )
     return subprocess.run(  # noqa: S603
         [sys.executable, *args],
@@ -2000,82 +2229,308 @@ def test_command_line_launch_refuses_code_that_is_not_its_bytes(tmp_path: Path) 
     assert not (tmp_path / man.EXP).exists()
 
 
+def _print_mark(path: Path) -> None:
+    path.write_text(f"print({_MARK!r})\n", encoding="utf-8")
+
+
+def test_command_line_launch_does_not_run_a_scripts_initializer(tmp_path: Path) -> None:
+    """未追跡の ``scripts/__init__.py`` は実行されない.
+
+    scripts は名前空間 (Codex 3 回目 MEDIUM-2)。
+    """
+    driver = _launch_copy(tmp_path)
+    _print_mark(tmp_path / "scripts" / "__init__.py")
+    proc = _run_copy(tmp_path, str(driver), "--stage", "pilot")
+    out = proc.stdout + proc.stderr
+    assert _MARK not in out, out
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert "[driver] refuse to launch: driver certification unreadable" in out
+    for phrase in _EXECUTED_PHRASES:
+        assert phrase not in out, out
+
+
+def test_command_line_launch_refuses_to_import_a_shadow(tmp_path: Path) -> None:
+    """``scripts/`` に置いた ``numpy.py`` は、門が import させない.
+
+    起動の sys.path[0] が scripts/ なので、置けば numpy を横取りする。
+    """
+    driver = _launch_copy(tmp_path)
+    _print_mark(tmp_path / "scripts" / "numpy.py")
+    proc = _run_copy(tmp_path, str(driver), "--stage", "pilot")
+    out = proc.stdout + proc.stderr
+    assert _MARK not in out, out
+    assert proc.returncode == 1, out
+    assert (
+        "ImportError: refusing to import code outside the pinned files and the "
+        "environment: numpy" in out
+    ), out
+    assert not (tmp_path / man.EXP).exists()
+
+
+def test_command_line_launch_refuses_code_imported_before_the_gate(
+    tmp_path: Path,
+) -> None:
+    """門より前に取り込まれた環境の外のコードは、走査が起動を拒否する.
+
+    例: 起動時の sitecustomize。
+    """
+    driver = _launch_copy(tmp_path)
+    site = tmp_path / "site"
+    site.mkdir()
+    _print_mark(site / "sitecustomize.py")
+    proc = _run_copy(
+        tmp_path, str(driver), "--stage", "pilot", extra_env={"PYTHONPATH": str(site)}
+    )
+    out = proc.stdout + proc.stderr
+    assert _MARK in out, "the fixture did not run before the gate"
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert (
+        "[driver] refuse to launch: run outside the pinned files and the environment: "
+        "sitecustomize" in out
+    ), out
+    assert not (tmp_path / man.EXP).exists()
+
+
 # ---------------------------------------------------------------- harness の判定器
 
 
-_PYTEST_OUTPUT = (
-    "____ test_a ____",
-    "    def test_a():",
-    "E   assert 1 == 2",
-    "____ ERROR at setup of test_b ____",
-    "E   ScheduleError: boom",
-    "_ test_c[long-id] _",
-    "E   AssertionError: raw is not recorded verbatim",
-    "____ ERROR at teardown of test_d ____",
-    "E   OSError: teardown boom",
-    # 理由の文の無い変異が assert 以外で落ちた例 (Codex 再 review MEDIUM-1・BL-3)
-    "____ test_p[x] ____",
-    "E   NameError: name 'observed' is not defined",
-    "____ ERROR at teardown of test_p[y] ____",
-    "E       assert 0",
-    "____ test_q[x] ____",
-    "E   TypeError: unrelated",
-    "____ test_q[y] ____",
-    "E       AssertionError: records.jsonl was published",
-    "E       assert not True",
-    "____ test_s ____",
-    "E   AssertionError: the real Ollama transport was used",
-    # 説明が複数行の比較は、pytest が AssertionError: assert ... の形で出す
-    "____ test_t ____",
-    "E       AssertionError: assert [] == ['x']",
-    "E         Right contains one more item: 'x'",
-    "FAILED tests/x.py::test_a - assert 1 == 2",
-    "ERROR tests/x.py::test_b - ScheduleError: boom",
-    "FAILED tests/x.py::test_c[long-id] - AssertionError",
-    "ERROR tests/x.py::test_d - OSError: teardown boom",
-    "FAILED tests/x.py::test_p[x] - NameError: name 'observed' is not defined",
-    "ERROR tests/x.py::test_p[y] - assert 0",
-    "FAILED tests/x.py::test_q[x] - TypeError: unrelated",
-    "FAILED tests/x.py::test_q[y] - AssertionError: records.jsonl was published",
-    "FAILED tests/x.py::test_s - AssertionError: the real Ollama transport was used",
-    "FAILED tests/x.py::test_t - AssertionError: assert [] == ['x']",
-)
+# 証拠の記録は、harness を plugin として読み込ませた実の pytest に書かせて確かめる
+# (Codex 3 回目 MEDIUM-1・LOW-1)。file 名は test_driver.py (assert 文の判定が見る名前)
+_PROBE_TESTS = """
+import pytest
 
 
-def test_harness_reads_failures_kinds_and_reasons() -> None:
-    failed, kinds, collect, asserted = harness.parse_output("\n".join(_PYTEST_OUTPUT))
-    assert set(failed) == {
-        "test_a",
-        "test_b",
-        "test_c",
-        "test_d",
-        "test_p",
-        "test_q",
-        "test_s",
-        "test_t",
+@pytest.fixture
+def broken():
+    raise KeyError("fixture")
+
+
+@pytest.fixture
+def bad_teardown():
+    yield
+    raise OSError("teardown boom")
+
+
+def test_assert():
+    assert 1 == 2
+
+
+def test_multi_line_assert():
+    assert [] == [
+        "x"
+    ]
+
+
+def test_raise_assertion():
+    raise AssertionError("the real Ollama transport was used")
+
+
+@pytest.mark.parametrize("v", ["a] - b", "ok"])
+def test_param(v):
+    assert v == "ok"
+
+
+def test_setup(broken):
+    pass
+
+
+def test_teardown(bad_teardown):
+    pass
+
+
+def helper():
+    raise ValueError("inner")
+
+
+def test_chain():
+    try:
+        helper()
+    except ValueError as exc:
+        raise RuntimeError("outer") from exc
+
+
+def test_did_not_raise():
+    with pytest.raises(KeyError):
+        pass
+"""
+
+
+def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    (probe / "test_driver.py").write_text(_PROBE_TESTS, encoding="utf-8")
+    out = tmp_path / "records.jsonl"
+    env = dict(
+        os.environ,
+        PYTHONUTF8="1",
+        PYTHONDONTWRITEBYTECODE="1",
+        **{harness._WITNESS_ENV: str(out)},
+    )
+    proc = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "-p",
+            harness._PLUGIN,
+            "--rootdir",
+            str(probe),
+            str(probe / "test_driver.py"),
+        ],
+        cwd=str(_ROOT),
+        env=env,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
+        check=False,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    rows = {
+        (r["function"], r["param"], r["when"]): r for r in harness.read_records(out)
     }
-    assert kinds == {
-        "test_a": "FAILED",
-        "test_b": "ERROR",
-        "test_c": "FAILED",
-        "test_d": "ERROR",
-        "test_p": "FAILED",
-        "test_q": "FAILED",
-        "test_s": "FAILED",
-        "test_t": "FAILED",
+    assert set(rows) == {
+        ("test_assert", None, "call"),
+        ("test_multi_line_assert", None, "call"),
+        ("test_raise_assertion", None, "call"),
+        ("test_param", "a] - b", "call"),
+        ("test_setup", None, "setup"),
+        ("test_teardown", None, "teardown"),
+        ("test_chain", None, "call"),
+        ("test_did_not_raise", None, "call"),
     }
-    # teardown の節は、その test の節に集め、直前の test の節に混ぜない
-    assert "teardown boom" in failed["test_d"]
-    assert "teardown boom" not in failed["test_c"]
-    assert "E   ScheduleError: boom" in failed["test_b"]
-    assert "raw is not recorded verbatim" in failed["test_c"]
-    # assert で落ちた = FAILED の item の、その item の本体の節に、書き換えた
-    # assert の行がある。test_c・test_s は raise AssertionError (封鎖と同じ形)、
-    # test_p は NameError + 別 parameter の teardown の assert、test_q は
-    # TypeError の item と assert の item (後者で数える)、test_t は説明が複数行の assert
-    assert asserted == {"test_a", "test_q", "test_t"}
-    assert collect is False
-    assert harness.parse_output("ERROR collecting tests/x.py")[2] is True
+    assert rows["test_assert", None, "call"]["assert_stmt"] is True
+    assert rows["test_multi_line_assert", None, "call"]["assert_stmt"] is True
+    assert rows["test_param", "a] - b", "call"]["assert_stmt"] is True
+    raised = rows["test_raise_assertion", None, "call"]
+    assert raised["assert_stmt"] is False
+    assert raised["chain"][0]["type"] == "builtins.AssertionError"
+    setup = rows["test_setup", None, "setup"]["chain"]
+    assert [(c["type"], c["text"]) for c in setup] == [
+        ("builtins.KeyError", "'fixture'")
+    ]
+    teardown = rows["test_teardown", None, "teardown"]["chain"]
+    assert teardown[0]["text"] == "teardown boom"
+    chain = rows["test_chain", None, "call"]["chain"]
+    assert [c["type"] for c in chain] == [
+        "builtins.RuntimeError",
+        "builtins.ValueError",
+    ]
+    assert ["test_driver.py", "helper"] in chain[1]["frames"]
+    assert ["test_driver.py", "helper"] not in chain[0]["frames"]
+    did_not = rows["test_did_not_raise", None, "call"]
+    assert did_not["assert_stmt"] is False
+    assert did_not["chain"][0]["type"].endswith(".Failed")
+    assert did_not["chain"][0]["text"] == "DID NOT RAISE <class 'KeyError'>"
+
+
+def _rec(
+    function: str,
+    *chain: tuple[str, str, tuple[tuple[str, str], ...]],
+    when: str = "call",
+    param: str | None = None,
+    assert_stmt: bool = False,
+) -> dict[str, Any]:
+    links = [
+        {"type": t, "text": x, "frames": [list(f) for f in fr]} for t, x, fr in chain
+    ]
+    return {
+        "function": function,
+        "param": param,
+        "when": when,
+        "assert_stmt": assert_stmt,
+        "chain": links,
+    }
+
+
+_DRV = harness._DRIVER_FILE
+_TEST_DRIVER = harness._TEST_FILE
+_DECODE = ("json.decoder.JSONDecodeError", "Expecting value", ((_DRV, "_json_of"),))
+
+
+def test_harness_witness_needs_the_item_phase_and_one_exception() -> None:
+    """証拠は、期待 test の記録で照合する (Codex 3 回目 MEDIUM-1).
+
+    その item・段の、同じ 1 つの例外で、型・文・経由が揃うこと。
+    """
+    asserted = frozenset({"test_a"})
+    plain = harness.Witness(assert_stmt=True)
+    hit = _rec(
+        "test_a", ("builtins.AssertionError", "assert 1 == 2", ()), assert_stmt=True
+    )
+    assert harness.witnessed(plain, asserted, [hit]) is not None
+    # assert 文でない (NameError・封鎖の raise AssertionError)・setup・
+    # 別の test は数えない
+    for miss in (
+        _rec("test_a", ("builtins.NameError", "name 'observed' is not defined", ())),
+        _rec(
+            "test_a",
+            ("builtins.AssertionError", "the real Ollama transport was used", ()),
+        ),
+        _rec(
+            "test_a",
+            ("builtins.AssertionError", "x", ()),
+            when="setup",
+            assert_stmt=True,
+        ),
+        _rec("test_z", ("builtins.AssertionError", "x", ()), assert_stmt=True),
+    ):
+        assert harness.witnessed(plain, asserted, [miss]) is None, miss
+    expect = frozenset({"test_failed_responses_are_resent"})
+    t8 = harness.Witness(item="non_json", exc="JSONDecodeError", via="_json_of")
+    good = _rec("test_failed_responses_are_resent", _DECODE, param="non_json")
+    assert harness.witnessed(t8, expect, [good]) == {
+        "function": "test_failed_responses_are_resent",
+        "param": "non_json",
+        "when": "call",
+        "type": "json.decoder.JSONDecodeError",
+        "text": "Expecting value",
+    }
+    for miss in (
+        # 別の parameter・teardown の段
+        _rec("test_failed_responses_are_resent", _DECODE, param="http500"),
+        _rec(
+            "test_failed_responses_are_resent",
+            _DECODE,
+            param="non_json",
+            when="teardown",
+        ),
+        # driver のその関数を通っていない (test の json.loads で出た)
+        _rec(
+            "test_failed_responses_are_resent",
+            (
+                "json.decoder.JSONDecodeError",
+                "Expecting value",
+                ((_TEST_DRIVER, "test_x"),),
+            ),
+            param="non_json",
+        ),
+        # 型と経由が別の例外に分かれている
+        _rec(
+            "test_failed_responses_are_resent",
+            ("builtins.RuntimeError", "outer", ((_DRV, "_json_of"),)),
+            ("json.decoder.JSONDecodeError", "Expecting value", ()),
+            param="non_json",
+        ),
+        # 型名の末尾が一致するだけの別の型
+        _rec(
+            "test_failed_responses_are_resent",
+            ("x.NotJSONDecodeError", "Expecting value", ((_DRV, "_json_of"),)),
+            param="non_json",
+        ),
+    ):
+        assert harness.witnessed(t8, expect, [miss]) is None, miss
+    # chain の 2 つ目の例外でも、同じ 1 つの例外で全てが揃えば数える
+    caused = _rec(
+        "test_failed_responses_are_resent",
+        ("builtins.RuntimeError", "outer", ()),
+        _DECODE,
+        param="non_json",
+    )
+    assert harness.witnessed(t8, expect, [caused]) is not None
 
 
 def test_harness_status_separates_wrong_reasons() -> None:
@@ -2083,46 +2538,105 @@ def test_harness_status_separates_wrong_reasons() -> None:
 
     理由が違う = WRONG_REASON・COLLECTION_ERROR・TIMEOUT。
     """
-    plain = harness.Mutant("x", "o", "n", frozenset({"test_a"}), "why")
-    reasoned = harness.Mutant(
-        "y", "o", "n", frozenset({"test_b"}), "why", raised="ScheduleError"
-    )
-    hit_a = {"test_a": "FAILED t::test_a\nE   assert 1 == 2\n"}
-    assert harness.status_of(plain, 0, {}, set(), collect=False) == "SURVIVED"
-    assert harness.status_of(plain, -1, {}, set(), collect=False) == "TIMEOUT"
-    assert harness.status_of(plain, 1, {}, set(), collect=False) == "COLLECTION_ERROR"
+    mut = harness.Mutant("x", "o", "n", frozenset({"test_a"}), "why")
+    hit = [
+        _rec("test_a", ("builtins.AssertionError", "assert 0", ()), assert_stmt=True)
+    ]
+    miss = [_rec("test_a", ("builtins.TypeError", "unrelated", ()))]
+    assert harness.status_of(mut, 0, set(), [], collect=False) == "SURVIVED"
+    assert harness.status_of(mut, -1, set(), [], collect=False) == "TIMEOUT"
+    assert harness.status_of(mut, 1, set(), [], collect=False) == "COLLECTION_ERROR"
     assert (
-        harness.status_of(plain, 1, hit_a, {"test_a"}, collect=True)
-        == "COLLECTION_ERROR"
+        harness.status_of(mut, 1, {"test_a"}, hit, collect=True) == "COLLECTION_ERROR"
     )
-    assert harness.status_of(plain, 1, hit_a, {"test_a"}, collect=False) == "KILLED"
-    # 期待 test が落ちたが assert ではない (setup の ERROR・NameError・TypeError・封鎖の
-    # raise AssertionError): 理由の文が無ければ数えない
-    assert harness.status_of(plain, 1, hit_a, set(), collect=False) == "WRONG_REASON"
-    other = {"test_z": "FAILED t::test_z\nE   assert 0\n"}
-    assert (
-        harness.status_of(plain, 1, other, {"test_z"}, collect=False) == "WRONG_REASON"
-    )
-    hit_b = {"test_b": "ERROR t::test_b\nE   ScheduleError: boom\n"}
-    assert harness.status_of(reasoned, 1, hit_b, set(), collect=False) == "KILLED"
-    # 理由の文がソース行にだけ出て、例外行 (E) には無い
-    source_only = {"test_b": "ERROR t::test_b\n    raise ScheduleError\nE   KeyError\n"}
-    assert (
-        harness.status_of(reasoned, 1, source_only, set(), collect=False)
-        == "WRONG_REASON"
-    )
-    # 出力の読み取りから判定まで: assert 以外で落ちた期待 test は数えない
-    failed, _, _, asserted = harness.parse_output("\n".join(_PYTEST_OUTPUT))
+    assert harness.status_of(mut, 1, {"test_a"}, hit, collect=False) == "KILLED"
+    assert harness.status_of(mut, 1, {"test_a"}, miss, collect=False) == "WRONG_REASON"
 
-    def judged(test: str) -> str:
-        mut = harness.Mutant("z", "o", "n", frozenset({test}), "why")
-        return harness.status_of(mut, 1, failed, asserted, collect=False)
 
-    assert judged("test_a") == "KILLED"
-    assert judged("test_q") == "KILLED"
-    assert judged("test_t") == "KILLED"
-    for test in ("test_b", "test_c", "test_d", "test_p", "test_s"):
-        assert judged(test) == "WRONG_REASON", test
+def test_harness_runs_the_tests_without_stale_bytecode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """各 run の前に scripts の pyc を消し、plugin と記録の置き場所を渡す.
+
+    同じ長さの置換を同じ秒に書くと、前の変異の pyc で実行される (decisions DI-3)。
+    """
+    cache = tmp_path / "scripts" / "__pycache__"
+    cache.mkdir(parents=True)
+    (cache / "generalization_probe_driver.cpython-311.pyc").write_bytes(b"stale")
+    seen: dict[str, object] = {}
+
+    def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+        seen.update(cache=cache.exists(), cmd=cmd, env=kw["env"])
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(harness.subprocess, "run", fake_run)
+    assert harness._run_tests({"X": "1"}, tmp_path) == (0, set(), False, [])
+    assert seen["cache"] is False, "ran with the bytecode of a previous mutant"
+    cmd = seen["cmd"]
+    assert isinstance(cmd, list)
+    assert cmd[cmd.index(harness._PLUGIN) - 1] == "-p"
+    env = seen["env"]
+    assert isinstance(env, dict)
+    assert env["X"] == "1"
+    assert harness._WITNESS_ENV in env
+    harness.purge_bytecode(tmp_path)  # 無くても落ちない
+
+
+def test_harness_summary_drops_local_paths_and_addresses() -> None:
+    """certification の証拠の要約に、手元の path・address を残さない.
+
+    消すもの: home の path・tmp のユーザー名・メモリの address。
+
+    照合は元の文で行う (security-checker MEDIUM)。backslash は chr(92) で組む。
+    """
+    bs = chr(92)
+    windows = f"C:{bs}{bs}Users{bs}{bs}someone{bs}{bs}AppData"
+    texts = {
+        "WindowsPath('C:/Users/someone/AppData/Local/Temp/pytest-of-someone/x')": (
+            "WindowsPath('<home>/AppData/Local/Temp/pytest-of-<user>/x')"
+        ),
+        f"No such file: '{windows}'": f"No such file: '<home>{bs}{bs}AppData'",
+        "PosixPath('/home/someone/x') /tmp/pytest-of-someone/y": (
+            "PosixPath('<home>/x') /tmp/pytest-of-<user>/y"
+        ),
+        "<function f at 0x000002B9328DB060>": "<function f at 0x?>",
+        "records.jsonl was published": "records.jsonl was published",
+    }
+    for raw, want in texts.items():
+        assert harness.redact(raw) == want, raw
+    record = _rec("test_a", ("builtins.AssertionError", next(iter(texts)), ()))
+    summary = harness._summary(record, record["chain"][0])
+    assert "someone" not in str(summary["text"])
+
+
+def _parametrized_tests() -> set[str]:
+    return {
+        name
+        for name, obj in globals().items()
+        if name.startswith("test_")
+        and any(m.name == "parametrize" for m in getattr(obj, "pytestmark", []))
+    }
+
+
+def test_harness_witnesses_name_what_they_match() -> None:
+    """理由の文のある証拠は、型か文を持つ.
+
+    item は、名指す相手の test がある形で登録する。
+    """
+    parametrized = _parametrized_tests()
+    assert "test_failed_responses_are_resent" in parametrized
+    for m in harness.MUTANTS:
+        w = m.witness
+        assert w.when in harness._PHASES, m.label
+        if w.assert_stmt:
+            continue
+        assert w.exc is not None or w.text is not None, m.label
+        # item を名指すなら parametrize の test、名指さないなら
+        # parametrize でない test を期待する
+        if w.item is not None:
+            assert m.expect & parametrized, m.label
+        else:
+            assert m.expect - parametrized, m.label
 
 
 def test_harness_registry_satisfies_the_manifest_contract() -> None:
