@@ -1,0 +1,1486 @@
+{
+ "gate": 0.075,
+ "max_abs_C": 0.046875,
+ "passed": true,
+ "tables": {
+  "R12": {
+   "R": 12,
+   "gate": 0.075,
+   "max_abs_C": 0.0390625,
+   "max_abs_C_key_blind": 0.0,
+   "passed": true,
+   "policies": {
+    "empty_state_first": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "omega_missing_label_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "order_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "position_of_label": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "surface_alphabetical[first,bot]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,first]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,last]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,bot]": {
+     "C": -0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,first]": {
+     "C": -0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,last]": {
+     "C": -0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,bot]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,first]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,last]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,bot]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,first]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,last]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,bot]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,first]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,last]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,bot]": {
+     "C": -0.0078125,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,first]": {
+     "C": -0.0078125,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,last]": {
+     "C": -0.0078125,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,bot]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,first]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,last]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,bot]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,first]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,last]": {
+     "C": 0.013020833333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,bot]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,first]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,last]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,bot]": {
+     "C": 0.0390625,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,first]": {
+     "C": 0.0390625,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,last]": {
+     "C": 0.0390625,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,bot]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,first]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,last]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,bot]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,first]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,last]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,bot]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,first]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,last]": {
+     "C": 0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,bot]": {
+     "C": -0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,first]": {
+     "C": -0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,last]": {
+     "C": -0.002604166667,
+     "family": "key_surface"
+    },
+    "surface_length[first,bot]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_length[first,first]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_length[first,last]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_length[last,bot]": {
+     "C": 0.0234375,
+     "family": "key_surface"
+    },
+    "surface_length[last,first]": {
+     "C": 0.0234375,
+     "family": "key_surface"
+    },
+    "surface_length[last,last]": {
+     "C": 0.0234375,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,bot]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,first]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,last]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,bot]": {
+     "C": 0.0078125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,first]": {
+     "C": 0.0078125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,last]": {
+     "C": 0.0078125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,bot]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,first]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,last]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,bot]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,first]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,last]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,bot]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,first]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,last]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,bot]": {
+     "C": -0.0234375,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,first]": {
+     "C": -0.0234375,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,last]": {
+     "C": -0.0234375,
+     "family": "key_surface"
+    },
+    "top3_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    }
+   },
+   "positive_controls": {
+    "oracle_latent": 1.0,
+    "oracle_next_class": -0.5
+   }
+  },
+  "R18": {
+   "R": 18,
+   "gate": 0.075,
+   "max_abs_C": 0.041666666667,
+   "max_abs_C_key_blind": 0.0,
+   "passed": true,
+   "policies": {
+    "empty_state_first": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "omega_missing_label_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "order_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "position_of_label": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "surface_alphabetical[first,bot]": {
+     "C": 0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,first]": {
+     "C": 0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,last]": {
+     "C": 0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,bot]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,first]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,last]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,bot]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,first]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,last]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,bot]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,first]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,last]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,bot]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,first]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,last]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,bot]": {
+     "C": 0.017361111111,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,first]": {
+     "C": 0.017361111111,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,last]": {
+     "C": 0.017361111111,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,bot]": {
+     "C": 0.034722222222,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,first]": {
+     "C": 0.034722222222,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,last]": {
+     "C": 0.034722222222,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,bot]": {
+     "C": 0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,first]": {
+     "C": 0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,last]": {
+     "C": 0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,bot]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,first]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,last]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,bot]": {
+     "C": 0.013888888889,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,first]": {
+     "C": 0.013888888889,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,last]": {
+     "C": 0.013888888889,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,bot]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,first]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,last]": {
+     "C": -0.001736111111,
+     "family": "key_surface"
+    },
+    "surface_length[first,bot]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_length[first,first]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_length[first,last]": {
+     "C": -0.003472222222,
+     "family": "key_surface"
+    },
+    "surface_length[last,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_length[last,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_length[last,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,bot]": {
+     "C": 0.024305555556,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,first]": {
+     "C": 0.024305555556,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,last]": {
+     "C": 0.024305555556,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,bot]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,first]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,last]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,bot]": {
+     "C": -0.012152777778,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,first]": {
+     "C": -0.012152777778,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,last]": {
+     "C": -0.012152777778,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,bot]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,first]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,last]": {
+     "C": -0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,bot]": {
+     "C": -0.022569444444,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,first]": {
+     "C": -0.022569444444,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,last]": {
+     "C": -0.022569444444,
+     "family": "key_surface"
+    },
+    "top3_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    }
+   },
+   "positive_controls": {
+    "oracle_latent": 1.0,
+    "oracle_next_class": -0.5
+   }
+  },
+  "R6": {
+   "R": 6,
+   "gate": 0.075,
+   "max_abs_C": 0.046875,
+   "max_abs_C_key_blind": 0.0,
+   "passed": true,
+   "policies": {
+    "empty_state_first": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "exact_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "first_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "last_row[last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "most_frequent[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_company_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_distractor[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "nn_place_weighted[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "omega_missing_label_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "order_lookup": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "position_of_label": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "surface_alphabetical[first,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[first,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,bot]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,first]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_alphabetical[last,last]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,bot]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,first]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[first,last]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard[last,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,bot]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,first]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[first,last]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,bot]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,first]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_bigram_jaccard_top3_vote[last,last]": {
+     "C": 0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,bot]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,first]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[first,last]": {
+     "C": 0.020833333333,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,bot]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,first]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_first_letter[last,last]": {
+     "C": 0.041666666667,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,bot]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,first]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_last_letter[first,last]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,bot]": {
+     "C": 0.036458333333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,first]": {
+     "C": 0.036458333333,
+     "family": "key_surface"
+    },
+    "surface_last_letter[last,last]": {
+     "C": 0.036458333333,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,bot]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,first]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[first,last]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,bot]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,first]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_lcs_subsequence[last,last]": {
+     "C": 0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,bot]": {
+     "C": -0.046875,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,first]": {
+     "C": -0.046875,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[first,last]": {
+     "C": -0.046875,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,bot]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,first]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_lcs_substring[last,last]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_length[first,bot]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_length[first,first]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_length[first,last]": {
+     "C": -0.005208333333,
+     "family": "key_surface"
+    },
+    "surface_length[last,bot]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_length[last,first]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_length[last,last]": {
+     "C": 0.015625,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,bot]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,first]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[first,last]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,bot]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,first]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_levenshtein[last,last]": {
+     "C": 0.0,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,bot]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,first]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[first,last]": {
+     "C": -0.010416666667,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,bot]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,first]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_levenshtein_top3_vote[last,last]": {
+     "C": 0.03125,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,bot]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,first]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[first,last]": {
+     "C": -0.015625,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,bot]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,first]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "surface_trigram_jaccard[last,last]": {
+     "C": -0.026041666667,
+     "family": "key_surface"
+    },
+    "top3_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top3_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[first,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,bot]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,first]": {
+     "C": 0.0,
+     "family": "key_blind"
+    },
+    "top5_vote[last,last]": {
+     "C": 0.0,
+     "family": "key_blind"
+    }
+   },
+   "positive_controls": {
+    "oracle_latent": 1.0,
+    "oracle_next_class": -0.5
+   }
+  }
+ }
+}

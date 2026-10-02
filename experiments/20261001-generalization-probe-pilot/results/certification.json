@@ -1,0 +1,2401 @@
+{
+  "target_sha256": {
+    "scripts/generalization_probe_battery.py": "104b3bc6b25af7ec021fa5594de37bc71bff966629fa5ac298c18a5bf5ebea8d",
+    "scripts/generalization_probe_fixtures.py": "d6cdad2002869e6177f7df31b63aba2aa66e96682a3cc1edbecfd0fe8f810ea6",
+    "scripts/generalization_probe_scorer.py": "b3e21c27053ba523d0bdfece0cce7147f752d50e6149b357ecde6efe0ba7c264",
+    "scripts/generalization_probe_sim.py": "1cce1b218f016343bdeb67ed739833f45852964ead3ca98fecf2938cd3c60fd7",
+    "scripts/generalization_probe_pilot_gate.py": "31a334be30a5f12e8f360875fb5770a833da08bd69c0f91e4922ad4332bb5f09",
+    "scripts/stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2"
+  },
+  "tests_sha256": {
+    "tests/test_generalization_probe/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/test_generalization_probe/conftest.py": "52f48a057498f4c225b5d8e413f56b96474a21a167e70f153cc3e460ee5c7f65",
+    "tests/test_generalization_probe/test_battery.py": "fe7f50a2a91be54d7add8b2710d35b66a6f89a2fd2da8605b7ca56209dd7940b",
+    "tests/test_generalization_probe/test_fixtures.py": "01020d42d147fd54cfdc29c6ef333f039b8e2567eea7db82b20aac3c2ca3fda2",
+    "tests/test_generalization_probe/test_scorer.py": "e3c3aae4f4fa08e83f4d9a7b76559f07bc506f582870cdce87128275ee195fb3",
+    "tests/test_generalization_probe/test_sim.py": "25a373ab44d75d28b8c07d1f31f7c08d8b8e5e967a9a744852c97dbe9769d2f9",
+    "tests/test_generalization_probe/test_pilot_gate.py": "0088579a46d12a5dcd072bab02c6a545e3488cefca5c4ec1bacce4876f7a5081",
+    "tests/test_generalization_probe/test_manifest.py": "61143fcfe3bda193128a3d4ec0804874940afdfb387842f17eed8eecb8527efe"
+  },
+  "harness_sha256": "8dc8ec0364ed412bb96d8013148b9c7a22d9a8b914e38f0e2bb5d20747df5590",
+  "manifest_sha256": "7e765df29bfc354ac781fbc2d8c88f0047b5b6ccbf10c07c939dde53d6daa799",
+  "meta_test": [
+    {
+      "label": "decide を常に INCONCLUSIVE に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_decide_threshold",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_lookup_pass"
+      ],
+      "failed": [
+        "test_cli_end_to_end",
+        "test_decide_threshold",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lookup_pass"
+      ]
+    },
+    {
+      "label": "structure_violations を空に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_structure_grid",
+        "test_structure_prompt",
+        "test_structure_seed"
+      ],
+      "failed": [
+        "test_structure_call_index",
+        "test_structure_duplicate",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed"
+      ]
+    }
+  ],
+  "mutants": [
+    {
+      "label": "mb01 回転を外す (A_rot = A)",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pointed",
+        "test_rotation_and_sigma"
+      ],
+      "reason": "族内の foil が w と一致し、推定量が定義されない",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_category",
+        "test_category_signs",
+        "test_cell_scores",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_exposure_is_shared_within_family_and_rule_free",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detects",
+        "test_key_blind_policies_are_exactly_zero_per_unit",
+        "test_pointed",
+        "test_positive_controls",
+        "test_rotation_and_sigma",
+        "test_seed_reading_key_blind_policy_is_zero",
+        "test_shared_within_family",
+        "test_unit_scores_family_average"
+      ]
+    },
+    {
+      "label": "mb02 σ を外す (B = A)",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pointed",
+        "test_rotation_and_sigma"
+      ],
+      "reason": "族 B が族 A と同じ label を使う",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_bot_in_denominator",
+        "test_category",
+        "test_category_signs",
+        "test_cell_scores",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_evaluate_battery_gate",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_meta",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_requires_certification",
+        "test_evaluate_transport_failure",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detects",
+        "test_fixture_violations_detects_a_nonzero_key_blind",
+        "test_key_blind_policies_are_exactly_zero_per_unit",
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail",
+        "test_label_frequency_invariant",
+        "test_masked_states",
+        "test_meta_observed",
+        "test_non_leakage",
+        "test_non_leakage_detects_class_name",
+        "test_oc_size_at_tau_small",
+        "test_oc_uses_the_main_run_envelope",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_meta",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_requires_cert",
+        "test_pilot_requires_selected_r",
+        "test_pilot_respects_selected_r",
+        "test_pilot_seed_shared_within_triple",
+        "test_pilot_stop_on_power",
+        "test_pilot_structure_prompt_and_parse",
+        "test_pilot_structure_seed",
+        "test_pointed",
+        "test_positive_controls",
+        "test_probe_keys_absent",
+        "test_probe_keys_absent_detects",
+        "test_prompt_budget",
+        "test_rotation_and_sigma",
+        "test_schema_bool_is_rejected",
+        "test_schema_missing_field_and_bad_json",
+        "test_seed_reading_key_blind_policy_is_zero",
+        "test_seed_shared_within_family",
+        "test_shared_within_family",
+        "test_state_rows_follow_world_rule",
+        "test_structure_call_index",
+        "test_structure_clean",
+        "test_structure_duplicate",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed",
+        "test_triple_prompts_check_detects",
+        "test_triple_prompts_differ_only_in_key",
+        "test_unit_scores_family_average"
+      ]
+    },
+    {
+      "label": "mb03 aggregator が失敗も成功として記録する",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_state_rows_follow_world_rule"
+      ],
+      "reason": "状態が世界の規則でなく試行の全体を写す",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_bot_in_denominator",
+        "test_cell_scores",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_evaluate_battery_gate",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_meta",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_requires_certification",
+        "test_evaluate_transport_failure",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detects",
+        "test_fixture_violations_detects_a_nonzero_key_blind",
+        "test_key_blind_policies_are_exactly_zero_per_unit",
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail",
+        "test_label_frequency_invariant",
+        "test_masked_states",
+        "test_meta_observed",
+        "test_non_leakage",
+        "test_non_leakage_detects_class_name",
+        "test_oc_size_at_tau_small",
+        "test_oc_uses_the_main_run_envelope",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_meta",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_requires_cert",
+        "test_pilot_requires_selected_r",
+        "test_pilot_respects_selected_r",
+        "test_pilot_seed_shared_within_triple",
+        "test_pilot_stop_on_power",
+        "test_pilot_structure_prompt_and_parse",
+        "test_pilot_structure_seed",
+        "test_positive_controls",
+        "test_probe_keys_absent",
+        "test_probe_keys_absent_detects",
+        "test_prompt_budget",
+        "test_render_probe_text",
+        "test_render_row_text",
+        "test_schema_bool_is_rejected",
+        "test_schema_missing_field_and_bad_json",
+        "test_seed_reading_key_blind_policy_is_zero",
+        "test_seed_shared_within_family",
+        "test_seed_shared_within_triple",
+        "test_selection_contexts_use_selection_layouts",
+        "test_shared_within_family",
+        "test_state_rows_follow_world_rule",
+        "test_structure_call_index",
+        "test_structure_clean",
+        "test_structure_duplicate",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed",
+        "test_triple_prompts_check_detects",
+        "test_triple_prompts_differ_only_in_key",
+        "test_unit_scores_family_average"
+      ]
+    },
+    {
+      "label": "mb04 曝露の試行回数を変える",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_render_row_text"
+      ],
+      "reason": "行の文面 (成功 3 / 失敗 0) が v2 の lever 行と変わる",
+      "failed": [
+        "test_render_row_text"
+      ]
+    },
+    {
+      "label": "mb05 状態の行順を arm ごとにする (族内で共有しない)",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_shared_within_family"
+      ],
+      "reason": "族内の 2 arm の状態が label 以外でも違い、相殺が崩れる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_shared_within_family"
+      ]
+    },
+    {
+      "label": "mb06 表示順を probe ごとにずらす (Ω の順が分類を明かす)",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_triple_prompts_differ_only_in_key"
+      ],
+      "reason": "つ組の 3 probe の prompt が key 以外でも違い、key を見ない方策の C = 0 の定理が外れる (Codex HIGH-1)",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_triple_prompts_differ_only_in_key"
+      ]
+    },
+    {
+      "label": "mb06b 表示順の回転からつ組を外す",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_options_are_family_labels_independent_of_class"
+      ],
+      "reason": "凍結した表示順から外れる",
+      "failed": [
+        "test_design_indices",
+        "test_options_are_family_labels_independent_of_class"
+      ]
+    },
+    {
+      "label": "mb07 dev key に probe key を入れる",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_probe_keys_absent"
+      ],
+      "reason": "probe の key が状態に現れ、汎化でなく lookup になる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_know_options_balance_the_answer_position",
+        "test_probe_keys_absent",
+        "test_seed_reading_key_blind_policy_is_zero",
+        "test_surface_overlap",
+        "test_surface_overlap_detects"
+      ]
+    },
+    {
+      "label": "mb08 字面の重なりの検査を止める",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_surface_overlap_detects"
+      ],
+      "reason": "probe key と dev key の 4-gram の共有を見逃す",
+      "failed": [
+        "test_surface_overlap_detects"
+      ]
+    },
+    {
+      "label": "mb09 頻度ベクトルの不変性を恒真にする",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frequency_vector_counterexample"
+      ],
+      "reason": "(x, x, y) の反例を通す",
+      "failed": [
+        "test_frequency_vector_counterexample"
+      ]
+    },
+    {
+      "label": "mb10 非漏洩の検査から分類名を外す",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_leakage_detects_class_name"
+      ],
+      "reason": "潜在の分類名が prompt に漏れても検出しない",
+      "failed": [
+        "test_non_leakage_detects_class_name"
+      ]
+    },
+    {
+      "label": "mb11 つ組の distractor を分類ごとにずらす",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_triples_share_distractors"
+      ],
+      "reason": "つ組の 3 probe が近傍を共有しない",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_key_blind_policies_are_exactly_zero_per_unit",
+        "test_triple_prompts_differ_only_in_key",
+        "test_triples_share_distractors"
+      ]
+    },
+    {
+      "label": "mb12 dev の状況を 1 つの組に寄せる",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_dev_design_one_per_combo_and_class"
+      ],
+      "reason": "一致の型ごとに各分類 1 行の均衡が崩れる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_dev_design_one_per_combo_and_class",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure"
+      ]
+    },
+    {
+      "label": "mb13 masked の状態に key を残す",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_masked_states"
+      ],
+      "reason": "null pilot が潜在を読めてしまい、null でなくなる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_masked_states"
+      ]
+    },
+    {
+      "label": "mb14 pilot と本走の seed の名前空間を重ねる",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_seed_namespaces"
+      ],
+      "reason": "資格に使った null 記録と確認の実走が分離されない",
+      "failed": [
+        "test_seed_namespaces"
+      ]
+    },
+    {
+      "label": "mb15 prompt の byte 予算を下げる",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_prompt_budget"
+      ],
+      "reason": "切り詰めが起こりえないことの静的保証が外れる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_prompt_budget"
+      ]
+    },
+    {
+      "label": "mb16 知識確認の正答を常に先頭にする",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_know_options_balance_the_answer_position"
+      ],
+      "reason": "先頭を答える方策が知識確認を通る (Codex HIGH-2)",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_know_options_balance_the_answer_position",
+        "test_knowledge_position_policies_fail"
+      ]
+    },
+    {
+      "label": "mb17 選定用の行順を本走と同じにする",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_selection_layout_separate"
+      ],
+      "reason": "key の選定が本走の layout に条件付く (Codex HIGH-4)",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_missing_rows",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_selection_contexts_use_selection_layouts",
+        "test_selection_layout_separate"
+      ]
+    },
+    {
+      "label": "mb18 つ組の prompt の検査を止める",
+      "target": "generalization_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_triple_prompts_check_detects"
+      ],
+      "reason": "定理の前提の崩れを見逃す",
+      "failed": [
+        "test_triple_prompts_check_detects"
+      ]
+    },
+    {
+      "label": "mx01 fixture の w / foil の符号を入れ替える",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned",
+        "test_positive_controls"
+      ],
+      "reason": "陽性対照の向きが逆になる",
+      "failed": [
+        "test_category_signs",
+        "test_fixture_table_pinned",
+        "test_positive_controls"
+      ]
+    },
+    {
+      "label": "mx02 fixture gate の閾値を 1 にする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detects"
+      ],
+      "reason": "|C| が τ/4 を超える写し方を見逃す",
+      "failed": [
+        "test_fixture_violations_detects"
+      ]
+    },
+    {
+      "label": "mx03 fixture の単位を族内の平均でなく片方の arm にする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned",
+        "test_positive_controls"
+      ],
+      "reason": "族内の相殺を経ずに C を計算する",
+      "failed": [
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_positive_controls"
+      ]
+    },
+    {
+      "label": "mx04 字面の方策の登録を落とす",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "登録した写し方の集合が欠ける",
+      "failed": [
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "mx05 編集距離の置換の費用を 0 にする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ],
+      "reason": "字面の近さの計算が誤る",
+      "failed": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ]
+    },
+    {
+      "label": "mx06 Jaccard を共通部分の数にする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ],
+      "reason": "字面の近さの計算が誤る",
+      "failed": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ]
+    },
+    {
+      "label": "mx07 同点処理 'last' を 'first' と同じにする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "同点処理の変種が登録されていても計算されない",
+      "failed": [
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "mx08 fixture 表の合否を恒真にする",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detects"
+      ],
+      "reason": "gate を通らない表を合格と記録する",
+      "failed": [
+        "test_fixture_violations_detects"
+      ]
+    },
+    {
+      "label": "mx09 key を見ない方策の 0 の確認を止める",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detects_a_nonzero_key_blind"
+      ],
+      "reason": "定理の破れを見逃す",
+      "failed": [
+        "test_fixture_violations_detects_a_nonzero_key_blind"
+      ]
+    },
+    {
+      "label": "mx10 最長共通部分列を誤る",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ],
+      "reason": "部分列の方策の計算が誤る (Codex LOW-12)",
+      "failed": [
+        "test_fixture_table_pinned",
+        "test_levenshtein_and_similarity"
+      ]
+    },
+    {
+      "label": "mx11 選定用の行順を使わない",
+      "target": "generalization_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_selection_contexts_use_selection_layouts"
+      ],
+      "reason": "key の選定が本走の layout に条件付く (Codex HIGH-4)",
+      "failed": [
+        "test_selection_contexts_use_selection_layouts"
+      ]
+    },
+    {
+      "label": "ms01 parse: 2 種以上の label で先頭を採る",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_two_labels_is_bot"
+      ],
+      "reason": "曖昧な応答を数える",
+      "failed": [
+        "test_parse_two_labels_is_bot"
+      ]
+    },
+    {
+      "label": "ms02 parse: think ブロックを除かない",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_think_block"
+      ],
+      "reason": "think の中の label を数える",
+      "failed": [
+        "test_parse_think_block"
+      ]
+    },
+    {
+      "label": "ms03 parse: 閉じない think を ⊥ にしない",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_unclosed_think"
+      ],
+      "reason": "途中で切れた応答を数える",
+      "failed": [
+        "test_parse_unclosed_think"
+      ]
+    },
+    {
+      "label": "ms04 parse: NFKC を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_basic"
+      ],
+      "reason": "全角の応答を ⊥ にする",
+      "failed": [
+        "test_parse_basic"
+      ]
+    },
+    {
+      "label": "ms05 ⊥ を分母から落とす",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bot_in_denominator"
+      ],
+      "reason": "⊥ の偏りが C を動かす",
+      "failed": [
+        "test_bot_in_denominator"
+      ]
+    },
+    {
+      "label": "ms06 単位を族内の平均でなく片方の arm にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_blind_no_go",
+        "test_unit_scores_family_average"
+      ],
+      "reason": "label priming と事前傾向の族内の相殺が外れる",
+      "failed": [
+        "test_unit_scores_family_average"
+      ]
+    },
+    {
+      "label": "ms07 成分の条件を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_requires_positive_components"
+      ],
+      "reason": "1 arm が読まなくても PASS する",
+      "failed": [
+        "test_decide_requires_positive_components",
+        "test_evaluate_one_arm_not_reading"
+      ]
+    },
+    {
+      "label": "ms08 PASS の閾値を e ≥ 1 に下げる",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_threshold"
+      ],
+      "reason": "size が α を超える",
+      "failed": [
+        "test_decide_threshold",
+        "test_evaluate_partial_inconclusive",
+        "test_knowledge_gate",
+        "test_oc_size_at_tau_small",
+        "test_pilot_clean_go",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_respects_selected_r"
+      ]
+    },
+    {
+      "label": "ms09 PASS 以外を全て NO_GO にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_threshold",
+        "test_evaluate_partial_inconclusive"
+      ],
+      "reason": "INCONCLUSIVE に到達しない",
+      "failed": [
+        "test_decide_threshold",
+        "test_evaluate_partial_inconclusive",
+        "test_knowledge_gate",
+        "test_oc_size_at_tau_small",
+        "test_pilot_clean_go",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_respects_selected_r"
+      ]
+    },
+    {
+      "label": "ms10 λ の上限を 1/(1−τ) に上げる",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_respects_necessary_bound",
+        "test_frozen_constants"
+      ],
+      "reason": "因子が負になりうる賭けで、帰無の領域の size が破れる",
+      "failed": [
+        "test_e_value_exact",
+        "test_e_value_respects_necessary_bound",
+        "test_e_value_zero_factor",
+        "test_evaluate_partial_inconclusive",
+        "test_frozen_constants"
+      ]
+    },
+    {
+      "label": "ms11 λ の混合を平均でなく最大にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact"
+      ],
+      "reason": "e-value でなくなる (λ を見てから選ぶ)",
+      "failed": [
+        "test_e_value_exact",
+        "test_e_value_zero_factor"
+      ]
+    },
+    {
+      "label": "ms12 NO_GO の e-value の符号を逆にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact",
+        "test_no_go_reachable"
+      ],
+      "reason": "NO_GO が τ より大の側で立つ",
+      "failed": [
+        "test_e_value_exact",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_knowledge_gate",
+        "test_no_go_reachable",
+        "test_pilot_clean_go",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_respects_selected_r",
+        "test_sim_power_and_null"
+      ]
+    },
+    {
+      "label": "ms13 arm の ⊥ の上限を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate",
+        "test_evaluate_lever_bottom"
+      ],
+      "reason": "⊥ の多い battery で判定する",
+      "failed": [
+        "test_bottom_gate",
+        "test_evaluate_envelope",
+        "test_oc_uses_the_main_run_envelope",
+        "test_sim_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms14 族内の ⊥ 率差の検査を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_family_gap",
+        "test_evaluate_lever_bottom"
+      ],
+      "reason": "族内の ⊥ の偏りで C が動く",
+      "failed": [
+        "test_bottom_gate_family_gap"
+      ]
+    },
+    {
+      "label": "ms15 envelope の余裕を外す (gate 全域にする)",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_envelope_bottom_max",
+        "test_evaluate_envelope"
+      ],
+      "reason": "pilot の雑音の外で判定する (Codex MEDIUM-6)",
+      "failed": [
+        "test_envelope_bottom_max",
+        "test_evaluate_envelope"
+      ]
+    },
+    {
+      "label": "ms16 certification の確認を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_requires_certification"
+      ],
+      "reason": "変異試験を通っていない判定コードで判定する",
+      "failed": [
+        "test_evaluate_requires_certification"
+      ]
+    },
+    {
+      "label": "ms17 meta の要求条件の照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_meta"
+      ],
+      "reason": "凍結と違う decode の記録で判定する",
+      "failed": [
+        "test_evaluate_meta",
+        "test_pilot_meta"
+      ]
+    },
+    {
+      "label": "ms18 seed の照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_seed"
+      ],
+      "reason": "共通乱数の結び付きを確かめない",
+      "failed": [
+        "test_structure_seed"
+      ]
+    },
+    {
+      "label": "ms19 prompt の照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_prompt"
+      ],
+      "reason": "凍結 renderer と違う prompt の記録で判定する",
+      "failed": [
+        "test_structure_prompt"
+      ]
+    },
+    {
+      "label": "ms20 parse の照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_parse"
+      ],
+      "reason": "記録の parse を信じる",
+      "failed": [
+        "test_structure_parse"
+      ]
+    },
+    {
+      "label": "ms21 重複の検査を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_duplicate"
+      ],
+      "reason": "同じセルを 2 回数える",
+      "failed": [
+        "test_structure_duplicate"
+      ]
+    },
+    {
+      "label": "ms22 grid の検査を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_grid"
+      ],
+      "reason": "凍結 grid の外の記録を受け入れる",
+      "failed": [
+        "test_structure_grid"
+      ]
+    },
+    {
+      "label": "ms23 観測環境と pilot の照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_observed"
+      ],
+      "reason": "pilot と違うモデル実体で判定する (Codex MEDIUM-11)",
+      "failed": [
+        "test_meta_observed"
+      ]
+    },
+    {
+      "label": "ms24 call_index の一意性の検査を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_call_index"
+      ],
+      "reason": "呼び出し順の記録の欠陥を見逃す",
+      "failed": [
+        "test_structure_call_index"
+      ]
+    },
+    {
+      "label": "ms25 transport 失敗を ⊥ として計算する",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_transport_failure"
+      ],
+      "reason": "送れなかった呼び出しを ⊥ に数える",
+      "failed": [
+        "test_evaluate_transport_failure"
+      ]
+    },
+    {
+      "label": "ms26 int 欄の型検査を緩める (bool を通す)",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schema_bool_is_rejected"
+      ],
+      "reason": "bool を int に読み替える",
+      "failed": [
+        "test_schema_bool_is_rejected"
+      ]
+    },
+    {
+      "label": "ms27 certification の KILLED の確認を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification_requires_all_killed"
+      ],
+      "reason": "生き残りのある certification を受け入れる",
+      "failed": [
+        "test_load_certification_requires_all_killed"
+      ]
+    },
+    {
+      "label": "ms28 certification の sha256 照合を外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification_detects_stale"
+      ],
+      "reason": "古いコードの certification を受け入れる",
+      "failed": [
+        "test_load_certification_detects_stale"
+      ]
+    },
+    {
+      "label": "ms29 fixture gate を判定から外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_fixture_gate"
+      ],
+      "reason": "登録した写し方で説明できる設計で判定する",
+      "failed": [
+        "test_evaluate_fixture_gate"
+      ]
+    },
+    {
+      "label": "ms30 battery の機械検査を判定から外す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_battery_gate"
+      ],
+      "reason": "相殺条件の崩れた battery で判定する",
+      "failed": [
+        "test_evaluate_battery_gate"
+      ]
+    },
+    {
+      "label": "ms31 族内で seed を共有しない",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_shared_within_family"
+      ],
+      "reason": "共通乱数で state-blind の選択を相殺できない",
+      "failed": [
+        "test_seed_shared_within_family"
+      ]
+    },
+    {
+      "label": "ms32 τ を変える",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "reason": "凍結値 (v2 の τ) から外れる",
+      "failed": [
+        "test_bottom_gate_family_gap",
+        "test_evaluate_partial_inconclusive",
+        "test_frozen_constants",
+        "test_most_favorable_requires_the_2tau_point",
+        "test_oc_conditions_each_matter",
+        "test_oc_for_r_uses_the_checks",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "ms33 K を変える",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "reason": "凍結値から外れる",
+      "failed": [
+        "test_cli_end_to_end",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_lookup_pass",
+        "test_evaluate_one_arm_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_frozen_constants"
+      ]
+    },
+    {
+      "label": "ms34 成分を arm でなく全体の平均にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_components_order",
+        "test_unit_scores_family_average"
+      ],
+      "reason": "成分の条件が意味を失う",
+      "failed": [
+        "test_components_order",
+        "test_evaluate_one_arm_not_reading",
+        "test_unit_scores_family_average"
+      ]
+    },
+    {
+      "label": "ms35 観測環境の欠けを通す",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_observed"
+      ],
+      "reason": "モデル実体を同定しない記録を受け入れる (Codex MEDIUM-11)",
+      "failed": [
+        "test_meta_observed",
+        "test_pilot_meta"
+      ]
+    },
+    {
+      "label": "ms36 CLI が pilot の GO を確かめない",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "pilot が STOP でも本走を判定する",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "ms37 envelope を gate に渡さない",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_envelope"
+      ],
+      "reason": "pilot の雑音の外で判定する (Codex MEDIUM-6)",
+      "failed": [
+        "test_evaluate_envelope"
+      ]
+    },
+    {
+      "label": "ms38 other を族の Ω でなく全語彙にする",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_category"
+      ],
+      "reason": "Ω 外の label を other に数える",
+      "failed": [
+        "test_category"
+      ]
+    },
+    {
+      "label": "mz01 効果の較正で ⊥ を割り戻さない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sim_calibration"
+      ],
+      "reason": "植えた E[C] が目標より小さくなる",
+      "failed": [
+        "test_sim_calibration"
+      ]
+    },
+    {
+      "label": "mz02 crn の結合を独立にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_crn_null_exact_zero"
+      ],
+      "reason": "共通乱数の結合を模擬しない",
+      "failed": [
+        "test_crn_null_exact_zero",
+        "test_crn_shares_randomness_within_the_triple"
+      ]
+    },
+    {
+      "label": "mz03 項目の 1 の数を厳密にしない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_item_pattern_exact_mean"
+      ],
+      "reason": "項目に条件付けた帰無の平均が目標から外れる",
+      "failed": [
+        "test_item_pattern_exact_mean"
+      ]
+    },
+    {
+      "label": "mz04 逆向きの項目を正にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_item_pattern_exact_mean"
+      ],
+      "reason": "逆向きの汎化の形を模擬しない",
+      "failed": [
+        "test_item_pattern_exact_mean"
+      ]
+    },
+    {
+      "label": "mz05 選定で size の条件を外す",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_r_main_when_it_passes"
+      ],
+      "reason": "size の悪い R を選ぶ",
+      "failed": [
+        "test_select_is_r_main_when_it_passes"
+      ]
+    },
+    {
+      "label": "mz06 二項の閾値を探さない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_r_flags",
+        "test_size_threshold_is_exact_binomial"
+      ],
+      "reason": "MC の揺らぎで真の size が α の候補を落とす",
+      "failed": [
+        "test_evaluate_r_flags",
+        "test_size_threshold_is_exact_binomial"
+      ]
+    },
+    {
+      "label": "mz06b MC の閾値を点の数で割らない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_r_flags",
+        "test_size_threshold_is_exact_binomial"
+      ],
+      "reason": "格子の全点合格で誤棄却の率が膨らむ",
+      "failed": [
+        "test_evaluate_r_flags",
+        "test_size_threshold_is_exact_binomial"
+      ]
+    },
+    {
+      "label": "mz07 境目の補間を誤る",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_boundary"
+      ],
+      "reason": "power 0.8 の境目を格子の点に丸める",
+      "failed": [
+        "test_boundary"
+      ]
+    },
+    {
+      "label": "mz08 最も有利な行の 2τ の点を要求しない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_most_favorable_requires_the_2tau_point"
+      ],
+      "reason": "2τ に届かない行で door-close を外す (Codex MEDIUM-8)",
+      "failed": [
+        "test_most_favorable_requires_the_2tau_point"
+      ]
+    },
+    {
+      "label": "mz09 模擬で ⊥ gate を外す",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sim_bottom_gate"
+      ],
+      "reason": "判定と同じ gate を模擬しない",
+      "failed": [
+        "test_sim_bottom_gate"
+      ]
+    },
+    {
+      "label": "mz10 集中の形の分類を 1 つ多くする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sparse_reach"
+      ],
+      "reason": "集中の形の到達上限が変わる",
+      "failed": [
+        "test_sparse_reach"
+      ]
+    },
+    {
+      "label": "mz11 二点の極値の確率を誤る",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_extremal_mean"
+      ],
+      "reason": "帰無の境界でない分布で size を測る",
+      "failed": [
+        "test_extremal_mean"
+      ]
+    },
+    {
+      "label": "mz12 対数オッズの較正の向きを逆にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_logodds_calibration"
+      ],
+      "reason": "対数オッズの形の E[C] が目標に合わない",
+      "failed": [
+        "test_logodds_calibration"
+      ]
+    },
+    {
+      "label": "mz13 power の条件を外す",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_r_flags"
+      ],
+      "reason": "power の足りない R を選ぶ",
+      "failed": [
+        "test_evaluate_r_flags"
+      ]
+    },
+    {
+      "label": "mz14 size の上限を外す",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_r_flags"
+      ],
+      "reason": "size の破れた R を選ぶ",
+      "failed": [
+        "test_evaluate_r_flags"
+      ]
+    },
+    {
+      "label": "mz15 選定を R_MAIN でなく最初の合格 R にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_r_main_when_it_passes"
+      ],
+      "reason": "user 裁定 DU-1 の R を外れる",
+      "failed": [
+        "test_select_is_r_main_when_it_passes"
+      ]
+    },
+    {
+      "label": "mz16 逆向きの結合を共通にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_anti_coupling_is_more_variable"
+      ],
+      "reason": "逆向きの結合を模擬しない (Codex MEDIUM-10)",
+      "failed": [
+        "test_anti_coupling_is_more_variable"
+      ]
+    },
+    {
+      "label": "mz17 arm × 単位の全か無かを arm で共通にする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aon_arm_unit_shape"
+      ],
+      "reason": "ADR の形 3 を模擬しない",
+      "failed": [
+        "test_aon_arm_unit_shape"
+      ]
+    },
+    {
+      "label": "mz18 回転の arm の w を誤る",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_design_indices"
+      ],
+      "reason": "模擬の推定量が判定と違う",
+      "failed": [
+        "test_design_indices"
+      ]
+    },
+    {
+      "label": "mz19 模擬の表示の先頭を probe ごとにする",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_design_indices"
+      ],
+      "reason": "模擬の位置の偏りが設計と違う",
+      "failed": [
+        "test_design_indices"
+      ]
+    },
+    {
+      "label": "mp01 知識確認の閾値を 1 に下げる",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail"
+      ],
+      "reason": "分類を知らない key で本走する",
+      "failed": [
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail"
+      ]
+    },
+    {
+      "label": "mp02 分類の parse で先頭を採る",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_class"
+      ],
+      "reason": "曖昧な答えを正答に数える",
+      "failed": [
+        "test_parse_class"
+      ]
+    },
+    {
+      "label": "mp03 envelope の gate を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_envelope"
+      ],
+      "reason": "⊥ の多い battery で本走する",
+      "failed": [
+        "test_pilot_envelope"
+      ]
+    },
+    {
+      "label": "mp04 注入の較正式を誤る",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_injection_calibrates"
+      ],
+      "reason": "既知量への較正が外れる",
+      "failed": [
+        "test_injection_calibrates",
+        "test_resampling_uses_all_replicates"
+      ]
+    },
+    {
+      "label": "mp05 再標本化の層を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_strata_picks_preserve_the_rotation"
+      ],
+      "reason": "本走の表示の割付を保たない (Codex MEDIUM-7)",
+      "failed": [
+        "test_strata_picks_preserve_the_rotation"
+      ]
+    },
+    {
+      "label": "mp06 spike-in の OC を見ずに GO にする",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_stop_on_power"
+      ],
+      "reason": "power の足りない設計で本走する",
+      "failed": [
+        "test_pilot_stop_on_power"
+      ]
+    },
+    {
+      "label": "mp07 見取り図が選んだ R より小さい R を許す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_respects_selected_r"
+      ],
+      "reason": "見取り図の選定を pilot で緩める",
+      "failed": [
+        "test_pilot_respects_selected_r"
+      ]
+    },
+    {
+      "label": "mp08 pilot の seed の照合を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_structure_seed"
+      ],
+      "reason": "pilot の記録の結び付きを確かめない",
+      "failed": [
+        "test_pilot_structure_seed"
+      ]
+    },
+    {
+      "label": "mp09 pilot の certification の確認を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_requires_cert"
+      ],
+      "reason": "変異試験を通っていない判定コードで pilot を判定する",
+      "failed": [
+        "test_cli_end_to_end",
+        "test_pilot_requires_cert"
+      ]
+    },
+    {
+      "label": "mp10 見取り図の door-close を見ずに pilot を判定する",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_requires_selected_r"
+      ],
+      "reason": "凍結前に door-close した設計の pilot を通す",
+      "failed": [
+        "test_pilot_requires_selected_r"
+      ]
+    },
+    {
+      "label": "mp11 masked の腕の向きを foil にする",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cell_scores"
+      ],
+      "reason": "null の記録の得点の向きが逆になる",
+      "failed": [
+        "test_cell_scores"
+      ]
+    },
+    {
+      "label": "mp12 pilot の meta の照合を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_meta"
+      ],
+      "reason": "凍結と違う decode・環境の pilot を受け入れる",
+      "failed": [
+        "test_pilot_meta"
+      ]
+    },
+    {
+      "label": "mp13 OC の較正の確認を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "既知量への較正が外れても通す (Codex MEDIUM-8)",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp14 OC の PASS の power の条件を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter",
+        "test_oc_for_r_uses_the_checks"
+      ],
+      "reason": "power の足りない設計で本走する (Codex MEDIUM-8)",
+      "failed": [
+        "test_oc_conditions_each_matter",
+        "test_oc_for_r_uses_the_checks"
+      ]
+    },
+    {
+      "label": "mp15 OC の NO_GO の power の条件を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "NO_GO に届かない設計で本走する (Codex MEDIUM-8)",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp16 OC の PASS 側の size の条件を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "size の破れを見逃す (Codex MEDIUM-8)",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp17 OC の NO_GO 側の size の条件を外す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "size の破れを見逃す (Codex MEDIUM-8)",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp18 OC の合否を恒真にする",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_for_r_uses_the_checks"
+      ],
+      "reason": "どの条件が偽でも GO にする",
+      "failed": [
+        "test_oc_for_r_uses_the_checks"
+      ]
+    },
+    {
+      "label": "mp19 pilot の MC の閾値を点の数で割らない",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_rate_cap"
+      ],
+      "reason": "誤棄却の率が膨らむ",
+      "failed": [
+        "test_size_rate_cap"
+      ]
+    },
+    {
+      "label": "mp20 入力の sha256 を記録しない",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "pilot の判定と記録の結び付きを残さない (DC-3)",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "mp21 知識確認の正答を数えない",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail"
+      ],
+      "reason": "分類を知らない key で本走する",
+      "failed": [
+        "test_knowledge_gate",
+        "test_knowledge_position_policies_fail"
+      ]
+    },
+    {
+      "label": "ms39 seed のスロットを probe 番号に戻す (seed が分類を運ぶ)",
+      "target": "generalization_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_shared_within_triple"
+      ],
+      "reason": "seed を読む key を見ない方策が C = 1 を出せる (Codex 2 回目 HIGH-1)",
+      "failed": [
+        "test_seed_reading_key_blind_policy_is_zero",
+        "test_seed_shared_within_triple"
+      ]
+    },
+    {
+      "label": "mp22 pilot の seed のスロットを probe 番号に戻す",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_seed_shared_within_triple"
+      ],
+      "reason": "pilot の seed が分類を運ぶ (Codex 2 回目 HIGH-1)",
+      "failed": [
+        "test_pilot_seed_shared_within_triple"
+      ]
+    },
+    {
+      "label": "mp23 OC の ⊥ gate に本走の envelope を渡さない",
+      "target": "generalization_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_uses_the_main_run_envelope"
+      ],
+      "reason": "OC と本走で判定器が違う (Codex 2 回目 MEDIUM-4)",
+      "failed": [
+        "test_oc_uses_the_main_run_envelope"
+      ]
+    },
+    {
+      "label": "mz20 crn の乱数をつ組で共有しない",
+      "target": "generalization_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_crn_shares_randomness_within_the_triple"
+      ],
+      "reason": "seed の共有を模擬しない (Codex 2 回目 HIGH-1)",
+      "failed": [
+        "test_crn_shares_randomness_within_the_triple"
+      ]
+    },
+    {
+      "label": "mm01 第 1 段の prereg の本文の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ],
+      "reason": "pilot の後に prereg の規則を差し替えられる (Codex 2 回目 HIGH-2)",
+      "failed": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ]
+    },
+    {
+      "label": "mm02 第 1 段の他の対象の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ],
+      "reason": "pilot の後に封印した成果物を差し替えられる (Codex 2 回目 HIGH-2)",
+      "failed": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ]
+    },
+    {
+      "label": "mm03 certification の manifest 検査の sha256 照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "変異試験を通っていない manifest 検査を受け入れる",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm04 見取り図の点の完全性の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_detects_missing_points"
+      ],
+      "reason": "点の欠けた見取り図を受け入れる (Codex 2 回目 MEDIUM-5)",
+      "failed": [
+        "test_sketch_recheck_detects_missing_points"
+      ]
+    },
+    {
+      "label": "mm05 見取り図の行の値の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "per_seed と食い違う値を受け入れる (Codex 2 回目 MEDIUM-5)",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm06 見取り図の 3 条件の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "報告のフラグを信じる (Codex 2 回目 MEDIUM-5)",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm07 選定の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ],
+      "reason": "規則と違う選定を受け入れる",
+      "failed": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ]
+    },
+    {
+      "label": "mm08 最有利行の到達の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ],
+      "reason": "報告の到達フラグを信じる (Codex 2 回目 MEDIUM-5)",
+      "failed": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ]
+    },
+    {
+      "label": "mm09 driver の各行の KILLED の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract"
+      ],
+      "reason": "SURVIVED を含む driver の証明書を受け入れる (Codex 2 回目 HIGH-3)",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm10 driver の登録変異の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_harness_module"
+      ],
+      "reason": "登録外の変異の証明書を受け入れる (Codex 2 回目 HIGH-3)",
+      "failed": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_harness_module",
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm11 driver の sha256 の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract"
+      ],
+      "reason": "旧 driver の証明書で新 driver を封印できる (Codex 2 回目 HIGH-3)",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm12 pilot の判定の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ],
+      "reason": "入力から導かれない GO を受け入れる (Codex 2 回目 MEDIUM-5)",
+      "failed": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ]
+    },
+    {
+      "label": "mm13 pilot の provenance の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ],
+      "reason": "別の driver・別の実行の pilot を受け入れる (Codex 2 回目 HIGH-3、3 回目 HIGH-2)",
+      "failed": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mm14 第 2 段で第 1 段の封印を照合しない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_main_checks_the_seal"
+      ],
+      "reason": "第 2 段が第 1 段の manifest を読まない (Codex 2 回目 HIGH-2)",
+      "failed": [
+        "test_freeze_violations_stage_main_checks_the_seal"
+      ]
+    },
+    {
+      "label": "mm15 certification の期待診断での失敗の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_requires_the_expected_failure"
+      ],
+      "reason": "違う理由で落ちた変異を KILLED に数える (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_certification_requires_the_expected_failure"
+      ]
+    },
+    {
+      "label": "mm16 期待診断と失敗の共通部分を見ない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_requires_the_expected_failure",
+        "test_driver_certification_requires_the_expected_failures"
+      ],
+      "reason": "無関係な test の失敗を期待どおりと数える (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_certification_requires_the_expected_failure",
+        "test_driver_certification_requires_the_expected_failures"
+      ]
+    },
+    {
+      "label": "mm17 meta-test の期待集合が実際に落ちたかを見ない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "依存する test が落ちていない meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm18 meta-test の重複を許す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "同じケースの行を重ねた meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm19 meta-test の登録ケースとの一致を見ない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "ケースの欠けた meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm20 meta-test の status と期待集合の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "登録と違う期待集合の meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm21 driver の期待診断での失敗の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_requires_the_expected_failures"
+      ],
+      "reason": "Codex 3 回目の反例 (無関係な test だけが落ちた KILLED) を受け入れる",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures"
+      ]
+    },
+    {
+      "label": "mm22 driver の meta-test の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_expected_failures",
+        "test_driver_certification_requires_the_harness_module"
+      ],
+      "reason": "どの no-op 検査をしたか分からない meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_contract",
+        "test_driver_certification_requires_the_expected_failures",
+        "test_driver_certification_requires_the_harness_module",
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm23 driver の meta の登録を証明書自身から読む",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_requires_the_expected_failures"
+      ],
+      "reason": "登録外のケース名の meta-test を受け入れる (Codex 3 回目 HIGH-1)",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_driver_certification_requires_the_harness_module",
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm24 provenance の records の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ],
+      "reason": "別の実行の provenance を混ぜた pilot を受け入れる (Codex 3 回目 HIGH-2)",
+      "failed": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mm25 provenance の meta の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ],
+      "reason": "別の meta の provenance を受け入れる (Codex 3 回目 HIGH-2)",
+      "failed": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mm26 provenance の driver の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ],
+      "reason": "未認証の driver の pilot を受け入れる (Codex 2 回目 HIGH-3)",
+      "failed": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mm27 見取り図の行の R の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "別の R の行を混ぜた見取り図を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm28 率の範囲の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "率 1.5 を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm29 率の合計の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "合計が 1 でない率の組を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm30 率の格子の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "凍結した MC の回数では出ない率を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm31 実現 C の有限の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "NaN の実現 C を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm32 seed の数の確認を緩める",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "1 seed だけの行を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm33 worst_size の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "prereg に引く size の最悪値を検査しない",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm34 見取り図の設定の照合を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_params"
+      ],
+      "reason": "n_sim_power = 1・grid = [] の見取り図を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm35 sweep の完全性の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "Codex 3 回目の反例 (sweep を最有利の 1 行だけにする) を受け入れる",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm36 sweep の重複を許す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "同じ点の行を重ねた sweep を受け入れる",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm37 sweep の pass の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "per_seed と食い違う集計の pass を信じる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm38 sweep の到達上限の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "記録した到達上限を信じる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm39 sweep の率の確認を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "率として成り立たない sweep の行を受け入れる (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm40 境目の再計算を外す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "prereg に引く境目を検査しない (Codex 3 回目 MEDIUM-3)",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm41 sweep の点を到達上限で切らない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_accepts_a_consistent_sketch"
+      ],
+      "reason": "検査器の点集合が本番の sweep と食い違う",
+      "failed": [
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm42 対数オッズの sweep を label_skew に固定しない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_accepts_a_consistent_sketch"
+      ],
+      "reason": "検査器の攪乱点が本番の sweep と食い違う",
+      "failed": [
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm43 登録の期待集合が空でも表を作る",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "Codex 4 回目の反例 (期待集合が空の META_CASES で失敗 0 の meta-test) を受け入れる",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm44 登録の label の重複を許す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "Codex 4 回目の反例 (label の重複で前の登録が消える) を受け入れる",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm45 登録の test 名の型を見ない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "test 名でない期待集合の登録を受け入れる",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm46 driver の登録変異を検証せずに表にする",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "label の重複した driver の登録変異を受け入れる (Codex 4 回目 HIGH-1)",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm47 数値に JSON の真偽値を数える",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_booleans"
+      ],
+      "reason": "率の 0.0 を false にした見取り図を受け入れる (Codex 4 回目 LOW-2)",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm48 点の欄に JSON の真偽値を許す",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_booleans"
+      ],
+      "reason": "攪乱点の ⊥ 0.0 を false にした行を受け入れる (Codex 4 回目 LOW-2)",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm49 設定の照合で型を見ない",
+      "target": "generalization_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_booleans"
+      ],
+      "reason": "lambda_fractions の 1.0 を true にした設定を受け入れる (Codex 4 回目 LOW-2)",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    }
+  ],
+  "all_killed": true
+}
