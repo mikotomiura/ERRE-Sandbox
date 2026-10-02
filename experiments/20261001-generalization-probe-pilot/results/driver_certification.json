@@ -1,0 +1,2891 @@
+{
+  "target_sha256": {
+    "scripts/generalization_probe_driver.py": "56583f5f04eef0f07b18e4f7ef1dac134fced6e371b02b2cb00b917e748f720e"
+  },
+  "tests_sha256": {
+    "tests/test_generalization_probe/test_driver.py": "5f8069f9ba9ba120918804f62d4db565ee316bf6ceb148186dc55e175d0fd184"
+  },
+  "harness_sha256": {
+    "scripts/generalization_probe_driver_mutation_check.py": "87a83a704a6940c1c40ab3205990a0683b6d32d5bdb002132563ae3e0e53e77b"
+  },
+  "meta_test": [
+    {
+      "label": "予定表の事前検査 schedule_violations を [] に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_bad_schedule_makes_no_call",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option"
+      ],
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option"
+      ]
+    },
+    {
+      "label": "送る直前の照合 check_sent_body を素通りに潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ],
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "公開前の読み戻し publication_problems を [] に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_like_the_judge",
+        "test_publication_problems_read_the_written_meta"
+      ],
+      "failed": [
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_like_the_judge",
+        "test_publication_problems_read_the_written_meta"
+      ]
+    }
+  ],
+  "mutants": [
+    {
+      "label": "p1  族の順を逆に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "単位の順 (r, 族, つ組) が prereg §4 と違う (判定は順序を見ないので plan の test だけが捕まえる)",
+      "failed": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ]
+    },
+    {
+      "label": "p2  族内の 2 arm の順を逆に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "族内の 2 arm の交互が族の正準順と逆",
+      "failed": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ]
+    },
+    {
+      "label": "p3  つ組の順を逆に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "単位の順が bat.units と違う",
+      "failed": [
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ]
+    },
+    {
+      "label": "p4  KNOW を後ろに",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "KNOW を先に置く決定 (DD-4) と違う",
+      "failed": [
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ]
+    },
+    {
+      "label": "p5  pilot の r を 0 から",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "pilot の r が本走の r と交わる (grid の外。予定表の検査で止まる)",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pilot_plan_is_the_frozen_grid_in_order",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "p6  KNOW の試行を 1 回減らす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_pilot_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "知識確認の 3 試行 (正答の位置の一巡) が欠ける",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pilot_plan_is_the_frozen_grid_in_order",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option",
+        "test_shifted_body_is_refused_before_sending",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "p7  本走の r を 1 つ減らす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_main_plan_is_the_frozen_grid_in_order"
+      ],
+      "expected_reason": null,
+      "why": "本走の grid (R = 18) が欠ける",
+      "failed": [
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_main_plan_is_the_frozen_grid_in_order",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ]
+    },
+    {
+      "label": "b1  pilot の状態を masked でなく描く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "null pilot の状態が key を含む (prompt が凍結 renderer と違う)",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b2  pilot の seed を本走の名前空間で",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "pilot と本走の seed が交わる",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b3  pilot の seed の slot を probe 番号に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "seed が分類を運ぶ (つ組で共有しない、Codex 2 回目 HIGH-1)",
+      "failed": [
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b4  KNOW の seed の key と試行を取り違える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "知識確認の seed が凍結 schedule と違う",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b5  KNOW の試行 k を描かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "正答の位置が 3 試行で一巡しない",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b6  本走の seed を pilot の名前空間で",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "本走の seed が凍結 schedule と違う",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_publication_problems_read_the_written_meta"
+      ]
+    },
+    {
+      "label": "b7  本走の状態を masked で描く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "本走の状態から key が消える",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_publication_problems_read_the_written_meta"
+      ]
+    },
+    {
+      "label": "b8  model を変える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "凍結 model と違う model を呼ぶ",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b9  think を逆に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "thinking が有効になる (着座が v2 と違う)",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b10 stream を True に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "stream の応答は 1 つの JSON にならない",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_schedule_rejects_a_wrong_fixed_option",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b11 num_predict の定数を誤る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "driver の定数の誤りは形の検査 (同じ定数と比べる) を通る。凍結 scorer の request で捕まえる",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "b12 num_ctx の定数を float に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks"
+      ],
+      "expected_reason": null,
+      "why": "4096.0 は凍結 scorer の meta_violations (辞書の等値) を通る。型まで比べる照合で捕まえる",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "c1  plan と grid の照合を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bad_schedule_makes_no_call"
+      ],
+      "expected_reason": null,
+      "why": "欠けた plan (重複・grid 外は凍結の構造の検査が捕まえるが、欠けは捕まえない) で走り始める",
+      "failed": [
+        "test_bad_schedule_makes_no_call"
+      ]
+    },
+    {
+      "label": "c2  body の数と plan の照合を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ],
+      "expected_reason": null,
+      "why": "plan と数の違う予定表を、照合の表を作らずに受け入れる",
+      "failed": [
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ]
+    },
+    {
+      "label": "c3  予定表で形の検査をしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bad_schedule_makes_no_call"
+      ],
+      "expected_reason": null,
+      "why": "stream などの形の誤りに、送る直前まで気づかない (GPU を使ってから止まる)",
+      "failed": [
+        "test_bad_schedule_makes_no_call"
+      ]
+    },
+    {
+      "label": "c4  形の問題があっても続ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bad_schedule_makes_no_call"
+      ],
+      "expected_reason": null,
+      "why": "形の崩れた body で候補記録を作り、ScheduleError でなく KeyError で落ちる",
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ]
+    },
+    {
+      "label": "c5  予定表で凍結の構造の検査をしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bad_schedule_makes_no_call"
+      ],
+      "expected_reason": null,
+      "why": "seed・prompt の誤りに、送る直前まで気づかない",
+      "failed": [
+        "test_bad_schedule_makes_no_call"
+      ]
+    },
+    {
+      "label": "c6  request の型の照合を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bad_schedule_makes_no_call",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_schedule_rejects_a_wrong_fixed_option"
+      ],
+      "expected_reason": null,
+      "why": "4096.0 のような型の誤りを、凍結 scorer の meta_violations は通す",
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_schedule_rejects_a_wrong_fixed_option"
+      ]
+    },
+    {
+      "label": "c7  meta の照合で pilot の observed を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ],
+      "expected_reason": null,
+      "why": "本走の observed が pilot と違っても予定表を通す",
+      "failed": [
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ]
+    },
+    {
+      "label": "c8  meta の observed を空に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_schedule_checks_meta_against_the_frozen_values"
+      ],
+      "expected_reason": null,
+      "why": "meta.json が実行環境の同定を持たない (判定で INVALID_SCORER)",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_every_planned_body_passes_the_frozen_checks",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_schedule_checks_meta_against_the_frozen_values",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "w1  送る直前の照合を削除",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ],
+      "expected_reason": null,
+      "why": "送る経路でずれた body をそのまま送る",
+      "failed": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "w2  照合を送信の後に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ],
+      "expected_reason": null,
+      "why": "ずれた body をモデルに送ってから止まる",
+      "failed": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "w3  照合のキーを plan の位置から取らない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position"
+      ],
+      "expected_reason": null,
+      "why": "別の位置のキーで照合する",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "w4  送る直前に形を検査しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "think・stream・型の誤りを送る",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w5  送る直前に凍結の構造の検査をしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_shifted_body_is_refused_before_sending"
+      ],
+      "expected_reason": null,
+      "why": "seed・prompt のずれを送る",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type",
+        "test_check_uses_the_plan_position",
+        "test_observer_refuses_before_the_inner_transport",
+        "test_shifted_body_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "w6  seed の型を検査しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "float の seed (20261001.0) は凍結の構造の検査 (!=) を通る",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w7  型の厳密一致を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "False と 0、4096.0 と 4096 を同じとみなす",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w8  body の余分な key を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "keep_alive などの登録外の要求を送る",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w9  options の余分な key を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "top_k などの登録外の decoding 条件を送る",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w10 messages の形を検査しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "list でない messages で SentBodyMismatchError でなく TypeError になる",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w11 model を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "別の model への送信を通す",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w12 think を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "think の誤りを通す",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w13 stream を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "stream の誤りを通す",
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w14 固定の options を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_check_sent_body_rejects_value_and_type"
+      ],
+      "expected_reason": null,
+      "why": "temperature・num_ctx の誤りを通す",
+      "failed": [
+        "test_check_sent_body_rejects_value_and_type"
+      ]
+    },
+    {
+      "label": "w15 /api/chat 以外の POST を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_refuses_before_the_inner_transport"
+      ],
+      "expected_reason": null,
+      "why": "照合をすり抜ける経路を開ける",
+      "failed": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_show_is_allowed_only_while_reading_observed"
+      ]
+    },
+    {
+      "label": "w16 /api/show を常に通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_show_is_allowed_only_while_reading_observed"
+      ],
+      "expected_reason": null,
+      "why": "observed を読む間以外にも /api/show を通す",
+      "failed": [
+        "test_observer_refuses_before_the_inner_transport",
+        "test_show_is_allowed_only_while_reading_observed"
+      ]
+    },
+    {
+      "label": "w17 期待の無い送信を通す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_refuses_before_the_inner_transport"
+      ],
+      "expected_reason": null,
+      "why": "位置の無い送信を照合せずに通す (TypeError になる)",
+      "failed": [
+        "test_observer_refuses_before_the_inner_transport"
+      ]
+    },
+    {
+      "label": "w18 observed を読む間に /api/show を許さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_show_is_allowed_only_while_reading_observed",
+        "test_written_files_use_lf"
+      ],
+      "expected_reason": "unexpected POST path",
+      "why": "chat template を読めず、どの run も始まらない",
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_refuses_an_observed_environment_different_from_the_pilot",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_preflight_requires_the_environment_identity",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_show_is_allowed_only_while_reading_observed",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "w19 /api/show の許可を閉じない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_show_is_allowed_only_while_reading_observed"
+      ],
+      "expected_reason": null,
+      "why": "observed を読んだ後も /api/show が開いたまま",
+      "failed": [
+        "test_show_is_allowed_only_while_reading_observed"
+      ]
+    },
+    {
+      "label": "o1  template の sha を版から",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_meta_is_on_disk_before_the_first_call"
+      ],
+      "expected_reason": null,
+      "why": "chat template を同定しない",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_final_observed_is_resent",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_show_is_allowed_only_while_reading_observed"
+      ]
+    },
+    {
+      "label": "o2  digest の model 名を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_requires_the_environment_identity"
+      ],
+      "expected_reason": null,
+      "why": "別の model の digest を記録する",
+      "failed": [
+        "test_preflight_requires_the_environment_identity"
+      ]
+    },
+    {
+      "label": "o3  空の版を許す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_requires_the_environment_identity"
+      ],
+      "expected_reason": null,
+      "why": "版の無い環境で走る",
+      "failed": [
+        "test_preflight_requires_the_environment_identity"
+      ]
+    },
+    {
+      "label": "o4  digest が無くても続ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_requires_the_environment_identity"
+      ],
+      "expected_reason": null,
+      "why": "model の無い環境で PreflightError でなく予定表の検査まで進む",
+      "failed": [
+        "test_preflight_requires_the_environment_identity"
+      ]
+    },
+    {
+      "label": "o5  template が無くても続ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_requires_the_environment_identity"
+      ],
+      "expected_reason": null,
+      "why": "chat template の無い応答で PreflightError でなく AttributeError になる",
+      "failed": [
+        "test_preflight_requires_the_environment_identity"
+      ]
+    },
+    {
+      "label": "o6  preflight で HTTP の状態を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_preflight_requires_the_environment_identity"
+      ],
+      "expected_reason": null,
+      "why": "404 の応答の値を observed として使う",
+      "failed": [
+        "test_preflight_requires_the_environment_identity"
+      ]
+    },
+    {
+      "label": "o8  /api/show に model を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_show_is_allowed_only_while_reading_observed"
+      ],
+      "expected_reason": "PreflightError",
+      "why": "凍結 model の chat template を読まない (偽の Ollama は 404 を返す)",
+      "failed": [
+        "test_bad_schedule_makes_no_call",
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_refuses_an_observed_environment_different_from_the_pilot",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_run_refuses_a_non_empty_run_dir",
+        "test_shifted_body_is_refused_before_sending",
+        "test_show_is_allowed_only_while_reading_observed",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "o7  本走の observed を pilot と照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_refuses_an_observed_environment_different_from_the_pilot"
+      ],
+      "expected_reason": null,
+      "why": "pilot と違う環境で本走を始めかける (予定表の検査が ScheduleError で止めるが、理由が違う)",
+      "failed": [
+        "test_main_refuses_an_observed_environment_different_from_the_pilot"
+      ]
+    },
+    {
+      "label": "t1  再送 3 → 2",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": "resent more or fewer than 3 times",
+      "why": "prereg §4 の再送 3 回より少ない",
+      "failed": [
+        "test_final_observed_is_resent",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "t2  再送 3 → 4 (待ちの表も延ばす)",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": "resent more or fewer than 3 times",
+      "why": "prereg §4 の再送 3 回より多い (待ちの表を延ばさないと IndexError で落ち、回数の検査に届かない。Codex MEDIUM-4)",
+      "failed": [
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "t3  再送で seed を変える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent",
+        "test_resend_with_the_same_seed_recovers"
+      ],
+      "expected_reason": null,
+      "why": "再送が同じ seed でない (送る直前の照合が止める)",
+      "failed": [
+        "test_failed_responses_are_resent",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "t4  再送が尽きても続行",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": null,
+      "why": "transport 失敗の後も呼び続ける",
+      "failed": [
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "t5  解けない transport 失敗を空文字 (⊥) に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": null,
+      "why": "transport 失敗を ⊥ に畳む (prereg §4 違反)",
+      "failed": [
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "t6  transport 以外の例外も再送",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_shifted_body_is_refused_before_sending"
+      ],
+      "expected_reason": null,
+      "why": "照合の不一致や想定外の例外を transport 失敗に畳む",
+      "failed": [
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_provenance_failure_keeps_the_original_exception",
+        "test_shifted_body_is_refused_before_sending"
+      ]
+    },
+    {
+      "label": "t7  HTTP の状態を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent"
+      ],
+      "expected_reason": null,
+      "why": "500 の応答の本文を答えとして使う",
+      "failed": [
+        "test_failed_responses_are_resent"
+      ]
+    },
+    {
+      "label": "t8  JSON でない応答を例外のまま上げる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent"
+      ],
+      "expected_reason": null,
+      "why": "JSON でない応答で再送せずに止まる",
+      "failed": [
+        "test_failed_responses_are_resent"
+      ]
+    },
+    {
+      "label": "t9  文字列でない content を受ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent",
+        "test_null_content_is_a_transport_failure_not_bottom"
+      ],
+      "expected_reason": null,
+      "why": "null の content を再送せずに受ける",
+      "failed": [
+        "test_failed_responses_are_resent",
+        "test_null_content_is_a_transport_failure_not_bottom"
+      ]
+    },
+    {
+      "label": "t10 object でない応答を前提にする",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent"
+      ],
+      "expected_reason": null,
+      "why": "配列の応答で AttributeError になる",
+      "failed": [
+        "test_failed_responses_are_resent"
+      ]
+    },
+    {
+      "label": "t11 応答の model を数えない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unexpected_response_model_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "別の model の応答に気づかない",
+      "failed": [
+        "test_unexpected_response_model_blocks_publication"
+      ]
+    },
+    {
+      "label": "t14 num_predict で切れた応答を数えない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_finish_length_is_counted"
+      ],
+      "expected_reason": null,
+      "why": "来歴の n_finish_length が 0 のまま",
+      "failed": [
+        "test_finish_length_is_counted"
+      ]
+    },
+    {
+      "label": "t12 試行の記録を書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_failed_responses_are_resent",
+        "test_resend_with_the_same_seed_recovers"
+      ],
+      "expected_reason": null,
+      "why": "再送の経過が残らない",
+      "failed": [
+        "test_failed_responses_are_resent",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_resend_with_the_same_seed_recovers"
+      ]
+    },
+    {
+      "label": "t13 再送の回数を数えない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_with_the_same_seed_recovers"
+      ],
+      "expected_reason": null,
+      "why": "来歴の再送の回数が 0 のまま",
+      "failed": [
+        "test_resend_with_the_same_seed_recovers"
+      ]
+    },
+    {
+      "label": "r1  raw を strip して記録",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_raw_is_recorded_verbatim"
+      ],
+      "expected_reason": "raw is not recorded verbatim",
+      "why": "応答をそのまま残さない",
+      "failed": [
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_raw_is_recorded_verbatim"
+      ]
+    },
+    {
+      "label": "r2  KNOW も行動 label として parse",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_parse_follows_the_arm"
+      ],
+      "expected_reason": "the complete run was not published",
+      "why": "知識確認の答えが全て ⊥ になる (凍結 pilot 判定の re-parse と違い、公開されない)",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "r3  parsed を parse せずに raw で",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_parse_follows_the_arm"
+      ],
+      "expected_reason": "the complete run was not published",
+      "why": "記録の parse が凍結の re-parse と違う",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "r4  記録を ensure_ascii=False で書く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_written_files_use_lf"
+      ],
+      "expected_reason": "record is not JSON",
+      "why": "U+2028 などで 1 記録が 2 行に割れる (読み戻しが止める)",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "r5  call_index を 1 から",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_written_files_use_lf"
+      ],
+      "expected_reason": "IndexError",
+      "why": "call_index と予定表の位置がずれる",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "r6  記録のキーを plan の先頭に固定",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_raw_is_recorded_verbatim"
+      ],
+      "expected_reason": "the complete run was not published",
+      "why": "記録のキーが送った呼び出しと違う (重複、公開されない)",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "r7  読み戻した記録を数えない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed"
+      ],
+      "expected_reason": "n_records differs from the plan",
+      "why": "来歴の記録数が 0",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed"
+      ]
+    },
+    {
+      "label": "u1  常に公開",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": "records.jsonl was published",
+      "why": "transport 失敗・異常のある run を公開する",
+      "failed": [
+        "test_driver_swap_is_detected",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_read_back_failure_blocks_publication",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_shifted_body_is_refused_before_sending",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "u2  公開前の読み戻しの結果を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_back_failure_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "凍結の検査を通らない記録を公開する",
+      "failed": [
+        "test_read_back_failure_blocks_publication"
+      ]
+    },
+    {
+      "label": "u3  公開前に読み戻さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_back_failure_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "読み戻さずに公開する",
+      "failed": [
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_read_back_failure_blocks_publication",
+        "test_swapped_files_are_not_published"
+      ]
+    },
+    {
+      "label": "u4  公開しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "完了した run を公開しない",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "u5  1 相目の来歴を completed で書く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "rename の前に kill されると、未公開の run が completed に見える",
+      "failed": [
+        "test_publication_is_two_phase"
+      ]
+    },
+    {
+      "label": "u6  1 相目に pending の注記を書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "公開の前に中断した run を見分けられない",
+      "failed": [
+        "test_publication_is_two_phase"
+      ]
+    },
+    {
+      "label": "u7  3 項目を 1 相目にも書く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_is_two_phase",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": null,
+      "why": "公開していない run の来歴が第 2 段の照合を通りうる (DD-5)",
+      "failed": [
+        "test_driver_swap_is_detected",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_other_exceptions_abort_without_a_null_row",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_read_back_failure_blocks_publication",
+        "test_shifted_body_is_refused_before_sending",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "u8  2 相目の来歴を書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "公開済みの run の来歴が未公開のまま",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase"
+      ]
+    },
+    {
+      "label": "u9  公開の失敗を来歴に書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_failure_is_recorded_as_aborted"
+      ],
+      "expected_reason": null,
+      "why": "公開の失敗の理由が残らない",
+      "failed": [
+        "test_publication_failure_is_recorded_as_aborted"
+      ]
+    },
+    {
+      "label": "u10 公開の失敗を completed のまま返す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_failure_is_recorded_as_aborted"
+      ],
+      "expected_reason": null,
+      "why": "公開されていない run が completed で終わる",
+      "failed": [
+        "test_publication_failure_is_recorded_as_aborted"
+      ]
+    },
+    {
+      "label": "u11 判定と違う reader (改行だけで分割) で読み戻す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_read_like_the_judge"
+      ],
+      "expected_reason": null,
+      "why": "判定 (splitlines) では割れる記録を読めたことにする",
+      "failed": [
+        "test_publication_problems_read_like_the_judge"
+      ]
+    },
+    {
+      "label": "u12 書いた meta を読まない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta"
+      ],
+      "expected_reason": null,
+      "why": "書いた meta.json でなく別の値を検査する",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_publication_problems_check_completeness_and_structure",
+        "test_publication_problems_read_the_written_meta",
+        "test_raw_is_recorded_verbatim",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "u13 読めない記録を問題なしに畳む",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_read_like_the_judge"
+      ],
+      "expected_reason": null,
+      "why": "読めない partial を公開する",
+      "failed": [
+        "test_publication_problems_read_like_the_judge"
+      ]
+    },
+    {
+      "label": "u14 公開前に完全性を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_completeness_and_structure"
+      ],
+      "expected_reason": null,
+      "why": "欠けた記録を公開する",
+      "failed": [
+        "test_publication_problems_check_completeness_and_structure"
+      ]
+    },
+    {
+      "label": "u15 公開前に transport 失敗を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_completeness_and_structure"
+      ],
+      "expected_reason": null,
+      "why": "raw = null の記録を公開する",
+      "failed": [
+        "test_publication_problems_check_completeness_and_structure"
+      ]
+    },
+    {
+      "label": "u16 公開前に凍結の構造の検査をしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_completeness_and_structure"
+      ],
+      "expected_reason": null,
+      "why": "seed の違う記録を公開する",
+      "failed": [
+        "test_publication_problems_check_completeness_and_structure"
+      ]
+    },
+    {
+      "label": "u17 公開前の meta の照合で pilot の observed を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_read_the_written_meta"
+      ],
+      "expected_reason": null,
+      "why": "本走の meta が pilot の observed と違っても公開する",
+      "failed": [
+        "test_publication_problems_read_the_written_meta"
+      ]
+    },
+    {
+      "label": "u18 公開済みで 2 相目の来歴が書けないと失敗にする",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_provenance_failure_keeps_records_but_aborts"
+      ],
+      "expected_reason": null,
+      "why": "公開済みの run を例外で終える",
+      "failed": [
+        "test_final_provenance_failure_keeps_records_but_aborts"
+      ]
+    },
+    {
+      "label": "u19 来歴・公開の失敗で元の例外を隠す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_provenance_failure_keeps_the_original_exception"
+      ],
+      "expected_reason": null,
+      "why": "元の例外が来歴の書き込みの失敗に隠れる",
+      "failed": [
+        "test_provenance_failure_keeps_the_original_exception"
+      ]
+    },
+    {
+      "label": "u20 driver の sha256 を公開の後にディスクから",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_provenance_binds_the_running_driver"
+      ],
+      "expected_reason": null,
+      "why": "照合の後に差し替わった driver の sha256 を来歴に書く (Codex HIGH-2)",
+      "failed": [
+        "test_provenance_binds_the_running_driver"
+      ]
+    },
+    {
+      "label": "u21 records の sha256 を meta の bytes から",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "provenance が公開した記録に結び付かない",
+      "failed": [
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_is_two_phase"
+      ]
+    },
+    {
+      "label": "u22 meta の sha256 を記録の bytes から",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_publication_is_two_phase"
+      ],
+      "expected_reason": null,
+      "why": "provenance が meta に結び付かない",
+      "failed": [
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_is_two_phase"
+      ]
+    },
+    {
+      "label": "u25 書いた bytes と照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_swapped_files_are_not_published"
+      ],
+      "expected_reason": null,
+      "why": "同じ grid の別の run の記録・別の observed の meta を公開する (Codex HIGH-1)",
+      "failed": [
+        "test_swapped_files_are_not_published"
+      ]
+    },
+    {
+      "label": "u26 照合で meta を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_swapped_files_are_not_published"
+      ],
+      "expected_reason": null,
+      "why": "別の observed の meta を公開する",
+      "failed": [
+        "test_swapped_files_are_not_published"
+      ]
+    },
+    {
+      "label": "u27 rename の後に照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_files_changed_after_the_rename_are_not_bound"
+      ],
+      "expected_reason": null,
+      "why": "rename の後に差し替わった記録に 3 項目を結び付ける",
+      "failed": [
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_provenance_hashes_are_the_written_bytes"
+      ]
+    },
+    {
+      "label": "u28 2 相目の来歴の失敗を completed で終える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_provenance_failure_keeps_records_but_aborts"
+      ],
+      "expected_reason": null,
+      "why": "第 2 段に使えない run (来歴に 3 項目なし) が completed で終わる",
+      "failed": [
+        "test_final_provenance_failure_keeps_records_but_aborts"
+      ]
+    },
+    {
+      "label": "u29 transport 失敗の来歴に status を書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ],
+      "expected_reason": null,
+      "why": "prereg §4 の status=not_computed が残らない (Codex MEDIUM-3)",
+      "failed": [
+        "test_unresolved_transport_failure_records_null_and_stops"
+      ]
+    },
+    {
+      "label": "u30 どの run の来歴にも status を not_computed で書く",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed"
+      ],
+      "expected_reason": "'not_computed' is None",
+      "why": "公開した run まで not_computed と書く",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed"
+      ]
+    },
+    {
+      "label": "u31 records の sha256 を rename の後のファイルから",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_provenance_hashes_are_the_written_bytes"
+      ],
+      "expected_reason": null,
+      "why": "照合と hash の間に差し替わった記録を来歴に結び付ける (code-reviewer の再レビュー MEDIUM)",
+      "failed": [
+        "test_provenance_hashes_are_the_written_bytes"
+      ]
+    },
+    {
+      "label": "u32 meta の sha256 を rename の後のファイルから",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_provenance_hashes_are_the_written_bytes"
+      ],
+      "expected_reason": null,
+      "why": "照合と hash の間に差し替わった meta を来歴に結び付ける",
+      "failed": [
+        "test_provenance_hashes_are_the_written_bytes"
+      ]
+    },
+    {
+      "label": "u33 rename の後の照合に落ちた記録を公開名に残す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_files_changed_after_the_rename_are_not_bound"
+      ],
+      "expected_reason": "records.jsonl was published",
+      "why": "書き換えられた記録が公開名に残り、凍結 run.sh が gate を計算する",
+      "failed": [
+        "test_files_changed_after_the_rename_are_not_bound"
+      ]
+    },
+    {
+      "label": "u23 公開時の manifest の結果を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_failure_at_publication_blocks_it"
+      ],
+      "expected_reason": null,
+      "why": "公開の時点で manifest が崩れていても公開する",
+      "failed": [
+        "test_manifest_failure_at_publication_blocks_it"
+      ]
+    },
+    {
+      "label": "u24 公開時に manifest を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_failure_at_publication_blocks_it"
+      ],
+      "expected_reason": null,
+      "why": "公開の時点の manifest を見ない",
+      "failed": [
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_pinned_change_during_the_manifest_check_blocks_publication"
+      ]
+    },
+    {
+      "label": "a1  固定ファイルの変化を異常にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_file_change_during_the_run_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "実走中に判定コードが変わっても公開する",
+      "failed": [
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_run_compares_with_the_pinned_values_taken_at_launch"
+      ]
+    },
+    {
+      "label": "a2  固定ファイルを終了時どうしで比べる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_file_change_during_the_run_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "変化を検出できない",
+      "failed": [
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_run_compares_with_the_pinned_values_taken_at_launch"
+      ]
+    },
+    {
+      "label": "a3  想定外の応答 model を異常にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unexpected_response_model_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "別の model の応答を公開する",
+      "failed": [
+        "test_unexpected_response_model_blocks_publication"
+      ]
+    },
+    {
+      "label": "a4  observed の変化を異常にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observed_change_during_the_run_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "実走中に重み・template が変わっても公開する",
+      "failed": [
+        "test_observed_change_during_the_run_blocks_publication"
+      ]
+    },
+    {
+      "label": "a5  異常を終了理由に反映しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_unexpected_response_model_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "異常のある run を公開する",
+      "failed": [
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_unexpected_response_model_blocks_publication"
+      ]
+    },
+    {
+      "label": "a6  終了時の observed を読まない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_observed_change_during_the_run_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "実走中の環境の変化を見ない",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_driver_swap_is_detected",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_failure_keeps_a_transport_failure",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_pinned_file_change_during_the_run_blocks_publication",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unexpected_response_model_blocks_publication",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "a7  終了時の observed を再送しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_observed_is_resent"
+      ],
+      "expected_reason": null,
+      "why": "一時的な不調で完了した run を捨てる",
+      "failed": [
+        "test_final_observed_is_resent"
+      ]
+    },
+    {
+      "label": "a8  transport 失敗の後の終了時の失敗を aborted に",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_observed_failure_keeps_a_transport_failure"
+      ],
+      "expected_reason": null,
+      "why": "transport 失敗の分類が変わる",
+      "failed": [
+        "test_final_observed_failure_keeps_a_transport_failure"
+      ]
+    },
+    {
+      "label": "a9  終了時の observed の失敗を aborted にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_final_observed_failure_aborts_a_finished_run"
+      ],
+      "expected_reason": null,
+      "why": "終了時に環境を同定できない run を公開する",
+      "failed": [
+        "test_final_observed_failure_aborts_a_finished_run"
+      ]
+    },
+    {
+      "label": "a10 固定ファイルを公開時の manifest の照合の前に比べる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_change_during_the_manifest_check_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "manifest の照合 (約 16 秒) の間の差し替えを見逃す (Codex HIGH-2)",
+      "failed": [
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication"
+      ]
+    },
+    {
+      "label": "a11 起動時に取った固定ファイルの sha256 を使わない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_compares_with_the_pinned_values_taken_at_launch"
+      ],
+      "expected_reason": null,
+      "why": "起動の検査から実走の開始までの差し替えを見逃す (Codex HIGH-2)",
+      "failed": [
+        "test_run_compares_with_the_pinned_values_taken_at_launch"
+      ]
+    },
+    {
+      "label": "a12 終了時にディスクの driver を実行中の driver と比べない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_swap_is_detected"
+      ],
+      "expected_reason": null,
+      "why": "実行中に差し替わった driver の run を公開する",
+      "failed": [
+        "test_driver_swap_is_detected"
+      ]
+    },
+    {
+      "label": "a13 固定ファイルを読み戻しの前に比べる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_change_during_the_read_back_blocks_publication"
+      ],
+      "expected_reason": null,
+      "why": "読み戻しの間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
+      "failed": [
+        "test_pinned_change_during_the_read_back_blocks_publication"
+      ]
+    },
+    {
+      "label": "a14 読めない固定ファイルで例外にする",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sha256_reports_an_unreadable_file_as_none"
+      ],
+      "expected_reason": null,
+      "why": "読めないファイルで来歴を書けなくなる (code-reviewer の再レビュー LOW)",
+      "failed": [
+        "test_sha256_reports_an_unreadable_file_as_none"
+      ]
+    },
+    {
+      "label": "a15 main が起動の検査の後に固定ファイルの sha256 を取る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ],
+      "expected_reason": null,
+      "why": "起動の検査 (manifest の照合 約 16 秒) の間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
+      "failed": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ]
+    },
+    {
+      "label": "q1  中身のある run dir を拒否しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_refuses_a_non_empty_run_dir"
+      ],
+      "expected_reason": null,
+      "why": "前の run に重ねて書く (再開しない規律)",
+      "failed": [
+        "test_run_refuses_a_non_empty_run_dir"
+      ]
+    },
+    {
+      "label": "q2  preflight を飛ばす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_preflight_failure_writes_nothing"
+      ],
+      "expected_reason": null,
+      "why": "実行環境を同定せずに走る",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_failure_aborts_a_finished_run",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_failure_at_publication_blocks_it",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_observed_change_during_the_run_blocks_publication",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_pinned_change_during_the_manifest_check_blocks_publication",
+        "test_pinned_change_during_the_read_back_blocks_publication",
+        "test_preflight_failure_writes_nothing",
+        "test_preflight_requires_the_environment_identity",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "q3  meta.json を書かない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_meta_is_on_disk_before_the_first_call"
+      ],
+      "expected_reason": null,
+      "why": "meta.json の無い run (公開されない)",
+      "failed": [
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_failed_responses_are_resent",
+        "test_files_changed_after_the_rename_are_not_bound",
+        "test_final_observed_is_resent",
+        "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_finish_length_is_counted",
+        "test_line_separators_in_raw_do_not_split_a_record",
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_meta_is_on_disk_before_the_first_call",
+        "test_parse_follows_the_arm",
+        "test_pilot_gate_cli_and_provenance_contract",
+        "test_provenance_binds_the_running_driver",
+        "test_provenance_hashes_are_the_written_bytes",
+        "test_publication_failure_is_recorded_as_aborted",
+        "test_publication_is_two_phase",
+        "test_raw_is_recorded_verbatim",
+        "test_read_back_failure_blocks_publication",
+        "test_records_follow_the_schema_and_the_plan",
+        "test_resend_with_the_same_seed_recovers",
+        "test_run_compares_with_the_pinned_values_taken_at_launch",
+        "test_swapped_files_are_not_published",
+        "test_unresolved_transport_failure_records_null_and_stops",
+        "test_written_files_use_lf"
+      ]
+    },
+    {
+      "label": "q4  main が段以外の引数を受け取る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_takes_only_the_stage"
+      ],
+      "expected_reason": null,
+      "why": "run dir・endpoint を差し替える登録外の実走経路を開ける",
+      "failed": [
+        "test_main_takes_only_the_stage"
+      ]
+    },
+    {
+      "label": "q5  起動拒否を外す",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_refuses_to_launch_without_touching_the_run_dir"
+      ],
+      "expected_reason": null,
+      "why": "起動の前提が崩れていても走る",
+      "failed": [
+        "test_main_refuses_to_launch_without_touching_the_run_dir"
+      ]
+    },
+    {
+      "label": "q6  本走でも pilot の段を走らせる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ],
+      "expected_reason": null,
+      "why": "段を取り違える",
+      "failed": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ]
+    },
+    {
+      "label": "q7  本走の observed を gate から読まない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ],
+      "expected_reason": null,
+      "why": "本走の observed を pilot と照合しない",
+      "failed": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ]
+    },
+    {
+      "label": "q8  exit code を終了理由から返さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ],
+      "expected_reason": null,
+      "why": "transport 失敗でも 0 で終わる",
+      "failed": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ]
+    },
+    {
+      "label": "l1  manifest の exit code を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "exit 1 の照合を OK とみなす",
+      "failed": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
+      "label": "l2  manifest の末尾行を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "NOT FROZEN (exit 0 の場合) を OK とみなす",
+      "failed": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
+      "label": "l3  OK を末尾以外でも受ける",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "OK の後に続く行を見ない",
+      "failed": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
+      "label": "l4  段の名前を照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "本走の前提に pilot の段の OK を使う",
+      "failed": [
+        "test_main_run_is_computed_by_the_frozen_scorer",
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
+      "label": "l5  manifest が走らないことを問題にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_report_a_failure_to_run"
+      ],
+      "expected_reason": null,
+      "why": "照合できないことを OK に畳む",
+      "failed": [
+        "test_manifest_problems_report_a_failure_to_run"
+      ]
+    },
+    {
+      "label": "l6  certification を起動の前提に入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ],
+      "expected_reason": null,
+      "why": "certify されていない driver で走る",
+      "failed": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ]
+    },
+    {
+      "label": "l7  manifest を起動の前提に入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ],
+      "expected_reason": null,
+      "why": "封印の崩れた状態で走る",
+      "failed": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ]
+    },
+    {
+      "label": "l8  本走で gate を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ],
+      "expected_reason": null,
+      "why": "pilot が GO でないのに本走を走らせる",
+      "failed": [
+        "test_launch_problems_combine_certification_git_manifest_and_gate"
+      ]
+    },
+    {
+      "label": "l9  git の追跡を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ],
+      "expected_reason": null,
+      "why": "commit していないファイルで走る",
+      "failed": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ]
+    },
+    {
+      "label": "l10 HEAD との差分を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ],
+      "expected_reason": null,
+      "why": "HEAD と違うファイルで走る",
+      "failed": [
+        "test_launch_problems_check_git_tracking_and_head"
+      ]
+    },
+    {
+      "label": "l11 certification の契約を使わない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_problems_use_the_manifest_contract"
+      ],
+      "expected_reason": null,
+      "why": "壊れた certification を通す",
+      "failed": [
+        "test_certification_problems_use_the_manifest_contract"
+      ]
+    },
+    {
+      "label": "l12 読めない certification を問題にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_problems_use_the_manifest_contract"
+      ],
+      "expected_reason": null,
+      "why": "certification の無い driver で走る",
+      "failed": [
+        "test_certification_problems_use_the_manifest_contract"
+      ]
+    },
+    {
+      "label": "l13 gate の GO を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_gate_problems_require_go_r_and_observed"
+      ],
+      "expected_reason": null,
+      "why": "STOP の pilot の後に本走を走らせる",
+      "failed": [
+        "test_gate_problems_require_go_r_and_observed"
+      ]
+    },
+    {
+      "label": "l14 gate の R の型を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_gate_problems_require_go_r_and_observed"
+      ],
+      "expected_reason": null,
+      "why": "R が整数でない gate を通す",
+      "failed": [
+        "test_gate_problems_require_go_r_and_observed"
+      ]
+    },
+    {
+      "label": "l15 gate の observed を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_gate_problems_require_go_r_and_observed"
+      ],
+      "expected_reason": null,
+      "why": "observed の無い gate を通す",
+      "failed": [
+        "test_gate_problems_require_go_r_and_observed"
+      ]
+    },
+    {
+      "label": "l16 読めない gate を問題にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_gate_problems_require_go_r_and_observed"
+      ],
+      "expected_reason": null,
+      "why": "gate の無い本走を走らせる",
+      "failed": [
+        "test_gate_problems_require_go_r_and_observed"
+      ]
+    },
+    {
+      "label": "l17 固定ファイルに driver の証拠を入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+      ],
+      "expected_reason": null,
+      "why": "harness・test・certification の変更に気づかない",
+      "failed": [
+        "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+      ]
+    },
+    {
+      "label": "l18 本走で第 2 段の証拠を固定しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+      ],
+      "expected_reason": null,
+      "why": "pilot の記録・gate・第 2 段の manifest の変更に気づかない",
+      "failed": [
+        "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+      ]
+    },
+    {
+      "label": "l19 起動時にディスクの driver を実行中の driver と比べない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_swap_is_detected"
+      ],
+      "expected_reason": null,
+      "why": "import の後に差し替わった driver で起動する (Codex HIGH-2)",
+      "failed": [
+        "test_driver_swap_is_detected"
+      ]
+    },
+    {
+      "label": "l20 main が起動時の固定ファイルの sha256 を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ],
+      "expected_reason": null,
+      "why": "起動の検査から実走の開始までの差し替えを見逃す",
+      "failed": [
+        "test_main_runs_the_stage_and_returns_the_exit_code"
+      ]
+    },
+    {
+      "label": "l21 manifest の出力を strip してから末尾行を見る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "末尾の空白・空行の付いた出力を OK とみなす",
+      "failed": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
+      "label": "l22 manifest の照合に PYTHONHASHSEED を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_manifest_calls_the_frozen_check_like_run_sh"
+      ],
+      "expected_reason": null,
+      "why": "run.sh と違う環境で照合する",
+      "failed": [
+        "test_run_manifest_calls_the_frozen_check_like_run_sh"
+      ]
+    },
+    {
+      "label": "l23 manifest を固定の段で照合する",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_run_manifest_calls_the_frozen_check_like_run_sh"
+      ],
+      "expected_reason": null,
+      "why": "本走の前提に pilot の段の照合を使う",
+      "failed": [
+        "test_run_manifest_calls_the_frozen_check_like_run_sh"
+      ]
+    },
+    {
+      "label": "l24 git の失敗を None にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_git_reports_a_failure_as_none"
+      ],
+      "expected_reason": null,
+      "why": "git が失敗しても「追跡済み」「HEAD と一致」に畳む (code-reviewer MEDIUM-5)",
+      "failed": [
+        "test_git_reports_a_failure_as_none"
+      ]
+    }
+  ],
+  "all_killed": true
+}
