@@ -36,13 +36,20 @@
 
   来歴 (provenance.json) は二相: 未公開 (aborted・pending の注記) で書く → rename → 公開済みに書き直す。
   第 2 段が照合する 3 項目 (``driver_sha256``・``records_sha256``・``meta_sha256``) は、公開済みの来歴にだけ書く
-  (途中で kill されたら 3 項目の無い来歴が残り、第 2 段が拒否する。DD-5)。3 項目は、実行中に保持した値 (import した
-  driver の sha256・この run が書いた行と meta の bytes の sha256) から書き、rename の後のファイルが同じ bytes である
-  ことを確かめてから書く。transport 失敗の run の来歴には ``status: not_computed`` を書く (prereg §4、DD-3)。
+  (途中で kill されたら 3 項目の無い来歴が残り、第 2 段が拒否する。DD-5)。3 項目は、実行中に保持した値 (起動時に
+  読んだ driver の sha256・この run が書いた行と meta の bytes の sha256) から書き、rename の後のファイルが同じ bytes である
+  ことを確かめてから書く。raw = null の行を書いた run (解けない transport 失敗) の来歴には ``status: not_computed`` を書く
+  (prereg §4、DD-3。終了時の observed の取得中に中断しても残す)。
 * **起動の前提** (``launch_problems``): driver の certification が manifest の契約を満たす・ディスクの driver が
   実行中の driver と同じ・固定ファイルが git で追跡され HEAD と一致・その段の manifest の照合が
   ``MANIFEST OK (stage <段>)``。本走は pilot の機械判定が GO。固定ファイルの sha256 は起動の検査の前に取り、
   実走の終わりに比べる。
+* **実行したコードの同定** (``executed_problems``、Codex 再 review HIGH-1)。来歴の hash は、実行したプログラムを指す。
+  driver は起動時に bytes を 1 回だけ読み、実行中のモジュールの code object がその bytes のコンパイル結果であることを確かめる
+  (code object の等値。bytes の一致ではなく、末尾のコメントだけの差は等しい)。repo のモジュール (封印済みの依存と、
+  certification の検査が import する driver の harness) は、起動のときだけ ``_PinnedFinder`` が 1 回だけ読んだ bytes から
+  実行する (pyc を読まない)。起動の検査の後に、その bytes が固定ファイルで、起動の検査の前のディスクと同じことを照合する。
+  保証の外: 第三者のライブラリ・標準ライブラリ・インタプリタ (版は uv.lock が固定する)、意図的な不正 (偽の endpoint 等)。
 
 実行 (repo root から、GPU 実走は user 裁定の後)。run dir と endpoint は固定で、引数は段だけ::
 
@@ -55,6 +62,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import importlib.abc
+import importlib.util
 import json
 import os
 import pathlib
@@ -71,19 +80,89 @@ _REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, Sequence
+    from importlib.machinery import ModuleSpec
+    from types import CodeType, ModuleType
+
+
+# ------------------------------------------------ 実行したコードの同定 (repo の import の前)
+# 来歴の hash は、実行したプログラムを指す (Codex 再 review HIGH-1、decisions DX-1・DU-3)。driver 自身は、実行中の
+# モジュールの code object を、起動時に 1 回だけ読んだ bytes のコンパイル結果と比べる。repo のモジュールは、起動
+# (__main__) のときだけ、1 回だけ読んだ bytes から実行する (_PinnedFinder)。照合は executed_problems。
+
+
+def _compiles_to(code: CodeType, data: bytes, path: pathlib.Path) -> bool:
+    """``code`` が ``data`` のコンパイル結果と同じプログラムか.
+
+    code object の等値は、定数・名前・行表・入れ子の関数まで比べる (ファイル名は比べない)。bytes の一致ではなく、
+    末尾のコメントだけの差は等しい。
+    """
+    try:
+        return code == compile(data, str(path), "exec", dont_inherit=True)
+    except (SyntaxError, ValueError):
+        return False
+
+
+_DRIVER_PATH: pathlib.Path = pathlib.Path(__file__).resolve()
+_DRIVER_BYTES: bytes = _DRIVER_PATH.read_bytes()
+# 来歴の driver_sha256 は、起動時に 1 回だけ読んだ bytes の sha256 (Codex HIGH-2・再 review HIGH-1)
+_DRIVER_SHA: str = hashlib.sha256(_DRIVER_BYTES).hexdigest()
+# 実行中の driver が、その bytes のコンパイル結果か。起動でも test の import でも、この同じ行が走る
+_DRIVER_RUNS_ITS_BYTES: bool = _compiles_to(
+    sys._getframe(0).f_code,  # noqa: SLF001 — 実行中のモジュールの code object
+    _DRIVER_BYTES,
+    _DRIVER_PATH,
+)
+
+
+class _PinnedLoader(importlib.abc.Loader):
+    """1 回だけ読んだ bytes をコンパイルして実行する loader (ディスクも pyc も読み直さない・pyc を書かない)."""
+
+    def __init__(self, path: pathlib.Path, data: bytes) -> None:
+        self.path = path
+        self.data = data
+        self.pinned_sha256 = hashlib.sha256(data).hexdigest()
+
+    def exec_module(self, module: ModuleType) -> None:
+        code = compile(self.data, str(self.path), "exec", dont_inherit=True)
+        exec(code, module.__dict__)  # noqa: S102 — hash した bytes そのものを実行する
+
+
+class _PinnedFinder(importlib.abc.MetaPathFinder):
+    """``<package>.<name>`` を、``root/<package>/<name>.py`` から 1 回だけ読んだ bytes で import させる."""
+
+    def __init__(self, root: pathlib.Path, package: str = "scripts") -> None:
+        self.root = root
+        self.package = package
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: object = None,  # noqa: ARG002
+        target: object = None,  # noqa: ARG002
+    ) -> ModuleSpec | None:
+        head, _, name = fullname.partition(".")
+        if head != self.package or not name or "." in name:
+            return None
+        file = self.root / self.package / f"{name}.py"
+        if not file.is_file():
+            return None
+        loader = _PinnedLoader(file, file.read_bytes())
+        return importlib.util.spec_from_file_location(fullname, file, loader=loader)
+
+
+if __name__ == "__main__":
+    # 実走の起動: repo のモジュールを、1 回だけ読んだ bytes から実行する (照合は起動の検査の後の executed_problems)
+    sys.meta_path.insert(0, _PinnedFinder(_REPO_ROOT))
+
 from scripts import generalization_probe_battery as bat  # noqa: E402
 from scripts import generalization_probe_manifest as man  # noqa: E402
 from scripts import generalization_probe_pilot_gate as pg  # noqa: E402
 from scripts import generalization_probe_scorer as sc  # noqa: E402
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
 STAGE_PILOT: Final[str] = "pilot"
 STAGE_MAIN: Final[str] = "main"
-# 実行中の driver: import した時点の bytes の sha256 (来歴の driver_sha256 はこの値から書く、Codex HIGH-2)
-_DRIVER_PATH: pathlib.Path = pathlib.Path(__file__).resolve()
-_DRIVER_SHA: str = hashlib.sha256(_DRIVER_PATH.read_bytes()).hexdigest()
 SEED_PATH: Final[pathlib.Path] = _REPO_ROOT / man.EXP / "SEED"
 PILOT_DIR: Final[pathlib.Path] = _REPO_ROOT / man.EXP / "results" / "pilot"
 RUN_DIR: Final[pathlib.Path] = _REPO_ROOT / man.EXP / "results" / "run"
@@ -778,9 +857,11 @@ def manifest_problems(stage_name: str) -> list[str]:
         code, out = _run_manifest(stage_name)
     except OSError as exc:
         return [f"manifest --verify --stage {stage_name} could not run: {exc}"]
-    lines = out.splitlines()  # 末尾の空白・空行を消さない (Codex LOW-5)
+    # 最後の行は LF だけで切る。末尾の空白・空行を消さない (Codex LOW-5)。splitlines は LF 以外の区切り文字
+    # (U+001C・U+0085・U+2028 等) でも割り、その後ろを捨てる (Codex 再 review LOW-1)。CRLF・CR は text mode が LF に直す
+    last = out.removesuffix("\n").rsplit("\n", 1)[-1]
     want = f"MANIFEST OK (stage {stage_name})"
-    if code != 0 or not lines or lines[-1] != want:
+    if code != 0 or last != want:
         return [f"manifest --verify --stage {stage_name} did not end with {want}"]
     return []
 
@@ -821,6 +902,42 @@ def launch_problems(stage_name: str) -> list[str]:
     problems.extend(manifest_problems(stage_name))
     if stage_name == STAGE_MAIN:
         problems.extend(gate_problems(GATE_PATH))
+    return problems
+
+
+def executed_problems(
+    stage_name: str,
+    pinned_start: Mapping[str, str | None],
+    modules: Mapping[str, object] | None = None,
+) -> list[str]:
+    """実行中の repo のコードが、起動の検査の前のディスクの bytes をコンパイルしたもの (Codex 再 review HIGH-1).
+
+    driver: 実行中の code object が起動時に読んだ bytes のコンパイル結果で、その bytes が ``pinned_start`` と同じ。
+    ``scripts.*`` のモジュール: ``_PinnedFinder`` が 1 回だけ読んだ bytes から実行し、その bytes が固定ファイルで
+    ``pinned_start`` と同じ。``main`` が起動の検査の **後** に呼ぶ (certification の検査が import する driver の harness も含める)。
+    ``modules`` の既定は ``sys.modules``。
+    """
+    mods = sys.modules if modules is None else modules
+    problems: list[str] = []
+    if not _DRIVER_RUNS_ITS_BYTES:
+        problems.append(
+            "the running driver is not the compilation of the driver bytes it hashed"
+        )
+    if pinned_start.get(man.DRIVER) != _DRIVER_SHA:
+        problems.append(
+            "the driver on disk changed between start-up and the launch checks"
+        )
+    files = set(pinned(stage_name))
+    for name in sorted(n for n in list(mods) if n.startswith("scripts.")):
+        rel = f"scripts/{name.removeprefix('scripts.')}.py"
+        loader = getattr(getattr(mods[name], "__spec__", None), "loader", None)
+        sha = loader.pinned_sha256 if isinstance(loader, _PinnedLoader) else None
+        if sha is None:
+            problems.append(f"not run from the bytes it was hashed by: {name}")
+        elif rel not in files:
+            problems.append(f"run but not pinned: {rel}")
+        elif sha != pinned_start.get(rel):
+            problems.append(f"run bytes differ from the pinned file at start-up: {rel}")
     return problems
 
 
@@ -1007,6 +1124,9 @@ def _finish(stage: Stage, observer: ObservingTransport, out: Outcome) -> None:  
         reason = REASON_ABORTED
         error = _join(error, "; ".join(late))
     publishable = reason == REASON_COMPLETED
+    # raw = null の行 (解けない transport 失敗でだけ書く) を書いた run は計算しない。終了理由からでなく書いた事実から
+    # 決める (終了時の observed の取得中に中断しても残す、Codex 再 review MEDIUM-2)
+    wrote_null = state is not None and any(s.raw is None for s in state.records)
     provenance: dict[str, Any] = {
         "stage": stage.name,
         "started_at": out.started,
@@ -1014,7 +1134,7 @@ def _finish(stage: Stage, observer: ObservingTransport, out: Outcome) -> None:  
         # 二相の 1 相目: 公開する run も、rename が済むまでは未公開 (aborted) と書く
         "exit_reason": REASON_ABORTED if publishable else reason,
         # transport 失敗の run は計算しない (prereg §4、DD-3)。判定に渡さないので driver が書く
-        "status": sc.STATUS_NOT_COMPUTED if reason == REASON_TRANSPORT else None,
+        "status": sc.STATUS_NOT_COMPUTED if wrote_null else None,
         "error": _join(error, PENDING_NOTE) if publishable else error,
         "anomalies": anomalies,
         "manifest_problems_at_publication": at_publication,
@@ -1102,6 +1222,8 @@ def main(argv: list[str] | None = None) -> int:
     # 差し替えも捕まえる。Codex HIGH-2・code-reviewer LOW)
     pinned_start = pinned_sha256(args.stage)
     problems = launch_problems(args.stage)
+    # 実行中のコードの照合は起動の検査の **後** (certification の検査が import する driver の harness も含める)
+    problems += executed_problems(args.stage, pinned_start)
     if problems:
         for p in problems:
             _progress(f"[driver] refuse to launch: {p}")

@@ -1,12 +1,12 @@
 {
   "target_sha256": {
-    "scripts/generalization_probe_driver.py": "56583f5f04eef0f07b18e4f7ef1dac134fced6e371b02b2cb00b917e748f720e"
+    "scripts/generalization_probe_driver.py": "3a24d42f603de8285e778e53e08c76f9b0db5d3aadad19cf60650b63d78fe876"
   },
   "tests_sha256": {
-    "tests/test_generalization_probe/test_driver.py": "5f8069f9ba9ba120918804f62d4db565ee316bf6ceb148186dc55e175d0fd184"
+    "tests/test_generalization_probe/test_driver.py": "31edea68c8aaea228d1568390b417083a1605f4ccb5cc6a9cf95050045cf145e"
   },
   "harness_sha256": {
-    "scripts/generalization_probe_driver_mutation_check.py": "87a83a704a6940c1c40ab3205990a0683b6d32d5bdb002132563ae3e0e53e77b"
+    "scripts/generalization_probe_driver_mutation_check.py": "b0d76051b325b95d40bacc397ec0325f95868e784cfd8679a7dfc13a8ae173c0"
   },
   "meta_test": [
     {
@@ -131,6 +131,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -227,6 +228,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -278,6 +280,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -328,6 +331,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -377,6 +381,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -427,6 +432,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_manifest_failure_at_publication_blocks_it",
         "test_meta_is_on_disk_before_the_first_call",
@@ -508,6 +514,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -564,6 +571,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -620,6 +628,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -672,6 +681,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -725,6 +735,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -761,7 +772,7 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>",
       "why": "欠けた plan (重複・grid 外は凍結の構造の検査が捕まえるが、欠けは捕まえない) で走り始める",
       "failed": [
         "test_bad_schedule_makes_no_call"
@@ -773,7 +784,7 @@
       "expected_any_of": [
         "test_schedule_checks_meta_against_the_frozen_values"
       ],
-      "expected_reason": null,
+      "expected_reason": "zip() argument 2 is shorter than argument 1",
       "why": "plan と数の違う予定表を、照合の表を作らずに受け入れる",
       "failed": [
         "test_schedule_checks_meta_against_the_frozen_values"
@@ -785,7 +796,7 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": null,
+      "expected_reason": "SentBodyMismatchError: call ",
       "why": "stream などの形の誤りに、送る直前まで気づかない (GPU を使ってから止まる)",
       "failed": [
         "test_bad_schedule_makes_no_call"
@@ -797,7 +808,7 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": null,
+      "expected_reason": "KeyError: 'options'",
       "why": "形の崩れた body で候補記録を作り、ScheduleError でなく KeyError で落ちる",
       "failed": [
         "test_bad_schedule_makes_no_call",
@@ -810,7 +821,7 @@
       "expected_any_of": [
         "test_bad_schedule_makes_no_call"
       ],
-      "expected_reason": null,
+      "expected_reason": "SentBodyMismatchError: call ",
       "why": "seed・prompt の誤りに、送る直前まで気づかない",
       "failed": [
         "test_bad_schedule_makes_no_call"
@@ -863,6 +874,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_run_is_computed_by_the_frozen_scorer",
         "test_manifest_failure_at_publication_blocks_it",
@@ -903,7 +915,7 @@
         "test_observer_refuses_before_the_inner_transport",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "送る経路でずれた body をそのまま送る",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
@@ -931,7 +943,7 @@
         "test_check_sent_body_rejects_value_and_type",
         "test_check_uses_the_plan_position"
       ],
-      "expected_reason": null,
+      "expected_reason": "seed differs from the pilot schedule",
       "why": "別の位置のキーで照合する",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -975,7 +987,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "think・stream・型の誤りを送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -989,7 +1001,7 @@
         "test_check_uses_the_plan_position",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "seed・prompt のずれを送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type",
@@ -1004,7 +1016,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "float の seed (20261001.0) は凍結の構造の検査 (!=) を通る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1016,7 +1028,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "False と 0、4096.0 と 4096 を同じとみなす",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1028,7 +1040,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "keep_alive などの登録外の要求を送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1040,7 +1052,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "top_k などの登録外の decoding 条件を送る",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1052,7 +1064,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "'int' object is not iterable",
       "why": "list でない messages で SentBodyMismatchError でなく TypeError になる",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1064,7 +1076,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "別の model への送信を通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1076,7 +1088,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "think の誤りを通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1088,7 +1100,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "stream の誤りを通す",
       "failed": [
         "test_bad_schedule_makes_no_call",
@@ -1101,7 +1113,7 @@
       "expected_any_of": [
         "test_check_sent_body_rejects_value_and_type"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "temperature・num_ctx の誤りを通す",
       "failed": [
         "test_check_sent_body_rejects_value_and_type"
@@ -1113,7 +1125,7 @@
       "expected_any_of": [
         "test_observer_refuses_before_the_inner_transport"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "照合をすり抜ける経路を開ける",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
@@ -1127,7 +1139,7 @@
         "test_observer_refuses_before_the_inner_transport",
         "test_show_is_allowed_only_while_reading_observed"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
       "why": "observed を読む間以外にも /api/show を通す",
       "failed": [
         "test_observer_refuses_before_the_inner_transport",
@@ -1140,7 +1152,7 @@
       "expected_any_of": [
         "test_observer_refuses_before_the_inner_transport"
       ],
-      "expected_reason": null,
+      "expected_reason": "tuple indices must be integers or slices, not NoneType",
       "why": "位置の無い送信を照合せずに通す (TypeError になる)",
       "failed": [
         "test_observer_refuses_before_the_inner_transport"
@@ -1173,6 +1185,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_refuses_an_observed_environment_different_from_the_pilot",
         "test_main_run_is_computed_by_the_frozen_scorer",
@@ -1242,7 +1255,7 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
       "why": "別の model の digest を記録する",
       "failed": [
         "test_preflight_requires_the_environment_identity"
@@ -1254,7 +1267,7 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": null,
+      "expected_reason": "observed environment is missing or malformed",
       "why": "版の無い環境で走る",
       "failed": [
         "test_preflight_requires_the_environment_identity"
@@ -1266,7 +1279,7 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": null,
+      "expected_reason": "observed environment is missing or malformed",
       "why": "model の無い環境で PreflightError でなく予定表の検査まで進む",
       "failed": [
         "test_preflight_requires_the_environment_identity"
@@ -1278,7 +1291,7 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": null,
+      "expected_reason": "'NoneType' object has no attribute 'encode'",
       "why": "chat template の無い応答で PreflightError でなく AttributeError になる",
       "failed": [
         "test_preflight_requires_the_environment_identity"
@@ -1290,7 +1303,7 @@
       "expected_any_of": [
         "test_preflight_requires_the_environment_identity"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
       "why": "404 の応答の値を observed として使う",
       "failed": [
         "test_preflight_requires_the_environment_identity"
@@ -1316,6 +1329,7 @@
         "test_final_observed_is_resent",
         "test_final_provenance_failure_keeps_records_but_aborts",
         "test_finish_length_is_counted",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_line_separators_in_raw_do_not_split_a_record",
         "test_main_refuses_an_observed_environment_different_from_the_pilot",
         "test_main_run_is_computed_by_the_frozen_scorer",
@@ -1354,7 +1368,7 @@
       "expected_any_of": [
         "test_main_refuses_an_observed_environment_different_from_the_pilot"
       ],
-      "expected_reason": null,
+      "expected_reason": "observed environment differs from the pilot",
       "why": "pilot と違う環境で本走を始めかける (予定表の検査が ScheduleError で止めるが、理由が違う)",
       "failed": [
         "test_main_refuses_an_observed_environment_different_from_the_pilot"
@@ -1398,11 +1412,12 @@
         "test_failed_responses_are_resent",
         "test_resend_with_the_same_seed_recovers"
       ],
-      "expected_reason": null,
+      "expected_reason": "seed differs from the pilot schedule",
       "why": "再送が同じ seed でない (送る直前の照合が止める)",
       "failed": [
         "test_failed_responses_are_resent",
         "test_final_observed_failure_keeps_a_transport_failure",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_resend_with_the_same_seed_recovers",
         "test_unresolved_transport_failure_records_null_and_stops"
@@ -1434,6 +1449,7 @@
       "why": "transport 失敗を ⊥ に畳む (prereg §4 違反)",
       "failed": [
         "test_final_observed_failure_keeps_a_transport_failure",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_unresolved_transport_failure_records_null_and_stops"
       ]
@@ -1445,7 +1461,7 @@
         "test_other_exceptions_abort_without_a_null_row",
         "test_shifted_body_is_refused_before_sending"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'ValueError'>",
       "why": "照合の不一致や想定外の例外を transport 失敗に畳む",
       "failed": [
         "test_other_exceptions_abort_without_a_null_row",
@@ -1471,7 +1487,7 @@
       "expected_any_of": [
         "test_failed_responses_are_resent"
       ],
-      "expected_reason": null,
+      "expected_reason": "JSONDecodeError",
       "why": "JSON でない応答で再送せずに止まる",
       "failed": [
         "test_failed_responses_are_resent"
@@ -1497,7 +1513,7 @@
       "expected_any_of": [
         "test_failed_responses_are_resent"
       ],
-      "expected_reason": null,
+      "expected_reason": "'list' object has no attribute 'get'",
       "why": "配列の応答で AttributeError になる",
       "failed": [
         "test_failed_responses_are_resent"
@@ -1736,7 +1752,9 @@
       "expected_reason": "n_records differs from the plan",
       "why": "来歴の記録数が 0",
       "failed": [
-        "test_complete_pilot_run_is_published_and_computed"
+        "test_complete_pilot_run_is_published_and_computed",
+        "test_interrupted_transport_failure_keeps_not_computed",
+        "test_unresolved_transport_failure_records_null_and_stops"
       ]
     },
     {
@@ -1752,6 +1770,7 @@
       "failed": [
         "test_driver_swap_is_detected",
         "test_final_observed_failure_aborts_a_finished_run",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_manifest_failure_at_publication_blocks_it",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_observed_change_during_the_run_blocks_publication",
@@ -1859,6 +1878,7 @@
         "test_files_changed_after_the_rename_are_not_bound",
         "test_final_observed_failure_aborts_a_finished_run",
         "test_final_provenance_failure_keeps_records_but_aborts",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_manifest_failure_at_publication_blocks_it",
         "test_null_content_is_a_transport_failure_not_bottom",
         "test_observed_change_during_the_run_blocks_publication",
@@ -2032,7 +2052,7 @@
       "expected_any_of": [
         "test_final_provenance_failure_keeps_records_but_aborts"
       ],
-      "expected_reason": null,
+      "expected_reason": "OSError: readonly",
       "why": "公開済みの run を例外で終える",
       "failed": [
         "test_final_provenance_failure_keeps_records_but_aborts"
@@ -2044,7 +2064,7 @@
       "expected_any_of": [
         "test_provenance_failure_keeps_the_original_exception"
       ],
-      "expected_reason": null,
+      "expected_reason": "OSError: readonly",
       "why": "元の例外が来歴の書き込みの失敗に隠れる",
       "failed": [
         "test_provenance_failure_keeps_the_original_exception"
@@ -2145,11 +2165,13 @@
       "label": "u29 transport 失敗の来歴に status を書かない",
       "status": "KILLED",
       "expected_any_of": [
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_unresolved_transport_failure_records_null_and_stops"
       ],
       "expected_reason": null,
       "why": "prereg §4 の status=not_computed が残らない (Codex MEDIUM-3)",
       "failed": [
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_unresolved_transport_failure_records_null_and_stops"
       ]
     },
@@ -2163,6 +2185,18 @@
       "why": "公開した run まで not_computed と書く",
       "failed": [
         "test_complete_pilot_run_is_published_and_computed"
+      ]
+    },
+    {
+      "label": "u34 status を終了理由から決める",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_interrupted_transport_failure_keeps_not_computed"
+      ],
+      "expected_reason": null,
+      "why": "終了時の observed の取得中に中断すると not_computed が消える (Codex 再 review MEDIUM-2)",
+      "failed": [
+        "test_interrupted_transport_failure_keeps_not_computed"
       ]
     },
     {
@@ -2305,39 +2339,10 @@
       "expected_reason": null,
       "why": "実走中の環境の変化を見ない",
       "failed": [
-        "test_complete_pilot_run_is_published_and_computed",
-        "test_driver_swap_is_detected",
-        "test_failed_responses_are_resent",
-        "test_files_changed_after_the_rename_are_not_bound",
         "test_final_observed_failure_aborts_a_finished_run",
-        "test_final_observed_failure_keeps_a_transport_failure",
-        "test_final_observed_is_resent",
-        "test_final_provenance_failure_keeps_records_but_aborts",
-        "test_finish_length_is_counted",
-        "test_line_separators_in_raw_do_not_split_a_record",
-        "test_main_run_is_computed_by_the_frozen_scorer",
-        "test_manifest_failure_at_publication_blocks_it",
-        "test_meta_is_on_disk_before_the_first_call",
-        "test_null_content_is_a_transport_failure_not_bottom",
+        "test_interrupted_transport_failure_keeps_not_computed",
         "test_observed_change_during_the_run_blocks_publication",
-        "test_parse_follows_the_arm",
-        "test_pilot_gate_cli_and_provenance_contract",
-        "test_pinned_change_during_the_manifest_check_blocks_publication",
-        "test_pinned_change_during_the_read_back_blocks_publication",
-        "test_pinned_file_change_during_the_run_blocks_publication",
-        "test_provenance_binds_the_running_driver",
-        "test_provenance_hashes_are_the_written_bytes",
-        "test_publication_failure_is_recorded_as_aborted",
-        "test_publication_is_two_phase",
-        "test_raw_is_recorded_verbatim",
-        "test_read_back_failure_blocks_publication",
-        "test_records_follow_the_schema_and_the_plan",
-        "test_resend_with_the_same_seed_recovers",
-        "test_run_compares_with_the_pinned_values_taken_at_launch",
-        "test_swapped_files_are_not_published",
-        "test_unexpected_response_model_blocks_publication",
-        "test_unresolved_transport_failure_records_null_and_stops",
-        "test_written_files_use_lf"
+        "test_swapped_files_are_not_published"
       ]
     },
     {
@@ -2431,7 +2436,7 @@
       "expected_any_of": [
         "test_sha256_reports_an_unreadable_file_as_none"
       ],
-      "expected_reason": null,
+      "expected_reason": "PermissionError: locked",
       "why": "読めないファイルで来歴を書けなくなる (code-reviewer の再レビュー LOW)",
       "failed": [
         "test_sha256_reports_an_unreadable_file_as_none"
@@ -2455,7 +2460,7 @@
       "expected_any_of": [
         "test_run_refuses_a_non_empty_run_dir"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'FileExistsError'>",
       "why": "前の run に重ねて書く (再開しない規律)",
       "failed": [
         "test_run_refuses_a_non_empty_run_dir"
@@ -2543,7 +2548,7 @@
       "expected_any_of": [
         "test_main_takes_only_the_stage"
       ],
-      "expected_reason": null,
+      "expected_reason": "DID NOT RAISE <class 'SystemExit'>",
       "why": "run dir・endpoint を差し替える登録外の実走経路を開ける",
       "failed": [
         "test_main_takes_only_the_stage"
@@ -2558,6 +2563,9 @@
       "expected_reason": null,
       "why": "起動の前提が崩れていても走る",
       "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_main_checks_the_executed_code_after_the_launch_checks",
         "test_main_refuses_to_launch_without_touching_the_run_dir"
       ]
     },
@@ -2667,6 +2675,7 @@
       "expected_reason": null,
       "why": "certify されていない driver で走る",
       "failed": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
         "test_launch_problems_combine_certification_git_manifest_and_gate"
       ]
     },
@@ -2739,7 +2748,8 @@
       "expected_reason": null,
       "why": "certification の無い driver で走る",
       "failed": [
-        "test_certification_problems_use_the_manifest_contract"
+        "test_certification_problems_use_the_manifest_contract",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes"
       ]
     },
     {
@@ -2851,6 +2861,18 @@
       ]
     },
     {
+      "label": "l25 manifest の末尾行を splitlines で切る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ],
+      "expected_reason": null,
+      "why": "LF 以外の区切り文字 (U+001C・U+0085・U+2028) の後ろを捨てて OK とみなす (Codex 再 review LOW-1)",
+      "failed": [
+        "test_manifest_problems_require_the_exact_ok_line"
+      ]
+    },
+    {
       "label": "l22 manifest の照合に PYTHONHASHSEED を渡さない",
       "status": "KILLED",
       "expected_any_of": [
@@ -2884,6 +2906,209 @@
       "why": "git が失敗しても「追跡済み」「HEAD と一致」に畳む (code-reviewer MEDIUM-5)",
       "failed": [
         "test_git_reports_a_failure_as_none"
+      ]
+    },
+    {
+      "label": "x1  コンパイル結果の比較を常に真にする",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_compiles_to_compares_the_program"
+      ],
+      "expected_reason": null,
+      "why": "別のプログラムを、来歴の hash の bytes のコンパイル結果とみなす",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_compiles_to_compares_the_program"
+      ]
+    },
+    {
+      "label": "x2  コンパイルできない bytes を同じプログラムとみなす",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_compiles_to_compares_the_program"
+      ],
+      "expected_reason": null,
+      "why": "構文の通らない bytes を、実行中のプログラムと同じとみなす",
+      "failed": [
+        "test_compiles_to_compares_the_program"
+      ]
+    },
+    {
+      "label": "x3  driver の検証を常に真にする",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes"
+      ],
+      "expected_reason": null,
+      "why": "起動の窓で差し替わった driver (実行したのは別版) を見逃す",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes"
+      ]
+    },
+    {
+      "label": "x4  driver の検証に別の code object を使う",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_imported_driver_runs_its_bytes"
+      ],
+      "expected_reason": null,
+      "why": "実行中のモジュールでない code object と比べる (正しい driver を拒否する)",
+      "failed": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_imported_driver_runs_its_bytes"
+      ]
+    },
+    {
+      "label": "x5  loader がディスクを読み直して実行する",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ],
+      "expected_reason": null,
+      "why": "hash した bytes と、実行した bytes が別になりうる",
+      "failed": [
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ]
+    },
+    {
+      "label": "x6  loader の sha256 をディスクから取る",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ],
+      "expected_reason": null,
+      "why": "実行する bytes でなく、その時点のディスクを hash する",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ]
+    },
+    {
+      "label": "x7  finder が他の package の名前も読む",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ],
+      "expected_reason": null,
+      "why": "対象外の import を、root のファイルで置き換える",
+      "failed": [
+        "test_pinned_finder_runs_the_bytes_it_read"
+      ]
+    },
+    {
+      "label": "x8  起動のときに finder を入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes"
+      ],
+      "expected_reason": null,
+      "why": "repo のモジュールを通常の import (pyc を含む) で読み、実行した bytes を同定しない",
+      "failed": [
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes"
+      ]
+    },
+    {
+      "label": "x9  driver の検証の結果を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_reason": null,
+      "why": "実行中の driver が来歴の hash の bytes でなくても起動する",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ]
+    },
+    {
+      "label": "x10 driver の bytes を起動の検査の前の値と比べない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_reason": null,
+      "why": "起動から起動の検査までの driver の差し替えを見逃す",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ]
+    },
+    {
+      "label": "x11 finder を通らないモジュールを問題にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_reason": null,
+      "why": "通常の import で読んだモジュール (実行した bytes が分からない) で起動する",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_executed_problems_check_driver_modules_and_pins"
+      ]
+    },
+    {
+      "label": "x12 固定ファイルでないモジュールを問題にしない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_reason": null,
+      "why": "封印・certification の外のコードを実行して起動する",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ]
+    },
+    {
+      "label": "x13 実行した bytes を起動の検査の前の値と比べない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_reason": null,
+      "why": "import から起動の検査までのモジュールの差し替えを見逃す",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ]
+    },
+    {
+      "label": "x14 実行中のモジュールを見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes"
+      ],
+      "expected_reason": null,
+      "why": "起動で実際に読まれたモジュールを照合しない",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes"
+      ]
+    },
+    {
+      "label": "x15 main が実行中のコードを照合しない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_checks_the_executed_code_after_the_launch_checks"
+      ],
+      "expected_reason": null,
+      "why": "実行したコードが来歴の hash を指さなくても起動する",
+      "failed": [
+        "test_command_line_launch_refuses_code_that_is_not_its_bytes",
+        "test_main_checks_the_executed_code_after_the_launch_checks"
+      ]
+    },
+    {
+      "label": "x16 main が実行中のコードを起動の検査の前に照合する",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_checks_the_executed_code_after_the_launch_checks"
+      ],
+      "expected_reason": null,
+      "why": "certification の検査が import する driver の harness を照合しない",
+      "failed": [
+        "test_main_checks_the_executed_code_after_the_launch_checks"
       ]
     }
   ],

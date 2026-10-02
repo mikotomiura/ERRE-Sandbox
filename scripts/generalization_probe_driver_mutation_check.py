@@ -15,9 +15,12 @@ fixture に依存する test は、変異で run が壊れると FAILED でな�
 * 変異が捕まらなかった: SURVIVED (test が緑のまま)。
 * 変異は落ちたが理由が違う: WRONG_REASON (期待診断が落ちていない・理由の文が無い) / COLLECTION_ERROR / TIMEOUT。
   KILLED に数えるのは、期待診断のどれかが落ちたものだけ。理由の文がある変異はその文が例外行に出ること、無い変異は
-  期待診断が test の本体で落ちた (FAILED) ことを要求する。fixture の setup の ERROR は理由を問わず出るので、
-  理由の文の無い変異では数えない (``status_of``、Codex MEDIUM-4・code-reviewer MEDIUM-4)。判定器自体の負例は
-  ``test_harness_status_separates_wrong_reasons`` が pin する。
+  期待診断の item が test の本体で落ち (FAILED)、**その item の本体の節**に pytest が書き換えた assert の例外行
+  (``E   assert ...``) があることを要求する (``status_of``・``parse_output`` の ``asserted``)。fixture の setup の ERROR・
+  別の parameter や teardown の節・assert 以外の例外 (NameError・TypeError・autouse の封鎖の ``raise AssertionError``)
+  は数えない (Codex MEDIUM-4・code-reviewer MEDIUM-4・Codex 再 review MEDIUM-1・BL-3)。意図どおりに assert 以外で
+  落ちる変異 (``pytest.raises`` の DID NOT RAISE 等) には、理由の文を登録する。判定器自体の負例は
+  ``test_harness_status_separates_wrong_reasons``・``test_harness_reads_failures_kinds_and_reasons`` が pin する。
 
 anchor (置換前の文字列) は対象に 1 回だけ現れ、置換で内容が変わり、置換後も構文が通ること (``--anchors`` で検査)。
 登録から外した変異 (decisions.md DN-2 にも記録)。等価 (意味を変えないので kill できない):
@@ -76,12 +79,13 @@ _DRIVER = _REPO_ROOT / _DRIVER_REL
 # commit 済み certification と現在のファイルの一致を見る test は、変異中は必ず落ちて生き残りを覆い隠すので外す
 _DESELECT = f"{_TEST_REL}::test_committed_driver_certification_is_current"
 _TEST_TIMEOUT_S = 1800
-_FAILED = re.compile(r"^(FAILED|ERROR) (\S+?::\S+?)(?:\[.*?\])?(?: - .*)?$")
+_FAILED = re.compile(r"^(FAILED|ERROR) (\S+?::\S+?)(\[.*?\])?(?: - .*)?$")
 # 節の見出しの下線は、名前が長い (parametrize の id が長い) と 1 本まで縮む。teardown の節も別に集める
 # (前の test の節に混ぜない、code-reviewer の再レビュー LOW)
-_SECTION = re.compile(
-    r"^_+ (?:ERROR at (?:setup|teardown) of )?(test_\w+)(?:\[.*?\])? _+$"
-)
+_SECTION = re.compile(r"^_+ (ERROR at (?:setup|teardown) of )?(test_\w+)(\[.*?\])? _+$")
+# pytest が書き換えた assert 文の例外行。説明が 1 行なら ``E   assert ...``、複数行 (リストの比較・where の行) なら
+# ``E   AssertionError: assert ...``。raise AssertionError("...") (autouse の封鎖) は出さない (Codex 再 review MEDIUM-1)
+_ASSERT_LINE = re.compile(r"^E\s+(?:AssertionError: )?assert\b")
 
 
 @dataclass(frozen=True)
@@ -179,6 +183,15 @@ _GIT = "test_launch_problems_check_git_tracking_and_head"
 _CERT = "test_certification_problems_use_the_manifest_contract"
 _GATE_PROBLEMS = "test_gate_problems_require_go_r_and_observed"
 _PINNED = "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+# Codex 再 review の反映 (decisions DX-1・DX-4)
+_INTERRUPTED = "test_interrupted_transport_failure_keeps_not_computed"
+_COMPILES = "test_compiles_to_compares_the_program"
+_SELF_BYTES = "test_imported_driver_runs_its_bytes"
+_FINDER = "test_pinned_finder_runs_the_bytes_it_read"
+_EXECUTED = "test_executed_problems_check_driver_modules_and_pins"
+_MAIN_EXECUTED = "test_main_checks_the_executed_code_after_the_launch_checks"
+_LAUNCH_CLI = "test_command_line_launch_runs_repo_code_from_hashed_bytes"
+_LAUNCH_SWAP = "test_command_line_launch_refuses_code_that_is_not_its_bytes"
 
 _NOT_PUBLISHED = "the complete run was not published"
 _RESENT = "resent more or fewer than 3 times"
@@ -388,6 +401,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False:\n",
         (_BAD,),
         "欠けた plan (重複・grid 外は凍結の構造の検査が捕まえるが、欠けは捕まえない) で走り始める",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>",
     ),
     _m(
         "c2  body の数と plan の照合を外す",
@@ -395,6 +409,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if not schedule:\n",
         (_META,),
         "plan と数の違う予定表を、照合の表を作らずに受け入れる",
+        "zip() argument 2 is shorter than argument 1",
     ),
     _m(
         "c3  予定表で形の検査をしない",
@@ -402,6 +417,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "        pass\n",
         (_BAD,),
         "stream などの形の誤りに、送る直前まで気づかない (GPU を使ってから止まる)",
+        "SentBodyMismatchError: call ",
     ),
     _m(
         "c4  形の問題があっても続ける",
@@ -409,6 +425,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False:\n        return out\n    cands = [",
         (_BAD,),
         "形の崩れた body で候補記録を作り、ScheduleError でなく KeyError で落ちる",
+        "KeyError: 'options'",
     ),
     _m(
         "c5  予定表で凍結の構造の検査をしない",
@@ -416,6 +433,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    pass\n",
         (_BAD,),
         "seed・prompt の誤りに、送る直前まで気づかない",
+        "SentBodyMismatchError: call ",
     ),
     _m(
         "c6  request の型の照合を外す",
@@ -445,6 +463,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "                pass\n",
         (_OBSERVER, _SHIFTED),
         "送る経路でずれた body をそのまま送る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w2  照合を送信の後に",
@@ -463,6 +482,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    key = stage.plan[index % 4]\n    where",
         (_POSITION, _VALUE),
         "別の位置のキーで照合する",
+        "seed differs from the pilot schedule",
     ),
     _m(
         "w4  送る直前に形を検査しない",
@@ -470,6 +490,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    problems = []\n    if not problems:\n",
         (_VALUE,),
         "think・stream・型の誤りを送る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w5  送る直前に凍結の構造の検査をしない",
@@ -477,6 +498,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "        problems = []\n",
         (_VALUE, _POSITION, _SHIFTED),
         "seed・prompt のずれを送る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w6  seed の型を検査しない",
@@ -484,6 +506,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False:\n",
         (_VALUE,),
         "float の seed (20261001.0) は凍結の構造の検査 (!=) を通る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w7  型の厳密一致を外す",
@@ -491,6 +514,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "return got == want",
         (_VALUE,),
         "False と 0、4096.0 と 4096 を同じとみなす",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w8  body の余分な key を許す",
@@ -498,6 +522,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if not isinstance(body, dict) or not BODY_KEYS <= set(body):\n",
         (_VALUE,),
         "keep_alive などの登録外の要求を送る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w9  options の余分な key を許す",
@@ -505,6 +530,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if not isinstance(opts, dict) or not OPTION_KEYS <= set(opts):\n",
         (_VALUE,),
         "top_k などの登録外の decoding 条件を送る",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w10 messages の形を検査しない",
@@ -512,6 +538,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False and not all(\n",
         (_VALUE,),
         "list でない messages で SentBodyMismatchError でなく TypeError になる",
+        "'int' object is not iterable",
     ),
     _m(
         "w11 model を照合しない",
@@ -519,6 +546,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "",
         (_VALUE,),
         "別の model への送信を通す",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w12 think を照合しない",
@@ -526,6 +554,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "",
         (_VALUE,),
         "think の誤りを通す",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w13 stream を照合しない",
@@ -533,6 +562,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "",
         (_VALUE,),
         "stream の誤りを通す",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w14 固定の options を照合しない",
@@ -540,6 +570,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "        if False\n    )\n",
         (_VALUE,),
         "temperature・num_ctx の誤りを通す",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w15 /api/chat 以外の POST を通す",
@@ -547,6 +578,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "            elif False:\n",
         (_OBSERVER,),
         "照合をすり抜ける経路を開ける",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w16 /api/show を常に通す",
@@ -554,6 +586,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "            if path == SHOW_PATH:\n",
         (_OBSERVER, _SHOW),
         "observed を読む間以外にも /api/show を通す",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.SentBodyMismatchError'>",
     ),
     _m(
         "w17 期待の無い送信を通す",
@@ -561,6 +594,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "                if False:\n",
         (_OBSERVER,),
         "位置の無い送信を照合せずに通す (TypeError になる)",
+        "tuple indices must be integers or slices, not NoneType",
     ),
     _m(
         "w18 observed を読む間に /api/show を許さない",
@@ -591,6 +625,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "        if isinstance(m, dict):\n",
         (_IDENTITY,),
         "別の model の digest を記録する",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
     ),
     _m(
         "o3  空の版を許す",
@@ -598,6 +633,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if not isinstance(version, str):\n",
         (_IDENTITY,),
         "版の無い環境で走る",
+        "observed environment is missing or malformed",
     ),
     _m(
         "o4  digest が無くても続ける",
@@ -605,6 +641,7 @@ MUTANTS: tuple[Mutant, ...] = (
         '    if False:\n        msg = f"model',
         (_IDENTITY,),
         "model の無い環境で PreflightError でなく予定表の検査まで進む",
+        "observed environment is missing or malformed",
     ),
     _m(
         "o5  template が無くても続ける",
@@ -612,6 +649,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False:\n",
         (_IDENTITY,),
         "chat template の無い応答で PreflightError でなく AttributeError になる",
+        "'NoneType' object has no attribute 'encode'",
     ),
     _m(
         "o6  preflight で HTTP の状態を見ない",
@@ -619,6 +657,7 @@ MUTANTS: tuple[Mutant, ...] = (
         '    if False:\n        msg = f"{response.request.url.path}',
         (_IDENTITY,),
         "404 の応答の値を observed として使う",
+        "DID NOT RAISE <class 'scripts.generalization_probe_driver.PreflightError'>",
     ),
     _m(
         "o8  /api/show に model を渡さない",
@@ -634,6 +673,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "        if False:\n",
         (_MAIN_OBS,),
         "pilot と違う環境で本走を始めかける (予定表の検査が ScheduleError で止めるが、理由が違う)",
+        "observed environment differs from the pilot",
     ),
     # ================================================================ 再送と raw = null
     _m(
@@ -661,6 +701,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "            )\n",
         (_RESEND, _FAILED_RESP),
         "再送が同じ seed でない (送る直前の照合が止める)",
+        "seed differs from the pilot schedule",
     ),
     _m(
         "t4  再送が尽きても続行",
@@ -682,6 +723,7 @@ MUTANTS: tuple[Mutant, ...] = (
         '    except Exception as exc:\n        msg = f"{type(exc).__name__}: {exc}"\n',
         (_OTHER_EXC, _SHIFTED),
         "照合の不一致や想定外の例外を transport 失敗に畳む",
+        "DID NOT RAISE <class 'ValueError'>",
     ),
     _m(
         "t7  HTTP の状態を見ない",
@@ -696,6 +738,7 @@ MUTANTS: tuple[Mutant, ...] = (
         '    except KeyError as exc:\n        msg = "non-JSON response"\n',
         (_FAILED_RESP,),
         "JSON でない応答で再送せずに止まる",
+        "JSONDecodeError",
     ),
     _m(
         "t9  文字列でない content を受ける",
@@ -710,6 +753,7 @@ MUTANTS: tuple[Mutant, ...] = (
         '    message = payload.get("message")\n',
         (_FAILED_RESP,),
         "配列の応答で AttributeError になる",
+        "'list' object has no attribute 'get'",
     ),
     _m(
         "t11 応答の model を数えない",
@@ -929,6 +973,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "            raise\n",
         (_FINAL_PROV,),
         "公開済みの run を例外で終える",
+        "OSError: readonly",
     ),
     _m(
         "u19 来歴・公開の失敗で元の例外を隠す",
@@ -936,6 +981,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "            raise\n",
         (_ORIGINAL,),
         "元の例外が来歴の書き込みの失敗に隠れる",
+        "OSError: readonly",
     ),
     _m(
         "u20 driver の sha256 を公開の後にディスクから",
@@ -992,18 +1038,25 @@ MUTANTS: tuple[Mutant, ...] = (
     ),
     _m(
         "u29 transport 失敗の来歴に status を書かない",
-        '        "status": sc.STATUS_NOT_COMPUTED if reason == REASON_TRANSPORT else None,\n',
+        '        "status": sc.STATUS_NOT_COMPUTED if wrote_null else None,\n',
         '        "status": None,\n',
-        (_UNRESOLVED,),
+        (_UNRESOLVED, _INTERRUPTED),
         "prereg §4 の status=not_computed が残らない (Codex MEDIUM-3)",
     ),
     _m(
         "u30 どの run の来歴にも status を not_computed で書く",
-        '        "status": sc.STATUS_NOT_COMPUTED if reason == REASON_TRANSPORT else None,\n',
+        '        "status": sc.STATUS_NOT_COMPUTED if wrote_null else None,\n',
         '        "status": sc.STATUS_NOT_COMPUTED,\n',
         (_COMPLETE,),
         "公開した run まで not_computed と書く",
         "'not_computed' is None",
+    ),
+    _m(
+        "u34 status を終了理由から決める",
+        "    wrote_null = state is not None and any(s.raw is None for s in state.records)\n",
+        "    wrote_null = reason == REASON_TRANSPORT\n",
+        (_INTERRUPTED,),
+        "終了時の observed の取得中に中断すると not_computed が消える (Codex 再 review MEDIUM-2)",
     ),
     _m(
         "u31 records の sha256 を rename の後のファイルから",
@@ -1080,7 +1133,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "a6  終了時の observed を読まない",
         "        observed_end, final_error = await final_observed(http, observer, backoff_s)\n",
-        "        observed_end, final_error = observed, None\n",
+        # 開始時の値を流用する (Codex 再 review MEDIUM-1: 前の置換は未定義の名前で NameError になっていた)
+        "        observed_end, final_error = out.observed_start, None\n",
         (_OBS_CHANGE, _FINAL_ABORT),
         "実走中の環境の変化を見ない",
     ),
@@ -1139,6 +1193,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    except FileNotFoundError:\n        return None\n",
         (_SHA_UNREADABLE,),
         "読めないファイルで来歴を書けなくなる (code-reviewer の再レビュー LOW)",
+        "PermissionError: locked",
     ),
     _m(
         "a15 main が起動の検査の後に固定ファイルの sha256 を取る",
@@ -1155,6 +1210,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    if False:\n",
         (_NON_EMPTY,),
         "前の run に重ねて書く (再開しない規律)",
+        "DID NOT RAISE <class 'FileExistsError'>",
     ),
     _m(
         "q2  preflight を飛ばす",
@@ -1176,6 +1232,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "    args, _ = ap.parse_known_args(argv)\n",
         (_ARGS,),
         "run dir・endpoint を差し替える登録外の実走経路を開ける",
+        "DID NOT RAISE <class 'SystemExit'>",
     ),
     _m(
         "q5  起動拒否を外す",
@@ -1208,22 +1265,22 @@ MUTANTS: tuple[Mutant, ...] = (
     # ================================================================ 起動の前提
     _m(
         "l1  manifest の exit code を見ない",
-        "    if code != 0 or not lines or lines[-1] != want:\n",
-        "    if not lines or lines[-1] != want:\n",
+        "    if code != 0 or last != want:\n",
+        "    if last != want:\n",
         (_OK_LINE,),
         "exit 1 の照合を OK とみなす",
     ),
     _m(
         "l2  manifest の末尾行を見ない",
-        "    if code != 0 or not lines or lines[-1] != want:\n",
+        "    if code != 0 or last != want:\n",
         "    if code != 0:\n",
         (_OK_LINE,),
         "NOT FROZEN (exit 0 の場合) を OK とみなす",
     ),
     _m(
         "l3  OK を末尾以外でも受ける",
-        "lines[-1] != want",
-        "want not in lines",
+        "last != want",
+        'want not in out.split("\\n")',
         (_OK_LINE,),
         "OK の後に続く行を見ない",
     ),
@@ -1348,10 +1405,17 @@ MUTANTS: tuple[Mutant, ...] = (
     ),
     _m(
         "l21 manifest の出力を strip してから末尾行を見る",
-        "    lines = out.splitlines()  # 末尾の空白・空行を消さない (Codex LOW-5)\n",
-        "    lines = out.strip().splitlines()\n",
+        '    last = out.removesuffix("\\n").rsplit("\\n", 1)[-1]\n',
+        '    last = out.strip().rsplit("\\n", 1)[-1]\n',
         (_OK_LINE,),
         "末尾の空白・空行の付いた出力を OK とみなす",
+    ),
+    _m(
+        "l25 manifest の末尾行を splitlines で切る",
+        '    last = out.removesuffix("\\n").rsplit("\\n", 1)[-1]\n',
+        '    last = (out.splitlines() or [""])[-1]\n',
+        (_OK_LINE,),
+        "LF 以外の区切り文字 (U+001C・U+0085・U+2028) の後ろを捨てて OK とみなす (Codex 再 review LOW-1)",
     ),
     _m(
         "l22 manifest の照合に PYTHONHASHSEED を渡さない",
@@ -1373,6 +1437,122 @@ MUTANTS: tuple[Mutant, ...] = (
         "            check=False,\n",
         (_GIT_REAL,),
         "git が失敗しても「追跡済み」「HEAD と一致」に畳む (code-reviewer MEDIUM-5)",
+    ),
+    # ================================================ 実行したコードの同定 (Codex 再 review HIGH-1)
+    _m(
+        "x1  コンパイル結果の比較を常に真にする",
+        '        return code == compile(data, str(path), "exec", dont_inherit=True)\n',
+        "        return True\n",
+        (_COMPILES, _LAUNCH_SWAP),
+        "別のプログラムを、来歴の hash の bytes のコンパイル結果とみなす",
+    ),
+    _m(
+        "x2  コンパイルできない bytes を同じプログラムとみなす",
+        "    except (SyntaxError, ValueError):\n        return False\n",
+        "    except (SyntaxError, ValueError):\n        return True\n",
+        (_COMPILES,),
+        "構文の通らない bytes を、実行中のプログラムと同じとみなす",
+    ),
+    _m(
+        "x3  driver の検証を常に真にする",
+        "_DRIVER_RUNS_ITS_BYTES: bool = _compiles_to(\n",
+        "_DRIVER_RUNS_ITS_BYTES: bool = True or _compiles_to(\n",
+        (_LAUNCH_SWAP,),
+        "起動の窓で差し替わった driver (実行したのは別版) を見逃す",
+    ),
+    _m(
+        "x4  driver の検証に別の code object を使う",
+        "    sys._getframe(0).f_code,",
+        "    _compiles_to.__code__,",
+        (_SELF_BYTES, _LAUNCH_CLI),
+        "実行中のモジュールでない code object と比べる (正しい driver を拒否する)",
+    ),
+    _m(
+        "x5  loader がディスクを読み直して実行する",
+        '        code = compile(self.data, str(self.path), "exec", dont_inherit=True)\n',
+        '        code = compile(self.path.read_bytes(), str(self.path), "exec", dont_inherit=True)\n',
+        (_FINDER,),
+        "hash した bytes と、実行した bytes が別になりうる",
+    ),
+    _m(
+        "x6  loader の sha256 をディスクから取る",
+        "        self.pinned_sha256 = hashlib.sha256(data).hexdigest()\n",
+        "        self.pinned_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()\n",
+        (_FINDER,),
+        "実行する bytes でなく、その時点のディスクを hash する",
+    ),
+    _m(
+        "x7  finder が他の package の名前も読む",
+        '        if head != self.package or not name or "." in name:\n',
+        '        if not name or "." in name:\n',
+        (_FINDER,),
+        "対象外の import を、root のファイルで置き換える",
+    ),
+    _m(
+        "x8  起動のときに finder を入れない",
+        "    sys.meta_path.insert(0, _PinnedFinder(_REPO_ROOT))\n",
+        "    pass\n",
+        (_LAUNCH_CLI,),
+        "repo のモジュールを通常の import (pyc を含む) で読み、実行した bytes を同定しない",
+    ),
+    _m(
+        "x9  driver の検証の結果を見ない",
+        "    if not _DRIVER_RUNS_ITS_BYTES:\n",
+        "    if False:\n",
+        (_EXECUTED, _LAUNCH_SWAP),
+        "実行中の driver が来歴の hash の bytes でなくても起動する",
+    ),
+    _m(
+        "x10 driver の bytes を起動の検査の前の値と比べない",
+        "    if pinned_start.get(man.DRIVER) != _DRIVER_SHA:\n",
+        "    if False:\n",
+        (_EXECUTED,),
+        "起動から起動の検査までの driver の差し替えを見逃す",
+    ),
+    _m(
+        "x11 finder を通らないモジュールを問題にしない",
+        "        if sha is None:\n",
+        "        if False:\n",
+        (_EXECUTED, _LAUNCH_SWAP),
+        "通常の import で読んだモジュール (実行した bytes が分からない) で起動する",
+    ),
+    _m(
+        "x12 固定ファイルでないモジュールを問題にしない",
+        "        elif rel not in files:\n",
+        "        elif False:\n",
+        (_EXECUTED,),
+        "封印・certification の外のコードを実行して起動する",
+    ),
+    _m(
+        "x13 実行した bytes を起動の検査の前の値と比べない",
+        "        elif sha != pinned_start.get(rel):\n",
+        "        elif False:\n",
+        (_EXECUTED,),
+        "import から起動の検査までのモジュールの差し替えを見逃す",
+    ),
+    _m(
+        "x14 実行中のモジュールを見ない",
+        "    mods = sys.modules if modules is None else modules\n",
+        "    mods = {} if modules is None else modules\n",
+        (_LAUNCH_SWAP,),
+        "起動で実際に読まれたモジュールを照合しない",
+    ),
+    _m(
+        "x15 main が実行中のコードを照合しない",
+        "    problems += executed_problems(args.stage, pinned_start)\n",
+        "    problems += []\n",
+        (_MAIN_EXECUTED,),
+        "実行したコードが来歴の hash を指さなくても起動する",
+    ),
+    _m(
+        "x16 main が実行中のコードを起動の検査の前に照合する",
+        "    problems = launch_problems(args.stage)\n"
+        "    # 実行中のコードの照合は起動の検査の **後** (certification の検査が import する driver の harness も含める)\n"
+        "    problems += executed_problems(args.stage, pinned_start)\n",
+        "    problems = executed_problems(args.stage, pinned_start)\n"
+        "    problems += launch_problems(args.stage)\n",
+        (_MAIN_EXECUTED,),
+        "certification の検査が import する driver の harness を照合しない",
     ),
 )
 
@@ -1413,8 +1593,11 @@ META_CASES: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
 
 def _run_tests(
     env: dict[str, str], root: pathlib.Path = _REPO_ROOT
-) -> tuple[int, dict[str, str], dict[str, str], bool]:
-    """test_driver.py を実行する。返り値 = (exit code, 落ちた test, FAILED / ERROR の別, collection error)."""
+) -> tuple[int, dict[str, str], dict[str, str], bool, set[str]]:
+    """test_driver.py を実行する.
+
+    返り値 = (exit code, 落ちた test, FAILED / ERROR の別, collection error, assert で落ちた test)。
+    """
     proc = subprocess.run(  # noqa: S603
         [
             sys.executable,
@@ -1436,34 +1619,50 @@ def _run_tests(
         check=False,
         timeout=_TEST_TIMEOUT_S,
     )
-    failed, kinds, collect_error = parse_output(proc.stdout or "")
-    return proc.returncode, failed, kinds, collect_error
+    failed, kinds, collect_error, asserted = parse_output(proc.stdout or "")
+    return proc.returncode, failed, kinds, collect_error, asserted
 
 
-def parse_output(out: str) -> tuple[dict[str, str], dict[str, str], bool]:
-    """pytest の出力 → (落ちた test 名 → 要約行 + traceback 節, test 名 → FAILED / ERROR, collection error).
+def parse_output(
+    out: str,
+) -> tuple[dict[str, str], dict[str, str], bool, set[str]]:
+    """pytest の出力 → (落ちた test, FAILED / ERROR の別, collection error, assert で落ちた test).
 
-    traceback 節 (``___ ERROR at setup of test_x ___`` / ``___ test_x ___``) を test 名ごとに集める。fixture の
-    ERROR の要約行には例外名が出ないので、理由はここで照合する。
+    落ちた test = test 名 → 要約行 + traceback 節。traceback 節 (``___ ERROR at setup of test_x ___`` /
+    ``___ test_x[id] ___``) を test 名ごとに集める。fixture の ERROR の要約行には例外名が出ないので、理由はここで照合する。
+    assert で落ちた test = FAILED の item のうち、**その item の本体 (call) の節**に pytest が書き換えた assert の
+    例外行がある test 名 (別の parameter・setup・teardown の節は流用しない、Codex 再 review MEDIUM-1)。
     """
-    sections: dict[str, str] = {}
-    current: str | None = None
+    sections: dict[str, str] = {}  # test 名 → 全ての節 (理由の文の照合)
+    calls: dict[str, str] = {}  # item (test 名 + parametrize の id) → 本体の節
+    current: tuple[str, str | None] | None = None
     for line in out.splitlines():
         if h := _SECTION.match(line):
-            current = h.group(1)
-            sections[current] = sections.get(current, "")
+            name, item = h.group(2), h.group(2) + (h.group(3) or "")
+            current = (name, None if h.group(1) else item)
+            sections.setdefault(name, "")
+            if current[1] is not None:
+                calls.setdefault(item, "")
         elif current is not None:
-            sections[current] += line + "\n"
+            sections[current[0]] += line + "\n"
+            if current[1] is not None:
+                calls[current[1]] += line + "\n"
     failed: dict[str, str] = {}
     kinds: dict[str, str] = {}
+    asserted: set[str] = set()
     for line in out.splitlines():
         if m := _FAILED.match(line):
             name = m.group(2).split("::")[-1]
             failed[name] = failed.get(name, "") + line + "\n" + sections.get(name, "")
             if kinds.get(name) != "FAILED":
                 kinds[name] = m.group(1)
+            body = calls.get(name + (m.group(3) or ""), "")
+            if m.group(1) == "FAILED" and any(
+                _ASSERT_LINE.match(x) for x in body.splitlines()
+            ):
+                asserted.add(name)
     collect_error = "ERROR collecting" in out or "Interrupted" in out
-    return failed, kinds, collect_error
+    return failed, kinds, collect_error, asserted
 
 
 def _raised(reason: str, hits: list[str]) -> bool:
@@ -1479,14 +1678,15 @@ def status_of(
     mut: Mutant,
     code: int,
     failed: dict[str, str],
-    kinds: dict[str, str],
+    asserted: set[str],
     *,
     collect: bool,
 ) -> str:
     """変異の判定 (3 通り): SURVIVED / 理由が違う (WRONG_REASON・COLLECTION_ERROR・TIMEOUT) / KILLED.
 
-    理由の文 (``raised``) が無い変異は、期待 test が test の本体で落ちた (FAILED) ときだけ KILLED にする。fixture の
-    setup の ERROR は理由を問わず出るので数えない (code-reviewer MEDIUM-4・Codex MEDIUM-4)。
+    理由の文 (``raised``) が無い変異は、期待 test が test の本体の assert で落ちた (``asserted``) ときだけ KILLED に
+    する。fixture の setup の ERROR・assert 以外の例外は理由を問わず出るので数えない (code-reviewer MEDIUM-4・
+    Codex MEDIUM-4・Codex 再 review MEDIUM-1)。
     """
     hits = [t for t in mut.expect if t in failed]
     if code == -1:
@@ -1501,7 +1701,7 @@ def status_of(
             if _raised(mut.raised, [failed[t] for t in hits])
             else "WRONG_REASON"
         )
-    return "KILLED" if any(kinds.get(t) == "FAILED" for t in hits) else "WRONG_REASON"
+    return "KILLED" if any(t in asserted for t in hits) else "WRONG_REASON"
 
 
 def anchor_problems(src: str) -> list[str]:
@@ -1548,7 +1748,7 @@ def run_meta(env: dict[str, str]) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     tmp = _copy_tree()
     try:
-        code, failed, _, collect_error = _run_tests(env, tmp)
+        code, failed, _, collect_error, _ = _run_tests(env, tmp)
         if code != 0 or collect_error:
             msg = f"meta-test の対照 (無変異の複製) が緑でない: {sorted(failed)}"
             raise RuntimeError(msg)
@@ -1561,7 +1761,7 @@ def run_meta(env: dict[str, str]) -> list[dict[str, object]]:
                 raise RuntimeError(msg)
             path.write_bytes(src.replace(old, new, 1).encode("utf-8"))
             try:
-                code, failed, _, collect_error = _run_tests(env, tmp)
+                code, failed, _, collect_error, _ = _run_tests(env, tmp)
             finally:
                 path.write_bytes(original)
             ok = code != 0 and not collect_error and set(expect) <= set(failed)
@@ -1606,7 +1806,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     sha_test = _sha(_REPO_ROOT / _TEST_REL)
     sha_harness = _sha(_REPO_ROOT / _HARNESS_REL)
 
-    code, failed, _, _ = _run_tests(env)
+    code, failed, _, _, _ = _run_tests(env)
     if code != 0:
         print(f"ERROR: 対照 (無変異) が緑でない: {sorted(failed)}")
         return 2
@@ -1620,12 +1820,12 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
                 original.decode("utf-8").replace(mut.old, mut.new, 1).encode("utf-8")
             )
             try:
-                code, failed, kinds, collect = _run_tests(env)
+                code, failed, _, collect, asserted = _run_tests(env)
             except subprocess.TimeoutExpired:
-                code, failed, kinds, collect = -1, {}, {}, False
+                code, failed, collect, asserted = -1, {}, False, set()
             finally:
                 _DRIVER.write_bytes(original)
-            status = status_of(mut, code, failed, kinds, collect=collect)
+            status = status_of(mut, code, failed, asserted, collect=collect)
             rows.append(
                 {
                     "label": mut.label,

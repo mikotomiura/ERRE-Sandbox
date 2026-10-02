@@ -16,9 +16,13 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import hashlib
+import importlib.machinery
+import importlib.util
 import json
+import os
 import random
 import shutil
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -638,6 +642,29 @@ def test_unresolved_transport_failure_records_null_and_stops(tmp_path: Path) -> 
     assert judged["status"] == pg.STATUS_NOT_COMPUTED
 
 
+def test_interrupted_transport_failure_keeps_not_computed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """raw = null を書いた後、終了時の observed の取得中に中断しても not_computed.
+
+    status は終了理由からでなく、raw = null の行を書いた事実から決める
+    (Codex 再 review MEDIUM-2)。
+    """
+
+    async def interrupted(*_a: object, **_k: object) -> object:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(drv, "final_observed", interrupted)
+    run_dir = tmp_path / "run"
+    with pytest.raises(asyncio.CancelledError):
+        do_run(short_stage(run_dir), failing(2, 99, connect_error))
+    assert_not_published(run_dir)
+    assert records(run_dir / drv.PARTIAL_NAME)[-1].raw is None
+    prov = provenance(run_dir)
+    assert prov["exit_reason"] == drv.REASON_ABORTED
+    assert prov["status"] == sc.STATUS_NOT_COMPUTED, "not_computed was lost"
+
+
 def test_null_content_is_a_transport_failure_not_bottom(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     reason, _ = do_run(short_stage(run_dir), failing(2, 99, lambda: None))
@@ -949,7 +976,8 @@ def test_publication_is_two_phase(
     reason, _ = do_run(short_stage(run_dir), first_shown)
     assert seen, "publish was not called"
     assert seen["exit_reason"] == drv.REASON_ABORTED
-    assert drv.PENDING_NOTE in seen["error"]
+    # error が None でも assert で落ちるように (変異の判定は assert の行を見る、BL-3)
+    assert drv.PENDING_NOTE in (seen["error"] or ""), "the pending note is missing"
     assert seen["published"] is False
     assert seen["publishable"] is True
     for key in ("driver_sha256", "records_sha256", "meta_sha256"):
@@ -1485,6 +1513,8 @@ def test_main_runs_the_stage_and_returns_the_exit_code(
         drv, "pinned_sha256", lambda s: {"stage": s, "after_launch": launched["done"]}
     )
     monkeypatch.setattr(drv, "launch_problems", launch)
+    # test の通常 import は検証した起動ではない (実行したコードの照合は別の test)
+    monkeypatch.setattr(drv, "executed_problems", lambda *_a, **_k: [])
     # run を差し替えたので、transport は作るだけ (autouse の封鎖をこの test だけ外す)
     monkeypatch.setattr(drv.httpx, "AsyncHTTPTransport", lambda: "transport")
     monkeypatch.setattr(drv, "run", fake_run)
@@ -1530,6 +1560,14 @@ def test_main_runs_the_stage_and_returns_the_exit_code(
         # 末尾の空白・空行を消さない (Codex LOW-5)
         ("pilot", (0, "MANIFEST OK (stage pilot) \n"), False),
         ("pilot", (0, "MANIFEST OK (stage pilot)\n\n"), False),
+        # 最後の行は LF だけで切る。LF 以外の区切り文字は行の中身に残る
+        # (Codex 再 review LOW-1)。CRLF は subprocess の text mode が LF に直すので、
+        # 届いた CR は行の中身
+        ("pilot", (0, "MANIFEST OK (stage pilot)" + chr(0x1C)), False),
+        ("pilot", (0, "MANIFEST OK (stage pilot)" + chr(0x85) + "\n"), False),
+        ("pilot", (0, "MANIFEST OK (stage pilot)" + chr(0x2028)), False),
+        ("pilot", (0, "MANIFEST OK (stage pilot)" + chr(13) + "\n"), False),
+        ("pilot", (0, "a\nMANIFEST OK (stage pilot)"), True),
     ],
 )
 def test_manifest_problems_require_the_exact_ok_line(
@@ -1681,8 +1719,9 @@ def test_run_manifest_calls_the_frozen_check_like_run_sh(
     assert seen["args"] == [sys.executable, man.SELF, "--verify", "--stage", stage]
     assert seen["cwd"] == str(drv._REPO_ROOT)
     seed = (_ROOT / man.EXP / "SEED").read_text(encoding="utf-8").strip()
-    assert seen["env"]["PYTHONHASHSEED"] == seed
-    assert seen["env"]["PYTHONUTF8"] == "1"
+    # 欠けていても assert で落ちるように get で読む (BL-3)
+    assert seen["env"].get("PYTHONHASHSEED") == seed
+    assert seen["env"].get("PYTHONUTF8") == "1"
 
 
 def test_git_reports_a_failure_as_none() -> None:
@@ -1692,6 +1731,273 @@ def test_git_reports_a_failure_as_none() -> None:
     """
     assert drv._git("ls-files", "--error-unmatch", "no/such/file.py") is None
     assert (drv._git("--version") or "").startswith("git version")
+
+
+# ------------------------------ 実行したコードの同定 (Codex 再 review HIGH-1)
+
+_SAMPLE = b"X = 1\n\n\ndef f() -> int:\n    return 41\n"
+
+
+def test_compiles_to_compares_the_program() -> None:
+    """code object の等値: 定数・入れ子の関数まで比べ、ファイル名は比べない.
+
+    bytes の一致ではない。
+    """
+    code = compile(_SAMPLE, "a.py", "exec", dont_inherit=True)
+    assert drv._compiles_to(code, _SAMPLE, Path("b.py"))
+    assert not drv._compiles_to(code, _SAMPLE.replace(b"41", b"42"), Path("a.py"))
+    assert not drv._compiles_to(code, _SAMPLE.replace(b"X = 1", b"X = 2"), Path("a.py"))
+    assert not drv._compiles_to(code, b"def (:\n", Path("a.py"))
+    # 末尾のコメントだけの差は同じプログラム (主張は「コンパイル結果が同じ」、DU-3)
+    assert drv._compiles_to(code, _SAMPLE + b"# note\n", Path("a.py"))
+
+
+def test_imported_driver_runs_its_bytes() -> None:
+    """import した driver は、起動時に読んだ bytes のコンパイル結果.
+
+    来歴の sha256 は、その bytes の sha256。
+    """
+    assert drv._DRIVER_RUNS_ITS_BYTES is True
+    assert (
+        hashlib.sha256(Path(drv.__file__).read_bytes()).hexdigest() == drv._DRIVER_SHA
+    )
+
+
+def test_pinned_finder_runs_the_bytes_it_read(tmp_path: Path) -> None:
+    """find_spec で 1 回だけ読んだ bytes を実行する.
+
+    後でファイルが替わっても読み直さず、pyc も書かない。
+    """
+    package = "gp_driver_pinned_pkg"
+    (tmp_path / package).mkdir()
+    path = tmp_path / package / "mod_a.py"
+    first, second = b'VALUE = "A"\n', b'VALUE = "B"\n'
+    path.write_bytes(first)
+    finder = drv._PinnedFinder(tmp_path, package)
+    spec = finder.find_spec(f"{package}.mod_a")
+    assert spec is not None
+    assert isinstance(spec.loader, drv._PinnedLoader)
+    path.write_bytes(second)  # 読んだ後・実行の前の差し替え
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.VALUE == "A", "the loader read the file again"
+    assert spec.loader.pinned_sha256 == hashlib.sha256(first).hexdigest()
+    assert module.__file__ == str(path)
+    assert not (tmp_path / package / "__pycache__").exists()
+    # sha256 は渡された bytes から取る (ディスクを読み直さない)
+    loader = drv._PinnedLoader(path, first)
+    assert loader.pinned_sha256 == hashlib.sha256(first).hexdigest(), "hashed the disk"
+    # 対象は <package>.<name> のファイルだけ
+    assert finder.find_spec("other_pkg.mod_a") is None
+    assert finder.find_spec(f"{package}.missing") is None
+    assert finder.find_spec(f"{package}.sub.mod_a") is None
+    assert finder.find_spec(package) is None
+
+
+def _module(loader: object) -> types.ModuleType:
+    module = types.ModuleType("fake")
+    module.__spec__ = importlib.machinery.ModuleSpec("fake", loader)  # type: ignore[arg-type]
+    return module
+
+
+_BATTERY = "scripts/generalization_probe_battery.py"
+
+
+def test_executed_problems_check_driver_modules_and_pins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """実行中のコードの照合.
+
+    driver の検証・driver の固定値・モジュールの loader・固定ファイル・bytes。
+    """
+    start = {man.DRIVER: drv._DRIVER_SHA, _BATTERY: hashlib.sha256(b"A").hexdigest()}
+
+    def problems(
+        modules: dict[str, object], pinned: dict[str, str] | None = None
+    ) -> list[str]:
+        return drv.executed_problems(drv.STAGE_PILOT, pinned or start, modules)
+
+    pinned_a = _module(drv._PinnedLoader(Path(_BATTERY), b"A"))
+    assert (
+        problems(
+            {"scripts.generalization_probe_battery": pinned_a, "json": _module(None)}
+        )
+        == []
+    )
+    assert problems({"scripts.generalization_probe_battery": _module(object())}) == [
+        "not run from the bytes it was hashed by: scripts.generalization_probe_battery"
+    ]
+    assert problems(
+        {"scripts.not_pinned": _module(drv._PinnedLoader(Path("x"), b"A"))}
+    ) == ["run but not pinned: scripts/not_pinned.py"]
+    pinned_b = _module(drv._PinnedLoader(Path(_BATTERY), b"B"))
+    assert problems({"scripts.generalization_probe_battery": pinned_b}) == [
+        f"run bytes differ from the pinned file at start-up: {_BATTERY}"
+    ]
+    assert problems({}, {**start, man.DRIVER: "0" * 64}) == [
+        "the driver on disk changed between start-up and the launch checks"
+    ]
+    monkeypatch.setattr(drv, "_DRIVER_RUNS_ITS_BYTES", False)
+    assert problems({}) == [
+        "the running driver is not the compilation of the driver bytes it hashed"
+    ]
+
+
+def test_main_checks_the_executed_code_after_the_launch_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """main は起動の検査の **後** に実行中のコードを照合し、問題があれば起動しない.
+
+    後に置くのは、certification の検査が import する harness も含めるため。
+    """
+    order: list[str] = []
+    start = {"pinned": "at start"}
+    seen: list[object] = []
+
+    def launch(_stage: str) -> list[str]:
+        order.append("launch")
+        return []
+
+    def executed(stage: str, pinned: object, *_a: object) -> list[str]:
+        order.append("executed")
+        seen.append((stage, pinned))
+        return ["code differs"]
+
+    called: list[object] = []
+
+    def no_run(*a: object, **_k: object) -> str:
+        called.append(a)
+        raise RuntimeError
+
+    monkeypatch.setattr(drv, "pinned_sha256", lambda _s: start)
+    monkeypatch.setattr(drv, "launch_problems", launch)
+    monkeypatch.setattr(drv, "executed_problems", executed)
+    monkeypatch.setattr(drv.httpx, "AsyncHTTPTransport", lambda: "transport")
+    monkeypatch.setattr(drv, "run", no_run)
+    monkeypatch.setattr(drv, "PILOT_DIR", tmp_path / "pilot")
+    assert drv.main(["--stage", "pilot"]) == drv.EXIT_CODES[drv.REASON_ABORTED]
+    assert order == ["launch", "executed"], (
+        "checked the executed code before the launch checks"
+    )
+    assert seen == [("pilot", start)]
+    assert called == []
+    assert "[driver] refuse to launch: code differs" in capsys.readouterr().out
+
+
+# 起動の通し: 起動の閉包を tmp に写し、endpoint を到達しない port に置き換えて、
+# __main__ で起動させる。certification・SEED が無く git の外なので、3 重に起動を
+# 拒否される (拒否を外す変異でも実の Ollama に届かない)
+_UNREACHABLE = "http://127.0.0.1:9"
+_EXECUTED_PHRASES = (
+    "not the compilation of the driver bytes",
+    "changed between start-up and the launch checks",
+    "not run from the bytes it was hashed by",
+    "run but not pinned",
+    "run bytes differ from the pinned file",
+)
+_RUN_AS_MAIN = (
+    "import importlib, pathlib, sys\n"
+    "a, b, pre = sys.argv[1], sys.argv[2], sys.argv[3:]\n"
+    "sys.path.insert(0, str(pathlib.Path(b).resolve().parent.parent))\n"
+    "for name in pre:\n"
+    "    importlib.import_module(name)\n"
+    "sys.argv = [b, '--stage', 'pilot']\n"
+    "g = {'__name__': '__main__', '__file__': b}\n"
+    "exec(compile(pathlib.Path(a).read_bytes(), b, 'exec'), g)\n"
+)
+
+
+def _replace_once(path: Path, old: str, new: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == 1, f"anchor not unique: {old}"
+    path.write_text(text.replace(old, new), encoding="utf-8", newline="")
+
+
+def _launch_copy(root: Path) -> Path:
+    """起動の閉包 (scripts の G のファイルと stage_b_scorer) を root/scripts に写す.
+
+    返り値 = 写した driver。
+    """
+    src = Path(drv.__file__).resolve().parent
+    (root / "scripts").mkdir()
+    for pattern in ("generalization_probe_*.py", "stage_b_scorer.py"):
+        for f in src.glob(pattern):
+            shutil.copy2(f, root / "scripts" / f.name)
+    driver = root / "scripts" / Path(drv.__file__).name
+    _replace_once(
+        driver,
+        f'DEFAULT_ENDPOINT: Final[str] = "{drv.DEFAULT_ENDPOINT}"',
+        f'DEFAULT_ENDPOINT: Final[str] = "{_UNREACHABLE}"',
+    )
+    return driver
+
+
+def _run_copy(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = dict(
+        os.environ,
+        PYTHONUTF8="1",
+        PYTHONDONTWRITEBYTECODE="1",
+        GIT_DIR=str(root / "no-git"),
+    )
+    return subprocess.run(  # noqa: S603
+        [sys.executable, *args],
+        cwd=str(root),
+        env=env,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
+        check=False,
+    )
+
+
+def test_command_line_launch_runs_repo_code_from_hashed_bytes(tmp_path: Path) -> None:
+    """__main__ で起動すると、repo のモジュールは finder が読んだ bytes から実行される.
+
+    実行中のコードの照合に問題が出ない。
+    """
+    driver = _launch_copy(tmp_path)
+    proc = _run_copy(tmp_path, str(driver), "--stage", "pilot")
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert "[driver] refuse to launch: driver certification unreadable" in out
+    for phrase in _EXECUTED_PHRASES:
+        assert phrase not in out, out
+    assert not (tmp_path / man.EXP).exists()
+
+
+def test_command_line_launch_refuses_code_that_is_not_its_bytes(tmp_path: Path) -> None:
+    """起動の窓の差し替えの再現.
+
+    A のコードを __file__ = B で実行し、repo のモジュールを先に通常 import する。
+    driver は「自分の bytes のコンパイル結果でない」で、先に読まれたモジュールは
+    「hash した bytes から実行していない」で拒否する。
+    """
+    driver = _launch_copy(tmp_path)
+    running = tmp_path / "running_driver.py"
+    running.write_bytes(driver.read_bytes())
+    _replace_once(
+        driver, "TIMEOUT_S: Final[float] = 300.0", "TIMEOUT_S: Final[float] = 301.0"
+    )
+    proc = _run_copy(
+        tmp_path,
+        "-c",
+        _RUN_AS_MAIN,
+        str(running),
+        str(driver),
+        "scripts.generalization_probe_battery",
+    )
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert (
+        "[driver] refuse to launch: the running driver is not the compilation of the "
+        "driver bytes it hashed" in out
+    ), out
+    assert (
+        "[driver] refuse to launch: not run from the bytes it was hashed by: "
+        "scripts.generalization_probe_battery" in out
+    ), out
+    assert not (tmp_path / man.EXP).exists()
 
 
 # ---------------------------------------------------------------- harness の判定器
@@ -1707,27 +2013,67 @@ _PYTEST_OUTPUT = (
     "E   AssertionError: raw is not recorded verbatim",
     "____ ERROR at teardown of test_d ____",
     "E   OSError: teardown boom",
+    # 理由の文の無い変異が assert 以外で落ちた例 (Codex 再 review MEDIUM-1・BL-3)
+    "____ test_p[x] ____",
+    "E   NameError: name 'observed' is not defined",
+    "____ ERROR at teardown of test_p[y] ____",
+    "E       assert 0",
+    "____ test_q[x] ____",
+    "E   TypeError: unrelated",
+    "____ test_q[y] ____",
+    "E       AssertionError: records.jsonl was published",
+    "E       assert not True",
+    "____ test_s ____",
+    "E   AssertionError: the real Ollama transport was used",
+    # 説明が複数行の比較は、pytest が AssertionError: assert ... の形で出す
+    "____ test_t ____",
+    "E       AssertionError: assert [] == ['x']",
+    "E         Right contains one more item: 'x'",
     "FAILED tests/x.py::test_a - assert 1 == 2",
     "ERROR tests/x.py::test_b - ScheduleError: boom",
     "FAILED tests/x.py::test_c[long-id] - AssertionError",
     "ERROR tests/x.py::test_d - OSError: teardown boom",
+    "FAILED tests/x.py::test_p[x] - NameError: name 'observed' is not defined",
+    "ERROR tests/x.py::test_p[y] - assert 0",
+    "FAILED tests/x.py::test_q[x] - TypeError: unrelated",
+    "FAILED tests/x.py::test_q[y] - AssertionError: records.jsonl was published",
+    "FAILED tests/x.py::test_s - AssertionError: the real Ollama transport was used",
+    "FAILED tests/x.py::test_t - AssertionError: assert [] == ['x']",
 )
 
 
 def test_harness_reads_failures_kinds_and_reasons() -> None:
-    failed, kinds, collect = harness.parse_output("\n".join(_PYTEST_OUTPUT))
-    assert set(failed) == {"test_a", "test_b", "test_c", "test_d"}
+    failed, kinds, collect, asserted = harness.parse_output("\n".join(_PYTEST_OUTPUT))
+    assert set(failed) == {
+        "test_a",
+        "test_b",
+        "test_c",
+        "test_d",
+        "test_p",
+        "test_q",
+        "test_s",
+        "test_t",
+    }
     assert kinds == {
         "test_a": "FAILED",
         "test_b": "ERROR",
         "test_c": "FAILED",
         "test_d": "ERROR",
+        "test_p": "FAILED",
+        "test_q": "FAILED",
+        "test_s": "FAILED",
+        "test_t": "FAILED",
     }
     # teardown の節は、その test の節に集め、直前の test の節に混ぜない
     assert "teardown boom" in failed["test_d"]
     assert "teardown boom" not in failed["test_c"]
     assert "E   ScheduleError: boom" in failed["test_b"]
     assert "raw is not recorded verbatim" in failed["test_c"]
+    # assert で落ちた = FAILED の item の、その item の本体の節に、書き換えた
+    # assert の行がある。test_c・test_s は raise AssertionError (封鎖と同じ形)、
+    # test_p は NameError + 別 parameter の teardown の assert、test_q は
+    # TypeError の item と assert の item (後者で数える)、test_t は説明が複数行の assert
+    assert asserted == {"test_a", "test_q", "test_t"}
     assert collect is False
     assert harness.parse_output("ERROR collecting tests/x.py")[2] is True
 
@@ -1742,38 +2088,41 @@ def test_harness_status_separates_wrong_reasons() -> None:
         "y", "o", "n", frozenset({"test_b"}), "why", raised="ScheduleError"
     )
     hit_a = {"test_a": "FAILED t::test_a\nE   assert 1 == 2\n"}
-    assert harness.status_of(plain, 0, {}, {}, collect=False) == "SURVIVED"
-    assert harness.status_of(plain, -1, {}, {}, collect=False) == "TIMEOUT"
-    assert harness.status_of(plain, 1, {}, {}, collect=False) == "COLLECTION_ERROR"
+    assert harness.status_of(plain, 0, {}, set(), collect=False) == "SURVIVED"
+    assert harness.status_of(plain, -1, {}, set(), collect=False) == "TIMEOUT"
+    assert harness.status_of(plain, 1, {}, set(), collect=False) == "COLLECTION_ERROR"
     assert (
-        harness.status_of(plain, 1, hit_a, {"test_a": "FAILED"}, collect=True)
+        harness.status_of(plain, 1, hit_a, {"test_a"}, collect=True)
         == "COLLECTION_ERROR"
     )
-    assert (
-        harness.status_of(plain, 1, hit_a, {"test_a": "FAILED"}, collect=False)
-        == "KILLED"
-    )
-    # 期待 test が fixture の setup の ERROR だけで落ちた: 理由の文が無ければ数えない
-    assert (
-        harness.status_of(plain, 1, hit_a, {"test_a": "ERROR"}, collect=False)
-        == "WRONG_REASON"
-    )
+    assert harness.status_of(plain, 1, hit_a, {"test_a"}, collect=False) == "KILLED"
+    # 期待 test が落ちたが assert ではない (setup の ERROR・NameError・TypeError・封鎖の
+    # raise AssertionError): 理由の文が無ければ数えない
+    assert harness.status_of(plain, 1, hit_a, set(), collect=False) == "WRONG_REASON"
     other = {"test_z": "FAILED t::test_z\nE   assert 0\n"}
     assert (
-        harness.status_of(plain, 1, other, {"test_z": "FAILED"}, collect=False)
-        == "WRONG_REASON"
+        harness.status_of(plain, 1, other, {"test_z"}, collect=False) == "WRONG_REASON"
     )
     hit_b = {"test_b": "ERROR t::test_b\nE   ScheduleError: boom\n"}
-    assert (
-        harness.status_of(reasoned, 1, hit_b, {"test_b": "ERROR"}, collect=False)
-        == "KILLED"
-    )
+    assert harness.status_of(reasoned, 1, hit_b, set(), collect=False) == "KILLED"
     # 理由の文がソース行にだけ出て、例外行 (E) には無い
     source_only = {"test_b": "ERROR t::test_b\n    raise ScheduleError\nE   KeyError\n"}
     assert (
-        harness.status_of(reasoned, 1, source_only, {"test_b": "ERROR"}, collect=False)
+        harness.status_of(reasoned, 1, source_only, set(), collect=False)
         == "WRONG_REASON"
     )
+    # 出力の読み取りから判定まで: assert 以外で落ちた期待 test は数えない
+    failed, _, _, asserted = harness.parse_output("\n".join(_PYTEST_OUTPUT))
+
+    def judged(test: str) -> str:
+        mut = harness.Mutant("z", "o", "n", frozenset({test}), "why")
+        return harness.status_of(mut, 1, failed, asserted, collect=False)
+
+    assert judged("test_a") == "KILLED"
+    assert judged("test_q") == "KILLED"
+    assert judged("test_t") == "KILLED"
+    for test in ("test_b", "test_c", "test_d", "test_p", "test_s"):
+        assert judged(test) == "WRONG_REASON", test
 
 
 def test_harness_registry_satisfies_the_manifest_contract() -> None:

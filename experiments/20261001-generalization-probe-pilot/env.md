@@ -63,3 +63,18 @@
     (予定表の事前検査・送る直前の照合・公開前の読み戻しを潰すと、期待した test が全て落ちる)・driver が sha256 で原状復帰・実行中に
     test と harness が変わっていない。`manifest.driver_certification_violations` が `[]` を返す (test で pin)。
 - 第 1 段の封印 (`manifest.json`) は変えていない: `--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
+- Codex の再 review (2026-10-02、反映の差分、Verdict Revise・HIGH 1・MEDIUM 2・LOW 1) の反映の後に回し直した (2026-10-02〜03)。
+  設計と採否は `.steering/20261002-generalization-probe-driver-rereview/` (ローカル)。
+  - 実行したコードの同定: driver は起動時に bytes を 1 回だけ読み、実行中のモジュールの code object がその bytes のコンパイル結果で
+    あることを確かめる。repo のモジュールは、起動のときだけ、1 回だけ読んだ bytes から実行する (pyc を使わない)。起動の検査の後に、
+    その bytes を起動の検査の前のディスクと照合する。来歴の `driver_sha256` は、実行したプログラムのコンパイル元の bytes を指す。
+  - transport 失敗の `status: not_computed` を、raw = null の行を書いた事実から決める (終了時の observed の取得中の中断でも残る)。
+    manifest の照合の末尾行は LF だけで切る。
+  - 変異の判定: 理由の文の無い変異は、期待 test の item の本体の節に、pytest が書き換えた assert の行があるときだけ KILLED に数える
+    (NameError・TypeError・autouse の封鎖の `raise AssertionError`・setup / teardown の節は数えない)。変異 a6 を、未定義の名前で
+    落ちる形から、本来の変異 (開始時の observed を流用する) に直した。
+  - 回し直し 1 回目 (変異 173): 135 / 173 KILLED・WRONG_REASON 38・SURVIVED 0。38 件は、期待 test が `pytest.raises` の DID NOT RAISE
+    や、外した検査の後段の例外で落ちていた (意図どおり)。実測した例外の文を理由として登録し (理由の文を持つ変異 14 → 50)、assert の
+    式の中で例外が出ていた test 2 件 (u6・l22 の期待 test) を assert で落ちる形に直した。
+  - 回し直し 2 回目: **173 / 173 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が変わっていない。
+    `manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
