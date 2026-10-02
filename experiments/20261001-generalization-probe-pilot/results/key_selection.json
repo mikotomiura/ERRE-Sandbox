@@ -1,0 +1,137 @@
+{
+ "R_values": [
+  6,
+  12,
+  18
+ ],
+ "assignment": {
+  "bird": [
+   "falcon",
+   "ostrich",
+   "hawk",
+   "stork",
+   "canary",
+   "penguin",
+   "eagle",
+   "robin"
+  ],
+  "fish": [
+   "halibut",
+   "salmon",
+   "guppy",
+   "marlin",
+   "tuna",
+   "barracuda",
+   "anchovy",
+   "minnow"
+  ],
+  "insect": [
+   "mantis",
+   "cicada",
+   "flea",
+   "weevil",
+   "midge",
+   "earwig",
+   "wasp",
+   "aphid"
+  ]
+ },
+ "excluded": {
+  "ant": "3 文字",
+  "bumblebee": "語素 bee",
+  "butterfly": "語素 fly",
+  "catfish": "語素 fish",
+  "cod": "3 文字",
+  "dragonfly": "語素 fly",
+  "eel": "3 文字",
+  "firefly": "語素 fly",
+  "kingfisher": "語素 fish",
+  "ladybug": "語素 bug",
+  "mullet": "髪型の意味が強い",
+  "owl": "3 文字",
+  "parrot": "sparrow と 4-gram 'parr' を共有",
+  "pike": "武器の意味が強い",
+  "snapper": "カメ・写真の意味",
+  "swordfish": "語素 fish"
+ },
+ "max_abs_C": 0.020833333333333332,
+ "n_policies": 66,
+ "pools": {
+  "bird": [
+   "eagle",
+   "toucan",
+   "robin",
+   "falcon",
+   "pelican",
+   "flamingo",
+   "penguin",
+   "ostrich",
+   "raven",
+   "hawk",
+   "finch",
+   "wren",
+   "stork",
+   "swan",
+   "vulture",
+   "canary",
+   "albatross"
+  ],
+  "fish": [
+   "salmon",
+   "mackerel",
+   "halibut",
+   "anchovy",
+   "tuna",
+   "haddock",
+   "minnow",
+   "tilapia",
+   "shark",
+   "flounder",
+   "guppy",
+   "barracuda",
+   "marlin"
+  ],
+  "insect": [
+   "cicada",
+   "termite",
+   "mantis",
+   "flea",
+   "wasp",
+   "moth",
+   "cockroach",
+   "aphid",
+   "weevil",
+   "gnat",
+   "louse",
+   "earwig",
+   "midge",
+   "katydid"
+  ]
+ },
+ "restarts": 200,
+ "seed": 20261001,
+ "sum_sq": 0.01811161747685185,
+ "worst5": {
+  "R12": {
+   "surface_last_letter[first,bot]": 0.020833,
+   "surface_last_letter[first,first]": 0.020833,
+   "surface_last_letter[first,last]": 0.020833,
+   "surface_trigram_jaccard[last,first]": -0.020833,
+   "surface_trigram_jaccard[last,last]": -0.020833
+  },
+  "R18": {
+   "surface_trigram_jaccard[first,bot]": -0.013889,
+   "surface_trigram_jaccard[first,first]": -0.013889,
+   "surface_trigram_jaccard[last,bot]": -0.020833,
+   "surface_trigram_jaccard[last,first]": -0.020833,
+   "surface_trigram_jaccard[last,last]": -0.020833
+  },
+  "R6": {
+   "surface_length[first,bot]": -0.020833,
+   "surface_length[first,first]": -0.020833,
+   "surface_length[first,last]": -0.020833,
+   "surface_trigram_jaccard[last,first]": -0.020833,
+   "surface_trigram_jaccard[last,last]": -0.020833
+  }
+ }
+}

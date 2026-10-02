@@ -1,0 +1,457 @@
+"""候補 G (汎化 probe) — null pilot の機械判定 (判定に使わない pilot、prereg §8、計測台 ADR §4.1 の spike-in の契約).
+
+pilot (GPU、別の user 裁定) の記録から、本走を起こすか (GO と R) / 起こさないか (STOP と理由) を機械的に決める。
+pilot は効果を測らない。verdict を書かない。
+
+pilot の腕 (prereg §8.1):
+
+* ``M_A`` / ``M_A_rot`` / ``M_B`` / ``M_B_rot``: masked の状態 (key の欄を「不明」にした本走と同じ状態)。
+  潜在の情報を持たない null (状態を読む雑音を含む)。r ∈ [PILOT_R0, PILOT_R0 + 6)、K = 1。
+* ``KNOW``: 潜在の知識確認。36 key (dev 12 + probe 24) の分類を閉集合 {bird, fish, insect} で答えさせる。
+  K = 3 で、正答の位置が 3 試行で 3 位置を一巡する (Codex HIGH-2)。
+
+判定の順 (凍結):
+
+1. STOP (records): certification・meta・schema・構造の違反、または見取り図が R を選ばなかった。
+2. not_computed: transport 失敗・欠け。
+3. STOP (knowledge): どれかの key で、3 回のうち正答が 2 回未満 (構成概念が成り立たない。本走の verdict 語では
+   INVALID_TASK_BATTERY に当たる。key を差し替えない)。
+4. STOP (envelope): masked の腕の ⊥ 率 > 0.2、または族内の ⊥ 率差 ≥ τ/4。
+5. spike-in の OC (混合の形): masked の記録を (族, つ組, 表示の回転) の層ごとに単位で再標本化して本走の割付
+   (各層 R/3 単位) に揃え、⊥ でないセルを確率 λ で w (目標が null の C より小さければ foil) に置き換える。
+   λ は記録の上で E[C] が目標に一致するよう解析的に較正し、注入の後に実現した平均で確かめる。
+   R の候補 (見取り図が選んだ R 以上) を小さい順に見て、P(PASS | 2τ) ≥ 0.8・P(NO_GO | 0) ≥ 0.8・
+   P(PASS | τ) と P(NO_GO | τ) ≤ 二項の閾値・較正 をすべて満たす最初の R で GO。無ければ STOP (power、door-close)。
+   OC の ⊥ gate は本走と同じ上限 (pilot の masked の最大 + 0.05) を使う。
+   OC は「この null 記録に条件付けた値」で、母集団への保証ではない。size は定理 (scorer) で守られ、pilot に依らない。
+
+出力は、本走の判定が読む値 (GO と R・masked の最大 ⊥ 率・観測環境) と、入力の sha256 を記録する。
+
+実行::
+
+    uv run python scripts/generalization_probe_pilot_gate.py --records <records.jsonl> --meta <meta.json> \\
+        --cert <cert.json> --sketch <sketch.json> --out <gate.json>
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import re
+import sys
+import unicodedata
+from collections import Counter
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Final
+
+import numpy as np
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from scripts import generalization_probe_battery as bat  # noqa: E402
+from scripts import generalization_probe_scorer as sc  # noqa: E402
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+MASKED_ARMS: Final[dict[str, str]] = {f"M_{a}": a for a in bat.LEVER_ARMS}
+ARM_KNOW: Final[str] = "KNOW"
+KNOW_MIN_CORRECT: Final[int] = 2
+PILOT_K: Final[int] = 1
+N_RESAMPLE: Final[int] = 2_000
+OC_SEED: Final[int] = 20261001
+R_CANDIDATES: Final[tuple[int, ...]] = (6, 12, 18)
+CALIBRATION_TOL: Final[float] = 0.01
+MC_FWER: Final[float] = 0.01
+POWER_TARGET: Final[float] = 0.8
+
+DECISION_GO: Final[str] = "GO"
+DECISION_STOP: Final[str] = "STOP"
+STATUS_NOT_COMPUTED: Final[str] = "not_computed"
+
+
+# ---------------------------------------------------------------- parse
+
+
+def parse_class(raw: str) -> str | None:
+    """知識確認の応答 → 分類名 (ちょうど 1 種を単語境界で含む) または None."""
+    text = unicodedata.normalize("NFKC", raw).lower()
+    text = re.sub(r"<think>.*?</think>", " ", text, flags=re.DOTALL)
+    if "<think" in text or "</think" in text:
+        return None
+    found = [
+        c for c in bat.CLASSES if re.search(rf"(?<![a-z0-9]){c}(?![a-z0-9])", text)
+    ]
+    return found[0] if len(found) == 1 else None
+
+
+# ---------------------------------------------------------------- 計画
+
+
+def know_probe_id(i: int) -> str:
+    return f"k{i:02d}"
+
+
+def expected(arm: str, r: int, probe_id: str, k: int) -> tuple[int, str]:
+    """(seed, prompt sha256) の凍結値."""
+    if arm == ARM_KNOW:
+        i = int(probe_id[1:])
+        msgs = bat.render_know_messages(i, k)
+        return bat.sample_seed("know", 0, i, k), sc.messages_sha256(msgs)
+    probe = {p.probe_id: p for p in bat.probes()}[probe_id]
+    lever = MASKED_ARMS[arm]
+    msgs = bat.render_messages(lever, probe, r, masked=True)
+    ns = f"pilot_fam{bat.ARM_FAMILY[lever]}"
+    return bat.sample_seed(ns, r, probe.triple, k), sc.messages_sha256(msgs)
+
+
+def pilot_grid() -> set[tuple[str, int, str, int]]:
+    rs = range(bat.PILOT_R0, bat.PILOT_R0 + bat.PILOT_R)
+    out = {
+        (arm, r, p.probe_id, k)
+        for arm in MASKED_ARMS
+        for r in rs
+        for p in bat.probes()
+        for k in range(PILOT_K)
+    }
+    out |= {
+        (ARM_KNOW, 0, know_probe_id(i), k)
+        for i in range(len(bat.all_keys()))
+        for k in range(bat.KNOW_K)
+    }
+    return out
+
+
+def structure_violations(samples: Sequence[sc.Sample]) -> list[str]:
+    out: list[str] = []
+    keys = [(s.arm, s.replicate, s.probe_id, s.k) for s in samples]
+    if len(set(keys)) != len(keys):
+        out.append("duplicate (arm, replicate, probe, k)")
+    grid = pilot_grid()
+    if not set(keys) <= grid:
+        out.append("record outside the pilot grid")
+    idx = [s.call_index for s in samples]
+    if len(set(idx)) != len(idx) or any(i < 0 for i in idx):
+        out.append("call_index is not unique and non-negative")
+    for s in samples:
+        if (s.arm, s.replicate, s.probe_id, s.k) not in grid:
+            continue
+        seed, sha = expected(s.arm, s.replicate, s.probe_id, s.k)
+        if s.seed != seed:
+            out.append("seed differs from the pilot schedule")
+        if s.prompt_sha256 != sha:
+            out.append("prompt differs from the pilot renderer")
+        if s.raw is not None:
+            reparsed = (
+                parse_class(s.raw) if s.arm == ARM_KNOW else sc.parse_choice(s.raw)
+            )
+            if reparsed != s.parsed:
+                out.append("recorded parse differs from re-parse")
+    return sorted(set(out))
+
+
+# ---------------------------------------------------------------- gate
+
+
+def knowledge_failures(samples: Sequence[sc.Sample]) -> list[str]:
+    keys = bat.all_keys()
+    correct: Counter[int] = Counter()
+    for s in samples:
+        if s.arm == ARM_KNOW:
+            i = int(s.probe_id[1:])
+            correct[i] += s.parsed == bat.key_class(keys[i])
+    return [keys[i] for i in range(len(keys)) if correct[i] < KNOW_MIN_CORRECT]
+
+
+def cell_scores(samples: Sequence[sc.Sample]) -> tuple[np.ndarray, np.ndarray]:
+    """masked の記録 → (x, nb): (2 族, 8 つ組, PILOT_R, 3 probe, 2 arm) のセル得点 (+1/−1/0) と ⊥ でない指標."""
+    shape = (len(bat.FAMILIES), bat.N_TRIPLES, bat.PILOT_R, 3, 2)
+    x = np.zeros(shape)
+    nb = np.zeros(shape)
+    by_id = {p.probe_id: p for p in bat.probes()}
+    for s in samples:
+        if s.arm not in MASKED_ARMS:
+            continue
+        lever = MASKED_ARMS[s.arm]
+        fi = bat.ARM_FAMILY[lever]
+        ai = bat.FAMILIES[fi].index(lever)
+        probe = by_id[s.probe_id]
+        qi = [p.probe_id for p in bat.triple_probes(probe.triple)].index(s.probe_id)
+        cat = sc.category(s.parsed, probe, lever)
+        idx = (fi, probe.triple, s.replicate - bat.PILOT_R0, qi, ai)
+        x[idx] = (cat == "w") - (cat == "foil")
+        nb[idx] = cat != "bot"
+    return x, nb
+
+
+def masked_bottom_rates(nb: np.ndarray) -> np.ndarray:
+    """(4,) LEVER_ARMS の順の ⊥ 率."""
+    return np.array(
+        [
+            1.0 - nb[fi, ..., ai].mean()
+            for fi in range(len(bat.FAMILIES))
+            for ai in range(2)
+        ]
+    )
+
+
+def injection(x: np.ndarray, nb: np.ndarray, target: float) -> tuple[float, int]:
+    """(λ, 向き)。向き +1 = w を注入、−1 = foil を注入。記録の上で E[C] = target になる λ."""
+    c_null = float(x.mean())
+    live = float(nb.mean())
+    if target >= c_null:
+        lam = (target - c_null) / (live - c_null) if live > c_null else 1.0
+        return min(1.0, max(0.0, lam)), 1
+    lam = (c_null - target) / (live + c_null)
+    return min(1.0, max(0.0, lam)), -1
+
+
+def strata_picks(r_count: int, n_resample: int, rng: np.random.Generator) -> np.ndarray:
+    """(B, F, J, R) の pilot の replicate 番号 (0..PILOT_R-1)。本走の割付を保つ層別の復元抽出.
+
+    本走の単位 (f, j, r) の表示の回転は (r + j) mod 3。その単位には、同じ (f, j) で回転が等しい pilot の単位
+    ((r' + j) mod 3 が等しい r') だけを引く (Codex MEDIUM-7)。
+    """
+    n_f, n_j = len(bat.FAMILIES), bat.N_TRIPLES
+    pick = np.zeros((n_resample, n_f, n_j, r_count), dtype=int)
+    for j in range(n_j):
+        for r in range(r_count):
+            shift = (r + j) % bat.N_POSITIONS
+            pool = [
+                rp
+                for rp in range(bat.PILOT_R)
+                if (bat.PILOT_R0 + rp + j) % bat.N_POSITIONS == shift
+            ]
+            pick[:, :, j, r] = rng.choice(pool, size=(n_resample, n_f))
+    return pick
+
+
+def spike_in_oc(
+    x: np.ndarray,
+    nb: np.ndarray,
+    r_count: int,
+    target: float,
+    n_resample: int,
+    seed: int,
+) -> dict[str, float]:
+    """層別に単位を R 個再標本化し、注入して判定式を通す。verdict の率と実現した平均."""
+    rng = np.random.default_rng([seed, r_count, int(round((target + 2) * 10_000))])
+    lam, sign = injection(x, nb, target)
+    # 本走と同じ ⊥ の上限 (pilot の masked の最大 + 0.05、Codex 2 回目 MEDIUM-4)
+    bot_max = sc.envelope_bottom_max(float(masked_bottom_rates(nb).max()))
+    n_f, n_j = x.shape[:2]
+    pick = strata_picks(r_count, n_resample, rng)
+    fi = np.arange(n_f)[None, :, None, None]
+    ji = np.arange(n_j)[None, None, :, None]
+    xs = x[fi, ji, pick]  # (B, F, J, R, 3, 2)
+    nbs = nb[fi, ji, pick]
+    hit = (rng.random(xs.shape) < lam) & (nbs > 0)
+    xs = np.where(hit, float(sign), xs)
+    s = xs.mean(axis=4)  # (B, F, J, R, 2)
+    d = s.mean(axis=-1).reshape(n_resample, -1)
+    comps = np.stack(
+        [
+            s[:, f, :, :, a].reshape(n_resample, -1).mean(axis=1)
+            for f in range(n_f)
+            for a in range(2)
+        ],
+        axis=1,
+    )
+    botr = np.stack(
+        [
+            1.0 - nbs[:, f, ..., a].reshape(n_resample, -1).mean(axis=1)
+            for f in range(n_f)
+            for a in range(2)
+        ],
+        axis=1,
+    )
+    le_plus, le_minus, _ = sc.e_values(d)
+    verdict = sc.decide(le_plus, le_minus, comps)
+    verdict = np.where(
+        sc.bottom_gate_ok(botr, bot_max), verdict, sc.VERDICT_INVALID_BATTERY
+    )
+    return {
+        "lambda": lam,
+        "direction": sign,
+        "pass": float(np.mean(verdict == sc.VERDICT_PASS)),
+        "no_go": float(np.mean(verdict == sc.VERDICT_ABSENT)),
+        "realized_C": float(d.mean()),
+    }
+
+
+def _binom_upper_tail(x: int, n: int, p: float) -> float:
+    if x <= 0:
+        return 1.0
+    logs = [
+        math.lgamma(n + 1)
+        - math.lgamma(k + 1)
+        - math.lgamma(n - k + 1)
+        + k * math.log(p)
+        + (n - k) * math.log1p(-p)
+        for k in range(x, n + 1)
+    ]
+    top = max(logs)
+    return math.exp(top) * sum(math.exp(v - top) for v in logs)
+
+
+def size_rate_cap(n_checks: int, n_sims: int = N_RESAMPLE) -> float:
+    """size の採否の上限 (率) = x / N。合格は X ≤ x、棄却は X ≥ x + 1 (X = 棄却の数).
+
+    x は P(X > x) ≤ MC_FWER / n_checks を満たす最小の整数 (X ~ Binomial(N, α))。
+    """
+    level = MC_FWER / n_checks
+    x = int(sc.ALPHA * n_sims)
+    while _binom_upper_tail(x + 1, n_sims, sc.ALPHA) > level:
+        x += 1
+    return x / n_sims
+
+
+def oc_ok(
+    at_plant: dict[str, float],
+    at_zero: dict[str, float],
+    at_tau: dict[str, float],
+    cap: float,
+) -> dict[str, bool]:
+    """OC の 4 条件と較正 (Codex MEDIUM-8 で個別に pin)。どれか 1 つでも偽なら不合格."""
+    calibrated = all(
+        abs(o["realized_C"] - t) < CALIBRATION_TOL
+        for o, t in ((at_plant, sc.DELTA_PLANT), (at_zero, 0.0), (at_tau, sc.TAU))
+    )
+    return {
+        "calibrated": calibrated,
+        "power_pass": at_plant["pass"] >= POWER_TARGET,
+        "power_no_go": at_zero["no_go"] >= POWER_TARGET,
+        "size_pass": at_tau["pass"] <= cap,
+        "size_no_go": at_tau["no_go"] <= cap,
+    }
+
+
+def oc_for_r(x: np.ndarray, nb: np.ndarray, r_count: int) -> dict[str, Any]:
+    at_plant = spike_in_oc(x, nb, r_count, sc.DELTA_PLANT, N_RESAMPLE, OC_SEED)
+    at_zero = spike_in_oc(x, nb, r_count, 0.0, N_RESAMPLE, OC_SEED + 1)
+    at_tau = spike_in_oc(x, nb, r_count, sc.TAU, N_RESAMPLE, OC_SEED + 2)
+    cap = size_rate_cap(2 * len(R_CANDIDATES))
+    checks = oc_ok(at_plant, at_zero, at_tau, cap)
+    return {
+        "R": r_count,
+        "at_plant": at_plant,
+        "at_zero": at_zero,
+        "at_tau": at_tau,
+        "size_cap": cap,
+        "checks": checks,
+        "ok": all(checks.values()),
+    }
+
+
+def decide_pilot(
+    samples: Sequence[sc.Sample],
+    meta: object,
+    *,
+    certified: bool,
+    selected_r: int | None,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "status": "computed",
+        "decision": None,
+        "R": None,
+        "reasons": [],
+    }
+    invalid: list[str] = []
+    if not certified:
+        invalid.append("certification missing, stale, or not all KILLED")
+    invalid += sc.meta_violations(meta)
+    if selected_r is None:
+        invalid.append("the sketch selected no R (door-close before the pilot)")
+    invalid += structure_violations(samples)
+    if invalid:
+        out.update(decision=DECISION_STOP, reasons=["records", *invalid])
+        return out
+    out["observed"] = dict(meta["observed"])  # type: ignore[index]
+    if any(s.raw is None for s in samples) or len(samples) != len(pilot_grid()):
+        out.update(
+            status=STATUS_NOT_COMPUTED, reasons=["transport failure or missing rows"]
+        )
+        return out
+    failed = knowledge_failures(samples)
+    out["knowledge_failures"] = failed
+    if failed:
+        out.update(decision=DECISION_STOP, reasons=["knowledge", *failed])
+        return out
+    x, nb = cell_scores(samples)
+    bot = masked_bottom_rates(nb)
+    out["masked_bottom_rates"] = dict(zip(bat.LEVER_ARMS, map(float, bot), strict=True))
+    out["masked_max_bottom"] = float(bot.max())
+    out["null_C"] = float(x.mean())
+    if not bool(sc.bottom_gate_ok(bot)):
+        out.update(decision=DECISION_STOP, reasons=["envelope"])
+        return out
+    assert selected_r is not None
+    ocs = []
+    for r_count in (r for r in R_CANDIDATES if r >= selected_r):
+        oc = oc_for_r(x, nb, r_count)
+        ocs.append(oc)
+        if oc["ok"]:
+            out.update(
+                decision=DECISION_GO, R=r_count, reasons=["spike-in OC passed"], oc=ocs
+            )
+            return out
+    out.update(decision=DECISION_STOP, reasons=["power"], oc=ocs)
+    return out
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--records", type=Path, required=True)
+    ap.add_argument("--meta", type=Path, required=True)
+    ap.add_argument("--cert", type=Path, required=True)
+    ap.add_argument("--sketch", type=Path, required=True)
+    ap.add_argument("--out", type=Path, required=True)
+    args = ap.parse_args(argv)
+    inputs = {
+        name: _sha256(path) if path.is_file() else None
+        for name, path in (
+            ("records", args.records),
+            ("meta", args.meta),
+            ("cert", args.cert),
+            ("sketch", args.sketch),
+        )
+    }
+    result: dict[str, Any]
+    try:
+        samples = sc.load_records(args.records.read_text(encoding="utf-8").splitlines())
+        meta = json.loads(args.meta.read_text(encoding="utf-8"))
+        sketch = json.loads(args.sketch.read_text(encoding="utf-8"))
+    except (sc.RecordError, json.JSONDecodeError, OSError) as exc:
+        result = {
+            "status": "computed",
+            "decision": DECISION_STOP,
+            "reasons": ["records", f"record_schema: {exc}"],
+        }
+    else:
+        selection = sketch.get("selection", {}) if isinstance(sketch, dict) else {}
+        selected = selection.get("selected_R") if isinstance(selection, dict) else None
+        result = decide_pilot(
+            samples,
+            meta,
+            certified=sc.load_certification(args.cert),
+            selected_r=selected,
+        )
+    result["inputs_sha256"] = inputs
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(
+        json.dumps(result, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
