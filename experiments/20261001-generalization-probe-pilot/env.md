@@ -78,3 +78,18 @@
     式の中で例外が出ていた test 2 件 (u6・l22 の期待 test) を assert で落ちる形に直した。
   - 回し直し 2 回目: **173 / 173 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が変わっていない。
     `manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
+- Codex の 3 回目の review (2026-10-03、再反映の差分、Verdict Revise・HIGH 0・MEDIUM 2・LOW 1) の反映の後に回し直した (2026-10-03)。
+  設計と採否は `.steering/20261003-generalization-probe-driver-third-review/` (ローカル)。
+  - 実行したコードの範囲: driver の最初の文で import の門を入れ、環境 (インタプリタと venv の prefix の下) と固定ファイルの外に所在がある
+    コードを import させない (`scripts/` に置いた `numpy.py` 等)。`scripts` は `root/scripts` だけを探す名前空間として作り、
+    `__init__.py` を実行しない。門より前に取り込まれたもの (sitecustomize 等) は、起動の検査の後の走査が拒否する。
+  - 変異の判定: pytest の出力の文字列を正規表現で切るのをやめ、harness 自身を pytest の plugin として読み込ませ、失敗ごとの記録
+    (関数名・parametrize の id・段・先頭が assert 文か・例外の chain の型と文とフレーム) で照合する。理由のある変異は、その item・段の、
+    同じ 1 つの例外で、型・文・経由した driver の関数を照合する (別の parameter・段・例外を流用しない)。ループで入力を検査していた
+    test は parametrize に開いた。certification の行に、照合した証拠の要約 (`witnessed_by`) を残す。
+  - harness は各 run の前に `scripts/__pycache__` を消す (同じ長さの置換を同じ秒に書くと、前の変異の pyc で実行されうる。証拠の実測で発見)。
+  - 変異 190 (門・名前空間・走査の 17 件を足した) と meta-test 3 件。1 回目: **190 / 190 KILLED**・meta-test 3 件成立 (約 75 分)。
+    その後の code-reviewer・security-checker の反映 (証拠の要約から手元の path = OS のユーザー名とメモリの address を消す・docstring) で
+    harness が変わったので回し直した。2 回目: **190 / 190 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と
+    harness が変わっていない (約 78 分)。`manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は
+    `MANIFEST OK (stage pilot)` のまま。
