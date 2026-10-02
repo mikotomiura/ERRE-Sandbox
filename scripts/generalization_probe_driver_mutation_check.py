@@ -1,0 +1,1703 @@
+#!/usr/bin/env python
+"""候補 G (汎化 probe) の driver の変異試験 — driver の判定に関わる行を壊すと、意図した test が落ちるか.
+
+``scripts/generalization_probe_driver.py`` の行を 1 つずつ壊し、``tests/test_generalization_probe/test_driver.py``
+を実行する。壊す行の区分: plan (呼び出し順)・body の組み立て・予定表の事前検査・送る直前の照合・observed・
+再送と raw = null・記録・公開 (成功したときだけ・二相・読み戻し・公開時の manifest)・来歴の異常・運用の保護・
+起動の前提。枠組みは v5 の driver の harness (``closed_loop_v5_driver_mutation_check.py``) と同じ。
+
+変異は 4 つ組 (名前・変異 (old → new)・期待診断 = 落ちるべき test の集合・理由 ``why``) で登録する。full run の
+fixture に依存する test は、変異で run が壊れると FAILED でなく ERROR (fixture の setup 失敗) になり、理由を問わず
+落ちる。そこで fixture だけに頼る変異には、失敗の理由の文 (``raised``) も要求し、traceback の節の例外行 ``E ``
+で照合する (memory feedback_mutation_fixture_error_reason)。判定は 3 通りに分けて報告する:
+
+* 対照が落ちた: 無変異で test が緑でない → harness を止める (変異の判定をしない)。
+* 変異が捕まらなかった: SURVIVED (test が緑のまま)。
+* 変異は落ちたが理由が違う: WRONG_REASON (期待診断が落ちていない・理由の文が無い) / COLLECTION_ERROR / TIMEOUT。
+  KILLED に数えるのは、期待診断のどれかが落ちたものだけ。理由の文がある変異はその文が例外行に出ること、無い変異は
+  期待診断が test の本体で落ちた (FAILED) ことを要求する。fixture の setup の ERROR は理由を問わず出るので、
+  理由の文の無い変異では数えない (``status_of``、Codex MEDIUM-4・code-reviewer MEDIUM-4)。判定器自体の負例は
+  ``test_harness_status_separates_wrong_reasons`` が pin する。
+
+anchor (置換前の文字列) は対象に 1 回だけ現れ、置換で内容が変わり、置換後も構文が通ること (``--anchors`` で検査)。
+登録から外した変異 (decisions.md DN-2 にも記録)。等価 (意味を変えないので kill できない):
+
+* ``absorb`` の読み戻しを外す: ``ensure_ascii=True`` で書いた行は必ず 1 記録に読み戻せる
+  (``ensure_ascii`` を外す変異 r4 が、読み戻しの ``record is not JSON`` で止まることを理由照合で要求して pin する)。
+* 記録の seed・prompt を予定表の body から取る: 送る直前の照合が、送った body の seed と prompt を plan の位置の
+  凍結値に一致させる。
+* meta の request を ``sc.request_meta()`` から写す: 予定表の事前検査が、型まで含めて凍結値と一致させる。
+
+(初稿では「来歴の records・meta の sha256 を rename の後のファイルから取る」も等価に数えていた。照合と hash の間に
+窓があるので等価ではない (code-reviewer の再レビュー MEDIUM)。変異 u31・u32 として登録し直した。)
+
+等価ではないが、この certification の保証の外に置いたもの:
+
+* 公開名が既にあるときの上書き拒否を外す: Windows の ``Path.rename`` は既存の宛先で ``FileExistsError`` を出すので、
+  この harness が走る Windows では観測できない (Windows 限定の等価。POSIX では上書きを拒否する行が効く)。
+* fsync を外す: 電源断・書き込みの永続化の失敗に対する耐性だけに効き、test から観測できない
+  (耐久性は本 certification の保証外。Codex LOW-6)。
+
+meta-test (計測台 §4.4): 対象を複製ツリー (repo の外の一時 dir) に写し、検査関数を no-op に潰して、依存する test が
+実際に落ちることを一度見る。無変異の複製で期待する test が緑であることを先に確かめる。登録 (``META_CASES``) は
+本登録の harness と同じ形 (先頭 = label、末尾 = 落ちるべき test の集合)。
+
+certification は manifest の契約 (``driver_certification_violations``、第 1 段で封印) どおりに書く。全 KILLED・
+meta-test 成立・原状復帰のときだけ書く (書かないときは理由を出して非 0 で終わる)。対象ファイルは実行中だけ
+書き換わり、必ず原状復帰する。実行中は対象・test を編集しない・読ませない。Windows では中断時に finally が走らず、
+変異が残りうる。中断したら ``--anchors`` で、全変異の置換前文字列が各 1 回ずつ現れることを確かめる。
+
+実行 (repo root から、長いので detached で)::
+
+    uv run python scripts/generalization_probe_driver_mutation_check.py --out <driver_certification.json>
+    uv run python scripts/generalization_probe_driver_mutation_check.py --anchors
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+
+_REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+_DRIVER_REL = "scripts/generalization_probe_driver.py"
+_TEST_REL = "tests/test_generalization_probe/test_driver.py"
+_HARNESS_REL = "scripts/generalization_probe_driver_mutation_check.py"
+_EXP_REL = "experiments/20261001-generalization-probe-pilot"
+_DRIVER = _REPO_ROOT / _DRIVER_REL
+# commit 済み certification と現在のファイルの一致を見る test は、変異中は必ず落ちて生き残りを覆い隠すので外す
+_DESELECT = f"{_TEST_REL}::test_committed_driver_certification_is_current"
+_TEST_TIMEOUT_S = 1800
+_FAILED = re.compile(r"^(FAILED|ERROR) (\S+?::\S+?)(?:\[.*?\])?(?: - .*)?$")
+# 節の見出しの下線は、名前が長い (parametrize の id が長い) と 1 本まで縮む。teardown の節も別に集める
+# (前の test の節に混ぜない、code-reviewer の再レビュー LOW)
+_SECTION = re.compile(
+    r"^_+ (?:ERROR at (?:setup|teardown) of )?(test_\w+)(?:\[.*?\])? _+$"
+)
+
+
+@dataclass(frozen=True)
+class Mutant:
+    label: str
+    old: str
+    new: str
+    expect: frozenset[str]
+    why: str
+    raised: str | None = None  # 期待 test の失敗の例外行 (``E ``) に含まれるべき文字列
+
+
+def _m(
+    label: str,
+    old: str,
+    new: str,
+    expect: tuple[str, ...],
+    why: str,
+    raised: str | None = None,
+) -> Mutant:
+    return Mutant(label, old, new, frozenset(expect), why, raised)
+
+
+# full run の fixture に依存する test (run が壊れると ERROR になる)
+_PILOT = (
+    "test_complete_pilot_run_is_published_and_computed",
+    "test_records_follow_the_schema_and_the_plan",
+    "test_raw_is_recorded_verbatim",
+    "test_parse_follows_the_arm",
+    "test_line_separators_in_raw_do_not_split_a_record",
+    "test_written_files_use_lf",
+    "test_pilot_gate_cli_and_provenance_contract",
+)
+_MAIN = ("test_main_run_is_computed_by_the_frozen_scorer",)
+_PLAN_P = "test_pilot_plan_is_the_frozen_grid_in_order"
+_PLAN_M = "test_main_plan_is_the_frozen_grid_in_order"
+_EVERY = "test_every_planned_body_passes_the_frozen_checks"
+_BAD = "test_bad_schedule_makes_no_call"
+_META = "test_schedule_checks_meta_against_the_frozen_values"
+_FIXED = "test_schedule_rejects_a_wrong_fixed_option"
+_VALUE = "test_check_sent_body_rejects_value_and_type"
+_POSITION = "test_check_uses_the_plan_position"
+_OBSERVER = "test_observer_refuses_before_the_inner_transport"
+_SHOW = "test_show_is_allowed_only_while_reading_observed"
+_SHIFTED = "test_shifted_body_is_refused_before_sending"
+_RESEND = "test_resend_with_the_same_seed_recovers"
+_UNRESOLVED = "test_unresolved_transport_failure_records_null_and_stops"
+_NULL = "test_null_content_is_a_transport_failure_not_bottom"
+_FAILED_RESP = "test_failed_responses_are_resent"
+_OTHER_EXC = "test_other_exceptions_abort_without_a_null_row"
+_COMPLETE = "test_complete_pilot_run_is_published_and_computed"
+_RAW = "test_raw_is_recorded_verbatim"
+_PARSE = "test_parse_follows_the_arm"
+_GATE = "test_pilot_gate_cli_and_provenance_contract"
+_MAIN_RUN = "test_main_run_is_computed_by_the_frozen_scorer"
+_MAIN_OBS = "test_main_refuses_an_observed_environment_different_from_the_pilot"
+_PUB_CHECK = "test_publication_problems_check_completeness_and_structure"
+_PUB_READER = "test_publication_problems_read_like_the_judge"
+_PUB_META = "test_publication_problems_read_the_written_meta"
+_TWO_PHASE = "test_publication_is_two_phase"
+_PUB_FAIL = "test_publication_failure_is_recorded_as_aborted"
+_FINAL_PROV = "test_final_provenance_failure_keeps_records_but_aborts"
+_SWAPPED = "test_swapped_files_are_not_published"
+_AFTER_RENAME = "test_files_changed_after_the_rename_are_not_bound"
+_PINNED_ORDER = "test_pinned_change_during_the_manifest_check_blocks_publication"
+_PINNED_LAUNCH = "test_run_compares_with_the_pinned_values_taken_at_launch"
+_DRIVER_SWAP = "test_driver_swap_is_detected"
+_RUNNING = "test_provenance_binds_the_running_driver"
+_LENGTH = "test_finish_length_is_counted"
+_RUN_MANIFEST = "test_run_manifest_calls_the_frozen_check_like_run_sh"
+_GIT_REAL = "test_git_reports_a_failure_as_none"
+_HASHES = "test_provenance_hashes_are_the_written_bytes"
+_PINNED_READBACK = "test_pinned_change_during_the_read_back_blocks_publication"
+_SHA_UNREADABLE = "test_sha256_reports_an_unreadable_file_as_none"
+_ORIGINAL = "test_provenance_failure_keeps_the_original_exception"
+_MANIFEST_PUB = "test_manifest_failure_at_publication_blocks_it"
+_READ_BACK = "test_read_back_failure_blocks_publication"
+_MODEL = "test_unexpected_response_model_blocks_publication"
+_OBS_CHANGE = "test_observed_change_during_the_run_blocks_publication"
+_PINNED_CHANGE = "test_pinned_file_change_during_the_run_blocks_publication"
+_FINAL_ABORT = "test_final_observed_failure_aborts_a_finished_run"
+_FINAL_KEEP = "test_final_observed_failure_keeps_a_transport_failure"
+_FINAL_RESENT = "test_final_observed_is_resent"
+_NON_EMPTY = "test_run_refuses_a_non_empty_run_dir"
+_PREFLIGHT = "test_preflight_failure_writes_nothing"
+_IDENTITY = "test_preflight_requires_the_environment_identity"
+_META_DISK = "test_meta_is_on_disk_before_the_first_call"
+_ARGS = "test_main_takes_only_the_stage"
+_REFUSE = "test_main_refuses_to_launch_without_touching_the_run_dir"
+_MAIN_STAGE = "test_main_runs_the_stage_and_returns_the_exit_code"
+_OK_LINE = "test_manifest_problems_require_the_exact_ok_line"
+_NO_RUN = "test_manifest_problems_report_a_failure_to_run"
+_COMBINE = "test_launch_problems_combine_certification_git_manifest_and_gate"
+_GIT = "test_launch_problems_check_git_tracking_and_head"
+_CERT = "test_certification_problems_use_the_manifest_contract"
+_GATE_PROBLEMS = "test_gate_problems_require_go_r_and_observed"
+_PINNED = "test_pinned_covers_the_frozen_files_and_the_driver_evidence"
+
+_NOT_PUBLISHED = "the complete run was not published"
+_RESENT = "resent more or fewer than 3 times"
+
+_UNIT_INNER = "out.extend((arm_name(arm), r, p.probe_id, k) for arm in family)"
+_PILOT_RS = "    rs = range(bat.PILOT_R0, bat.PILOT_R0 + bat.PILOT_R)\n"
+_SHAPE_ROWS = (
+    "        for name, want in (\n"
+    '            ("model", bat.MODEL),\n'
+    '            ("think", bat.THINK),\n'
+    '            ("stream", False),\n'
+    "        )\n"
+)
+_WIRE = (
+    "                check_sent_body(self.stage, self.expected, body)\n"
+    "                self.sent.setdefault(self.expected, []).append(body)\n"
+    "        return await self.inner.handle_async_request(request)\n"
+)
+_RECORD_RAW = (
+    "            raw=raw,\n"
+    "            parsed=None if raw is None else state.stage.parse(arm, raw),\n"
+)
+_PUB_COMPLETE = "    if len(samples) != len(stage.grid) or keys != stage.grid:\n"
+_RESENDS_BLOCK = (
+    "RESENDS: Final[int] = 3  # 同じ seed での再送回数 (送信は初回と合わせて最大 4 回)\n"
+    "# 再送の待ち (秒)。attempt ごとに延ばす (Ollama の再起動・復帰を待つ。登録外・label と独立)\n"
+    "BACKOFF_SCHEDULE_S: Final[tuple[float, ...]] = (5.0, 30.0, 120.0)\n"
+)
+# 公開の条件の並び: 実走中の異常 → 公開時の manifest → 読み戻し → 固定ファイル (Codex HIGH-2)
+_FINISH_FIRST = "    anomalies = _run_anomalies(out)\n"
+_FINISH_LAST = "    late, changed = _file_anomalies(stage, out)\n"
+_FINISH_BLOCK = (
+    _FINISH_FIRST + "    if anomalies and reason == REASON_COMPLETED:\n"
+    "        reason = REASON_ABORTED\n"
+    '        error = _join(error, "; ".join(anomalies))\n'
+    "    # 公開の条件 (続き): 判定 (run.sh) が照合するその段の manifest が今も OK\n"
+    "    at_publication: list[str] | None = None\n"
+    "    if reason == REASON_COMPLETED:\n"
+    "        at_publication = manifest_problems(stage.name)\n"
+    "        if at_publication:\n"
+    "            reason = REASON_ABORTED\n"
+    '            error = _join(error, f"manifest at publication: {at_publication}")\n'
+    "    # 公開の最後の条件: 判定と同じ reader・凍結済みの検査で読み戻せ、bytes がこの run の書いたものと同じ\n"
+    "    written = records_bytes([] if state is None else state.lines)\n"
+    "    read_back: list[str] | None = None\n"
+    "    if reason == REASON_COMPLETED:\n"
+    "        read_back = publication_problems(stage) + binding_problems(\n"
+    "            stage.run_dir, PARTIAL_NAME, written, out.meta_bytes\n"
+    "        )\n"
+    "        if read_back:\n"
+    "            reason = REASON_ABORTED\n"
+    '            error = _join(error, f"read-back: {read_back}")\n' + _FINISH_LAST
+)
+_FINISH_EARLY = _FINISH_BLOCK.replace(
+    _FINISH_FIRST, _FINISH_FIRST + "    early = _file_anomalies(stage, out)\n"
+).replace(_FINISH_LAST, "    late, changed = early\n")
+# 固定ファイルを、公開時の manifest の照合の後・読み戻しの前に比べる (読み戻しの間の差し替えを見逃す)
+_READ_BACK_BLOCK = _FINISH_BLOCK[
+    _FINISH_BLOCK.index("    # 公開の最後の条件") : -len(_FINISH_LAST)
+]
+_BEFORE_READ_BACK = (_READ_BACK_BLOCK + _FINISH_LAST, _FINISH_LAST + _READ_BACK_BLOCK)
+_MAIN_PINNED = (
+    "    pinned_start = pinned_sha256(args.stage)\n"
+    "    problems = launch_problems(args.stage)\n"
+)
+
+MUTANTS: tuple[Mutant, ...] = (
+    # ================================================================ plan (呼び出し順)
+    _m(
+        "p1  族の順を逆に",
+        "        for family in bat.FAMILIES:\n",
+        "        for family in bat.FAMILIES[::-1]:\n",
+        (_PLAN_P, _PLAN_M),
+        "単位の順 (r, 族, つ組) が prereg §4 と違う (判定は順序を見ないので plan の test だけが捕まえる)",
+    ),
+    _m(
+        "p2  族内の 2 arm の順を逆に",
+        _UNIT_INNER,
+        "out.extend((arm_name(arm), r, p.probe_id, k) for arm in family[::-1])",
+        (_PLAN_P, _PLAN_M),
+        "族内の 2 arm の交互が族の正準順と逆",
+    ),
+    _m(
+        "p3  つ組の順を逆に",
+        "            for j in range(bat.N_TRIPLES):\n",
+        "            for j in reversed(range(bat.N_TRIPLES)):\n",
+        (_PLAN_P, _PLAN_M),
+        "単位の順が bat.units と違う",
+    ),
+    _m(
+        "p4  KNOW を後ろに",
+        "    return (*know, *unit_keys(rs, pg.PILOT_K, _MASKED_OF.__getitem__))\n",
+        "    return (*unit_keys(rs, pg.PILOT_K, _MASKED_OF.__getitem__), *know)\n",
+        (_PLAN_P,),
+        "KNOW を先に置く決定 (DD-4) と違う",
+    ),
+    _m(
+        "p5  pilot の r を 0 から",
+        _PILOT_RS,
+        "    rs = range(bat.PILOT_R)\n",
+        (_PLAN_P, _EVERY),
+        "pilot の r が本走の r と交わる (grid の外。予定表の検査で止まる)",
+    ),
+    _m(
+        "p6  KNOW の試行を 1 回減らす",
+        "        for k in range(bat.KNOW_K)\n",
+        "        for k in range(bat.KNOW_K - 1)\n",
+        (_PLAN_P, _EVERY),
+        "知識確認の 3 試行 (正答の位置の一巡) が欠ける",
+    ),
+    _m(
+        "p7  本走の r を 1 つ減らす",
+        "    return tuple(unit_keys(range(r_count), sc.FROZEN_K, str))\n",
+        "    return tuple(unit_keys(range(r_count - 1), sc.FROZEN_K, str))\n",
+        (_PLAN_M, _EVERY),
+        "本走の grid (R = 18) が欠ける",
+    ),
+    # ================================================================ body の組み立て
+    _m(
+        "b1  pilot の状態を masked でなく描く",
+        "        bat.render_messages(lever, probe, r, masked=True),\n",
+        "        bat.render_messages(lever, probe, r, masked=False),\n",
+        (_EVERY,),
+        "null pilot の状態が key を含む (prompt が凍結 renderer と違う)",
+    ),
+    _m(
+        "b2  pilot の seed を本走の名前空間で",
+        '    ns = f"pilot_fam{bat.ARM_FAMILY[lever]}"\n',
+        '    ns = f"fam{bat.ARM_FAMILY[lever]}"\n',
+        (_EVERY,),
+        "pilot と本走の seed が交わる",
+    ),
+    _m(
+        "b3  pilot の seed の slot を probe 番号に",
+        "        bat.sample_seed(ns, r, probe.triple, k),\n",
+        "        bat.sample_seed(ns, r, probe.index, k),\n",
+        (_EVERY,),
+        "seed が分類を運ぶ (つ組で共有しない、Codex 2 回目 HIGH-1)",
+    ),
+    _m(
+        "b4  KNOW の seed の key と試行を取り違える",
+        'bat.sample_seed("know", 0, i, k)',
+        'bat.sample_seed("know", 0, k, i)',
+        (_EVERY,),
+        "知識確認の seed が凍結 schedule と違う",
+    ),
+    _m(
+        "b5  KNOW の試行 k を描かない",
+        "        return bat.render_know_messages(i, k), bat.sample_seed(",
+        "        return bat.render_know_messages(i, 0), bat.sample_seed(",
+        (_EVERY,),
+        "正答の位置が 3 試行で一巡しない",
+    ),
+    _m(
+        "b6  本走の seed を pilot の名前空間で",
+        '    ns = f"fam{bat.ARM_FAMILY[arm]}"\n',
+        '    ns = f"pilot_fam{bat.ARM_FAMILY[arm]}"\n',
+        (_EVERY,),
+        "本走の seed が凍結 schedule と違う",
+    ),
+    _m(
+        "b7  本走の状態を masked で描く",
+        "    return bat.render_messages(arm, probe, r), bat.sample_seed(",
+        "    return bat.render_messages(arm, probe, r, masked=True), bat.sample_seed(",
+        (_EVERY,),
+        "本走の状態から key が消える",
+    ),
+    _m(
+        "b8  model を変える",
+        '        "model": bat.MODEL,\n        "messages": messages,\n',
+        '        "model": "qwen3:14b",\n        "messages": messages,\n',
+        (_EVERY,),
+        "凍結 model と違う model を呼ぶ",
+    ),
+    _m(
+        "b9  think を逆に",
+        '        "think": bat.THINK,\n',
+        '        "think": not bat.THINK,\n',
+        (_EVERY,),
+        "thinking が有効になる (着座が v2 と違う)",
+    ),
+    _m(
+        "b10 stream を True に",
+        '        "stream": False,\n        "think"',
+        '        "stream": True,\n        "think"',
+        (_EVERY,),
+        "stream の応答は 1 つの JSON にならない",
+    ),
+    _m(
+        "b11 num_predict の定数を誤る",
+        '    "num_predict": bat.NUM_PREDICT,\n',
+        '    "num_predict": bat.NUM_CTX,\n',
+        (_EVERY,),
+        "driver の定数の誤りは形の検査 (同じ定数と比べる) を通る。凍結 scorer の request で捕まえる",
+    ),
+    _m(
+        "b12 num_ctx の定数を float に",
+        '    "num_ctx": bat.NUM_CTX,\n',
+        '    "num_ctx": float(bat.NUM_CTX),\n',
+        (_EVERY,),
+        "4096.0 は凍結 scorer の meta_violations (辞書の等値) を通る。型まで比べる照合で捕まえる",
+    ),
+    # ================================================================ 予定表の事前検査
+    _m(
+        "c1  plan と grid の照合を外す",
+        "    if len(set(stage.plan)) != len(stage.plan) or set(stage.plan) != stage.grid:\n",
+        "    if False:\n",
+        (_BAD,),
+        "欠けた plan (重複・grid 外は凍結の構造の検査が捕まえるが、欠けは捕まえない) で走り始める",
+    ),
+    _m(
+        "c2  body の数と plan の照合を外す",
+        "    if not schedule or len(schedule) != len(stage.plan):\n",
+        "    if not schedule:\n",
+        (_META,),
+        "plan と数の違う予定表を、照合の表を作らずに受け入れる",
+    ),
+    _m(
+        "c3  予定表で形の検査をしない",
+        '        out.extend(f"schedule: call {i}: {p}" for p in shape_problems(body))\n',
+        "        pass\n",
+        (_BAD,),
+        "stream などの形の誤りに、送る直前まで気づかない (GPU を使ってから止まる)",
+    ),
+    _m(
+        "c4  形の問題があっても続ける",
+        "    if out:\n        return out\n    cands = [",
+        "    if False:\n        return out\n    cands = [",
+        (_BAD,),
+        "形の崩れた body で候補記録を作り、ScheduleError でなく KeyError で落ちる",
+    ),
+    _m(
+        "c5  予定表で凍結の構造の検査をしない",
+        '    out.extend(f"schedule: {p}" for p in stage.structure(cands))\n',
+        "    pass\n",
+        (_BAD,),
+        "seed・prompt の誤りに、送る直前まで気づかない",
+    ),
+    _m(
+        "c6  request の型の照合を外す",
+        '    if _canonical(meta["request"]) != _canonical(sc.request_meta()):\n',
+        "    if False:\n",
+        (_BAD, _FIXED, _EVERY),
+        "4096.0 のような型の誤りを、凍結 scorer の meta_violations は通す",
+    ),
+    _m(
+        "c7  meta の照合で pilot の observed を見ない",
+        '        f"schedule: {p}" for p in sc.meta_violations(meta, stage.reference_observed)\n',
+        '        f"schedule: {p}" for p in sc.meta_violations(meta, None)\n',
+        (_META,),
+        "本走の observed が pilot と違っても予定表を通す",
+    ),
+    _m(
+        "c8  meta の observed を空に",
+        '    return {"request": request_of(schedule[0]), "observed": dict(observed)}\n',
+        '    return {"request": request_of(schedule[0]), "observed": {}}\n',
+        (_EVERY, _META),
+        "meta.json が実行環境の同定を持たない (判定で INVALID_SCORER)",
+    ),
+    # ================================================================ 送る直前の照合
+    _m(
+        "w1  送る直前の照合を削除",
+        "                check_sent_body(self.stage, self.expected, body)\n",
+        "                pass\n",
+        (_OBSERVER, _SHIFTED),
+        "送る経路でずれた body をそのまま送る",
+    ),
+    _m(
+        "w2  照合を送信の後に",
+        _WIRE,
+        "                self.sent.setdefault(self.expected, []).append(body)\n"
+        "        response = await self.inner.handle_async_request(request)\n"
+        '        if request.method == "POST" and request.url.path == CHAT_PATH:\n'
+        "            check_sent_body(self.stage, self.expected, body)\n"
+        "        return response\n",
+        (_OBSERVER, _SHIFTED),
+        "ずれた body をモデルに送ってから止まる",
+    ),
+    _m(
+        "w3  照合のキーを plan の位置から取らない",
+        "    key = stage.plan[index]\n    where",
+        "    key = stage.plan[index % 4]\n    where",
+        (_POSITION, _VALUE),
+        "別の位置のキーで照合する",
+    ),
+    _m(
+        "w4  送る直前に形を検査しない",
+        "    problems = shape_problems(body)\n    if not problems:\n",
+        "    problems = []\n    if not problems:\n",
+        (_VALUE,),
+        "think・stream・型の誤りを送る",
+    ),
+    _m(
+        "w5  送る直前に凍結の構造の検査をしない",
+        "        problems = stage.structure([skeleton(index, key, body)])\n",
+        "        problems = []\n",
+        (_VALUE, _POSITION, _SHIFTED),
+        "seed・prompt のずれを送る",
+    ),
+    _m(
+        "w6  seed の型を検査しない",
+        '    if type(opts["seed"]) is not int:\n',
+        "    if False:\n",
+        (_VALUE,),
+        "float の seed (20261001.0) は凍結の構造の検査 (!=) を通る",
+    ),
+    _m(
+        "w7  型の厳密一致を外す",
+        "return type(got) is type(want) and got == want",
+        "return got == want",
+        (_VALUE,),
+        "False と 0、4096.0 と 4096 を同じとみなす",
+    ),
+    _m(
+        "w8  body の余分な key を許す",
+        "    if not isinstance(body, dict) or set(body) != BODY_KEYS:\n",
+        "    if not isinstance(body, dict) or not BODY_KEYS <= set(body):\n",
+        (_VALUE,),
+        "keep_alive などの登録外の要求を送る",
+    ),
+    _m(
+        "w9  options の余分な key を許す",
+        "    if not isinstance(opts, dict) or set(opts) != OPTION_KEYS:\n",
+        "    if not isinstance(opts, dict) or not OPTION_KEYS <= set(opts):\n",
+        (_VALUE,),
+        "top_k などの登録外の decoding 条件を送る",
+    ),
+    _m(
+        "w10 messages の形を検査しない",
+        "    if not isinstance(msgs, list) or not all(\n",
+        "    if False and not all(\n",
+        (_VALUE,),
+        "list でない messages で SentBodyMismatchError でなく TypeError になる",
+    ),
+    _m(
+        "w11 model を照合しない",
+        '            ("model", bat.MODEL),\n',
+        "",
+        (_VALUE,),
+        "別の model への送信を通す",
+    ),
+    _m(
+        "w12 think を照合しない",
+        '            ("think", bat.THINK),\n',
+        "",
+        (_VALUE,),
+        "think の誤りを通す",
+    ),
+    _m(
+        "w13 stream を照合しない",
+        '            ("stream", False),\n',
+        "",
+        (_VALUE,),
+        "stream の誤りを通す",
+    ),
+    _m(
+        "w14 固定の options を照合しない",
+        "        if not _exact(opts[name], want)\n    )\n",
+        "        if False\n    )\n",
+        (_VALUE,),
+        "temperature・num_ctx の誤りを通す",
+    ),
+    _m(
+        "w15 /api/chat 以外の POST を通す",
+        "            elif path != CHAT_PATH:\n",
+        "            elif False:\n",
+        (_OBSERVER,),
+        "照合をすり抜ける経路を開ける",
+    ),
+    _m(
+        "w16 /api/show を常に通す",
+        "            if path == SHOW_PATH and self.allow_show:\n",
+        "            if path == SHOW_PATH:\n",
+        (_OBSERVER, _SHOW),
+        "observed を読む間以外にも /api/show を通す",
+    ),
+    _m(
+        "w17 期待の無い送信を通す",
+        "                if self.expected is None:\n",
+        "                if False:\n",
+        (_OBSERVER,),
+        "位置の無い送信を照合せずに通す (TypeError になる)",
+    ),
+    _m(
+        "w18 observed を読む間に /api/show を許さない",
+        "    observer.allow_show = True\n    try:\n",
+        "    observer.allow_show = False\n    try:\n",
+        (_SHOW, _META_DISK, *_PILOT),
+        "chat template を読めず、どの run も始まらない",
+        "unexpected POST path",
+    ),
+    _m(
+        "w19 /api/show の許可を閉じない",
+        "    finally:\n        observer.allow_show = False\n",
+        "    finally:\n        pass\n",
+        (_SHOW,),
+        "observed を読んだ後も /api/show が開いたまま",
+    ),
+    # ================================================================ observed
+    _m(
+        "o1  template の sha を版から",
+        'hashlib.sha256(template.encode("utf-8")).hexdigest()',
+        'hashlib.sha256(version.encode("utf-8")).hexdigest()',
+        (_META_DISK, _COMPLETE),
+        "chat template を同定しない",
+    ),
+    _m(
+        "o2  digest の model 名を照合しない",
+        '        if isinstance(m, dict) and bat.MODEL in (m.get("name"), m.get("model")):\n',
+        "        if isinstance(m, dict):\n",
+        (_IDENTITY,),
+        "別の model の digest を記録する",
+    ),
+    _m(
+        "o3  空の版を許す",
+        "    if not isinstance(version, str) or not version:\n",
+        "    if not isinstance(version, str):\n",
+        (_IDENTITY,),
+        "版の無い環境で走る",
+    ),
+    _m(
+        "o4  digest が無くても続ける",
+        '    if digest is None:\n        msg = f"model',
+        '    if False:\n        msg = f"model',
+        (_IDENTITY,),
+        "model の無い環境で PreflightError でなく予定表の検査まで進む",
+    ),
+    _m(
+        "o5  template が無くても続ける",
+        "    if not isinstance(template, str):\n",
+        "    if False:\n",
+        (_IDENTITY,),
+        "chat template の無い応答で PreflightError でなく AttributeError になる",
+    ),
+    _m(
+        "o6  preflight で HTTP の状態を見ない",
+        '    if response.status_code != httpx.codes.OK:\n        msg = f"{response.request.url.path}',
+        '    if False:\n        msg = f"{response.request.url.path}',
+        (_IDENTITY,),
+        "404 の応答の値を observed として使う",
+    ),
+    _m(
+        "o8  /api/show に model を渡さない",
+        'json={"model": bat.MODEL}',
+        'json={"name": bat.MODEL}',
+        (_SHOW, _META_DISK),
+        "凍結 model の chat template を読まない (偽の Ollama は 404 を返す)",
+        "PreflightError",
+    ),
+    _m(
+        "o7  本走の observed を pilot と照合しない",
+        "        if ref is not None and observed != ref:\n",
+        "        if False:\n",
+        (_MAIN_OBS,),
+        "pilot と違う環境で本走を始めかける (予定表の検査が ScheduleError で止めるが、理由が違う)",
+    ),
+    # ================================================================ 再送と raw = null
+    _m(
+        "t1  再送 3 → 2",
+        "RESENDS: Final[int] = 3",
+        "RESENDS: Final[int] = 2",
+        (_RESEND, _UNRESOLVED),
+        "prereg §4 の再送 3 回より少ない",
+        _RESENT,
+    ),
+    _m(
+        "t2  再送 3 → 4 (待ちの表も延ばす)",
+        _RESENDS_BLOCK,
+        _RESENDS_BLOCK.replace("= 3", "= 4").replace("120.0)", "120.0, 120.0)"),
+        (_UNRESOLVED, _FINAL_ABORT),
+        "prereg §4 の再送 3 回より多い (待ちの表を延ばさないと IndexError で落ち、回数の検査に届かない。Codex MEDIUM-4)",
+        _RESENT,
+    ),
+    _m(
+        "t3  再送で seed を変える",
+        "            reply = await send_chat(state.http, body)\n",
+        "            reply = await send_chat(\n"
+        "                state.http,\n"
+        '                {**body, "options": {**body["options"], "seed": body["options"]["seed"] + attempt}},\n'
+        "            )\n",
+        (_RESEND, _FAILED_RESP),
+        "再送が同じ seed でない (送る直前の照合が止める)",
+    ),
+    _m(
+        "t4  再送が尽きても続行",
+        "        if raw is None:\n            return REASON_TRANSPORT\n",
+        "        if False:\n            return REASON_TRANSPORT\n",
+        (_UNRESOLVED, _NULL),
+        "transport 失敗の後も呼び続ける",
+    ),
+    _m(
+        "t5  解けない transport 失敗を空文字 (⊥) に",
+        "    return None\n\n\ndef absorb",
+        '    return ""\n\n\ndef absorb',
+        (_UNRESOLVED, _NULL),
+        "transport 失敗を ⊥ に畳む (prereg §4 違反)",
+    ),
+    _m(
+        "t6  transport 以外の例外も再送",
+        '    except httpx.HTTPError as exc:\n        msg = f"{type(exc).__name__}: {exc}"\n',
+        '    except Exception as exc:\n        msg = f"{type(exc).__name__}: {exc}"\n',
+        (_OTHER_EXC, _SHIFTED),
+        "照合の不一致や想定外の例外を transport 失敗に畳む",
+    ),
+    _m(
+        "t7  HTTP の状態を見ない",
+        '    if response.status_code != httpx.codes.OK:\n        msg = f"HTTP',
+        '    if False:\n        msg = f"HTTP',
+        (_FAILED_RESP,),
+        "500 の応答の本文を答えとして使う",
+    ),
+    _m(
+        "t8  JSON でない応答を例外のまま上げる",
+        '    except ValueError as exc:\n        msg = "non-JSON response"\n',
+        '    except KeyError as exc:\n        msg = "non-JSON response"\n',
+        (_FAILED_RESP,),
+        "JSON でない応答で再送せずに止まる",
+    ),
+    _m(
+        "t9  文字列でない content を受ける",
+        '    if not isinstance(content, str):\n        msg = f"message.content',
+        '    if False:\n        msg = f"message.content',
+        (_NULL, _FAILED_RESP),
+        "null の content を再送せずに受ける",
+    ),
+    _m(
+        "t10 object でない応答を前提にする",
+        '    message = payload.get("message") if isinstance(payload, dict) else None\n',
+        '    message = payload.get("message")\n',
+        (_FAILED_RESP,),
+        "配列の応答で AttributeError になる",
+    ),
+    _m(
+        "t11 応答の model を数えない",
+        "            state.response_models.add(str(reply.model))\n",
+        "",
+        (_MODEL,),
+        "別の model の応答に気づかない",
+    ),
+    _m(
+        "t14 num_predict で切れた応答を数えない",
+        '            state.n_length += reply.done_reason == "length"\n',
+        "",
+        (_LENGTH,),
+        "来歴の n_finish_length が 0 のまま",
+    ),
+    _m(
+        "t12 試行の記録を書かない",
+        "        _write_line(state.attempts_fh, row)\n",
+        "",
+        (_RESEND, _FAILED_RESP),
+        "再送の経過が残らない",
+    ),
+    _m(
+        "t13 再送の回数を数えない",
+        "            state.resends += 1\n",
+        "",
+        (_RESEND,),
+        "来歴の再送の回数が 0 のまま",
+    ),
+    # ================================================================ 記録
+    _m(
+        "r1  raw を strip して記録",
+        _RECORD_RAW,
+        "            raw=None if raw is None else raw.strip(),\n"
+        "            parsed=None if raw is None else state.stage.parse(arm, raw),\n",
+        (_RAW,),
+        "応答をそのまま残さない",
+        "raw is not recorded verbatim",
+    ),
+    _m(
+        "r2  KNOW も行動 label として parse",
+        "    return pg.parse_class(raw) if arm == pg.ARM_KNOW else sc.parse_choice(raw)\n",
+        "    return sc.parse_choice(raw)\n",
+        (_PARSE, _COMPLETE),
+        "知識確認の答えが全て ⊥ になる (凍結 pilot 判定の re-parse と違い、公開されない)",
+        _NOT_PUBLISHED,
+    ),
+    _m(
+        "r3  parsed を parse せずに raw で",
+        _RECORD_RAW,
+        "            raw=raw,\n            parsed=raw,\n",
+        (_PARSE, _COMPLETE),
+        "記録の parse が凍結の re-parse と違う",
+        _NOT_PUBLISHED,
+    ),
+    _m(
+        "r4  記録を ensure_ascii=False で書く",
+        "    line = json.dumps(obj, ensure_ascii=True, sort_keys=True)\n",
+        "    line = json.dumps(obj, ensure_ascii=False, sort_keys=True)\n",
+        _PILOT,
+        "U+2028 などで 1 記録が 2 行に割れる (読み戻しが止める)",
+        "record is not JSON",
+    ),
+    _m(
+        "r5  call_index を 1 から",
+        "    for index, key in enumerate(state.stage.plan):\n",
+        "    for index, key in enumerate(state.stage.plan, start=1):\n",
+        _PILOT,
+        "call_index と予定表の位置がずれる",
+        "IndexError",
+    ),
+    _m(
+        "r6  記録のキーを plan の先頭に固定",
+        "        arm, r, probe_id, k = key\n        rec = sc.Sample(",
+        "        arm, r, probe_id, k = state.stage.plan[0]\n        rec = sc.Sample(",
+        (_COMPLETE, _RAW),
+        "記録のキーが送った呼び出しと違う (重複、公開されない)",
+        _NOT_PUBLISHED,
+    ),
+    _m(
+        "r7  読み戻した記録を数えない",
+        "    state.records.append(rows[0])\n",
+        "",
+        (_COMPLETE,),
+        "来歴の記録数が 0",
+        "n_records differs from the plan",
+    ),
+    # ================================================================ 公開
+    _m(
+        "u1  常に公開",
+        "    publishable = reason == REASON_COMPLETED\n",
+        "    publishable = True\n",
+        (_UNRESOLVED, _MODEL, _MANIFEST_PUB),
+        "transport 失敗・異常のある run を公開する",
+        "records.jsonl was published",
+    ),
+    _m(
+        "u2  公開前の読み戻しの結果を見ない",
+        "        if read_back:\n",
+        "        if False:\n",
+        (_READ_BACK,),
+        "凍結の検査を通らない記録を公開する",
+    ),
+    _m(
+        "u3  公開前に読み戻さない",
+        "    if reason == REASON_COMPLETED:\n"
+        "        read_back = publication_problems(stage) + binding_problems(\n",
+        "    if False:\n        read_back = publication_problems(stage) + binding_problems(\n",
+        (_READ_BACK,),
+        "読み戻さずに公開する",
+    ),
+    _m(
+        "u4  公開しない",
+        "    if publishable:\n        # commit point",
+        "    if False:\n        # commit point",
+        (_TWO_PHASE, _COMPLETE, _MAIN_RUN),
+        "完了した run を公開しない",
+    ),
+    _m(
+        "u5  1 相目の来歴を completed で書く",
+        '        "exit_reason": REASON_ABORTED if publishable else reason,\n',
+        '        "exit_reason": reason,\n',
+        (_TWO_PHASE,),
+        "rename の前に kill されると、未公開の run が completed に見える",
+    ),
+    _m(
+        "u6  1 相目に pending の注記を書かない",
+        '        "error": _join(error, PENDING_NOTE) if publishable else error,\n',
+        '        "error": error,\n',
+        (_TWO_PHASE,),
+        "公開の前に中断した run を見分けられない",
+    ),
+    _m(
+        "u7  3 項目を 1 相目にも書く",
+        '        "published": False,\n        "n_records"',
+        '        "published": False,\n'
+        '        "driver_sha256": _sha256(pathlib.Path(__file__).resolve()),\n'
+        '        "n_records"',
+        (_TWO_PHASE, _UNRESOLVED),
+        "公開していない run の来歴が第 2 段の照合を通りうる (DD-5)",
+    ),
+    _m(
+        "u8  2 相目の来歴を書かない",
+        "            write_json_durable(prov_path, provenance, exclusive=False)\n",
+        "            pass\n",
+        (_TWO_PHASE, _COMPLETE, _GATE),
+        "公開済みの run の来歴が未公開のまま",
+    ),
+    _m(
+        "u9  公開の失敗を来歴に書かない",
+        '            provenance["error"] = _join(\n'
+        '                error, f"publication failed: {type(exc).__name__}: {exc}"\n'
+        "            )\n",
+        "            pass\n",
+        (_PUB_FAIL,),
+        "公開の失敗の理由が残らない",
+    ),
+    _m(
+        "u10 公開の失敗を completed のまま返す",
+        "        except OSError as exc:\n            reason = REASON_ABORTED\n",
+        "        except OSError as exc:\n            reason = REASON_COMPLETED\n",
+        (_PUB_FAIL,),
+        "公開されていない run が completed で終わる",
+    ),
+    _m(
+        "u11 判定と違う reader (改行だけで分割) で読み戻す",
+        '        lines = (stage.run_dir / PARTIAL_NAME).read_text(encoding="utf-8").splitlines()\n',
+        '        lines = (stage.run_dir / PARTIAL_NAME).read_text(encoding="utf-8").split(chr(10))\n',
+        (_PUB_READER,),
+        "判定 (splitlines) では割れる記録を読めたことにする",
+    ),
+    _m(
+        "u12 書いた meta を読まない",
+        '        meta = json.loads((stage.run_dir / META_NAME).read_text(encoding="utf-8"))\n',
+        "        meta = sc.request_meta()\n",
+        (_PUB_CHECK, _PUB_META),
+        "書いた meta.json でなく別の値を検査する",
+    ),
+    _m(
+        "u13 読めない記録を問題なしに畳む",
+        '        return [f"unreadable: {type(exc).__name__}: {exc}"]\n',
+        "        return []\n",
+        (_PUB_READER,),
+        "読めない partial を公開する",
+    ),
+    _m(
+        "u14 公開前に完全性を見ない",
+        _PUB_COMPLETE,
+        "    if False:\n",
+        (_PUB_CHECK,),
+        "欠けた記録を公開する",
+    ),
+    _m(
+        "u15 公開前に transport 失敗を見ない",
+        "    if any(s.raw is None for s in samples):\n",
+        "    if False:\n",
+        (_PUB_CHECK,),
+        "raw = null の記録を公開する",
+    ),
+    _m(
+        "u16 公開前に凍結の構造の検査をしない",
+        "    out = list(stage.structure(samples))\n",
+        "    out = []\n",
+        (_PUB_CHECK,),
+        "seed の違う記録を公開する",
+    ),
+    _m(
+        "u17 公開前の meta の照合で pilot の observed を見ない",
+        "    out.extend(sc.meta_violations(meta, stage.reference_observed))\n",
+        "    out.extend(sc.meta_violations(meta, None))\n",
+        (_PUB_META,),
+        "本走の meta が pilot の observed と違っても公開する",
+    ),
+    _m(
+        "u18 公開済みで 2 相目の来歴が書けないと失敗にする",
+        '            if not provenance["published"]:\n                raise\n',
+        "            raise\n",
+        (_FINAL_PROV,),
+        "公開済みの run を例外で終える",
+    ),
+    _m(
+        "u19 来歴・公開の失敗で元の例外を隠す",
+        "            if primary is None:\n                raise\n",
+        "            raise\n",
+        (_ORIGINAL,),
+        "元の例外が来歴の書き込みの失敗に隠れる",
+    ),
+    _m(
+        "u20 driver の sha256 を公開の後にディスクから",
+        "                    driver_sha256=_DRIVER_SHA,\n",
+        "                    driver_sha256=_sha256(_DRIVER_PATH),\n",
+        (_RUNNING,),
+        "照合の後に差し替わった driver の sha256 を来歴に書く (Codex HIGH-2)",
+    ),
+    _m(
+        "u21 records の sha256 を meta の bytes から",
+        "                    records_sha256=hashlib.sha256(written).hexdigest(),\n",
+        "                    records_sha256=hashlib.sha256(out.meta_bytes).hexdigest(),\n",
+        (_TWO_PHASE, _GATE),
+        "provenance が公開した記録に結び付かない",
+    ),
+    _m(
+        "u22 meta の sha256 を記録の bytes から",
+        "                    meta_sha256=hashlib.sha256(out.meta_bytes).hexdigest(),\n",
+        "                    meta_sha256=hashlib.sha256(written).hexdigest(),\n",
+        (_TWO_PHASE, _GATE),
+        "provenance が meta に結び付かない",
+    ),
+    _m(
+        "u25 書いた bytes と照合しない",
+        "        read_back = publication_problems(stage) + binding_problems(\n"
+        "            stage.run_dir, PARTIAL_NAME, written, out.meta_bytes\n"
+        "        )\n",
+        "        read_back = publication_problems(stage)\n",
+        (_SWAPPED,),
+        "同じ grid の別の run の記録・別の observed の meta を公開する (Codex HIGH-1)",
+    ),
+    _m(
+        "u26 照合で meta を見ない",
+        "    for rel, want in ((records_name, records), (META_NAME, meta)):\n",
+        "    for rel, want in ((records_name, records),):\n",
+        (_SWAPPED,),
+        "別の observed の meta を公開する",
+    ),
+    _m(
+        "u27 rename の後に照合しない",
+        "            after = binding_problems(\n"
+        "                stage.run_dir, RECORDS_NAME, written, out.meta_bytes\n"
+        "            )\n",
+        "            after: list[str] = []\n",
+        (_AFTER_RENAME,),
+        "rename の後に差し替わった記録に 3 項目を結び付ける",
+    ),
+    _m(
+        "u28 2 相目の来歴の失敗を completed で終える",
+        "            reason = REASON_ABORTED\n            _progress(\n",
+        "            _progress(\n",
+        (_FINAL_PROV,),
+        "第 2 段に使えない run (来歴に 3 項目なし) が completed で終わる",
+    ),
+    _m(
+        "u29 transport 失敗の来歴に status を書かない",
+        '        "status": sc.STATUS_NOT_COMPUTED if reason == REASON_TRANSPORT else None,\n',
+        '        "status": None,\n',
+        (_UNRESOLVED,),
+        "prereg §4 の status=not_computed が残らない (Codex MEDIUM-3)",
+    ),
+    _m(
+        "u30 どの run の来歴にも status を not_computed で書く",
+        '        "status": sc.STATUS_NOT_COMPUTED if reason == REASON_TRANSPORT else None,\n',
+        '        "status": sc.STATUS_NOT_COMPUTED,\n',
+        (_COMPLETE,),
+        "公開した run まで not_computed と書く",
+        "'not_computed' is None",
+    ),
+    _m(
+        "u31 records の sha256 を rename の後のファイルから",
+        "                    records_sha256=hashlib.sha256(written).hexdigest(),\n",
+        "                    records_sha256=_sha256(stage.run_dir / RECORDS_NAME),\n",
+        (_HASHES,),
+        "照合と hash の間に差し替わった記録を来歴に結び付ける (code-reviewer の再レビュー MEDIUM)",
+    ),
+    _m(
+        "u32 meta の sha256 を rename の後のファイルから",
+        "                    meta_sha256=hashlib.sha256(out.meta_bytes).hexdigest(),\n",
+        "                    meta_sha256=_sha256(stage.run_dir / META_NAME),\n",
+        (_HASHES,),
+        "照合と hash の間に差し替わった meta を来歴に結び付ける",
+    ),
+    _m(
+        "u33 rename の後の照合に落ちた記録を公開名に残す",
+        "                    (stage.run_dir / RECORDS_NAME).rename(stage.run_dir / REJECTED_NAME)\n",
+        "                    pass\n",
+        (_AFTER_RENAME,),
+        "書き換えられた記録が公開名に残り、凍結 run.sh が gate を計算する",
+        "records.jsonl was published",
+    ),
+    _m(
+        "u23 公開時の manifest の結果を見ない",
+        "        at_publication = manifest_problems(stage.name)\n        if at_publication:\n",
+        "        at_publication = manifest_problems(stage.name)\n        if False:\n",
+        (_MANIFEST_PUB,),
+        "公開の時点で manifest が崩れていても公開する",
+    ),
+    _m(
+        "u24 公開時に manifest を照合しない",
+        "    if reason == REASON_COMPLETED:\n        at_publication = manifest_problems(stage.name)\n",
+        "    if False:\n        at_publication = manifest_problems(stage.name)\n",
+        (_MANIFEST_PUB,),
+        "公開の時点の manifest を見ない",
+    ),
+    # ================================================================ 来歴の異常
+    _m(
+        "a1  固定ファイルの変化を異常にしない",
+        "    if changed:\n        anomalies.append",
+        "    if False:\n        anomalies.append",
+        (_PINNED_CHANGE,),
+        "実走中に判定コードが変わっても公開する",
+    ),
+    _m(
+        "a2  固定ファイルを終了時どうしで比べる",
+        "if pinned_end[p] != out.pinned_start.get(p)",
+        "if pinned_end[p] != pinned_end.get(p)",
+        (_PINNED_CHANGE,),
+        "変化を検出できない",
+    ),
+    _m(
+        "a3  想定外の応答 model を異常にしない",
+        "    if models - {bat.MODEL}:\n",
+        "    if False:\n",
+        (_MODEL,),
+        "別の model の応答を公開する",
+    ),
+    _m(
+        "a4  observed の変化を異常にしない",
+        "    if out.observed_end is not None and out.observed_end != out.observed_start:\n",
+        "    if False:\n",
+        (_OBS_CHANGE,),
+        "実走中に重み・template が変わっても公開する",
+    ),
+    _m(
+        "a5  異常を終了理由に反映しない",
+        "    if anomalies and reason == REASON_COMPLETED:\n",
+        "    if False:\n",
+        (_MODEL, _OBS_CHANGE, _PINNED_CHANGE),
+        "異常のある run を公開する",
+    ),
+    _m(
+        "a6  終了時の observed を読まない",
+        "        observed_end, final_error = await final_observed(http, observer, backoff_s)\n",
+        "        observed_end, final_error = observed, None\n",
+        (_OBS_CHANGE, _FINAL_ABORT),
+        "実走中の環境の変化を見ない",
+    ),
+    _m(
+        "a7  終了時の observed を再送しない",
+        "    for attempt in range(1 + RESENDS):\n        try:\n            return await read_observed",
+        "    for attempt in range(1):\n        try:\n            return await read_observed",
+        (_FINAL_RESENT,),
+        "一時的な不調で完了した run を捨てる",
+    ),
+    _m(
+        "a8  transport 失敗の後の終了時の失敗を aborted に",
+        "            if stop != REASON_TRANSPORT:\n",
+        "            if True:\n",
+        (_FINAL_KEEP,),
+        "transport 失敗の分類が変わる",
+    ),
+    _m(
+        "a9  終了時の observed の失敗を aborted にしない",
+        "            if stop != REASON_TRANSPORT:\n",
+        "            if False:\n",
+        (_FINAL_ABORT,),
+        "終了時に環境を同定できない run を公開する",
+    ),
+    _m(
+        "a10 固定ファイルを公開時の manifest の照合の前に比べる",
+        _FINISH_BLOCK,
+        _FINISH_EARLY,
+        (_PINNED_ORDER,),
+        "manifest の照合 (約 16 秒) の間の差し替えを見逃す (Codex HIGH-2)",
+    ),
+    _m(
+        "a11 起動時に取った固定ファイルの sha256 を使わない",
+        "                pinned_sha256(stage.name) if pinned_start is None else pinned_start\n",
+        "                pinned_sha256(stage.name)\n",
+        (_PINNED_LAUNCH,),
+        "起動の検査から実走の開始までの差し替えを見逃す (Codex HIGH-2)",
+    ),
+    _m(
+        "a12 終了時にディスクの driver を実行中の driver と比べない",
+        "    if _sha256(_DRIVER_PATH) != _DRIVER_SHA:\n        anomalies.append(",
+        "    if False:\n        anomalies.append(",
+        (_DRIVER_SWAP,),
+        "実行中に差し替わった driver の run を公開する",
+    ),
+    _m(
+        "a13 固定ファイルを読み戻しの前に比べる",
+        _BEFORE_READ_BACK[0],
+        _BEFORE_READ_BACK[1],
+        (_PINNED_READBACK,),
+        "読み戻しの間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
+    ),
+    _m(
+        "a14 読めない固定ファイルで例外にする",
+        "    except OSError:\n        return None\n",
+        "    except FileNotFoundError:\n        return None\n",
+        (_SHA_UNREADABLE,),
+        "読めないファイルで来歴を書けなくなる (code-reviewer の再レビュー LOW)",
+    ),
+    _m(
+        "a15 main が起動の検査の後に固定ファイルの sha256 を取る",
+        _MAIN_PINNED,
+        "    problems = launch_problems(args.stage)\n"
+        "    pinned_start = pinned_sha256(args.stage)\n",
+        (_MAIN_STAGE,),
+        "起動の検査 (manifest の照合 約 16 秒) の間の差し替えを見逃す (code-reviewer の再レビュー LOW)",
+    ),
+    # ================================================================ 運用の保護
+    _m(
+        "q1  中身のある run dir を拒否しない",
+        "    if run_dir.exists() and any(run_dir.iterdir()):\n",
+        "    if False:\n",
+        (_NON_EMPTY,),
+        "前の run に重ねて書く (再開しない規律)",
+    ),
+    _m(
+        "q2  preflight を飛ばす",
+        "        observed = await read_observed(http, observer)\n        ref",
+        '        observed = {"model_digest": "x", "ollama_version": "x", "template_sha256": "x"}\n        ref',
+        (_PREFLIGHT, _META_DISK),
+        "実行環境を同定せずに走る",
+    ),
+    _m(
+        "q3  meta.json を書かない",
+        "        write_json_durable(stage.run_dir / META_NAME, meta, exclusive=True)\n",
+        "        pass\n",
+        (_META_DISK, _COMPLETE),
+        "meta.json の無い run (公開されない)",
+    ),
+    _m(
+        "q4  main が段以外の引数を受け取る",
+        "    args = ap.parse_args(argv)\n",
+        "    args, _ = ap.parse_known_args(argv)\n",
+        (_ARGS,),
+        "run dir・endpoint を差し替える登録外の実走経路を開ける",
+    ),
+    _m(
+        "q5  起動拒否を外す",
+        "    if problems:\n        for p in problems:\n",
+        "    if False:\n        for p in problems:\n",
+        (_REFUSE,),
+        "起動の前提が崩れていても走る",
+    ),
+    _m(
+        "q6  本走でも pilot の段を走らせる",
+        "            if args.stage == STAGE_PILOT\n",
+        "            if True\n",
+        (_MAIN_STAGE,),
+        "段を取り違える",
+    ),
+    _m(
+        "q7  本走の observed を gate から読まない",
+        '    return main_stage(run_dir, gate["R"], gate["observed"])\n',
+        '    return main_stage(run_dir, gate["R"], {})\n',
+        (_MAIN_STAGE,),
+        "本走の observed を pilot と照合しない",
+    ),
+    _m(
+        "q8  exit code を終了理由から返さない",
+        "    return EXIT_CODES[reason]\n",
+        "    return 0\n",
+        (_MAIN_STAGE,),
+        "transport 失敗でも 0 で終わる",
+    ),
+    # ================================================================ 起動の前提
+    _m(
+        "l1  manifest の exit code を見ない",
+        "    if code != 0 or not lines or lines[-1] != want:\n",
+        "    if not lines or lines[-1] != want:\n",
+        (_OK_LINE,),
+        "exit 1 の照合を OK とみなす",
+    ),
+    _m(
+        "l2  manifest の末尾行を見ない",
+        "    if code != 0 or not lines or lines[-1] != want:\n",
+        "    if code != 0:\n",
+        (_OK_LINE,),
+        "NOT FROZEN (exit 0 の場合) を OK とみなす",
+    ),
+    _m(
+        "l3  OK を末尾以外でも受ける",
+        "lines[-1] != want",
+        "want not in lines",
+        (_OK_LINE,),
+        "OK の後に続く行を見ない",
+    ),
+    _m(
+        "l4  段の名前を照合しない",
+        '    want = f"MANIFEST OK (stage {stage_name})"\n',
+        '    want = "MANIFEST OK (stage pilot)"\n',
+        (_OK_LINE,),
+        "本走の前提に pilot の段の OK を使う",
+    ),
+    _m(
+        "l5  manifest が走らないことを問題にしない",
+        '        return [f"manifest --verify --stage {stage_name} could not run: {exc}"]\n',
+        "        return []\n",
+        (_NO_RUN,),
+        "照合できないことを OK に畳む",
+    ),
+    _m(
+        "l6  certification を起動の前提に入れない",
+        "    problems = certification_problems(DRIVER_CERT)\n",
+        "    problems: list[str] = []\n",
+        (_COMBINE,),
+        "certify されていない driver で走る",
+    ),
+    _m(
+        "l7  manifest を起動の前提に入れない",
+        "    problems.extend(manifest_problems(stage_name))\n",
+        "",
+        (_COMBINE,),
+        "封印の崩れた状態で走る",
+    ),
+    _m(
+        "l8  本走で gate を見ない",
+        "    if stage_name == STAGE_MAIN:\n        problems.extend(gate_problems(GATE_PATH))\n",
+        "    if False:\n        problems.extend(gate_problems(GATE_PATH))\n",
+        (_COMBINE,),
+        "pilot が GO でないのに本走を走らせる",
+    ),
+    _m(
+        "l9  git の追跡を見ない",
+        '        if _git("ls-files", "--error-unmatch", rel) is None:\n',
+        "        if False:\n",
+        (_GIT,),
+        "commit していないファイルで走る",
+    ),
+    _m(
+        "l10 HEAD との差分を見ない",
+        '    if _git("diff", "--quiet", "HEAD", "--", *files) is None:\n',
+        "    if False:\n",
+        (_GIT,),
+        "HEAD と違うファイルで走る",
+    ),
+    _m(
+        "l11 certification の契約を使わない",
+        "    return man.driver_certification_violations(obj, _REPO_ROOT)\n",
+        "    return []\n",
+        (_CERT,),
+        "壊れた certification を通す",
+    ),
+    _m(
+        "l12 読めない certification を問題にしない",
+        '        return [f"driver certification unreadable: {cert}"]\n',
+        "        return []\n",
+        (_CERT,),
+        "certification の無い driver で走る",
+    ),
+    _m(
+        "l13 gate の GO を見ない",
+        '    if not isinstance(gate, dict) or gate.get("decision") != pg.DECISION_GO:\n',
+        "    if not isinstance(gate, dict):\n",
+        (_GATE_PROBLEMS,),
+        "STOP の pilot の後に本走を走らせる",
+    ),
+    _m(
+        "l14 gate の R の型を見ない",
+        'type(gate.get("R")) is not int',
+        'gate.get("R") is None',
+        (_GATE_PROBLEMS,),
+        "R が整数でない gate を通す",
+    ),
+    _m(
+        "l15 gate の observed を見ない",
+        '    if type(gate.get("R")) is not int or not isinstance(gate.get("observed"), dict):\n',
+        '    if type(gate.get("R")) is not int:\n',
+        (_GATE_PROBLEMS,),
+        "observed の無い gate を通す",
+    ),
+    _m(
+        "l16 読めない gate を問題にしない",
+        '        return [f"pilot gate unreadable: {gate_path}"]\n',
+        "        return []\n",
+        (_GATE_PROBLEMS,),
+        "gate の無い本走を走らせる",
+    ),
+    _m(
+        "l17 固定ファイルに driver の証拠を入れない",
+        "        man.DRIVER_HARNESS,\n        man.DRIVER_TEST,\n        man.DRIVER_CERT,\n",
+        "",
+        (_PINNED,),
+        "harness・test・certification の変更に気づかない",
+    ),
+    _m(
+        "l18 本走で第 2 段の証拠を固定しない",
+        "        files = (*files, *man.MAIN_EVIDENCE, man.MANIFEST_MAIN)\n",
+        "        files = (*files,)\n",
+        (_PINNED,),
+        "pilot の記録・gate・第 2 段の manifest の変更に気づかない",
+    ),
+    _m(
+        "l19 起動時にディスクの driver を実行中の driver と比べない",
+        "    if _sha256(_DRIVER_PATH) != _DRIVER_SHA:\n        problems.append(",
+        "    if False:\n        problems.append(",
+        (_DRIVER_SWAP,),
+        "import の後に差し替わった driver で起動する (Codex HIGH-2)",
+    ),
+    _m(
+        "l20 main が起動時の固定ファイルの sha256 を渡さない",
+        "run(stage, httpx.AsyncHTTPTransport(), pinned_start=pinned_start)",
+        "run(stage, httpx.AsyncHTTPTransport())",
+        (_MAIN_STAGE,),
+        "起動の検査から実走の開始までの差し替えを見逃す",
+    ),
+    _m(
+        "l21 manifest の出力を strip してから末尾行を見る",
+        "    lines = out.splitlines()  # 末尾の空白・空行を消さない (Codex LOW-5)\n",
+        "    lines = out.strip().splitlines()\n",
+        (_OK_LINE,),
+        "末尾の空白・空行の付いた出力を OK とみなす",
+    ),
+    _m(
+        "l22 manifest の照合に PYTHONHASHSEED を渡さない",
+        'env = dict(os.environ, PYTHONUTF8="1", PYTHONHASHSEED=seed)',
+        'env = dict(os.environ, PYTHONUTF8="1")',
+        (_RUN_MANIFEST,),
+        "run.sh と違う環境で照合する",
+    ),
+    _m(
+        "l23 manifest を固定の段で照合する",
+        '[sys.executable, man.SELF, "--verify", "--stage", stage_name],',
+        '[sys.executable, man.SELF, "--verify", "--stage", "pilot"],',
+        (_RUN_MANIFEST,),
+        "本走の前提に pilot の段の照合を使う",
+    ),
+    _m(
+        "l24 git の失敗を None にしない",
+        "            check=True,\n",
+        "            check=False,\n",
+        (_GIT_REAL,),
+        "git が失敗しても「追跡済み」「HEAD と一致」に畳む (code-reviewer MEDIUM-5)",
+    ),
+)
+
+# ---------------------------------------------------------------- meta-test
+
+_TARGET = "generalization_probe_driver.py"
+META_CASES: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
+    (
+        "予定表の事前検査 schedule_violations を [] に潰す",
+        _TARGET,
+        '    """予定表全体と meta を、呼び出しの前に凍結済みの検査に通す (DD-1)."""\n',
+        '    """予定表全体と meta を、呼び出しの前に凍結済みの検査に通す (DD-1)."""\n'
+        "    return []\n",
+        (_BAD, _META, _FIXED),
+    ),
+    (
+        "送る直前の照合 check_sent_body を素通りに潰す",
+        _TARGET,
+        '    """送信前の wire body を、plan の位置 index のキーで凍結値と凍結済みの構造の検査に照合する."""\n',
+        '    """送信前の wire body を、plan の位置 index のキーで凍結値と凍結済みの構造の検査に照合する."""\n'
+        "    return\n",
+        (_VALUE, _POSITION, _OBSERVER, _SHIFTED),
+    ),
+    (
+        "公開前の読み戻し publication_problems を [] に潰す",
+        _TARGET,
+        '    構造・meta・完全性だけを見る (label から計算する量は見ない)。\n    """\n',
+        "    構造・meta・完全性だけを見る (label から計算する量は見ない)。\n"
+        '    """\n'
+        "    return []\n",
+        (_PUB_CHECK, _PUB_READER, _PUB_META),
+    ),
+)
+
+
+# ---------------------------------------------------------------- 実行
+
+
+def _run_tests(
+    env: dict[str, str], root: pathlib.Path = _REPO_ROOT
+) -> tuple[int, dict[str, str], dict[str, str], bool]:
+    """test_driver.py を実行する。返り値 = (exit code, 落ちた test, FAILED / ERROR の別, collection error)."""
+    proc = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-rfE",
+            "-p",
+            "no:cacheprovider",
+            "--deselect",
+            _DESELECT,
+            _TEST_REL,
+        ],
+        cwd=str(root),
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        check=False,
+        timeout=_TEST_TIMEOUT_S,
+    )
+    failed, kinds, collect_error = parse_output(proc.stdout or "")
+    return proc.returncode, failed, kinds, collect_error
+
+
+def parse_output(out: str) -> tuple[dict[str, str], dict[str, str], bool]:
+    """pytest の出力 → (落ちた test 名 → 要約行 + traceback 節, test 名 → FAILED / ERROR, collection error).
+
+    traceback 節 (``___ ERROR at setup of test_x ___`` / ``___ test_x ___``) を test 名ごとに集める。fixture の
+    ERROR の要約行には例外名が出ないので、理由はここで照合する。
+    """
+    sections: dict[str, str] = {}
+    current: str | None = None
+    for line in out.splitlines():
+        if h := _SECTION.match(line):
+            current = h.group(1)
+            sections[current] = sections.get(current, "")
+        elif current is not None:
+            sections[current] += line + "\n"
+    failed: dict[str, str] = {}
+    kinds: dict[str, str] = {}
+    for line in out.splitlines():
+        if m := _FAILED.match(line):
+            name = m.group(2).split("::")[-1]
+            failed[name] = failed.get(name, "") + line + "\n" + sections.get(name, "")
+            if kinds.get(name) != "FAILED":
+                kinds[name] = m.group(1)
+    collect_error = "ERROR collecting" in out or "Interrupted" in out
+    return failed, kinds, collect_error
+
+
+def _raised(reason: str, hits: list[str]) -> bool:
+    """理由が traceback の例外行 (``E`` で始まる行) に出ているか (ソース行の偶然の一致を拾わない)."""
+    return any(
+        line.startswith("E ") and reason in line
+        for text in hits
+        for line in text.splitlines()
+    )
+
+
+def status_of(
+    mut: Mutant,
+    code: int,
+    failed: dict[str, str],
+    kinds: dict[str, str],
+    *,
+    collect: bool,
+) -> str:
+    """変異の判定 (3 通り): SURVIVED / 理由が違う (WRONG_REASON・COLLECTION_ERROR・TIMEOUT) / KILLED.
+
+    理由の文 (``raised``) が無い変異は、期待 test が test の本体で落ちた (FAILED) ときだけ KILLED にする。fixture の
+    setup の ERROR は理由を問わず出るので数えない (code-reviewer MEDIUM-4・Codex MEDIUM-4)。
+    """
+    hits = [t for t in mut.expect if t in failed]
+    if code == -1:
+        return "TIMEOUT"
+    if code == 0:
+        return "SURVIVED"
+    if collect or not failed:
+        return "COLLECTION_ERROR"
+    if mut.raised is not None:
+        return (
+            "KILLED"
+            if _raised(mut.raised, [failed[t] for t in hits])
+            else "WRONG_REASON"
+        )
+    return "KILLED" if any(kinds.get(t) == "FAILED" for t in hits) else "WRONG_REASON"
+
+
+def anchor_problems(src: str) -> list[str]:
+    """全変異と meta-test の置換前文字列が 1 回ずつ現れ、置換で内容が変わり、置換後も構文が通ること."""
+    out = []
+    cases = [(m.label, m.old, m.new) for m in MUTANTS]
+    cases += [(f"meta: {c[0]}", c[2], c[3]) for c in META_CASES]
+    for label, old, new in cases:
+        n = src.count(old)
+        if n != 1 or old == new:
+            out.append(f"{label}: {'NO_OP' if old == new else f'ANCHOR x{n}'}")
+            continue
+        try:
+            compile(src.replace(old, new, 1), _DRIVER_REL, "exec")
+        except SyntaxError as exc:
+            out.append(f"{label}: SYNTAX {exc}")
+    labels = [m.label for m in MUTANTS] + [c[0] for c in META_CASES]
+    if len(set(labels)) != len(labels):
+        out.append("labels are not unique")
+    return out
+
+
+def _copy_tree() -> pathlib.Path:
+    """複製ツリー (repo の外の一時 dir): scripts・test・実験 dir・pytest の設定."""
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="gp_driver_meta_"))
+    skip = shutil.ignore_patterns("__pycache__")
+    shutil.copytree(_REPO_ROOT / "scripts", tmp / "scripts", ignore=skip)
+    (tmp / "tests").mkdir()
+    for name in ("__init__.py", "conftest.py"):
+        shutil.copy2(_REPO_ROOT / "tests" / name, tmp / "tests" / name)
+    tests = "tests/test_generalization_probe"
+    shutil.copytree(_REPO_ROOT / tests, tmp / tests, ignore=skip)
+    shutil.copytree(
+        _REPO_ROOT / _EXP_REL,
+        tmp / _EXP_REL,
+        ignore=shutil.ignore_patterns("sketch_logs", "sketch_run*", "pilot", "run"),
+    )
+    shutil.copy2(_REPO_ROOT / "pyproject.toml", tmp / "pyproject.toml")
+    return tmp
+
+
+def run_meta(env: dict[str, str]) -> list[dict[str, object]]:
+    """複製ツリーで検査関数を no-op に潰し、依存する test が実際に落ちることを見る."""
+    rows: list[dict[str, object]] = []
+    tmp = _copy_tree()
+    try:
+        code, failed, _, collect_error = _run_tests(env, tmp)
+        if code != 0 or collect_error:
+            msg = f"meta-test の対照 (無変異の複製) が緑でない: {sorted(failed)}"
+            raise RuntimeError(msg)
+        for label, target, old, new, expect in META_CASES:
+            path = tmp / "scripts" / target
+            original = path.read_bytes()
+            src = original.decode("utf-8")
+            if src.count(old) != 1:
+                msg = f"meta anchor not unique: {label}"
+                raise RuntimeError(msg)
+            path.write_bytes(src.replace(old, new, 1).encode("utf-8"))
+            try:
+                code, failed, _, collect_error = _run_tests(env, tmp)
+            finally:
+                path.write_bytes(original)
+            ok = code != 0 and not collect_error and set(expect) <= set(failed)
+            rows.append(
+                {
+                    "label": label,
+                    "status": "FAILED_AS_EXPECTED" if ok else "NOT_AS_EXPECTED",
+                    "expected_all_of": sorted(expect),
+                    "failed": sorted(failed),
+                }
+            )
+            print(f"meta: {label:48s} {rows[-1]['status']}", flush=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return rows
+
+
+def _sha(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out", type=pathlib.Path, default=None)
+    ap.add_argument("--only", default=None, help="label の接頭辞で絞る (開発用)")
+    ap.add_argument(
+        "--anchors", action="store_true", help="置換前文字列の検査だけを行う"
+    )
+    args = ap.parse_args(argv)
+
+    problems = anchor_problems(_DRIVER.read_text(encoding="utf-8"))
+    if args.anchors or problems:
+        for p in problems:
+            print(p)
+        n = len(MUTANTS) + len(META_CASES)
+        print(f"anchors: {n - len(problems)} / {n} OK")
+        return 1 if problems else 0
+
+    env = dict(os.environ, PYTHONUTF8="1")
+    original = _DRIVER.read_bytes()
+    sha_driver = hashlib.sha256(original).hexdigest()
+    sha_test = _sha(_REPO_ROOT / _TEST_REL)
+    sha_harness = _sha(_REPO_ROOT / _HARNESS_REL)
+
+    code, failed, _, _ = _run_tests(env)
+    if code != 0:
+        print(f"ERROR: 対照 (無変異) が緑でない: {sorted(failed)}")
+        return 2
+    meta = run_meta(env) if args.only is None else []
+
+    mutants = [m for m in MUTANTS if args.only is None or m.label.startswith(args.only)]
+    rows: list[dict[str, object]] = []
+    try:
+        for mut in mutants:
+            _DRIVER.write_bytes(
+                original.decode("utf-8").replace(mut.old, mut.new, 1).encode("utf-8")
+            )
+            try:
+                code, failed, kinds, collect = _run_tests(env)
+            except subprocess.TimeoutExpired:
+                code, failed, kinds, collect = -1, {}, {}, False
+            finally:
+                _DRIVER.write_bytes(original)
+            status = status_of(mut, code, failed, kinds, collect=collect)
+            rows.append(
+                {
+                    "label": mut.label,
+                    "status": status,
+                    "expected_any_of": sorted(mut.expect),
+                    "expected_reason": mut.raised,
+                    "why": mut.why,
+                    "failed": sorted(failed),
+                }
+            )
+            print(f"{mut.label:52s} {status}", flush=True)
+    finally:
+        _DRIVER.write_bytes(original)
+
+    restored = _sha(_DRIVER) == sha_driver
+    unchanged = (
+        _sha(_REPO_ROOT / _TEST_REL) == sha_test
+        and _sha(_REPO_ROOT / _HARNESS_REL) == sha_harness
+    )
+    survived = [r for r in rows if r["status"] == "SURVIVED"]
+    wrong = [r for r in rows if r["status"] not in ("KILLED", "SURVIVED")]
+    meta_ok = bool(meta) and all(m["status"] == "FAILED_AS_EXPECTED" for m in meta)
+    print("---- 判定 (3 通り)")
+    print("対照 (無変異): 緑")
+    print(f"変異が捕まらなかった (SURVIVED): {len(survived)}")
+    for r in survived:
+        print(f"  {r['label']}")
+    print(
+        f"落ちたが理由が違う (WRONG_REASON / COLLECTION_ERROR / TIMEOUT): {len(wrong)}"
+    )
+    for r in wrong:
+        print(f"  {r['label']} {r['status']} failed={r['failed']}")
+    print(f"KILLED: {len(rows) - len(survived) - len(wrong)} / {len(rows)}")
+    print(f"meta-test: {'ok' if meta_ok else 'NOT ok'}")
+    print(f"source restored (sha256 match): {restored}")
+    print(f"test / harness unchanged during the run: {unchanged}")
+    all_killed = not survived and not wrong and meta_ok
+    if args.out is not None:
+        if args.only is not None:
+            print("ERROR: --only の結果は certification にしない")
+            return 2
+        if not (all_killed and restored and unchanged):
+            print(
+                "certification を書かない (全 KILLED・meta-test 成立・原状復帰のときだけ書く)"
+            )
+        else:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(
+                json.dumps(
+                    {
+                        "target_sha256": {_DRIVER_REL: sha_driver},
+                        "tests_sha256": {_TEST_REL: sha_test},
+                        "harness_sha256": {_HARNESS_REL: sha_harness},
+                        "meta_test": meta,
+                        "mutants": rows,
+                        "all_killed": all_killed,
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            print(f"wrote {args.out}")
+    if not restored:
+        print("ERROR: 対象ファイルが原状復帰していない")
+        return 2
+    return (
+        0 if all_killed or args.only is not None and not survived and not wrong else 1
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())

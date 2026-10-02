@@ -44,3 +44,22 @@
 - `results/fixture_table.json`・`key_selection.json`・`sketch.json` は、書き出した script が Windows のテキストモードで書いたので CRLF だった。
   repo の `.gitattributes` は `*.json` を LF に固定するので、commit される正本は LF。封印 (`manifest.json`) の sha256 が checkout 後のファイルと
   一致するよう、第 1 段の封印の前に 3 つを LF に直した (JSON として読んだ内容は同じことを確かめた)。結び付きの検査は JSON を読んで比べるので影響しない。
+
+## driver の certification (`results/driver_certification.json`、2026-10-02)
+
+- driver = `scripts/generalization_probe_driver.py` (pilot と本走を同じ経路で持つ)。test = `tests/test_generalization_probe/test_driver.py`
+  (偽の Ollama のみ、実モデル・GPU は使っていない)。harness = `scripts/generalization_probe_driver_mutation_check.py`。
+- `uv run python scripts/generalization_probe_driver_mutation_check.py --out experiments/20261001-generalization-probe-pilot/results/driver_certification.json`
+  (detached で起動、1 回 約 55 分)。設計と採否は `.steering/20261002-generalization-probe-driver/` (ローカル)。
+- 経緯:
+  - 開発用の 1 回目 (132 変異): 132 / 132 KILLED・meta-test 3 件成立。
+  - Codex review 1 回目 (HIGH 2・MEDIUM 2・LOW 2) と code-reviewer の反映の後 (149 変異): 148 / 149。q5 (起動拒否を外す) が SURVIVED。
+    反映で足した autouse の封鎖 (実の transport を作ると例外) が、変異の経路を `main` の例外処理で止めていた (test の穴)。test を直し、
+    `--only q5` で KILLED を確かめてから回し直した。certification は書かれていない (全 KILLED のときだけ書く)。
+  - 回し直し: 149 / 149 KILLED・meta-test 3 件成立。その後の code-reviewer の再レビュー (HIGH 0・MEDIUM 1・LOW 5) を反映した
+    (等価の分類の取り消し・pinned を起動の検査の前に取る・照合に落ちた記録を退ける・読めないファイル・teardown の節・読み戻しの後の比較)。
+    この certification は driver・test が変わるので消した。
+  - 最終: 変異 155 と meta-test 3 件 (新しい 6 変異は先に `--only` で KILLED を確かめた)。**155 / 155 KILLED**・meta-test 3 件成立
+    (予定表の事前検査・送る直前の照合・公開前の読み戻しを潰すと、期待した test が全て落ちる)・driver が sha256 で原状復帰・実行中に
+    test と harness が変わっていない。`manifest.driver_certification_violations` が `[]` を返す (test で pin)。
+- 第 1 段の封印 (`manifest.json`) は変えていない: `--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
