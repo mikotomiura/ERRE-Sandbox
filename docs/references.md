@@ -64,6 +64,17 @@
 | [51] | DOI:10.3390/jintelligence13060064 | Saretzki, J., Knopf, T., Forthmann, B., Goecke, B., Jaggy, A.-K., Benedek, M. & Weiss, S. — *Scoring German Alternate Uses Items Applying Large Language Models* | Journal of Intelligence, 13(6), 64, 2025 | research-positioning §8 (自由文 scorer の資格試験の段階 T0 のコーパス C9。データの置き場は OSF eaqtb) | active |
 | [52] | arXiv:2206.08932 | Stevenson, C., Smal, I., Baas, M., Grasman, R. & van der Maas, H. — *Putting GPT-3's Creativity to the (Alternative Uses) Test* | arXiv:2206.08932 [cs.AI] (v1), 2022 (arXiv comment: ICCC 2022 Short Paper) | research-positioning §8 (資格試験の段階 T1・T2 の候補のコーパス C1。公開の置き場にデータが無く不適格) | active |
 | [53] | DOI:10.1038/s41598-023-40858-3 | Koivisto, M. & Grassini, S. — *Best humans still outperform artificial intelligence in a creative divergent thinking task* | Scientific Reports, 13, 13601, 2023 | research-positioning §8 (資格試験の T1/T2 の条件つきの候補のコーパス C3。データの license を確かめられず不適格) | active |
+| [54] | DOI:10.1016/j.tins.2019.07.003 | Kiyonaga, A. & Scimeca, J. M. — *Practical Considerations for Navigating Registered Reports* | Trends in Neurosciences, 42(9), 568–572, 2019 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、Registered Reports は null が信用できる設計と、提案する検定そのものについての標本の大きさの計算を求める) | active |
+| [55] | DOI:10.1177/25152459211007467 | Scheel, A. M., Schijen, M. R. M. J. & Lakens, D. — *An Excess of Positive Results: Comparing the Standard Psychology Literature With Registered Reports* | Advances in Methods and Practices in Psychological Science, 4(2), 25152459211007467, 2021 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、Registered Reports では査読と掲載の判断が結果の前) | active |
+| [56] | URL:https://www.cos.io/initiatives/registered-reports | Center for Open Science — *Registered Reports* (組織の説明の web 頁。査読付きの文献ではない) | cos.io、日付・版の表示なし、取得 2026-10-03 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1・§7.2、Stage 1 が求める outcome-neutral な条件と、その独立の要件) | active |
+| [57] | DOI:10.1098/rsos.211037 | Claesen, A., Gomes, S., Tuerlinckx, F. & Vanpaemel, W. — *Comparing dream to reality: an assessment of adherence of the first generation of preregistered studies* | Royal Society Open Science, 8(10), 211037, 2021 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1・§7.2、事前登録の遵守と逸脱の開示の監査) | active |
+| [58] | DOI:10.36850/e5ce-4cc5 | Syed, M. — *Some Data Indicating That Editors and Reviewers Do Not Check Preregistrations During the Review Process* | Journal of Trial and Error, 6(1), 8–19, 2026 (Crossref の issued 2026-02-28。記事の公開日は 2025-04-01) | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1・§7.2、査読の過程での事前登録の確認) | active |
+| [59] | DOI:10.1371/journal.pone.0236079 | Bakker, M., Veldkamp, C. L. S., van den Akker, O. R., van Assen, M. A. L. M., Crompvoets, E., Ong, H. H. & Wicherts, J. M. — *Recommendations in pre-registrations and internal review board proposals promote formal power analyses but do not increase sample size* | PLOS ONE, 15(7), e0236079, 2020 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1・§7.2、事前登録の power 分析が主な検定と別の検定について計算されていた例。完全に報告された 13 件中 5 件) | active |
+| [60] | DOI:10.1525/collabra.33267 | Lakens, D. — *Sample Size Justification* | Collabra: Psychology, 8(1), 33267, 2022 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.2、観測効果での事後 power と sensitivity power analysis の区別) | active |
+| [61] | DOI:10.1177/2515245918770963 | Lakens, D., Scheel, A. M. & Isager, P. M. — *Equivalence Testing for Psychological Research: A Tutorial* | Advances in Methods and Practices in Psychological Science, 1(2), 259–269, 2018 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.2、境界は結果の前に決め、等価性検定の価値は境界の正当化の強さで決まる。margin の値の事後の正当化には使わない) | active |
+| [62] | DOI:10.18053/jctres.03.2017s2.007 | Harms, C. & Lakens, D. — *Making 'null effects' informative: statistical techniques and inferential frameworks* | Journal of Clinical and Translational Research, 3(2), 382, 2018 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.2、非有意は効果の不在の証拠ではない) | active |
+| [63] | DOI:10.1037/pspa0000056 | Zhou, H. & Fishbach, A. — *The pitfall of experimenting on the web: How unattended selective attrition leads to surprising (yet false) research conclusions* | Journal of Personality and Social Psychology, 111(4), 493–504, 2016 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、異なる理由で条件から脱落する参加者は比較を交絡させうる。オンライン実験からの類推として) | active |
+| [64] | DOI:10.1136/bmj.e8668 | Bell, M. L., Kenward, M. G., Fairclough, D. L. & Horton, N. J. — *Differential dropout and bias in randomised controlled trials: when it matters and when it may not* | BMJ, 346, e8668, 2013 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、脱落率の差だけでは偏りを示さない。臨床試験からの類推として) | active |
 
 ## 追加・撤回ルール
 
@@ -188,3 +199,19 @@
   CPU の scorer の応答単位の相関) で引く。DOI が既存 [22] と同一なので、新規番号を発行しない (追加・撤回ルール 3)。既存行の
   「使用箇所」列は変えず、ここに追記する (I-010 の前例)。値は ERIC の pre-print (ED629879) の PDF から読んだもの
   (`.steering/20261001-free-text-qualification-precheck/literature-correlations.md`、ローカル)。
+
+- **[54]〜[64] — 2026-10-03 確認 (タスク `20261003-paper02-jote-lit`、論文02 §1・§7.2 の改稿のための文献)**:
+  書誌は Crossref API (`https://api.crossref.org/works/<doi>`) の生 JSON を python で直接パースして写した (外への要求に
+  連絡先・User-Agent の指定は付けていない)。内容は、引く予定の文を原典の文と verbatim で照合した。原典の文の取り先は次のとおり。
+  Europe PMC の全文 XML ([57] [59] [62] [64])、PMC の HTML ([54])、著者版・出版社の PDF ([58] [63])、Crossref の abstract ([55] [58])、
+  出版版の HTML ([60] [61]、ブラウザで頁の題と URL を照合)。
+  - [56] は組織の説明の web 頁で、査読付きの文献ではない。日付・版の表示が無いので、取得日 (2026-10-03) と HTML の sha256 の先頭
+    (`581f75c9191b5501`) を記録に残した。査読付きの原典 (Chambers & Tzavella 2022 ほか) は本文を確かめられず採らなかった。
+  - [58] の年: Crossref の issued (2026-02-28、6 巻 1 号への収録) を採った。記事の PDF の頭は "Published April 1, 2025"。
+  - [60] は出版版と preprint (OSF、2022-03-03 作成) の文言が同一。[61] は preprint (2018-02-11) と出版版で文言が違うので、出版版の文で
+    照合した。
+  - [62] の題: Crossref の値は "inferential" と "frameworks" の間に U+00A0 を含む。ここでは空白 1 つに正規化した。頁は Crossref の
+    値 ("382") のまま。
+  - [63] の題: Crossref の値は末尾に "." を含む。書誌では落とした ([47] と同じ扱い)。
+  - [64] の著者: Crossref は頭文字しか持たないので、頭文字で書く。issue 欄の値 ("jan21 1") は書誌に書かない。
+  - 照合の表と不採用の候補 (理由つき) は `.steering/20261003-paper02-jote-lit/refs-verification.md` (ローカル)。
