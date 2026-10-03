@@ -120,3 +120,21 @@
     起動・SystemExit を畳む・user site・証拠の要約の消しすぎと ubuntu の `/tmp`) で driver・harness・test が変わったので、変異 5 件を足して回し直した。
     2 回目: 変異 210 と meta-test 3 件で **210 / 210 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が
     変わっていない (約 96 分)。`manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
+- Codex の 5 回目の review (2026-10-03、4 回目の反映の差分、Verdict Revise・HIGH 1・MEDIUM 2・LOW 2) の反映の後に回し直した (2026-10-03〜04)。
+  設計と採否は `.steering/20261003-generalization-probe-driver-fifth-review/` (ローカル)。起動の command は 4 回目から変わらない。
+  - Windows の getpath がレジストリ (HKCU・HKLM の `SOFTWARE\Python\PythonCore\<winver>\PythonPath`) から検索パスに足す entry も、PYTHONPATH と
+    同じく名前に依らず見る (venv でも常に足される子キーの値。キー自身の既定値は stdlib が見つからない起動でだけ使われるので、`sys.path` に
+    あるときだけ)。この機械には python.org 版の 3.11 のキー自身の既定値があるが、使われていないので起動を止めない (確かめた)。
+  - **run.sh の前の確認を広げた** (source の無い `.pyc`・Windows の `.pyw`・package の initializer `__init__.*` も import される):
+    `git ls-files --others -- ':(glob)*.py' ':(glob)*.pyw' ':(glob)*.pyc' ':(glob)*.pyd' ':(glob)*.so' ':(glob)*/__init__.*'
+    ':(glob)scripts/*.py' ':(glob)scripts/*.pyw' ':(glob)scripts/*.pyc' ':(glob)scripts/*.pyd' ':(glob)scripts/*.so' ':(glob)scripts/*/__init__.*'`
+    が何も出さないこと、`PYTHONPATH` が空であること、Windows ではレジストリの `PythonPath` に子キーが無いこと
+    (PowerShell: `foreach ($x in "HKCU:\Software\Python\PythonCore\3.11\PythonPath", "HKLM:\Software\Python\PythonCore\3.11\PythonPath")
+    { if (Test-Path $x) { Get-ChildItem -LiteralPath $x } }` が何も出さない)。`__pycache__` の中の pyc (source が無ければ import されない) と、
+    `__init__` の無い dir (通常の module に優先しない) は対象外。2026-10-04 の main で 3 つとも何も出さない。
+  - 変異の判定: session の終わりの記録に、選ばれた item の数 (`--deselect` の後)・走りきった数・打ち切りの印を足し、`-x`・`--maxfail` で
+    exit 1 のまま打ち切った run を証拠に数えない (ABNORMAL_EXIT)。証拠の要約: 実の tmp・home は path の要素の終わりでだけ置き換え、address は
+    `` at 0x`` の後の 8 桁以上 (比較の値 `0xdead` 等は残す) と、pytest が `` at 0x`` ごと省いた残り。
+  - 変異 223 (レジストリの 12 件・user site の接続 1 件を足した) と meta-test 3 件で **223 / 223 KILLED**・meta-test 3 件成立・driver が
+    sha256 で原状復帰・実行中に test と harness が変わっていない (約 125 分)。`manifest.driver_certification_violations` が `[]`。
+    `--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。certification にユーザー名・メールアドレス・6 桁以上の address は 0 件。

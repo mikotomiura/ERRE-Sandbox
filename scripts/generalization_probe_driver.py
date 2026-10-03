@@ -59,9 +59,14 @@
   module (``scripts/`` に置いた ``numpy.py`` 等) を import させない (ImportError で exit 1、何も書かない)。``scripts`` は
   ``root/scripts`` だけを探す名前空間として作る (``__init__.py`` を実行しない)。門より前のコードは 2 段で見る
   (``executed_problems``): 走りうるもの = site が起動時に実行する customization (``sitecustomize``・``usercustomize``)・
-  ``PYTHONPATH`` の entry (site が処理する ``.pth`` の import 行が、名前に依らず同名の module を読みうる)・user site の
-  ``.pth`` の所在 (``startup_problems``。import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず所在で
-  拒否する、Codex 4 回目 HIGH-2・code-reviewer HIGH-2)、取り込まれたもの = ``sys.modules`` の所在 (``outside_problems``)。
+  ``PYTHONPATH`` の entry と、Windows の getpath がレジストリから検索パスに足した entry (子キーは常に、キー自身の既定値は
+  ``sys.path`` にあるとき。site が処理する ``.pth`` の import 行が、名前に依らず同名の module を読みうる、Codex 5 回目 HIGH-1)・
+  user site の ``.pth`` の所在 (``startup_problems``。import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず
+  所在で拒否する、Codex 4 回目 HIGH-2・code-reviewer HIGH-2)、取り込まれたもの = ``sys.modules`` の所在 (``outside_problems``)。
+  CPython 3.11 の getpath が検索パスに足す出所は、環境変数の PYTHONPATH・zip・レジストリ・build 時の既定 (prefix の下)・stdlib と
+  platstdlib の dir・Windows の executable の dir (venv では Scripts)・``._pth`` で、PYTHONPATH とレジストリ以外は環境 (prefix) の中、
+  ``._pth`` は ``-E`` 扱いになり起動の前提が拒否する。レジストリのキー自身の既定値の **空の** entry (= cwd) は、driver が足す repo root と
+  区別できないので数えない (保証の外。キー自身の既定値は stdlib が見つからない起動でだけ使われる)。
   driver の最初の文の ``from __future__`` が import する ``__future__`` は、成功すれば ``sys.modules`` の走査が、失敗すれば
   driver の import の失敗が止める。
   主張: driver の process で実行した repo のコードは、来歴の hash が指す固定ファイルの bytes のコンパイル結果。
@@ -70,7 +75,8 @@
   意図的な不正 (偽の endpoint・門より前に取り込まれて自分を ``sys.modules`` から消し、自分のファイルも消すコード等)、
   driver の外の process。凍結 ``run.sh`` の判定の process (manifest の照合・機械判定・scorer) は門を持たず、封印済みの
   module が repo root を ``sys.path`` の先頭に入れるので、run.sh の前に、repo root 直下と ``scripts`` に未追跡・ignored の
-  ``.py``・package・拡張 module が無いことと、``PYTHONPATH`` が空であることを確かめる (運用、env.md)。
+  import できるもの (source ``.py``・``.pyw``、source の無い ``.pyc``、拡張 module ``.pyd``・``.so``、package の initializer
+  ``__init__.*``) が無いことと、``PYTHONPATH`` が空であることを確かめる (運用、env.md の command、Codex 5 回目 MEDIUM-2)。
   Debian・Ubuntu の system Python を base にした venv では、標準ライブラリの sitecustomize が ``/etc`` への link なので、
   環境の外として起動を拒否されうる (安全側。uv が入れた Python では起きない)。
 
@@ -1122,6 +1128,49 @@ def outside_problems(modules: Mapping[str, object], roots: Sequence[str]) -> lis
 
 # site が起動時に (門より前に) 実行する customization の module 名
 _STARTUP_MODULES: Final[tuple[str, ...]] = ("sitecustomize", "usercustomize")
+# Windows の getpath が起動時に検索パスへ足すレジストリの key (CPython 3.11 の Modules/getpath.py の WINREG_KEY、{} = sys.winver)
+_REGISTRY_KEY: Final[str] = r"SOFTWARE\Python\PythonCore\{}\PythonPath"
+
+
+def _registry_paths(paths: Sequence[object], reg: Any = None) -> list[str]:
+    """Windows の getpath が起動時にレジストリから検索パスへ足した entry (Codex 5 回目 HIGH-1、decisions DG-4).
+
+    HKCU・HKLM の ``_REGISTRY_KEY`` の **子キー** の既定値は、``-E``/``-I`` でなければ venv でも常に足される。**キー自身** の
+    既定値は stdlib が見つからないときだけ足されるので、空でない entry が ``paths`` (``sys.path``) にあるときだけ数える (python.org 版を
+    入れた機械の既定値で、正当な起動を止めない)。読めない子キーは飛ばして次を読む (getpath は止まる = 上位集合で安全側)。
+    ``reg`` の既定は winreg (起動時に getpath が import 済みの built-in、同じ process = 同じ registry view)。Windows 以外は無い。
+    """
+    if reg is None and sys.platform != "win32":
+        return []
+    r = importlib.import_module("winreg") if reg is None else reg
+    key_name = _REGISTRY_KEY.format(getattr(sys, "winver", ""))
+    on_path = {_norm(p) for p in paths if isinstance(p, str)}
+    found: list[str] = []
+    for hive in (r.HKEY_CURRENT_USER, r.HKEY_LOCAL_MACHINE):
+        try:
+            key = r.OpenKeyEx(hive, key_name)
+        except OSError:
+            continue  # key が無い hive は getpath も足さない
+        try:
+            i = 0
+            while True:
+                try:
+                    sub = r.EnumKey(key, i)
+                except OSError:
+                    break
+                i += 1
+                try:
+                    found += str(r.QueryValue(key, sub)).split(";")
+                except OSError:  # 読めない子キーは飛ばして次へ (上位集合)
+                    continue
+            try:
+                own = str(r.QueryValue(key, None)).split(";")
+            except OSError:
+                own = []
+            found += [e for e in own if e and _norm(e) in on_path]
+        finally:
+            r.CloseKey(key)
+    return found
 
 
 def _user_site(site: object = None) -> str | None:
@@ -1142,8 +1191,9 @@ def startup_problems(
     roots: Sequence[str],
     user_site: str | None,
     pythonpath: str | None = None,
+    registry: Sequence[str] = (),
 ) -> list[str]:
-    """起動時に site が実行しうる、環境の外のコード (Codex 4 回目 HIGH-2・code-reviewer HIGH-2).
+    """起動時に site が実行しうる、環境の外のコード (Codex 4 回目 HIGH-2・code-reviewer HIGH-2・Codex 5 回目 HIGH-1).
 
     import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず所在で見る:
 
@@ -1152,6 +1202,7 @@ def startup_problems(
     * ``PYTHONPATH`` (``pythonpath``、``-E``/``-I`` のときは None) の entry が環境の外なら拒否する。site が処理する
       ``.pth`` の import 行 (venv の ``_virtualenv.pth`` の ``import _virtualenv`` 等) は、site-packages より前にある
       PYTHONPATH の同名の module を、名前に依らず実行しうる。空の entry は cwd。
+    * getpath がレジストリから足した entry (``registry``、``_registry_paths``) も、PYTHONPATH と同じ理由で名前に依らず見る。
     * user site が有効で環境の外なら、その ``.pth``。
 
     保証の外: 環境の ``.pth`` が足す環境の外の path (editable install の ``src`` 等) が、それより後に処理される ``.pth`` の
@@ -1163,6 +1214,11 @@ def startup_problems(
         if not _in_environment(entry or os.getcwd(), roots):
             problems.append(
                 f"startup code outside the environment: PYTHONPATH ({entry or '.'})"
+            )
+    for path in registry:
+        if not _in_environment(path or os.getcwd(), roots):
+            problems.append(
+                f"startup code outside the environment: registry ({path or '.'})"
             )
     for name in _STARTUP_MODULES:
         specs = [importlib.machinery.PathFinder.find_spec(name, [e]) for e in entries]
@@ -1191,16 +1247,19 @@ def executed_problems(
     roots: Sequence[str] | None = None,
     paths: Sequence[object] | None = None,
     environ: Mapping[str, str] | None = None,
+    registry: Sequence[str] | None = None,
 ) -> list[str]:
     """実行中の repo のコードが、起動の検査の前のディスクの bytes をコンパイルしたもの (Codex 再 review HIGH-1).
 
     driver: 実行中の code object が起動時に読んだ bytes のコンパイル結果で、その bytes が ``pinned_start`` と同じ。
     ``scripts.*`` のモジュール: ``_PinnedFinder`` が 1 回だけ読んだ bytes から実行し、その bytes が固定ファイルで
     ``pinned_start`` と同じ。その他のモジュール: 環境の中 (``outside_problems``、Codex 3 回目 MEDIUM-2)。
-    起動時に site が実行しうるコード (customization・PYTHONPATH・user site): 環境の中 (``startup_problems``、Codex 4 回目 HIGH-2)。
+    起動時に site が実行しうるコード (customization・PYTHONPATH・レジストリの検索パス・user site): 環境の中
+    (``startup_problems``、Codex 4 回目 HIGH-2・5 回目 HIGH-1)。
     ``main`` が起動の検査の **後** に呼ぶ (certification の検査と process の中の manifest の照合が import するものも含める)。
     ``modules`` の既定は ``sys.modules``、``roots`` の既定は ``_environment_roots()``、``paths`` の既定は ``sys.path``、
-    ``environ`` の既定は ``os.environ`` (``PYTHONPATH`` を読む。``-E``/``-I`` の起動では Python が読まないので見ない)。
+    ``environ`` の既定は ``os.environ`` (``PYTHONPATH`` を読む。``-E``/``-I`` の起動では Python が読まないので見ない)、
+    ``registry`` の既定は ``_registry_paths(paths)`` (``-E``/``-I`` の起動では getpath が読まないので見ない)。
     """
     mods = sys.modules if modules is None else modules
     problems: list[str] = []
@@ -1226,11 +1285,15 @@ def executed_problems(
     problems += outside_problems(mods, _environment_roots() if roots is None else roots)
     env = os.environ if environ is None else environ
     pythonpath = None if sys.flags.ignore_environment else env.get("PYTHONPATH")
+    search = sys.path if paths is None else paths
+    if registry is None:
+        registry = [] if sys.flags.ignore_environment else _registry_paths(search)
     problems += startup_problems(
-        sys.path if paths is None else paths,
+        search,
         _environment_roots() if roots is None else roots,
         _user_site(),
         pythonpath,
+        registry,
     )
     return problems
 

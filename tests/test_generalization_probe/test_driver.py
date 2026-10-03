@@ -1969,6 +1969,8 @@ def test_executed_problems_check_driver_modules_and_pins(
     driver の検証・driver の固定値・モジュールの loader・固定ファイル・bytes。
     """
     start = {man.DRIVER: drv._DRIVER_SHA, _BATTERY: hashlib.sha256(b"A").hexdigest()}
+    # 手元のレジストリに依らない (既定の接続は下で確かめる)
+    monkeypatch.setattr(drv, "_registry_paths", lambda _paths: [])
 
     def problems(
         modules: dict[str, object], pinned: dict[str, str] | None = None
@@ -2015,6 +2017,52 @@ def test_executed_problems_check_driver_modules_and_pins(
     assert drv.executed_problems(
         drv.STAGE_PILOT, start, {}, (), paths=[], environ={"PYTHONPATH": pythonpath}
     ) == [f"startup code outside the environment: PYTHONPATH ({pythonpath})"]
+    # 既定の接続: getpath がレジストリから足した entry (sys.path を渡す、
+    # Codex 5 回目 HIGH-1) と、site の user site (Codex 5 回目 LOW-2)
+    seen: list[object] = []
+    reg_entry = str(tmp_path / "reg")
+
+    def registry(paths: object) -> list[str]:
+        seen.append(paths)
+        return [reg_entry]
+
+    monkeypatch.setattr(drv, "_registry_paths", registry)
+    search = [str(tmp_path / "search")]
+    assert drv.executed_problems(
+        drv.STAGE_PILOT, start, {}, (), paths=search, environ={}
+    ) == [f"startup code outside the environment: registry ({reg_entry})"]
+    assert seen == [search]
+    # 渡した entry はそのまま使い、レジストリを読まない
+    other = str(tmp_path / "other")
+    assert drv.executed_problems(
+        drv.STAGE_PILOT, start, {}, (), paths=search, environ={}, registry=[other]
+    ) == [f"startup code outside the environment: registry ({other})"]
+    assert seen == [search]
+    # -E/-I の起動では getpath がレジストリ・PYTHONPATH を読まないので見ない
+    # (起動の前提が別に拒否する)
+    flags = {name: getattr(sys.flags, name) for name in sys.flags.__match_args__}
+    with monkeypatch.context() as mp:
+        mp.setattr(
+            sys, "flags", types.SimpleNamespace(**{**flags, "ignore_environment": 1})
+        )
+        isolated = drv.executed_problems(
+            drv.STAGE_PILOT, start, {}, (), paths=search, environ={"PYTHONPATH": other}
+        )
+    assert isolated == []
+    assert seen == [search]
+    monkeypatch.setattr(drv, "_registry_paths", lambda _paths: [])
+    user_dir = tmp_path / "user_site"
+    user_dir.mkdir()
+    user_pth = user_dir / "a.pth"
+    user_pth.write_text("import os\n", encoding="utf-8")
+    fake_site = types.SimpleNamespace(
+        ENABLE_USER_SITE=True, getusersitepackages=lambda: str(user_dir)
+    )
+    with monkeypatch.context() as mp:
+        mp.setitem(sys.modules, "site", fake_site)
+        assert drv.executed_problems(
+            drv.STAGE_PILOT, start, {}, (), paths=[], environ={}
+        ) == [f"startup code outside the environment: {user_pth}"]
     monkeypatch.setattr(drv, "_DRIVER_RUNS_ITS_BYTES", False)
     assert problems({}) == [
         "the running driver is not the compilation of the driver bytes it hashed"
@@ -2102,6 +2150,15 @@ def test_startup_problems_find_customization_outside_the_environment(
         f"{phrase}: PYTHONPATH (.)"
     ]
     assert drv.startup_problems([], roots, None, "") == []
+    # getpath がレジストリから足した entry も、名前に依らず見る
+    # (Codex 5 回目 HIGH-1)。空は cwd
+    assert drv.startup_problems([], roots, None, None, [inside_pp]) == []
+    assert drv.startup_problems([], roots, None, None, [inside_pp, outside_pp]) == [
+        f"{phrase}: registry ({outside_pp})"
+    ]
+    assert drv.startup_problems([], roots, None, None, [""]) == [
+        f"{phrase}: registry (.)"
+    ]
     outside = _customize(tmp_path / "out", "sitecustomize")
     # 環境の中のものが前にあって、外のものが実行されなかったとしても拒否する (安全側)。
     # 文字列でない entry は飛ばす
@@ -2136,6 +2193,91 @@ def test_user_site_reads_the_site_module(tmp_path: Path) -> None:
     assert drv._user_site(enabled) == str(tmp_path)
     assert drv._user_site(disabled) is None
     assert drv._user_site(types.SimpleNamespace(ENABLE_USER_SITE=None)) is None
+
+
+# getpath が読む key (CPython 3.11 の Modules/getpath.py の WINREG_KEY =
+# f'SOFTWARE\\Python\\PythonCore\\{PYWINVER}\\PythonPath'、PYWINVER = sys.winver)。
+# driver の定数から作らず、原文から独立に組む (code-reviewer MEDIUM)
+_GETPATH_KEY = chr(92).join(
+    ["SOFTWARE", "Python", "PythonCore", getattr(sys, "winver", ""), "PythonPath"]
+)
+
+
+class _FakeRegistry:
+    """getpath が読む winreg の API (OpenKeyEx・EnumKey・QueryValue・CloseKey) の偽物.
+
+    ``keys`` = {hive: (キー自身の既定値, [子キーの既定値 (OSError なら読めない)])}。
+    getpath の key (``_GETPATH_KEY``) だけを開ける。
+    """
+
+    HKEY_CURRENT_USER = "HKCU"
+    HKEY_LOCAL_MACHINE = "HKLM"
+
+    def __init__(self, keys: dict[str, tuple[str, list[str | OSError]]]) -> None:
+        self.keys = keys
+        self.opened: list[tuple[str, str]] = []
+        self.closed: list[str] = []
+
+    def OpenKeyEx(self, hive: str, name: str) -> str:  # noqa: N802 — winreg の名前
+        self.opened.append((hive, name))
+        if hive not in self.keys or name != _GETPATH_KEY:
+            raise FileNotFoundError(name)
+        return hive
+
+    def EnumKey(self, key: str, i: int) -> str:  # noqa: N802
+        if i >= len(self.keys[key][1]):
+            raise OSError("no more")
+        return str(i)
+
+    def QueryValue(self, key: str, sub: str | None) -> str:  # noqa: N802
+        if sub is None:
+            return self.keys[key][0]
+        value = self.keys[key][1][int(sub)]
+        if isinstance(value, OSError):
+            raise value
+        return value
+
+    def CloseKey(self, key: str) -> None:  # noqa: N802
+        self.closed.append(key)
+
+
+def test_registry_paths_follow_getpath(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """getpath がレジストリから検索パスに足す entry (Codex 5 回目 HIGH-1).
+
+    decisions DG-4。子キーの既定値は常に (HKCU・HKLM とも、読めない子キーの後も
+    読む)。キー自身の既定値は、stdlib が見つからないときだけ足されるので、空でない
+    entry が sys.path にあるときだけ。既定は Windows の winreg。
+    """
+    a, b, c, own_on, own_off = (str(tmp_path / n) for n in ("a", "b", "c", "on", "off"))
+    sep = ";"  # getpath の DELIM (Windows)。os.pathsep ではない
+    reg = _FakeRegistry(
+        {
+            "HKCU": (
+                f"{own_off}{sep}{own_on}{sep}",
+                [OSError("denied"), f"{a}{sep}{b}"],
+            ),
+            "HKLM": ("", [c]),
+        }
+    )
+    assert drv._registry_paths([own_on, ""], reg) == [a, b, own_on, c]
+    assert reg.closed == ["HKCU", "HKLM"]
+    assert reg.opened == [("HKCU", _GETPATH_KEY), ("HKLM", _GETPATH_KEY)]
+    # key が無い hive は飛ばす。キー自身の既定値は sys.path に無ければ数えない
+    only_lm = _FakeRegistry({"HKLM": (own_off, [])})
+    assert drv._registry_paths([own_on], only_lm) == []
+    assert drv._registry_paths([], _FakeRegistry({})) == []
+    # 既定 (reg を渡さない) は、Windows なら winreg を読む (Windows 以外は読まない)。
+    # sys.platform の差し替えは呼び出しの間だけ
+    monkeypatch.setitem(sys.modules, "winreg", _FakeRegistry({"HKLM": ("", [a])}))
+    with monkeypatch.context() as mp:
+        mp.setattr(sys, "platform", "win32")
+        on_windows = drv._registry_paths([])
+    with monkeypatch.context() as mp:
+        mp.setattr(sys, "platform", "linux")
+        elsewhere = drv._registry_paths([])
+    assert (on_windows, elsewhere) == ([a], [])
 
 
 def test_in_environment_compares_whole_path_components(tmp_path: Path) -> None:
@@ -2650,21 +2792,15 @@ def test_tab_assert():
 """
 
 
-def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
-    probe = tmp_path / "probe"
-    probe.mkdir()
-    # assert の後のタブは chr(9) で組む (Codex 4 回目 BL-2)
-    (probe / "test_driver.py").write_text(
-        _PROBE_TESTS.replace("<TAB>", chr(9)), encoding="utf-8"
-    )
-    out = tmp_path / "records.jsonl"
+def _probe_run(probe: Path, out: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    """Probe の test を、harness を plugin として読み込ませた実の pytest で走らせる."""
     env = dict(
         os.environ,
         PYTHONUTF8="1",
         PYTHONDONTWRITEBYTECODE="1",
         **{harness._WITNESS_ENV: str(out)},
     )
-    proc = subprocess.run(  # noqa: S603
+    return subprocess.run(  # noqa: S603
         [
             sys.executable,
             "-m",
@@ -2676,6 +2812,7 @@ def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
             harness._PLUGIN,
             "--rootdir",
             str(probe),
+            *extra,
             str(probe / "test_driver.py"),
         ],
         cwd=str(_ROOT),
@@ -2686,6 +2823,17 @@ def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
         timeout=300,
         check=False,
     )
+
+
+def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    # assert の後のタブは chr(9) で組む (Codex 4 回目 BL-2)
+    (probe / "test_driver.py").write_text(
+        _PROBE_TESTS.replace("<TAB>", chr(9)), encoding="utf-8"
+    )
+    out = tmp_path / "records.jsonl"
+    proc = _probe_run(probe, out)
     assert proc.returncode == 1, proc.stdout + proc.stderr
     records = harness.read_records(out)
     rows = {
@@ -2693,12 +2841,38 @@ def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
         for r in records
         if r["when"] != harness._FINISH
     }
-    # session の終わりの記録 (Codex 4 回目 MEDIUM-2)
+    # session の終わりの記録 (Codex 4 回目 MEDIUM-2)。選ばれた item が全て走りきり、
+    # 打ち切りが無い (Codex 5 回目 MEDIUM-1)
     finish = [r for r in records if r["when"] == harness._FINISH]
     assert len(finish) == 1, finish
     assert finish[0]["exitstatus"] == 1
     assert finish[0]["collected"] == 10  # probe の test の数
+    assert (finish[0]["items"], finish[0]["ran"], finish[0]["stopped"]) == (
+        10,
+        10,
+        False,
+    )
     assert harness.finished_with_failures(proc.returncode, records)
+    # --maxfail で打ち切った run は、exit 1 と session の終わりの記録があっても、
+    # 最後まで走った run に数えない (Codex 5 回目 MEDIUM-1)
+    cut_out = tmp_path / "cut.jsonl"
+    cut = _probe_run(probe, cut_out, "--maxfail=1")
+    cut_records = harness.read_records(cut_out)
+    cut_finish = [r for r in cut_records if r["when"] == harness._FINISH]
+    assert cut.returncode == 1, cut.stdout + cut.stderr
+    assert [r["exitstatus"] for r in cut_finish] == [1]
+    assert (cut_finish[0]["items"], cut_finish[0]["ran"]) == (10, 1)
+    assert cut_finish[0]["stopped"] is True
+    assert not harness.finished_with_failures(cut.returncode, cut_records)
+    # 本番の run は 1 件を --deselect する: 数えるのは deselect の後の item
+    # (code-reviewer LOW)
+    kept_out = tmp_path / "kept.jsonl"
+    # (nodeid は rootdir = probe からの相対、harness の _DESELECT と同じ形)
+    kept = _probe_run(probe, kept_out, "--deselect", "test_driver.py::test_assert")
+    kept_records = harness.read_records(kept_out)
+    kept_finish = [r for r in kept_records if r["when"] == harness._FINISH]
+    assert [(r["items"], r["ran"]) for r in kept_finish] == [(9, 9)], kept.stdout
+    assert harness.finished_with_failures(kept.returncode, kept_records)
     assert set(rows) == {
         ("test_assert", None, "call"),
         ("test_multi_line_assert", None, "call"),
@@ -2849,7 +3023,15 @@ def test_harness_status_separates_wrong_reasons() -> None:
     NO_FAILURE_RECORD。
     """
     mut = harness.Mutant("x", "o", "n", frozenset({"test_a"}), "why")
-    done = {"when": harness._FINISH, "exitstatus": 1, "collected": 3, "failed": 1}
+    done = {
+        "when": harness._FINISH,
+        "exitstatus": 1,
+        "collected": 3,
+        "failed": 1,
+        "items": 3,
+        "ran": 3,
+        "stopped": False,
+    }
     hit = [
         _rec("test_a", ("builtins.AssertionError", "assert 0", ()), assert_stmt=True),
         done,
@@ -2877,8 +3059,16 @@ def test_harness_status_separates_wrong_reasons() -> None:
             harness.status_of(mut, code, {"test_a"}, hit, collect=False)
             == "ABNORMAL_EXIT"
         ), code
-    # session の終わりの記録が無い・2 つある・exitstatus が違う
-    for records in (hit[:1], [*hit, done], [*hit[:1], {**done, "exitstatus": 3}]):
+    # session の終わりの記録が無い・2 つある・exitstatus が違う・打ち切った・
+    # 走りきっていない item がある・数が無い (Codex 5 回目 MEDIUM-1)
+    for records in (
+        hit[:1],
+        [*hit, done],
+        [*hit[:1], {**done, "exitstatus": 3}],
+        [*hit[:1], {**done, "stopped": True}],
+        [*hit[:1], {**done, "ran": 2}],
+        [*hit[:1], {**done, "items": None, "ran": None}],
+    ):
         assert (
             harness.status_of(mut, 1, {"test_a"}, records, collect=False)
             == "ABNORMAL_EXIT"
@@ -3021,6 +3211,21 @@ def test_harness_summary_drops_local_paths_and_addresses(
         f"{bs}{bs}server{bs}Users{bs}alice{bs}x": f"{bs}{bs}server<home>{bs}x",
         "/root/x": "<home>/x",
         "expected 0xdead, got 0xbeef": "expected 0xdead, got 0xbeef",
+        # address は object の repr の中だけ (Codex 5 回目 LOW-1)
+        "expected at 0xdead, got at 0xbeef": "expected at 0xdead, got at 0xbeef",
+        # repr の address は 8 桁以上: code・frame・weakref (2 つ)・pytest が後ろを
+        # 省いたもの・`` at 0x`` ごと省かれた残り (code-reviewer HIGH)
+        '<code object <module> at 0x000001F2A3B4C5D0, file "a.py", line 1>': (
+            '<code object <module> at 0x?, file "a.py", line 1>'
+        ),
+        "<frame at 0x7f3b2c1d0e10, file 'x.py', line 3, code f>": (
+            "<frame at 0x?, file 'x.py', line 3, code f>"
+        ),
+        "<weakref at 0x000001F2A3B4C5D0; to 'Foo' at 0x000001F2A3B4C5E0>": (
+            "<weakref at 0x?; to 'Foo' at 0x?>"
+        ),
+        "_PinnedLoader object at 0x000001F2A3B4...": "_PinnedLoader object at 0x?...",
+        "u...00195CF8963E0>, structure=": "u...?>, structure=",
         # 名前の後に区切り文字が無ければ、行の残りを消さない (code-reviewer LOW-8)
         "expected /home/alice got X; more": "expected <home> got X; more",
     }
@@ -3069,6 +3274,15 @@ def test_harness_summary_drops_the_local_names(
             assert path.lower() not in got.lower(), got
             assert user.lower() not in got.lower(), got
             assert got.endswith(") AppData"), got
+    # 実の tmp・home は path の要素の終わりでだけ置き換える
+    # (/home/ann で /home/annette を割らない、Codex 5 回目 LOW-1)。
+    # 割らなかった home は汎用の規則が消す
+    assert "<tmp>dir" not in harness.redact(f"{tmp}dir/x")
+    assert harness.redact(f"{home}ette/x") == "<home>/x"
+    # 区切りでない記号 (括弧・カンマ等) の前でも、実の home はそこで終わる
+    assert harness.redact(f"registry ({home}), then {home}, x") == (
+        "registry (<home>), then <home>, x"
+    )
     # ユーザー名は英数字の境界の内側だけ
     # (AppData の data を消さない、code-reviewer LOW-8)
     monkeypatch.setattr(harness.getpass, "getuser", lambda: "data")
