@@ -10,11 +10,15 @@
 証拠は、pytest の出力の文字列でなく、harness 自身を pytest の plugin として読み込ませ (``-p``)、hook
 ``pytest_exception_interact`` が失敗ごとに書く記録 (関数名・parametrize の id・段・先頭が assert 文か・例外の chain の
 型と文とフレーム) で照合する (Codex 3 回目 MEDIUM-1・LOW-1。出力を正規表現で切る方式は、assert 行の 2 形・
-見出しの下線・id の中の ``] - `` で 3 回崩れた)。判定は 3 通りに分けて報告する:
+見出しの下線・id の中の ``] - `` で 3 回崩れた)。hook ``pytest_sessionfinish`` が session の終わりを 1 行書く。
+各 run には空の bytecode の置き場所 (``PYTHONPYCACHEPREFIX``) を渡し、書き込みも止める (前の変異の pyc で走らない。
+Codex 4 回目 MEDIUM-1)。判定は 3 通りに分けて報告する:
 
 * 対照が落ちた: 無変異で test が緑でない → harness を止める (変異の判定をしない)。
 * 変異が捕まらなかった: SURVIVED (test が緑のまま)。
-* 変異は落ちたが理由が違う: WRONG_REASON (期待診断の記録に証拠が無い) / COLLECTION_ERROR / TIMEOUT。
+* 変異は落ちたが理由が違う: WRONG_REASON (期待診断の記録に証拠が無い) / COLLECTION_ERROR / TIMEOUT /
+  ABNORMAL_EXIT (pytest が通常の失敗 = exit 1 で終わっていない・session の終わりの記録が無い。計測が途中で
+  壊れた run の記録を証拠に数えない、Codex 4 回目 MEDIUM-2) / NO_FAILURE_RECORD (exit 1 で終わったが失敗の記録が無い)。
   KILLED に数えるのは、期待診断の記録に証拠があるものだけ (``status_of``・``witnessed``)。既定の証拠は、期待診断の
   test の本体 (call) が test の ``assert`` 文で落ちたこと。fixture の setup の ERROR・teardown・assert 以外の例外
   (NameError・TypeError・autouse の封鎖の ``raise AssertionError``) は数えない (Codex MEDIUM-4・code-reviewer MEDIUM-4・
@@ -61,6 +65,7 @@ meta-test 成立・原状復帰のときだけ書く (書かないときは理�
 from __future__ import annotations
 
 import argparse
+import getpass
 import hashlib
 import json
 import os
@@ -89,6 +94,12 @@ _PLUGIN = "scripts.generalization_probe_driver_mutation_check"
 _TEST_FILE = pathlib.PurePath(_TEST_REL).name
 _DRIVER_FILE = pathlib.PurePath(_DRIVER_REL).name
 _PHASES = ("setup", "call", "teardown")
+_FINISH = "sessionfinish"  # session の終わりの記録の段 (``pytest_sessionfinish``)
+_ASSERT_WORD = re.compile(
+    r"assert\b"
+)  # assert 文の行の頭 (``assertion`` 等の名前は除く)
+# test の run に継がせない env (計測を変える: -x 等の追加の option・追加の plugin。Codex 4 回目 MEDIUM-2)
+_DROPPED_ENV = ("PYTEST_ADDOPTS", "PYTEST_PLUGINS")
 
 
 @dataclass(frozen=True)
@@ -232,6 +243,18 @@ _NAMESPACE = "test_pinned_finder_makes_the_package_a_namespace"
 _LAUNCH_INIT = "test_command_line_launch_does_not_run_a_scripts_initializer"
 _LAUNCH_SHADOW = "test_command_line_launch_refuses_to_import_a_shadow"
 _LAUNCH_EARLY = "test_command_line_launch_refuses_code_imported_before_the_gate"
+# Codex 4 回目 (HIGH-1・HIGH-2・LOW-2)
+_FOLD = "test_run_manifest_folds_an_exception_into_a_failure"
+_INTERPRETER = "test_interpreter_problems_require_the_run_sh_settings"
+_STARTUP = "test_startup_problems_find_customization_outside_the_environment"
+_LAUNCH_FAILED_SITE = (
+    "test_command_line_launch_refuses_a_startup_customization_that_failed"
+)
+_FOUR_PREFIXES = "test_environment_roots_count_all_four_prefixes"
+_LINKS = "test_in_environment_resolves_links"
+# code-reviewer (/review-changes) の HIGH-2・LOW-7
+_LAUNCH_PTH_SHADOW = "test_command_line_launch_refuses_a_pythonpath_shadow"
+_USER_SITE = "test_user_site_reads_the_site_module"
 _NO_IMPORT_ERROR = "DID NOT RAISE <class 'ImportError'>"
 _NOT_RAISED_SCHEDULE = (
     "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>"
@@ -1535,18 +1558,78 @@ MUTANTS: tuple[Mutant, ...] = (
         "LF 以外の区切り文字 (U+001C・U+0085・U+2028) の後ろを捨てて OK とみなす (Codex 再 review LOW-1)",
     ),
     _m(
-        "l22 manifest の照合に PYTHONHASHSEED を渡さない",
-        'env = dict(os.environ, PYTHONUTF8="1", PYTHONHASHSEED=seed)',
-        'env = dict(os.environ, PYTHONUTF8="1")',
-        (_RUN_MANIFEST,),
-        "run.sh と違う環境で照合する",
+        "l22 起動の前提で PYTHONHASHSEED を SEED と比べない",
+        '        if env.get("PYTHONHASHSEED") != seed:\n',
+        "        if False:\n",
+        (_INTERPRETER,),
+        "run.sh と違う hash seed で、process の中の manifest の照合をする (decisions DF-5)",
     ),
     _m(
         "l23 manifest を固定の段で照合する",
-        '[sys.executable, man.SELF, "--verify", "--stage", stage_name],',
-        '[sys.executable, man.SELF, "--verify", "--stage", "pilot"],',
+        '            code = man.main(["--verify", "--stage", stage_name])\n',
+        '            code = man.main(["--verify", "--stage", "pilot"])\n',
         (_RUN_MANIFEST,),
         "本走の前提に pilot の段の照合を使う",
+    ),
+    # ============================ manifest の照合を process の中で (Codex 4 回目 HIGH-1、decisions DF-5)
+    _m(
+        "h1  manifest の照合を子プロセスで起動する",
+        "        with contextlib.redirect_stdout(out):\n"
+        '            code = man.main(["--verify", "--stage", stage_name])\n',
+        "        proc = subprocess.run(  # noqa: S603\n"
+        '            [sys.executable, man.SELF, "--verify", "--stage", stage_name],\n'
+        '            capture_output=True, encoding="utf-8", errors="replace", check=False,\n'
+        "        )\n"
+        "        code = proc.returncode\n"
+        '        out.write(proc.stdout or "")\n',
+        (_RUN_MANIFEST,),
+        "門も _PinnedFinder も無い子が、未追跡の scripts/__init__.py 等を実行しても、照合の最後の行は変わらない",
+    ),
+    _m(
+        "h2  照合の例外を畳まない",
+        "    except (Exception, SystemExit) as exc:  # noqa: BLE001 — 照合が走りきらなければ不合格\n",
+        "    except ZeroDivisionError as exc:  # noqa: BLE001 — 照合が走りきらなければ不合格\n",
+        (_FOLD,),
+        "照合の例外が起動・公開の判断の外へ抜ける (公開の時点では来歴の異常にならない)",
+        Witness(
+            exc="RuntimeError", text="the frozen check exploded", via="_run_manifest"
+        ),
+    ),
+    _m(
+        "h3  照合の出力を返さない",
+        "    return code, out.getvalue()\n",
+        '    return code, ""\n',
+        (_RUN_MANIFEST,),
+        "最後の行の照合が、照合の出力でなく空の文字列を見る",
+    ),
+    _m(
+        "h5  起動の前提で UTF-8 mode を見ない",
+        "    if mode != 1:\n",
+        "    if False:\n",
+        (_INTERPRETER,),
+        "run.sh と違う UTF-8 mode で、process の中の manifest の照合をする",
+    ),
+    _m(
+        "h6  起動の前提に interpreter の設定を入れない",
+        "    problems.extend(interpreter_problems())\n",
+        "    problems.extend([])\n",
+        (_COMBINE,),
+        "run.sh と違う設定で起動しても拒否しない",
+    ),
+    _m(
+        "h7  起動の前提で -E/-I の起動を見ない",
+        '    if getattr(fl, "ignore_environment", 0):\n',
+        "    if False:\n",
+        (_INTERPRETER,),
+        "-E/-I で起動すると PYTHONHASHSEED が効かないのに、os.environ に残る値で通す (code-reviewer MEDIUM-3)",
+    ),
+    _m(
+        "h8  照合の SystemExit を畳まない",
+        "    except (Exception, SystemExit) as exc:  # noqa: BLE001 — 照合が走りきらなければ不合格\n",
+        "    except Exception as exc:  # noqa: BLE001 — 照合が走りきらなければ不合格\n",
+        (_FOLD,),
+        "照合の SystemExit が公開の判断の外へ抜け、来歴が書かれない (code-reviewer LOW-5)",
+        Witness(exc="SystemExit", via="_run_manifest"),
     ),
     _m(
         "l24 git の失敗を None にしない",
@@ -1795,6 +1878,103 @@ MUTANTS: tuple[Mutant, ...] = (
         (_OUTSIDE, _EXECUTED, _LAUNCH_EARLY),
         "環境の外のコードを実行したまま起動する",
     ),
+    # ============================ 起動前に走りうるコード (Codex 4 回目 HIGH-2)・境界条件 (Codex 4 回目 LOW-2)
+    _m(
+        "s8  起動の検査で起動前の customization を見ない",
+        "    problems += startup_problems(\n",
+        "    _ = startup_problems(\n",
+        (_EXECUTED, _LAUNCH_FAILED_SITE),
+        "import に失敗して sys.modules に残らない sitecustomize を実行したまま起動する",
+    ),
+    _m(
+        "s9  sitecustomize を見ない",
+        '_STARTUP_MODULES: Final[tuple[str, ...]] = ("sitecustomize", "usercustomize")\n',
+        '_STARTUP_MODULES: Final[tuple[str, ...]] = ("usercustomize",)\n',
+        (_STARTUP, _EXECUTED, _LAUNCH_FAILED_SITE),
+        "site が起動時に実行する sitecustomize を見逃す",
+    ),
+    _m(
+        "s13 usercustomize を見ない",
+        '_STARTUP_MODULES: Final[tuple[str, ...]] = ("sitecustomize", "usercustomize")\n',
+        '_STARTUP_MODULES: Final[tuple[str, ...]] = ("sitecustomize",)\n',
+        (_STARTUP,),
+        "site が起動時に実行する usercustomize を見逃す",
+    ),
+    _m(
+        "s10 最初に見つかった entry だけを見る",
+        "        specs = [importlib.machinery.PathFinder.find_spec(name, [e]) for e in entries]\n",
+        "        specs = [importlib.machinery.PathFinder.find_spec(name, entries)]\n",
+        (_STARTUP,),
+        "環境の中の customization の後ろにある外のもの (実行されたかを sys.modules では確かめられない) を見逃す",
+    ),
+    _m(
+        "s11 user site の .pth を見ない",
+        "    if user_site is not None and not _in_environment(user_site, roots):\n",
+        "    if False:\n",
+        (_STARTUP,),
+        "site が起動時に実行する user site の .pth を見逃す",
+    ),
+    _m(
+        "s12 走査が所在の先頭 1 件だけを見る",
+        "            loc for loc in _module_locations(module) if not _in_environment(loc, roots)\n",
+        "            loc\n"
+        "            for loc in _module_locations(module)[:1]\n"
+        "            if not _in_environment(loc, roots)\n",
+        (_OUTSIDE,),
+        "探索場所が環境の中と外にある package を、先頭が中なら通す",
+    ),
+    _m(
+        "g10 所在の link を解決しない",
+        "    return os.path.normcase(os.path.realpath(path))\n",
+        "    return os.path.normcase(os.path.abspath(path))\n",
+        (_LINKS,),
+        "環境の中の link の先にある外のコードを、環境の中として通す",
+    ),
+    _m(
+        "g11 門が所在の先頭 1 件だけを見る",
+        "                for loc in _spec_locations(spec)\n"
+        "                if not _in_environment(loc, self.roots)\n",
+        "                for loc in _spec_locations(spec)[:1]\n"
+        "                if not _in_environment(loc, self.roots)\n",
+        (_GATE_REFUSE,),
+        "portion が環境の中と外にある名前空間を、先頭が中なら import させる",
+        Witness(item="ns_mixed", exc="Failed", text=_NO_IMPORT_ERROR),
+    ),
+    _m(
+        "g12 環境に exec_prefix を数えない",
+        "    prefixes = (sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix)\n",
+        "    prefixes = (sys.prefix, sys.base_prefix, sys.base_exec_prefix)\n",
+        (_FOUR_PREFIXES,),
+        "exec_prefix が prefix と違う環境で、正当な拡張 module の import を止める",
+    ),
+    _m(
+        "g13 環境に base_exec_prefix を数えない",
+        "    prefixes = (sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix)\n",
+        "    prefixes = (sys.prefix, sys.exec_prefix, sys.base_prefix)\n",
+        (_FOUR_PREFIXES,),
+        "base_exec_prefix が base_prefix と違う環境で、正当な拡張 module の import を止める",
+    ),
+    _m(
+        "s14 PYTHONPATH を見ない",
+        "    for entry in pythonpath.split(os.pathsep) if pythonpath else ():\n",
+        "    for entry in ():\n",
+        (_STARTUP, _LAUNCH_PTH_SHADOW),
+        "site の .pth の import 行が PYTHONPATH の影 (_virtualenv.py 等) を実行し、失敗して消えても起動する (code-reviewer HIGH-2)",
+    ),
+    _m(
+        "s15 起動の検査が PYTHONPATH を渡さない",
+        '    pythonpath = None if sys.flags.ignore_environment else env.get("PYTHONPATH")\n',
+        "    pythonpath = None\n",
+        (_EXECUTED, _LAUNCH_PTH_SHADOW),
+        "PYTHONPATH の影を見ずに起動する",
+    ),
+    _m(
+        "s16 user site が無効でも見る",
+        '    if not getattr(found_site, "ENABLE_USER_SITE", False):\n',
+        "    if False:\n",
+        (_USER_SITE,),
+        "site が無効にした user site の .pth を、起動前に走りうるものとして数える (起動を誤って止める)",
+    ),
 )
 
 # ---------------------------------------------------------------- meta-test
@@ -1877,8 +2057,9 @@ def _assert_stmt(exc: BaseException) -> bool:
         return False
     last = frames[-1]
     line = (last.line or "").lstrip()
-    return pathlib.PurePath(last.filename).name == _TEST_FILE and (
-        line == "assert" or line.startswith(("assert ", "assert("))
+    # assert の後は空白 (タブを含む)・括弧・行末のどれでもよい (Codex 4 回目 BL-2)
+    return pathlib.PurePath(last.filename).name == _TEST_FILE and bool(
+        _ASSERT_WORD.match(line)
     )
 
 
@@ -1893,13 +2074,40 @@ def pytest_exception_interact(node: object, call: object) -> None:
     if not out or excinfo is None:
         return
     exc = excinfo.value
-    row = {
-        "function": getattr(node, "originalname", None) or getattr(node, "name", ""),
-        "param": getattr(getattr(node, "callspec", None), "id", None),
-        "when": getattr(call, "when", None),
-        "assert_stmt": _assert_stmt(exc),
-        "chain": _chain(exc),
-    }
+    _append(
+        out,
+        {
+            "function": getattr(node, "originalname", None)
+            or getattr(node, "name", ""),
+            "param": getattr(getattr(node, "callspec", None), "id", None),
+            "when": getattr(call, "when", None),
+            "assert_stmt": _assert_stmt(exc),
+            "chain": _chain(exc),
+        },
+    )
+
+
+def pytest_sessionfinish(session: object, exitstatus: object) -> None:
+    """session の終わりを 1 行書く pytest の hook (Codex 4 回目 MEDIUM-2).
+
+    計測が最後まで走ったことと pytest の終了の種類を、証拠と同じ記録に残す。``status_of`` は、この記録が
+    ちょうど 1 つで exitstatus が 1 (test の失敗) の run だけで証拠を照合する。
+    """
+    out = os.environ.get(_WITNESS_ENV)
+    if not out:
+        return
+    _append(
+        out,
+        {
+            "when": _FINISH,
+            "exitstatus": int(exitstatus) if isinstance(exitstatus, int) else None,
+            "collected": getattr(session, "testscollected", None),
+            "failed": getattr(session, "testsfailed", None),
+        },
+    )
+
+
+def _append(out: str, row: dict[str, object]) -> None:
     with pathlib.Path(out).open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps(row, ensure_ascii=True) + "\n")
 
@@ -1915,13 +2123,24 @@ def read_records(path: pathlib.Path) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------- 実行
 
 
-def purge_bytecode(root: pathlib.Path) -> None:
-    """``root/scripts/__pycache__`` を消す (変異を書いた driver を、前の変異の pyc で実行しない).
+def run_env(
+    env: dict[str, str], witness: pathlib.Path, cache: pathlib.Path
+) -> dict[str, str]:
+    """各 run の env: 証拠の置き場所・空の bytecode の置き場所・書き込みの停止 (計測を変える env は外す).
 
-    pyc は source の mtime (秒) と大きさで照合される。同じ長さの置換を同じ秒に書くと、前の変異の pyc が
-    そのまま使われる (witness の実測で、w9 の run が w8 のコードを実行していた。decisions DI-3)。
+    pyc は source の mtime (秒) と大きさで照合されるので、同じ長さの置換を同じ秒に書くと前の変異の pyc で走る
+    (前タスクの decisions DI-3)。``PYTHONPYCACHEPREFIX`` は pyc の読み取り先も変える (``__pycache__`` を読まない)。
+    run ごとに空の dir を渡し、書き込みも止めるので、読める pyc が無い (継いだ prefix も上書きする、Codex 4 回目 MEDIUM-1)。
     """
-    shutil.rmtree(root / "scripts" / "__pycache__", ignore_errors=True)
+    out = {k: v for k, v in env.items() if k not in _DROPPED_ENV}
+    out.update(
+        {
+            _WITNESS_ENV: str(witness),
+            "PYTHONPYCACHEPREFIX": str(cache),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+    )
+    return out
 
 
 def _run_tests(
@@ -1931,10 +2150,10 @@ def _run_tests(
 
     返り値 = (exit code, 落ちた test (関数名), collection error, 証拠の記録)。
     """
-    purge_bytecode(root)
     fd, name = tempfile.mkstemp(prefix="gp_driver_witness_", suffix=".jsonl")
     os.close(fd)
     witness = pathlib.Path(name)
+    cache = pathlib.Path(tempfile.mkdtemp(prefix="gp_driver_pycache_"))
     try:
         proc = subprocess.run(  # noqa: S603
             [
@@ -1955,13 +2174,14 @@ def _run_tests(
             capture_output=True,
             encoding="utf-8",
             errors="replace",
-            env={**env, _WITNESS_ENV: str(witness)},
+            env=run_env(env, witness, cache),
             check=False,
             timeout=_TEST_TIMEOUT_S,
         )
         records = read_records(witness)
     finally:
         witness.unlink(missing_ok=True)
+        shutil.rmtree(cache, ignore_errors=True)  # 空のまま (書き込みを止めている)
     out = proc.stdout or ""
     failed = {str(r.get("function")) for r in records if r.get("when") in _PHASES}
     collect_error = (
@@ -1973,20 +2193,77 @@ def _run_tests(
 
 
 # 公開の certification に、手元の path (OS のユーザー名を含む) とメモリの address を残さない (security-checker MEDIUM)。
-# 照合は元の文で行い、要約に書くときだけ置き換える
+# 照合は元の文で行い、要約に書くときだけ置き換える。先に実の tmp・home・ユーザー名を置き換え (空白入りの名前・
+# 任意の置き場所も消える)、次に他の手元の形を汎用の規則で消す (Codex 4 回目 LOW-1)
 _LOCAL_TEXT = (
     (
-        re.compile(r"[A-Za-z]:[\\/]+(?:Users|home)[\\/]+[^\\/'\"\s]+", re.IGNORECASE),
+        # 名前は空白を含みうる (区切り文字が続くときだけ空白をまたいで延ばす。行の残りを消さない、code-reviewer LOW-8)
+        re.compile(
+            r"(?:[A-Za-z]:)?[\\/]+(?:Users|home)[\\/]+"
+            r"(?:[^\\/'\"\n]*?[^\\/'\"\s](?=[\\/])|[^\\/'\"\s]+)",
+            re.IGNORECASE,
+        ),
         "<home>",
     ),
-    (re.compile(r"/(?:home|Users)/[^/'\"\s]+"), "<home>"),
+    (re.compile(r"/root(?=[\\/'\"\s]|$)"), "<home>"),
     (re.compile(r"pytest-of-[^\\/'\"\s]+"), "pytest-of-<user>"),
-    (re.compile(r"0x[0-9A-Fa-f]+"), "0x?"),
+    # address は object の repr (``<... at 0x...>``) の中だけ。比較の数値 (0xdead 等) は残す
+    (re.compile(r"(?<= at )0x[0-9A-Fa-f]+"), "0x?"),
 )
 
 
+def _tmp_dir() -> str:
+    return tempfile.gettempdir()
+
+
+def _home_dir() -> str:
+    return str(pathlib.Path.home())
+
+
+def _local_names() -> list[tuple[str, str]]:
+    """実の tmp・home (区切りが slash・backslash・repr の二重の backslash の形) と、その置き換え先.
+
+    長いものから並べる (tmp は home の下にある)。取れないもの (home を決められない等) は飛ばす (code-reviewer LOW-9)。
+    """
+    bs = chr(92)
+    found: list[tuple[str, str]] = []
+    for get, placeholder in ((_tmp_dir, "<tmp>"), (_home_dir, "<home>")):
+        try:
+            found.append((get(), placeholder))
+        except (OSError, RuntimeError, KeyError):
+            continue
+    pairs: dict[str, str] = {}
+    for path, placeholder in found:
+        for form in (path, path.replace(bs, "/"), path.replace(bs, bs + bs)):
+            if len(form) > 3:  # noqa: PLR2004 — ドライブだけ (``C:\``) の path は消さない
+                pairs.setdefault(form, placeholder)
+    return sorted(pairs.items(), key=lambda kv: len(kv[0]), reverse=True)
+
+
+def _local_user() -> str:
+    """OS のユーザー名 (3 文字未満・取れないときは空。短すぎる名前は普通の語と区別できない)."""
+    try:
+        user = getpass.getuser()
+    except (OSError, KeyError, ImportError):
+        return ""
+    return user if len(user) >= 3 else ""  # noqa: PLR2004
+
+
 def redact(text: str) -> str:
-    """要約に書く文から、手元の home の path・pytest の tmp のユーザー名・メモリの address を消す."""
+    """要約に書く文から、手元の tmp・home の path・ユーザー名・メモリの address を消す.
+
+    ユーザー名は英数字の境界の内側だけ (``AppData`` の ``data`` を消さない、code-reviewer LOW-8)。
+    """
+    for name, placeholder in _local_names():
+        text = re.sub(re.escape(name), placeholder, text, flags=re.IGNORECASE)
+    user = _local_user()
+    if user:
+        text = re.sub(
+            rf"(?<![A-Za-z0-9]){re.escape(user)}(?![A-Za-z0-9])",
+            "<user>",
+            text,
+            flags=re.IGNORECASE,
+        )
     for pattern, placeholder in _LOCAL_TEXT:
         text = pattern.sub(placeholder, text)
     return text
@@ -2034,6 +2311,16 @@ def witnessed(
     return None
 
 
+def finished_with_failures(code: int, records: list[dict[str, Any]]) -> bool:
+    """Test の失敗 (exit 1) で pytest が最後まで走ったか: session の終わりの記録がちょうど 1 つで exitstatus 1.
+
+    INTERNALERROR (exit 3)・中断 (exit 2)・記録の書き込みの失敗の後に残った途中の記録を、証拠に数えない
+    (Codex 4 回目 MEDIUM-2)。
+    """
+    finish = [r.get("exitstatus") for r in records if r.get("when") == _FINISH]
+    return code == 1 and finish == [1]
+
+
 def status_of(
     mut: Mutant,
     code: int,
@@ -2042,19 +2329,24 @@ def status_of(
     *,
     collect: bool,
 ) -> str:
-    """変異の判定 (3 通り): SURVIVED / 理由が違う (WRONG_REASON・COLLECTION_ERROR・TIMEOUT) / KILLED.
+    """変異の判定 (3 通り): SURVIVED / 理由が違う (WRONG_REASON・COLLECTION_ERROR・TIMEOUT・ABNORMAL_EXIT・NO_FAILURE_RECORD) / KILLED.
 
-    KILLED は、期待 test の失敗の記録に、変異の証拠 (``Witness``) があるときだけ。理由の文の無い変異の証拠は、
-    test の本体の assert 文 (fixture の setup の ERROR・assert 以外の例外・autouse の封鎖は数えない、code-reviewer
-    MEDIUM-4・Codex MEDIUM-4・Codex 再 review MEDIUM-1)。理由の文のある変異は、その item・段の、同じ 1 つの例外で
-    型・文・経由を照合する (別の parameter・段・例外を流用しない、Codex 3 回目 MEDIUM-1)。
+    KILLED は、pytest が test の失敗 (exit 1) で最後まで走り (``finished_with_failures``)、期待 test の失敗の記録に、
+    変異の証拠 (``Witness``) があるときだけ。理由の文の無い変異の証拠は、test の本体の assert 文 (fixture の setup の
+    ERROR・assert 以外の例外・autouse の封鎖は数えない、code-reviewer MEDIUM-4・Codex MEDIUM-4・Codex 再 review
+    MEDIUM-1)。理由の文のある変異は、その item・段の、同じ 1 つの例外で型・文・経由を照合する (別の parameter・段・
+    例外を流用しない、Codex 3 回目 MEDIUM-1)。
     """
     if code == -1:
         return "TIMEOUT"
     if code == 0:
         return "SURVIVED"
-    if collect or not failed:
+    if collect:
         return "COLLECTION_ERROR"
+    if not finished_with_failures(code, records):
+        return "ABNORMAL_EXIT"
+    if not failed:
+        return "NO_FAILURE_RECORD"  # exit 1 で終わったが、失敗の記録が無い
     return (
         "KILLED"
         if witnessed(mut.witness, mut.expect, records) is not None
@@ -2119,10 +2411,14 @@ def run_meta(env: dict[str, str]) -> list[dict[str, object]]:
                 raise RuntimeError(msg)
             path.write_bytes(src.replace(old, new, 1).encode("utf-8"))
             try:
-                code, failed, collect_error, _ = _run_tests(env, tmp)
+                code, failed, collect_error, records = _run_tests(env, tmp)
             finally:
                 path.write_bytes(original)
-            ok = code != 0 and not collect_error and set(expect) <= set(failed)
+            ok = (
+                finished_with_failures(code, records)
+                and not collect_error
+                and set(expect) <= set(failed)
+            )
             rows.append(
                 {
                     "label": label,
@@ -2214,7 +2510,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     for r in survived:
         print(f"  {r['label']}")
     print(
-        f"落ちたが理由が違う (WRONG_REASON / COLLECTION_ERROR / TIMEOUT): {len(wrong)}"
+        "落ちたが理由が違う (WRONG_REASON / COLLECTION_ERROR / TIMEOUT / "
+        f"ABNORMAL_EXIT / NO_FAILURE_RECORD): {len(wrong)}"
     )
     for r in wrong:
         print(f"  {r['label']} {r['status']} failed={r['failed']}")

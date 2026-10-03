@@ -20,10 +20,12 @@ import importlib.machinery
 import importlib.util
 import json
 import os
+import py_compile
 import random
 import shutil
 import subprocess
 import sys
+import sysconfig
 import types
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -225,11 +227,16 @@ def short_stage(run_dir: Path, lo: int = 104, hi: int = 116) -> drv.Stage:
 
 
 _REAL_RUN_MANIFEST = drv._run_manifest
+_REAL_INTERPRETER = drv.interpreter_problems
 
 
 @pytest.fixture(autouse=True)
 def _fake_manifest(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(drv, "_run_manifest", ok_manifest)
+    # test の process は run.sh と同じ設定 (PYTHONHASHSEED・PYTHONUTF8) で
+    # 起動しているとは限らない。
+    # 実物は _REAL_INTERPRETER で単体の test が使う
+    monkeypatch.setattr(drv, "interpreter_problems", lambda *_a, **_k: [])
     # 実の results/ と実の Ollama に触れないことを構造で保証する (code-reviewer LOW)
     monkeypatch.setattr(drv, "PILOT_DIR", tmp_path / "blocked" / "pilot")
     monkeypatch.setattr(drv, "RUN_DIR", tmp_path / "blocked" / "run")
@@ -1626,10 +1633,16 @@ def test_launch_problems_combine_certification_git_manifest_and_gate(
 ) -> None:
     monkeypatch.setattr(drv, "certification_problems", lambda _p: ["cert"])
     monkeypatch.setattr(drv, "_git", lambda *_a: "ok")
+    monkeypatch.setattr(drv, "interpreter_problems", lambda: ["interpreter"])
     monkeypatch.setattr(drv, "manifest_problems", lambda s: [f"manifest {s}"])
     monkeypatch.setattr(drv, "gate_problems", lambda _p: ["gate"])
-    assert drv.launch_problems("pilot") == ["cert", "manifest pilot"]
-    assert drv.launch_problems("main") == ["cert", "manifest main", "gate"]
+    assert drv.launch_problems("pilot") == ["cert", "interpreter", "manifest pilot"]
+    assert drv.launch_problems("main") == [
+        "cert",
+        "interpreter",
+        "manifest main",
+        "gate",
+    ]
 
 
 def test_launch_problems_check_git_tracking_and_head(
@@ -1741,21 +1754,98 @@ def test_pinned_sha256_reads_the_current_files() -> None:
 def test_run_manifest_calls_the_frozen_check_like_run_sh(
     monkeypatch: pytest.MonkeyPatch, stage: str
 ) -> None:
-    """manifest の照合は run.sh と同じ script・環境変数 (PYTHONHASHSEED) で呼ぶ."""
-    seen: dict[str, Any] = {}
+    """manifest の照合は、run.sh と同じ封印済みの main・引数を、この process の中で呼ぶ.
 
-    def fake(args: list[str], **kw: Any) -> types.SimpleNamespace:
-        seen.update(args=args, **kw)
-        return types.SimpleNamespace(returncode=0, stdout="x\n")
+    子プロセスを起動しない (Codex 4 回目 HIGH-1)。出力と exit code を返す。run.sh と同じ
+    hash seed・UTF-8 mode は interpreter_problems が起動の前提にする。
+    """
+    calls: list[object] = []
 
-    monkeypatch.setattr(drv.subprocess, "run", fake)
-    assert _REAL_RUN_MANIFEST(stage) == (0, "x\n")
-    assert seen["args"] == [sys.executable, man.SELF, "--verify", "--stage", stage]
-    assert seen["cwd"] == str(drv._REPO_ROOT)
-    seed = (_ROOT / man.EXP / "SEED").read_text(encoding="utf-8").strip()
-    # 欠けていても assert で落ちるように get で読む (BL-3)
-    assert seen["env"].get("PYTHONHASHSEED") == seed
-    assert seen["env"].get("PYTHONUTF8") == "1"
+    def frozen_main(argv: list[str]) -> int:
+        calls.append(argv)
+        sys.stdout.write(f"x\nMANIFEST OK (stage {stage})\n")
+        return 0
+
+    def child(*args: object, **_kw: object) -> types.SimpleNamespace:
+        calls.append(("subprocess", args))
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(drv.man, "main", frozen_main)
+    monkeypatch.setattr(drv.subprocess, "run", child)
+    assert _REAL_RUN_MANIFEST(stage) == (0, f"x\nMANIFEST OK (stage {stage})\n")
+    assert calls == [["--verify", "--stage", stage]], (
+        "not called once, in this process, with the stage's arguments"
+    )
+
+
+def test_run_manifest_folds_an_exception_into_a_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """照合の例外は exit 1 と、その型と文の行に畳む.
+
+    起動・公開のどちらでも拒否になる。
+    """
+
+    def broken(_argv: list[str]) -> int:
+        sys.stdout.write("partial\n")
+        msg = "the frozen check exploded"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(drv.man, "main", broken)
+    assert _REAL_RUN_MANIFEST("pilot") == (
+        1,
+        "partial\nmanifest check raised: RuntimeError: the frozen check exploded\n",
+    )
+
+    def exits(_argv: list[str]) -> int:
+        raise SystemExit(2)
+
+    # SystemExit も畳む (公開の時点で来歴を書く経路を抜けない、code-reviewer LOW-5)
+    monkeypatch.setattr(drv.man, "main", exits)
+    assert _REAL_RUN_MANIFEST("pilot") == (1, "manifest check raised: SystemExit: 2\n")
+    monkeypatch.setattr(drv.man, "main", broken)
+    monkeypatch.setattr(drv, "_run_manifest", _REAL_RUN_MANIFEST)
+    assert drv.manifest_problems("pilot") == [
+        "manifest --verify --stage pilot did not end with MANIFEST OK (stage pilot)"
+    ]
+
+
+def test_interpreter_problems_require_the_run_sh_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """起動の前提: run.sh と同じ PYTHONHASHSEED (= SEED)・UTF-8 mode・-E/-I でない.
+
+    decisions DF-5・code-reviewer MEDIUM-3。
+    """
+    seed = tmp_path / "SEED"
+    seed.write_text("20261001\n", encoding="utf-8")
+    ok = {"PYTHONHASHSEED": "20261001"}
+    good = types.SimpleNamespace(utf8_mode=1, ignore_environment=0)
+    assert _REAL_INTERPRETER(seed, ok, good) == []
+    wrong_seed = "not launched like run.sh: PYTHONHASHSEED must be the SEED (20261001)"
+    assert _REAL_INTERPRETER(seed, {}, good) == [wrong_seed]
+    assert _REAL_INTERPRETER(seed, {"PYTHONHASHSEED": "20261002"}, good) == [wrong_seed]
+    no_utf8 = types.SimpleNamespace(utf8_mode=0, ignore_environment=0)
+    assert _REAL_INTERPRETER(seed, ok, no_utf8) == [
+        "not launched like run.sh: PYTHONUTF8 must be 1"
+    ]
+    # -E/-I の起動では Python が PYTHONHASHSEED を読まない (os.environ には残る)
+    isolated = types.SimpleNamespace(utf8_mode=1, ignore_environment=1)
+    assert _REAL_INTERPRETER(seed, ok, isolated) == [
+        "not launched like run.sh: -E/-I ignores PYTHONHASHSEED and PYTHONPATH"
+    ]
+    missing = _REAL_INTERPRETER(tmp_path / "no_seed", ok, good)
+    assert len(missing) == 1, missing
+    assert missing[0].startswith("SEED unreadable: "), missing
+    # 既定は SEED_PATH・os.environ・sys.flags
+    real = (_ROOT / man.EXP / "SEED").read_text(encoding="utf-8").strip()
+    monkeypatch.setenv("PYTHONHASHSEED", real)
+    utf8 = (
+        []
+        if sys.flags.utf8_mode == 1
+        else ["not launched like run.sh: PYTHONUTF8 must be 1"]
+    )
+    assert _REAL_INTERPRETER() == utf8
 
 
 def test_git_reports_a_failure_as_none() -> None:
@@ -1863,8 +1953,16 @@ def _module(loader: object) -> types.ModuleType:
 _BATTERY = "scripts/generalization_probe_battery.py"
 
 
+def _customize(directory: Path, name: str) -> Path:
+    """``directory`` に site の customization の module を置く (返り値 = その file)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{name}.py"
+    path.write_text("RAN = True\n", encoding="utf-8")
+    return path
+
+
 def test_executed_problems_check_driver_modules_and_pins(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """実行中のコードの照合.
 
@@ -1875,7 +1973,9 @@ def test_executed_problems_check_driver_modules_and_pins(
     def problems(
         modules: dict[str, object], pinned: dict[str, str] | None = None
     ) -> list[str]:
-        return drv.executed_problems(drv.STAGE_PILOT, pinned or start, modules)
+        return drv.executed_problems(
+            drv.STAGE_PILOT, pinned or start, modules, paths=[], environ={}
+        )
 
     pinned_a = _module(drv._PinnedLoader(Path(_BATTERY), b"A"))
     assert (
@@ -1900,9 +2000,21 @@ def test_executed_problems_check_driver_modules_and_pins(
     # その他のモジュールは環境の中 (走査、Codex 3 回目 MEDIUM-2)
     shadow = types.ModuleType("numpy")
     shadow.__file__ = str(_ROOT / "scripts" / "numpy.py")
-    assert drv.executed_problems(drv.STAGE_PILOT, start, {"numpy": shadow}, ()) == [
+    assert drv.executed_problems(
+        drv.STAGE_PILOT, start, {"numpy": shadow}, (), paths=[], environ={}
+    ) == [
         f"run outside the pinned files and the environment: numpy ({shadow.__file__})"
     ]
+    # 起動時に site が実行しうる customization も (Codex 4 回目 HIGH-2)
+    site = _customize(tmp_path / "site", "sitecustomize")
+    assert drv.executed_problems(
+        drv.STAGE_PILOT, start, {}, (), paths=[str(tmp_path / "site")], environ={}
+    ) == [f"startup code outside the environment: sitecustomize ({site})"]
+    # PYTHONPATH も (code-reviewer HIGH-2)
+    pythonpath = str(tmp_path / "pp")
+    assert drv.executed_problems(
+        drv.STAGE_PILOT, start, {}, (), paths=[], environ={"PYTHONPATH": pythonpath}
+    ) == [f"startup code outside the environment: PYTHONPATH ({pythonpath})"]
     monkeypatch.setattr(drv, "_DRIVER_RUNS_ITS_BYTES", False)
     assert problems({}) == [
         "the running driver is not the compilation of the driver bytes it hashed"
@@ -1923,6 +2035,107 @@ def test_environment_roots_are_the_prefixes_that_do_not_hold_the_repo() -> None:
     assert drv._norm(sys.base_prefix) not in held
     if drv._norm(sys.prefix) != drv._norm(sys.base_prefix):
         assert drv._norm(sys.prefix) in held
+
+
+def test_environment_roots_count_all_four_prefixes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """4 つの prefix (exec・base を含む) を全て環境に数える.
+
+    Codex 4 回目 LOW-2。
+    """
+    names = ("prefix", "exec_prefix", "base_prefix", "base_exec_prefix")
+    for name in names:
+        (tmp_path / name).mkdir()
+        monkeypatch.setattr(sys, name, str(tmp_path / name))
+    roots = drv._environment_roots(str(tmp_path / "repo"))
+    assert sorted(roots) == sorted(drv._norm(str(tmp_path / n)) for n in names)
+
+
+def _dir_link(link: Path, target: Path) -> None:
+    """dir への link (POSIX は symlink、Windows は権限の要らない junction)."""
+    if sys.platform == "win32":
+        import _winapi
+
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        link.symlink_to(target, target_is_directory=True)
+
+
+def test_in_environment_resolves_links(tmp_path: Path) -> None:
+    """所在は link を解決してから比べる (Codex 4 回目 LOW-2).
+
+    環境の中の link の先が外なら外、外の link の先が環境の中なら中。
+    """
+    env, out = tmp_path / "env", tmp_path / "out"
+    for d in (env, out):
+        d.mkdir()
+        (d / "m.py").write_text("", encoding="utf-8")
+    roots = (drv._norm(str(env)),)
+    _dir_link(env / "to_out", out)
+    _dir_link(tmp_path / "to_env", env)
+    assert not drv._in_environment(str(env / "to_out" / "m.py"), roots)
+    assert drv._in_environment(str(tmp_path / "to_env" / "m.py"), roots)
+
+
+def test_startup_problems_find_customization_outside_the_environment(
+    tmp_path: Path,
+) -> None:
+    """site が起動時に実行しうる customization の所在 (Codex 4 回目 HIGH-2).
+
+    import に失敗したものは sys.modules に残らないので、所在で見る。
+    """
+    env = tmp_path / "env"
+    roots = (drv._norm(str(env)),)
+    phrase = "startup code outside the environment"
+    _customize(env / "lib", "sitecustomize")
+    assert drv.startup_problems([str(env / "lib")], roots, None) == []
+    # PYTHONPATH の entry は名前に依らず見る (site の .pth の import 行が同名の
+    # module を読みうる、code-reviewer HIGH-2)。空の entry は cwd
+    inside_pp = str(env / "pp")
+    assert drv.startup_problems([], roots, None, inside_pp) == []
+    outside_pp = str(tmp_path / "pp")
+    assert drv.startup_problems(
+        [], roots, None, os.pathsep.join([inside_pp, outside_pp])
+    ) == [f"{phrase}: PYTHONPATH ({outside_pp})"]
+    assert drv.startup_problems([], roots, None, os.pathsep.join([inside_pp, ""])) == [
+        f"{phrase}: PYTHONPATH (.)"
+    ]
+    assert drv.startup_problems([], roots, None, "") == []
+    outside = _customize(tmp_path / "out", "sitecustomize")
+    # 環境の中のものが前にあって、外のものが実行されなかったとしても拒否する (安全側)。
+    # 文字列でない entry は飛ばす
+    assert drv.startup_problems(
+        [str(env / "lib"), 5, str(tmp_path / "out")], roots, None
+    ) == [f"{phrase}: sitecustomize ({outside})"]
+    user = _customize(tmp_path / "user", "usercustomize")
+    assert drv.startup_problems([str(tmp_path / "user")], roots, None) == [
+        f"{phrase}: usercustomize ({user})"
+    ]
+    # user site が有効なら、その .pth も (環境の外のとき)
+    site_dir = tmp_path / "user_site"
+    site_dir.mkdir()
+    pth = site_dir / "a.pth"
+    pth.write_text("import os\n", encoding="utf-8")
+    assert drv.startup_problems([], roots, str(site_dir)) == [f"{phrase}: {pth}"]
+    assert drv.startup_problems([], roots, None) == []
+    assert drv.startup_problems([], (drv._norm(str(tmp_path)),), str(site_dir)) == []
+
+
+def test_user_site_reads_the_site_module(tmp_path: Path) -> None:
+    """user site は、site が有効にしたときだけ数える (code-reviewer LOW-7).
+
+    site を import せず、渡された (既定は sys.modules の) site module から読む。
+    """
+    enabled = types.SimpleNamespace(
+        ENABLE_USER_SITE=True, getusersitepackages=lambda: str(tmp_path)
+    )
+    disabled = types.SimpleNamespace(
+        ENABLE_USER_SITE=False, getusersitepackages=lambda: str(tmp_path)
+    )
+    assert drv._user_site(enabled) == str(tmp_path)
+    assert drv._user_site(disabled) is None
+    assert drv._user_site(types.SimpleNamespace(ENABLE_USER_SITE=None)) is None
 
 
 def test_in_environment_compares_whole_path_components(tmp_path: Path) -> None:
@@ -1959,6 +2172,10 @@ def _gate_finders(tmp_path: Path) -> tuple[tuple[str, ...], dict[str, object]]:
     env, repo = tmp_path / "env", tmp_path / "repo"
     namespace = importlib.machinery.ModuleSpec("ns", None, is_package=True)
     namespace.submodule_search_locations = [str(repo / "ns")]
+    # portion が環境の中と外にある名前空間
+    # (先頭だけ見ると通ってしまう、Codex 4 回目 LOW-2)
+    mixed = importlib.machinery.ModuleSpec("ns_mixed", None, is_package=True)
+    mixed.submodule_search_locations = [str(env / "ns_mixed"), str(repo / "ns_mixed")]
     specs: dict[str, object] = {
         "inside": _file_spec("inside", env / "inside.py"),
         "builtin_like": importlib.machinery.ModuleSpec(
@@ -1966,6 +2183,7 @@ def _gate_finders(tmp_path: Path) -> tuple[tuple[str, ...], dict[str, object]]:
         ),
         "numpy": _file_spec("numpy", repo / "scripts" / "numpy.py"),
         "ns": namespace,
+        "ns_mixed": mixed,
         "scripts.extra": _file_spec("scripts.extra", repo / "scripts" / "extra.py"),
     }
     return (drv._norm(str(env)),), specs
@@ -1988,7 +2206,7 @@ def test_launch_gate_passes_the_environment(tmp_path: Path) -> None:
     assert selfish.find_spec("inside") is specs["inside"]
 
 
-@pytest.mark.parametrize("name", ["numpy", "ns", "scripts.extra"])
+@pytest.mark.parametrize("name", ["numpy", "ns", "ns_mixed", "scripts.extra"])
 def test_launch_gate_refuses_code_outside_the_environment(
     tmp_path: Path, name: str
 ) -> None:
@@ -2047,6 +2265,12 @@ def test_outside_problems_require_the_environment_and_the_scripts_namespace(
     by_path.__path__ = [str(tmp_path / "by_path")]
     assert drv.outside_problems({**good, "by_path": by_path}, roots) == [
         f"{outside}: by_path ({tmp_path / 'by_path'})"
+    ]
+    # 探索場所が環境の中と外にある package は、全ての所在を見る (Codex 4 回目 LOW-2)
+    mixed = types.ModuleType("mixed")
+    mixed.__path__ = [str(env / "mixed"), str(tmp_path / "mixed")]
+    assert drv.outside_problems({**good, "mixed": mixed}, roots) == [
+        f"{outside}: mixed ({tmp_path / 'mixed'})"
     ]
     initialized = _namespace([scripts_dir], file=str(_ROOT / "scripts" / "__init__.py"))
     elsewhere = _namespace([scripts_dir, str(tmp_path)])
@@ -2110,6 +2334,7 @@ _EXECUTED_PHRASES = (
     "run bytes differ from the pinned file",
     "outside the pinned files and the environment",
     "scripts is not the namespace of the pinned files",
+    "startup code outside the environment",
 )
 _MARK = "UNPINNED CODE RAN"
 _RUN_AS_MAIN = (
@@ -2291,6 +2516,72 @@ def test_command_line_launch_refuses_code_imported_before_the_gate(
     assert not (tmp_path / man.EXP).exists()
 
 
+def test_command_line_launch_refuses_a_startup_customization_that_failed(
+    tmp_path: Path,
+) -> None:
+    """副作用の後で import に失敗した sitecustomize は sys.modules に残らない.
+
+    走査では見えないので、所在で起動を拒否する (Codex 4 回目 HIGH-2)。
+    """
+    driver = _launch_copy(tmp_path)
+    site = tmp_path / "site"
+    site.mkdir()
+    (site / "sitecustomize.py").write_text(
+        f"print({_MARK!r})\nimport gp_driver_module_that_is_not_installed\n",
+        encoding="utf-8",
+    )
+    proc = _run_copy(
+        tmp_path, str(driver), "--stage", "pilot", extra_env={"PYTHONPATH": str(site)}
+    )
+    out = proc.stdout + proc.stderr
+    assert _MARK in out, "the fixture did not run before the gate"
+    assert (
+        "run outside the pinned files and the environment: sitecustomize" not in out
+    ), "the failed customization stayed in sys.modules (the fixture does not reproduce)"
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert (
+        "[driver] refuse to launch: startup code outside the environment: "
+        "sitecustomize" in out
+    ), out
+    assert not (tmp_path / man.EXP).exists()
+
+
+def test_command_line_launch_refuses_a_pythonpath_shadow(tmp_path: Path) -> None:
+    """PYTHONPATH の影は、名前に依らず起動を拒否する (code-reviewer HIGH-2).
+
+    venv の ``_virtualenv.pth`` の import 行は、site-packages より前にある PYTHONPATH の
+    ``_virtualenv.py`` を site の時点で実行する。import に失敗すると
+    sys.modules に残らない。
+    """
+    driver = _launch_copy(tmp_path)
+    shadow = tmp_path / "shadow"
+    shadow.mkdir()
+    (shadow / "_virtualenv.py").write_text(
+        f"print({_MARK!r})\nimport gp_driver_module_that_is_not_installed\n",
+        encoding="utf-8",
+    )
+    proc = _run_copy(
+        tmp_path,
+        str(driver),
+        "--stage",
+        "pilot",
+        extra_env={"PYTHONPATH": str(shadow)},
+    )
+    out = proc.stdout + proc.stderr
+    venv_pth = Path(sysconfig.get_paths()["purelib"]) / "_virtualenv.pth"
+    if venv_pth.is_file():  # uv・virtualenv の venv (今の CI と手元)
+        assert _MARK in out, "the shadow did not run before the gate"
+        assert (
+            "run outside the pinned files and the environment: _virtualenv" not in out
+        )
+    assert proc.returncode == drv.EXIT_CODES[drv.REASON_ABORTED], out
+    assert (
+        "[driver] refuse to launch: startup code outside the environment: "
+        f"PYTHONPATH ({shadow})" in out
+    ), out
+    assert not (tmp_path / man.EXP).exists()
+
+
 # ---------------------------------------------------------------- harness の判定器
 
 
@@ -2352,13 +2643,20 @@ def test_chain():
 def test_did_not_raise():
     with pytest.raises(KeyError):
         pass
+
+
+def test_tab_assert():
+    assert<TAB>1 == 2
 """
 
 
 def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
     probe = tmp_path / "probe"
     probe.mkdir()
-    (probe / "test_driver.py").write_text(_PROBE_TESTS, encoding="utf-8")
+    # assert の後のタブは chr(9) で組む (Codex 4 回目 BL-2)
+    (probe / "test_driver.py").write_text(
+        _PROBE_TESTS.replace("<TAB>", chr(9)), encoding="utf-8"
+    )
     out = tmp_path / "records.jsonl"
     env = dict(
         os.environ,
@@ -2389,9 +2687,18 @@ def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
+    records = harness.read_records(out)
     rows = {
-        (r["function"], r["param"], r["when"]): r for r in harness.read_records(out)
+        (r["function"], r["param"], r["when"]): r
+        for r in records
+        if r["when"] != harness._FINISH
     }
+    # session の終わりの記録 (Codex 4 回目 MEDIUM-2)
+    finish = [r for r in records if r["when"] == harness._FINISH]
+    assert len(finish) == 1, finish
+    assert finish[0]["exitstatus"] == 1
+    assert finish[0]["collected"] == 10  # probe の test の数
+    assert harness.finished_with_failures(proc.returncode, records)
     assert set(rows) == {
         ("test_assert", None, "call"),
         ("test_multi_line_assert", None, "call"),
@@ -2401,7 +2708,9 @@ def test_harness_plugin_records_items_phases_and_chains(tmp_path: Path) -> None:
         ("test_teardown", None, "teardown"),
         ("test_chain", None, "call"),
         ("test_did_not_raise", None, "call"),
+        ("test_tab_assert", None, "call"),
     }
+    assert rows["test_tab_assert", None, "call"]["assert_stmt"] is True
     assert rows["test_assert", None, "call"]["assert_stmt"] is True
     assert rows["test_multi_line_assert", None, "call"]["assert_stmt"] is True
     assert rows["test_param", "a] - b", "call"]["assert_stmt"] is True
@@ -2536,59 +2845,165 @@ def test_harness_witness_needs_the_item_phase_and_one_exception() -> None:
 def test_harness_status_separates_wrong_reasons() -> None:
     """判定は 3 通り: SURVIVED / 理由が違う / KILLED.
 
-    理由が違う = WRONG_REASON・COLLECTION_ERROR・TIMEOUT。
+    理由が違う = WRONG_REASON・COLLECTION_ERROR・TIMEOUT・ABNORMAL_EXIT・
+    NO_FAILURE_RECORD。
     """
     mut = harness.Mutant("x", "o", "n", frozenset({"test_a"}), "why")
+    done = {"when": harness._FINISH, "exitstatus": 1, "collected": 3, "failed": 1}
     hit = [
-        _rec("test_a", ("builtins.AssertionError", "assert 0", ()), assert_stmt=True)
+        _rec("test_a", ("builtins.AssertionError", "assert 0", ()), assert_stmt=True),
+        done,
     ]
-    miss = [_rec("test_a", ("builtins.TypeError", "unrelated", ()))]
+    miss = [_rec("test_a", ("builtins.TypeError", "unrelated", ())), done]
     assert harness.status_of(mut, 0, set(), [], collect=False) == "SURVIVED"
     assert harness.status_of(mut, -1, set(), [], collect=False) == "TIMEOUT"
-    assert harness.status_of(mut, 1, set(), [], collect=False) == "COLLECTION_ERROR"
+    assert (
+        harness.status_of(mut, 1, set(), [done], collect=False) == "NO_FAILURE_RECORD"
+    )
     assert (
         harness.status_of(mut, 1, {"test_a"}, hit, collect=True) == "COLLECTION_ERROR"
     )
     assert harness.status_of(mut, 1, {"test_a"}, hit, collect=False) == "KILLED"
     assert harness.status_of(mut, 1, {"test_a"}, miss, collect=False) == "WRONG_REASON"
+    # pytest が test の失敗 (exit 1) で最後まで走っていない run の記録は、証拠に数えない
+    # (INTERNALERROR・中断・使い方の誤り・test 無し、Codex 4 回目 MEDIUM-2)
+    for code in (2, 3, 4, 5):
+        crashed = [*hit[:1], {**done, "exitstatus": code}]
+        assert (
+            harness.status_of(mut, code, {"test_a"}, crashed, collect=False)
+            == "ABNORMAL_EXIT"
+        ), code
+        assert (
+            harness.status_of(mut, code, {"test_a"}, hit, collect=False)
+            == "ABNORMAL_EXIT"
+        ), code
+    # session の終わりの記録が無い・2 つある・exitstatus が違う
+    for records in (hit[:1], [*hit, done], [*hit[:1], {**done, "exitstatus": 3}]):
+        assert (
+            harness.status_of(mut, 1, {"test_a"}, records, collect=False)
+            == "ABNORMAL_EXIT"
+        ), records
 
 
-def test_harness_runs_the_tests_without_stale_bytecode(
+def test_harness_runs_the_tests_with_an_empty_bytecode_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """各 run の前に scripts の pyc を消し、plugin と記録の置き場所を渡す.
+    """各 run に、空の bytecode の置き場所を渡し、書き込みも止める.
 
-    同じ長さの置換を同じ秒に書くと、前の変異の pyc で実行される (decisions DI-3)。
+    Codex 4 回目 MEDIUM-1。継いだ PYTHONPYCACHEPREFIX は上書きし、
+    計測を変える env (PYTEST_ADDOPTS 等) は渡さない。
+    plugin と記録の置き場所も渡す。
     """
-    cache = tmp_path / "scripts" / "__pycache__"
-    cache.mkdir(parents=True)
-    (cache / "generalization_probe_driver.cpython-311.pyc").write_bytes(b"stale")
-    seen: dict[str, object] = {}
+    seen: list[dict[str, object]] = []
 
     def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-        seen.update(cache=cache.exists(), cmd=cmd, env=kw["env"])
+        cache = Path(kw["env"]["PYTHONPYCACHEPREFIX"])
+        seen.append(
+            {
+                "cmd": cmd,
+                "env": kw["env"],
+                "cache": cache,
+                "empty": cache.is_dir() and not any(cache.iterdir()),
+            }
+        )
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(harness.subprocess, "run", fake_run)
-    assert harness._run_tests({"X": "1"}, tmp_path) == (0, set(), False, [])
-    assert seen["cache"] is False, "ran with the bytecode of a previous mutant"
-    cmd = seen["cmd"]
+    inherited = {
+        "X": "1",
+        "PYTHONPYCACHEPREFIX": str(tmp_path / "old_cache"),
+        "PYTEST_ADDOPTS": "-x",
+        "PYTEST_PLUGINS": "other_plugin",
+    }
+    assert harness._run_tests(inherited, tmp_path) == (0, set(), False, [])
+    assert harness._run_tests(inherited, tmp_path) == (0, set(), False, [])
+    first, second = seen
+    assert first["empty"] is True, "ran with a bytecode cache that was not empty"
+    assert first["cache"] != second["cache"], "reused the bytecode cache of a run"
+    for run in seen:
+        cache = run["cache"]
+        assert isinstance(cache, Path)
+        assert not cache.exists(), "left the bytecode cache behind"
+    cmd = first["cmd"]
     assert isinstance(cmd, list)
     assert cmd[cmd.index(harness._PLUGIN) - 1] == "-p"
-    env = seen["env"]
+    env = first["env"]
     assert isinstance(env, dict)
     assert env["X"] == "1"
     assert harness._WITNESS_ENV in env
-    harness.purge_bytecode(tmp_path)  # 無くても落ちない
+    assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert env["PYTHONPYCACHEPREFIX"] != inherited["PYTHONPYCACHEPREFIX"]
+    assert "PYTEST_ADDOPTS" not in env
+    assert "PYTEST_PLUGINS" not in env
 
 
-def test_harness_summary_drops_local_paths_and_addresses() -> None:
-    """certification の証拠の要約に、手元の path・address を残さない.
+def test_harness_does_not_run_a_stale_pyc(tmp_path: Path) -> None:
+    """同じ長さ・同じ mtime の source に書き換えても、前の source の pyc で走らない.
 
-    消すもの: home の path・tmp のユーザー名・メモリの address。
-
-    照合は元の文で行う (security-checker MEDIUM)。backslash は chr(92) で組む。
+    前タスクの DI-3 (w9 の run が w8 の pyc で走った) の再現。まず、cache を渡さない
+    通常の起動では
+    前の pyc で走ることを確かめる (fixture が穴を再現していること)。
     """
+    (tmp_path / "scripts").mkdir()
+    harness_file = Path(harness.__file__)
+    shutil.copy2(harness_file, tmp_path / "scripts" / harness_file.name)
+    module = tmp_path / "scripts" / "gp_stale_probe.py"
+    module.write_text("VALUE = 1\n", encoding="utf-8")
+    # pyc は __pycache__ の標準の位置に置く (cache_from_source は、harness が渡す
+    # PYTHONPYCACHEPREFIX の下では prefix の下を指す)
+    tag = sys.implementation.cache_tag
+    cfile = module.parent / "__pycache__" / f"{module.stem}.{tag}.pyc"
+    # SOURCE_DATE_EPOCH があると既定は hash の pyc になるので、mtime の pyc を明示する
+    py_compile.compile(
+        str(module),
+        cfile=str(cfile),
+        doraise=True,
+        invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP,
+    )
+    before = module.stat()
+    module.write_text("VALUE = 2\n", encoding="utf-8")
+    os.utime(module, ns=(before.st_atime_ns, before.st_mtime_ns))
+    env = {k: v for k, v in os.environ.items() if k not in harness._DROPPED_ENV}
+    env.pop("PYTHONPYCACHEPREFIX", None)
+    env.update(PYTHONUTF8="1", PYTHONDONTWRITEBYTECODE="1")
+    plain = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from scripts import gp_stale_probe as m; print(m.VALUE)",
+        ],
+        cwd=str(tmp_path),
+        env=env,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
+        check=False,
+    )
+    assert plain.stdout.strip() == "1", "the fixture does not reproduce a stale pyc"
+    test = tmp_path / harness._TEST_REL
+    test.parent.mkdir(parents=True)
+    test.write_text(
+        "from scripts import gp_stale_probe\n\n\n"
+        "def test_value():\n"
+        "    assert gp_stale_probe.VALUE == 2\n",
+        encoding="utf-8",
+    )
+    code, failed, collect, records = harness._run_tests(env, tmp_path)
+    assert (code, failed, collect) == (0, set(), False), records
+
+
+def test_harness_summary_drops_local_paths_and_addresses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """certification の証拠の要約に、手元の path・address を残さない (汎用の規則).
+
+    消すもの: home の path・tmp のユーザー名・メモリの address。照合は元の文で行う
+    (security-checker MEDIUM)。backslash は chr(92) で組む。実の tmp・home・ユーザー名の
+    置き換えは外して決定的に照合する (ubuntu の /tmp も消すため、code-reviewer HIGH-1)。
+    """
+    monkeypatch.setattr(harness, "_local_names", list)
+    monkeypatch.setattr(harness, "_local_user", str)
     bs = chr(92)
     windows = f"C:{bs}{bs}Users{bs}{bs}someone{bs}{bs}AppData"
     texts = {
@@ -2601,12 +3016,73 @@ def test_harness_summary_drops_local_paths_and_addresses() -> None:
         ),
         "<function f at 0x000002B9328DB060>": "<function f at 0x?>",
         "records.jsonl was published": "records.jsonl was published",
+        # Codex 4 回目 LOW-1: 空白入りの名前・UNC・/root。比較の数値の 0x は残す
+        "C:/Users/Jane Doe/AppData/x": "<home>/AppData/x",
+        f"{bs}{bs}server{bs}Users{bs}alice{bs}x": f"{bs}{bs}server<home>{bs}x",
+        "/root/x": "<home>/x",
+        "expected 0xdead, got 0xbeef": "expected 0xdead, got 0xbeef",
+        # 名前の後に区切り文字が無ければ、行の残りを消さない (code-reviewer LOW-8)
+        "expected /home/alice got X; more": "expected <home> got X; more",
     }
     for raw, want in texts.items():
         assert harness.redact(raw) == want, raw
     record = _rec("test_a", ("builtins.AssertionError", next(iter(texts)), ()))
     summary = harness._summary(record, record["chain"][0])
     assert "someone" not in str(summary["text"])
+
+
+_BS = chr(92)
+
+
+@pytest.mark.parametrize(
+    ("tmp", "home", "user"),
+    [
+        ("/tmp", "/home/runner", "runner"),  # noqa: S108 — 置き換えの入力の文字列
+        (
+            _BS.join(["C:", "Users", "Jane Doe", "AppData", "Local", "Temp"]),
+            _BS.join(["C:", "Users", "Jane Doe"]),
+            "Jane Doe",
+        ),
+    ],
+    ids=["posix", "windows"],
+)
+def test_harness_summary_drops_the_local_names(
+    monkeypatch: pytest.MonkeyPatch, tmp: str, home: str, user: str
+) -> None:
+    """手元の実の tmp・home・ユーザー名は、区切り・大文字小文字を問わず消える.
+
+    実名は固定値に差し替えて確かめる (code-reviewer HIGH-1)。
+    """
+    monkeypatch.setattr(harness, "_tmp_dir", lambda: tmp)
+    monkeypatch.setattr(harness, "_home_dir", lambda: home)
+    monkeypatch.setattr(harness.getpass, "getuser", lambda: user)
+    for path in (tmp, home):
+        for form in (
+            path,
+            path.replace(_BS, "/"),
+            path.replace(_BS, _BS + _BS),
+            path.upper(),
+        ):
+            got = harness.redact(
+                f"No such file: '{form}{_BS}x' (custom-{user}) AppData"
+            )
+            assert path.lower() not in got.lower(), got
+            assert user.lower() not in got.lower(), got
+            assert got.endswith(") AppData"), got
+    # ユーザー名は英数字の境界の内側だけ
+    # (AppData の data を消さない、code-reviewer LOW-8)
+    monkeypatch.setattr(harness.getpass, "getuser", lambda: "data")
+    assert harness.redact("AppData and data") == "AppData and <user>"
+    # 短すぎる名前・取れない名前は消さない
+    monkeypatch.setattr(harness.getpass, "getuser", lambda: "ab")
+    assert harness.redact("ab cd") == "ab cd"
+
+    def no_home() -> str:
+        msg = "Could not determine home directory."
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(harness, "_home_dir", no_home)
+    assert dict(harness._local_names()).get(tmp) == "<tmp>"  # home が無くても落ちない
 
 
 def _parametrized_tests() -> set[str]:
