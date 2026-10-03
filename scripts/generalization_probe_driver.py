@@ -42,8 +42,13 @@
   (prereg §4、DD-3。終了時の observed の取得中に中断しても残す)。
 * **起動の前提** (``launch_problems``): driver の certification が manifest の契約を満たす・ディスクの driver が
   実行中の driver と同じ・固定ファイルが git で追跡され HEAD と一致・その段の manifest の照合が
-  ``MANIFEST OK (stage <段>)``。本走は pilot の機械判定が GO。固定ファイルの sha256 は起動の検査の前に取り、
-  実走の終わりに比べる。
+  ``MANIFEST OK (stage <段>)``・run.sh と同じ interpreter の設定 (``PYTHONHASHSEED`` = SEED・``PYTHONUTF8=1``) で
+  起動した。本走は pilot の機械判定が GO。固定ファイルの sha256 は起動の検査の前に取り、実走の終わりに比べる。
+* **manifest の照合はこの process の中で行う** (``_run_manifest``、Codex 4 回目 HIGH-1)。封印済みの ``man.main`` を
+  run.sh と同じ引数で呼ぶ。子プロセス (門も ``_PinnedFinder`` も無い) では、未追跡の ``scripts/__init__.py`` 等が
+  実行されても照合の最後の行は変わらず、driver は受理してしまう。この process の中なら、照合の結論を出したコードは
+  ``executed_problems`` が同定したコード (固定ファイルの bytes) になる。run.sh と同じ hash seed・UTF-8 mode は、
+  子に環境変数を渡す代わりに、driver をその設定で起動したことを起動の前提にして保つ (decisions DF-5)。
 * **実行したコードの同定** (``executed_problems``、Codex 再 review HIGH-1)。来歴の hash は、実行したプログラムを指す。
   driver は起動時に bytes を 1 回だけ読み、実行中のモジュールの code object がその bytes のコンパイル結果であることを確かめる
   (code object の等値。bytes の一致ではなく、末尾のコメントだけの差は等しい)。repo のモジュール (封印済みの依存と、
@@ -52,15 +57,31 @@
   それ以外のコードは、環境 (インタプリタと venv の prefix の下、repo を含む prefix は除く) のものだけを実行する
   (Codex 3 回目 MEDIUM-2)。起動のときは、driver の最初の文で import の門 (``_LaunchGate``) を入れ、環境の外に所在がある
   module (``scripts/`` に置いた ``numpy.py`` 等) を import させない (ImportError で exit 1、何も書かない)。``scripts`` は
-  ``root/scripts`` だけを探す名前空間として作る (``__init__.py`` を実行しない)。門より前に取り込まれたもの (site・
-  sitecustomize・PYTHONPATH) は、``executed_problems`` が ``sys.modules`` の所在を走査して起動を拒否する。
-  主張: 実行した repo のコードは、来歴の hash が指す固定ファイルの bytes のコンパイル結果。
-  保証の外: 環境の中のコード (第三者のライブラリ・標準ライブラリ・インタプリタ、版は uv.lock が固定する)、
-  意図的な不正 (偽の endpoint・門より前に取り込まれて自分を ``sys.modules`` から消すコード等)。
+  ``root/scripts`` だけを探す名前空間として作る (``__init__.py`` を実行しない)。門より前のコードは 2 段で見る
+  (``executed_problems``): 走りうるもの = site が起動時に実行する customization (``sitecustomize``・``usercustomize``)・
+  ``PYTHONPATH`` の entry (site が処理する ``.pth`` の import 行が、名前に依らず同名の module を読みうる)・user site の
+  ``.pth`` の所在 (``startup_problems``。import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず所在で
+  拒否する、Codex 4 回目 HIGH-2・code-reviewer HIGH-2)、取り込まれたもの = ``sys.modules`` の所在 (``outside_problems``)。
+  driver の最初の文の ``from __future__`` が import する ``__future__`` は、成功すれば ``sys.modules`` の走査が、失敗すれば
+  driver の import の失敗が止める。
+  主張: driver の process で実行した repo のコードは、来歴の hash が指す固定ファイルの bytes のコンパイル結果。
+  保証の外: 環境の中のコード (第三者のライブラリ・標準ライブラリ・インタプリタ・venv の ``.pth``、版は uv.lock が固定する)、
+  環境の ``.pth`` が足す環境の外の path (editable install の ``src``) が後の ``.pth`` の import 行を横取りする経路、
+  意図的な不正 (偽の endpoint・門より前に取り込まれて自分を ``sys.modules`` から消し、自分のファイルも消すコード等)、
+  driver の外の process。凍結 ``run.sh`` の判定の process (manifest の照合・機械判定・scorer) は門を持たず、封印済みの
+  module が repo root を ``sys.path`` の先頭に入れるので、run.sh の前に、repo root 直下と ``scripts`` に未追跡・ignored の
+  ``.py``・package・拡張 module が無いことと、``PYTHONPATH`` が空であることを確かめる (運用、env.md)。
+  Debian・Ubuntu の system Python を base にした venv では、標準ライブラリの sitecustomize が ``/etc`` への link なので、
+  環境の外として起動を拒否されうる (安全側。uv が入れた Python では起きない)。
 
-実行 (repo root から、GPU 実走は user 裁定の後)。run dir と endpoint は固定で、引数は段だけ::
+実行 (repo root から、GPU 実走は user 裁定の後)。run dir と endpoint は固定で、引数は段だけ。run.sh と同じ
+``PYTHONHASHSEED`` (= ``<EXP>/SEED``) と ``PYTHONUTF8=1`` で起動する (違えば何も書かずに起動を拒否する)::
 
+    $env:PYTHONUTF8 = "1"
+    $env:PYTHONHASHSEED = (Get-Content experiments/20261001-generalization-probe-pilot/SEED).Trim()
     uv run python scripts/generalization_probe_driver.py --stage pilot
+
+    export PYTHONUTF8=1 PYTHONHASHSEED="$(cat experiments/20261001-generalization-probe-pilot/SEED)"
     uv run python scripts/generalization_probe_driver.py --stage main
 """
 
@@ -163,10 +184,12 @@ if __name__ == "__main__":
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import importlib.abc
 import importlib.machinery
 import importlib.util
+import io
 import json
 import pathlib
 import subprocess
@@ -946,19 +969,61 @@ def pinned_sha256(stage_name: str) -> dict[str, str | None]:
 
 
 def _run_manifest(stage_name: str) -> tuple[int, str]:
-    """凍結 manifest の照合 (run.sh と同じ script・同じ環境変数) を呼ぶ。返り値 = (exit code, stdout)."""
-    seed = SEED_PATH.read_text(encoding="utf-8").strip()
-    env = dict(os.environ, PYTHONUTF8="1", PYTHONHASHSEED=seed)
-    proc = subprocess.run(  # noqa: S603
-        [sys.executable, man.SELF, "--verify", "--stage", stage_name],
-        cwd=str(_REPO_ROOT),
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-        env=env,
-        check=False,
-    )
-    return proc.returncode, proc.stdout or ""
+    """凍結 manifest の照合を、run.sh と同じ main・同じ引数で、この process の中で呼ぶ。返り値 = (exit code, 出力).
+
+    子プロセスにしない (Codex 4 回目 HIGH-1、decisions DF-5): 子には門も ``_PinnedFinder`` も無く、未追跡の
+    ``scripts/__init__.py`` 等が実行されても照合の最後の行は変わらない。この process の中なら、照合の結論を出すコードは
+    ``executed_problems`` が同定したコード (固定ファイルの bytes)。run.sh と同じ hash seed・UTF-8 mode は
+    ``interpreter_problems`` が起動の前提にする。例外 (``SystemExit`` を含む) は exit 1 と、その型と文の行に畳む
+    (起動・公開のどちらでも拒否になる)。
+    """
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out):
+            code = man.main(["--verify", "--stage", stage_name])
+    except (Exception, SystemExit) as exc:  # noqa: BLE001 — 照合が走りきらなければ不合格
+        return (
+            1,
+            f"{out.getvalue()}manifest check raised: {type(exc).__name__}: {exc}\n",
+        )
+    return code, out.getvalue()
+
+
+def interpreter_problems(
+    seed_path: pathlib.Path | None = None,
+    environ: Mapping[str, str] | None = None,
+    flags: object = None,
+) -> list[str]:
+    """run.sh と同じ interpreter の設定で起動したか: ``PYTHONHASHSEED`` = SEED・UTF-8 mode (decisions DF-5).
+
+    process の中で呼ぶ manifest の照合 (``_run_manifest``) を、run.sh の照合と同じ設定で走らせる。``-E``・``-I`` の
+    起動では Python が ``PYTHONHASHSEED`` を読まない (``os.environ`` には残る) ので拒否する (code-reviewer MEDIUM-3)。
+    既定は ``SEED_PATH``・``os.environ``・``sys.flags`` (test は注入する)。
+    """
+    env = os.environ if environ is None else environ
+    fl = sys.flags if flags is None else flags
+    mode = getattr(fl, "utf8_mode", 0)
+    problems: list[str] = []
+    if getattr(fl, "ignore_environment", 0):
+        problems.append(
+            "not launched like run.sh: -E/-I ignores PYTHONHASHSEED and PYTHONPATH"
+        )
+    try:
+        seed = (
+            (SEED_PATH if seed_path is None else seed_path)
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+    except OSError as exc:
+        problems.append(f"SEED unreadable: {exc}")
+    else:
+        if env.get("PYTHONHASHSEED") != seed:
+            problems.append(
+                f"not launched like run.sh: PYTHONHASHSEED must be the SEED ({seed})"
+            )
+    if mode != 1:
+        problems.append("not launched like run.sh: PYTHONUTF8 must be 1")
+    return problems
 
 
 def manifest_problems(stage_name: str) -> list[str]:
@@ -999,7 +1064,7 @@ def gate_problems(gate_path: pathlib.Path) -> list[str]:
 
 
 def launch_problems(stage_name: str) -> list[str]:
-    """実走の前提: driver が certified・固定ファイルが HEAD と一致・その段の manifest が OK (本走は gate も)."""
+    """実走の前提: driver が certified・固定ファイルが HEAD と一致・run.sh と同じ設定・manifest が OK (本走は gate も)."""
     problems = certification_problems(DRIVER_CERT)
     if _sha256(_DRIVER_PATH) != _DRIVER_SHA:
         problems.append("the driver on disk differs from the running driver")
@@ -1009,6 +1074,7 @@ def launch_problems(stage_name: str) -> list[str]:
             problems.append(f"not tracked by git: {rel}")
     if _git("diff", "--quiet", "HEAD", "--", *files) is None:
         problems.append("pinned files differ from HEAD (or git unavailable)")
+    problems.extend(interpreter_problems())
     problems.extend(manifest_problems(stage_name))
     if stage_name == STAGE_MAIN:
         problems.extend(gate_problems(GATE_PATH))
@@ -1028,8 +1094,9 @@ def _module_locations(module: object) -> list[str]:
 def outside_problems(modules: Mapping[str, object], roots: Sequence[str]) -> list[str]:
     """``__main__`` と ``scripts.*`` 以外のモジュールが、環境の中か ``scripts`` の名前空間か (Codex 3 回目 MEDIUM-2).
 
-    門より前に取り込まれたもの (site・sitecustomize・PYTHONPATH) も捕まえる。``scripts`` は ``__file__`` が無く、
-    探索場所が ``root/scripts`` だけの名前空間でなければならない (``__init__.py`` を実行していない)。
+    門より前に取り込まれ、``sys.modules`` に残っているものも捕まえる (import に失敗して残らないものは
+    ``startup_problems`` が所在で見る)。``scripts`` は ``__file__`` が無く、探索場所が ``root/scripts`` だけの名前空間で
+    なければならない (``__init__.py`` を実行していない)。
     """
     problems: list[str] = []
     namespace = [_norm(str(_REPO_ROOT / "scripts"))]
@@ -1053,19 +1120,87 @@ def outside_problems(modules: Mapping[str, object], roots: Sequence[str]) -> lis
     return problems
 
 
+# site が起動時に (門より前に) 実行する customization の module 名
+_STARTUP_MODULES: Final[tuple[str, ...]] = ("sitecustomize", "usercustomize")
+
+
+def _user_site(site: object = None) -> str | None:
+    """有効な user site の dir (site が無効にしていれば None).
+
+    ``site`` の既定は ``sys.modules`` の site (import しない: ``-S`` の起動で site を走らせない)。
+    """
+    found_site = sys.modules.get("site") if site is None else site
+    if not getattr(found_site, "ENABLE_USER_SITE", False):
+        return None
+    get = getattr(found_site, "getusersitepackages", None)
+    found = get() if callable(get) else None
+    return found if isinstance(found, str) else None
+
+
+def startup_problems(
+    paths: Sequence[object],
+    roots: Sequence[str],
+    user_site: str | None,
+    pythonpath: str | None = None,
+) -> list[str]:
+    """起動時に site が実行しうる、環境の外のコード (Codex 4 回目 HIGH-2・code-reviewer HIGH-2).
+
+    import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず所在で見る:
+
+    * ``sitecustomize``・``usercustomize`` を ``paths`` (``sys.path``) の **各** entry で探し (import しない・門を通らない)、
+      所在が環境の外なら拒否する (環境の中のものが前にあって実行されなかった外のものも拒否する = 安全側)。
+    * ``PYTHONPATH`` (``pythonpath``、``-E``/``-I`` のときは None) の entry が環境の外なら拒否する。site が処理する
+      ``.pth`` の import 行 (venv の ``_virtualenv.pth`` の ``import _virtualenv`` 等) は、site-packages より前にある
+      PYTHONPATH の同名の module を、名前に依らず実行しうる。空の entry は cwd。
+    * user site が有効で環境の外なら、その ``.pth``。
+
+    保証の外: 環境の ``.pth`` が足す環境の外の path (editable install の ``src`` 等) が、それより後に処理される ``.pth`` の
+    import 行を横取りする経路 (今の venv は ``_virtualenv.pth`` → ``erre_sandbox.pth`` の順で、該当する import 行が無い)。
+    """
+    entries = [e for e in paths if isinstance(e, str)]
+    problems: list[str] = []
+    for entry in pythonpath.split(os.pathsep) if pythonpath else ():
+        if not _in_environment(entry or os.getcwd(), roots):
+            problems.append(
+                f"startup code outside the environment: PYTHONPATH ({entry or '.'})"
+            )
+    for name in _STARTUP_MODULES:
+        specs = [importlib.machinery.PathFinder.find_spec(name, [e]) for e in entries]
+        outside = [
+            loc
+            for spec in specs
+            for loc in _spec_locations(spec)
+            if not _in_environment(loc, roots)
+        ]
+        problems += [  # 名前ごとに 1 件
+            f"startup code outside the environment: {name} ({loc})"
+            for loc in outside[:1]
+        ]
+    if user_site is not None and not _in_environment(user_site, roots):
+        site_dir = pathlib.Path(user_site)
+        pth = sorted(site_dir.glob("*.pth")) if site_dir.is_dir() else []
+        if pth:
+            problems.append(f"startup code outside the environment: {pth[0]}")
+    return problems
+
+
 def executed_problems(
     stage_name: str,
     pinned_start: Mapping[str, str | None],
     modules: Mapping[str, object] | None = None,
     roots: Sequence[str] | None = None,
+    paths: Sequence[object] | None = None,
+    environ: Mapping[str, str] | None = None,
 ) -> list[str]:
     """実行中の repo のコードが、起動の検査の前のディスクの bytes をコンパイルしたもの (Codex 再 review HIGH-1).
 
     driver: 実行中の code object が起動時に読んだ bytes のコンパイル結果で、その bytes が ``pinned_start`` と同じ。
     ``scripts.*`` のモジュール: ``_PinnedFinder`` が 1 回だけ読んだ bytes から実行し、その bytes が固定ファイルで
     ``pinned_start`` と同じ。その他のモジュール: 環境の中 (``outside_problems``、Codex 3 回目 MEDIUM-2)。
-    ``main`` が起動の検査の **後** に呼ぶ (certification の検査が import する driver の harness も含める)。
-    ``modules`` の既定は ``sys.modules``、``roots`` の既定は ``_environment_roots()``。
+    起動時に site が実行しうるコード (customization・PYTHONPATH・user site): 環境の中 (``startup_problems``、Codex 4 回目 HIGH-2)。
+    ``main`` が起動の検査の **後** に呼ぶ (certification の検査と process の中の manifest の照合が import するものも含める)。
+    ``modules`` の既定は ``sys.modules``、``roots`` の既定は ``_environment_roots()``、``paths`` の既定は ``sys.path``、
+    ``environ`` の既定は ``os.environ`` (``PYTHONPATH`` を読む。``-E``/``-I`` の起動では Python が読まないので見ない)。
     """
     mods = sys.modules if modules is None else modules
     problems: list[str] = []
@@ -1089,6 +1224,14 @@ def executed_problems(
         elif sha != pinned_start.get(rel):
             problems.append(f"run bytes differ from the pinned file at start-up: {rel}")
     problems += outside_problems(mods, _environment_roots() if roots is None else roots)
+    env = os.environ if environ is None else environ
+    pythonpath = None if sys.flags.ignore_environment else env.get("PYTHONPATH")
+    problems += startup_problems(
+        sys.path if paths is None else paths,
+        _environment_roots() if roots is None else roots,
+        _user_site(),
+        pythonpath,
+    )
     return problems
 
 

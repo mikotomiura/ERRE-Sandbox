@@ -93,3 +93,30 @@
     harness が変わったので回し直した。2 回目: **190 / 190 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と
     harness が変わっていない (約 78 分)。`manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は
     `MANIFEST OK (stage pilot)` のまま。
+- Codex の 4 回目の review (2026-10-03、3 回目の反映の差分、Verdict Revise・HIGH 2・MEDIUM 2・LOW 2) の反映の後に回し直した (2026-10-03)。
+  設計と採否は `.steering/20261003-generalization-probe-driver-fourth-review/` (ローカル)。
+  - manifest の照合を driver の process の中で行う: 子プロセス (門も固定ファイルの loader も無い) では、未追跡の `scripts/__init__.py` 等が
+    実行されても照合の最後の行が変わらず、driver が受理していた。今は封印済みの manifest の `main` を run.sh と同じ引数で、門の下で呼ぶ。
+  - **driver の起動の command が変わった**: run.sh と同じ `PYTHONHASHSEED` (= `SEED`) と `PYTHONUTF8=1` で起動する (違えば何も書かずに
+    起動を拒否する)。PowerShell では
+    `$env:PYTHONUTF8 = "1"; $env:PYTHONHASHSEED = (Get-Content experiments/20261001-generalization-probe-pilot/SEED).Trim()` の後に
+    `uv run python scripts/generalization_probe_driver.py --stage pilot`。
+  - `-E`・`-I` の起動は拒否する (Python が `PYTHONHASHSEED`・`PYTHONPATH` を読まないのに、`os.environ` には値が残るため)。
+  - 起動時に site が実行しうるコード (`sitecustomize`・`usercustomize`・`PYTHONPATH` の entry・user site の `.pth`) は、実行されたか
+    (import に失敗すると `sys.modules` に残らない) を問わず、所在が環境の外なら起動を拒否する。`PYTHONPATH` は名前に依らず見る
+    (venv の `_virtualenv.pth` の `import _virtualenv` は、PYTHONPATH の同名の module を site の時点で実行しうる)。
+    Debian・Ubuntu の system Python を base にした venv では、標準ライブラリの sitecustomize が `/etc` への link なので起動を拒否されうる
+    (安全側。uv が入れた Python では起きない)。
+  - 保証の範囲は driver の process。凍結 `run.sh` の判定の process (manifest の照合・機械判定・scorer) は門を持たず、封印済みの module が
+    repo root を `sys.path` の先頭に入れるので、**run.sh の前に次を確かめる**:
+    `git ls-files --others -- ':(glob)*.py' ':(glob)*/__init__.py' ':(glob)*.pyd' ':(glob)*.so' ':(glob)scripts/*.py'
+    ':(glob)scripts/*/__init__.py' ':(glob)scripts/*.pyd' ':(glob)scripts/*.so'` が何も出さないこと (未追跡と ignored の両方を出す。
+    `__init__.py` の無い dir は通常の module に優先しないので対象外)、`PYTHONPATH` が空であること。
+  - 変異の判定: pytest が test の失敗 (exit 1) で最後まで走った run (session の終わりの記録がちょうど 1 つ) の記録だけを証拠に数える
+    (それ以外は ABNORMAL_EXIT)。各 run に空の bytecode の置き場所を渡し書き込みも止める (前の変異の pyc で走らない。1 run 約 +10%)。
+    `PYTEST_ADDOPTS`・`PYTEST_PLUGINS` は test の run に渡さない。証拠の要約は、実の tmp・home・ユーザー名を先に消す。
+  - 変異 205 (process の中の照合・起動の前提・起動前の customization・境界条件の 15 件を足し、子プロセスの 2 件を置き換えた) と meta-test 3 件。
+    1 回目: **205 / 205 KILLED**・meta-test 3 件成立 (約 100 分)。その後の code-reviewer・security-checker の反映 (PYTHONPATH の影・`-E`/`-I` の
+    起動・SystemExit を畳む・user site・証拠の要約の消しすぎと ubuntu の `/tmp`) で driver・harness・test が変わったので、変異 5 件を足して回し直した。
+    2 回目: 変異 210 と meta-test 3 件で **210 / 210 KILLED**・meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が
+    変わっていない (約 96 分)。`manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
