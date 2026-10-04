@@ -1,12 +1,12 @@
 {
   "target_sha256": {
-    "scripts/generalization_probe_driver.py": "61a2fc59ea0db19d93aa29e29fffcc98d95ccc0994d94693f86dc32c08c9d283"
+    "scripts/generalization_probe_driver.py": "33f626c63f0ca1598ea8b6d00625ed7b6e81ea61d197fddb1dc13bae6989ffd7"
   },
   "tests_sha256": {
-    "tests/test_generalization_probe/test_driver.py": "c4e37b6b521f85d661e7e3fd02c82549f57af52f993316d2c3436ae12d106829"
+    "tests/test_generalization_probe/test_driver.py": "c01e5c413fb36e2bf66511206490eecbcaed8a7ec2164f01a0fb831bc7685ba3"
   },
   "harness_sha256": {
-    "scripts/generalization_probe_driver_mutation_check.py": "e0e72d2ed637eb68cb71a387410698fbd14eba99ce71f885abee07ebc6affb6e"
+    "scripts/generalization_probe_driver_mutation_check.py": "effb3adc776138a72f6ed69cfb168de05363911243a19ef52c4364ba58f1d05e"
   },
   "meta_test": [
     {
@@ -212,7 +212,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert {('KNOW', 0, ...k01', 2), ...} == {('KNOW', 0, ...k01', 2), ...}\n  \n  Extra items in the left set:\n  ('M_B_rot', 4, 'q13', 0)\n  ('M_A', 0, 'q01', 0)\n  ('M_B_rot', 1, 'q16', 0)\n  ('M_A_rot', 5, 'q19', 0)\n  ('M_A_rot', 3, 'q09', 0)...\n  \n  ...Full output truncated (1149 lines hidden), use '-vv'"
+        "text": "assert {('KNOW', 0, ...k01', 2), ...} == {('KNOW', 0, ...k01', 2), ...}\n  \n  Extra items in the left set:\n  ('M_A_rot', 4, 'q04', 0)\n  ('M_A_rot', 3, 'q22', 0)\n  ('M_B', 0, 'q01', 0)\n  ('M_B_rot', 3, 'q08', 0)\n  ('M_A', 5, 'q16', 0)...\n  \n  ...Full output truncated (1149 lines hidden), use '-vv' to "
       }
     },
     {
@@ -1129,7 +1129,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'schedule: meta: observed environment differs from the pilot' in []\n +  where [] = <function schedule_violations at 0x?>(Stage(name='main', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6323/test_schedule_ch..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f645eb2c094fbbfd85f0f"
+        "text": "assert 'schedule: meta: observed environment differs from the pilot' in []\n +  where [] = <function schedule_violations at 0x?>(Stage(name='main', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6604/test_schedule_ch..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f645eb2c094fbbfd85f0f"
       }
     },
     {
@@ -2141,7 +2141,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6356/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6637/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2287,7 +2287,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6362/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6643/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2424,7 +2424,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6367/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6648/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2455,7 +2455,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6368/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6649/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2599,7 +2599,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6371/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6652/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2663,7 +2663,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6373/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6654/test_unresolved_transport_fail0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2685,7 +2685,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6374/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6655/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2709,7 +2709,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6375/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6656/test_read_back_failure_blocks_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2748,7 +2748,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6376/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6657/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -2833,7 +2833,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'driver_sha256' not in {'anomalies': [], 'driver_sha256': '2d327d96273360b44b6c4072528cea717aef126974ee22d905dc27b4b6736182', 'error': None, 'exit_reason': 'transport_failure', ...}"
+        "text": "assert 'driver_sha256' not in {'anomalies': [], 'driver_sha256': '5206ae1815e256f3ea6d36373d3525df13919acdfc16c0f676ead659c4556698', 'error': None, 'exit_reason': 'transport_failure', ...}"
       }
     },
     {
@@ -3018,7 +3018,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'records do not cover the frozen grid' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6386/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    whe"
+        "text": "assert 'records do not cover the frozen grid' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6667/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    whe"
       }
     },
     {
@@ -3040,7 +3040,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'a transport failure is recorded' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6387/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    where <f"
+        "text": "assert 'a transport failure is recorded' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6668/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    where <f"
       }
     },
     {
@@ -3062,7 +3062,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'seed differs from the pilot schedule' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6388/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    whe"
+        "text": "assert 'seed differs from the pilot schedule' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6669/test_publicatio...parse at 0x?>, structure=<function structure_violations at 0x?>, reference_observed=None))\n +    whe"
       }
     },
     {
@@ -3084,7 +3084,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'meta: observed environment differs from the pilot' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='main', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6389/test_publication..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f645eb2c094fbbfd85f0f13a873ed9"
+        "text": "assert 'meta: observed environment differs from the pilot' in []\n +  where [] = <function publication_problems at 0x?>(Stage(name='main', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6670/test_publication..., 'ollama_version': '0.0-mock', 'template_sha256': 'db498f645eb2c094fbbfd85f0f13a873ed9"
       }
     },
     {
@@ -3156,7 +3156,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert 'f37383fa01c5...83e8819bdef14' == '97ddebe4612c...10435b58cf109'\n  \n  - 97ddebe4612ce423fa435108b7dce42a2df5532b8a660ffea5110435b58cf109\n  + f37383fa01c51cdc1d2e0f2a6866acaaa5bac18e62cda235dab83e8819bdef14"
+        "text": "assert 'f37383fa01c5...83e8819bdef14' == 'c1ff9cf9d4c2...f1f171019a4b0'\n  \n  - c1ff9cf9d4c21d3aab73723a915d5540b3d7f4c5757da6b3c04f1f171019a4b0\n  + f37383fa01c51cdc1d2e0f2a6866acaaa5bac18e62cda235dab83e8819bdef14"
       }
     },
     {
@@ -3250,7 +3250,7 @@
         "param": "meta",
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6396/test_swapped_files_are_not_pub1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6677/test_swapped_files_are_not_pub1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3431,7 +3431,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6404/test_files_changed_after_the_r0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6685/test_files_changed_after_the_r0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3453,7 +3453,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6405/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6686/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3476,7 +3476,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6406/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6687/test_manifest_failure_at_publi0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3501,7 +3501,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6407/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6688/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3526,7 +3526,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6408/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6689/test_pinned_file_change_during0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3548,7 +3548,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6409/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6690/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3570,7 +3570,7 @@
         "param": "digest",
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6410/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6691/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3595,7 +3595,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6411/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6692/test_unexpected_response_model0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3621,7 +3621,7 @@
         "param": "digest",
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6412/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6693/test_observed_change_during_th0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3687,7 +3687,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6415/test_final_observed_failure_ab0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6696/test_final_observed_failure_ab0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3710,7 +3710,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6416/test_pinned_change_during_the_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6697/test_pinned_change_during_the_0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3732,7 +3732,7 @@
         "param": "launch-False",
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert True is False\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6417/test_run_compares_with_the_pin0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "assert True is False\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6698/test_run_compares_with_the_pin0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3754,7 +3754,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6418/test_driver_swap_is_detected0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6699/test_driver_swap_is_detected0/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3776,7 +3776,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6419/test_pinned_change_during_the_1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "records.jsonl was published\nassert not True\n +  where True = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6700/test_pinned_change_during_the_1/run') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3943,7 +3943,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6424/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
+        "text": "the complete run was not published\nassert False\n +  where False = exists()\n +    where exists = (WindowsPath('<tmp>/pytest-of-<user>/pytest-6705/root0/experiments/20261001-generalization-probe-pilot/results/pilot') / 'records.jsonl').exists\n +      where 'records.jsonl' = drv.RECORDS_NAME"
       }
     },
     {
@@ -3997,7 +3997,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [(Stage(name=... 'transport')] == []\n  \n  Left contains one more item: (Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6426/test_main_refu...00195CF8963E0>, structure=<function structure_violations at 0x?>, reference_observed=None), 'transport')\n  Use -v to get more di"
+        "text": "assert [(Stage(name=... 'transport')] == []\n  \n  Left contains one more item: (Stage(name='pilot', run_dir=WindowsPath('<tmp>/pytest-of-<user>/pytest-6707/test_main_refu...?>, structure=<function structure_violations at 0x?>, reference_observed=None), 'transport')\n  Use -v to get more diff"
       }
     },
     {
@@ -4332,7 +4332,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['driver cert...0\\\\cert.json']\n  \n  Right contains one more item: 'driver certification unreadable: <tmp>\\\\pytest-of-<user>\\\\pytest-6441\\\\test_certification_problems_us0\\\\cert.json'\n  Use -v to get more diff"
+        "text": "assert [] == ['driver cert...0\\\\cert.json']\n  \n  Right contains one more item: 'driver certification unreadable: <tmp>\\\\pytest-of-<user>\\\\pytest-6722\\\\test_certification_problems_us0\\\\cert.json'\n  Use -v to get more diff"
       }
     },
     {
@@ -4442,7 +4442,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert {'experiments...st_driver.py'} <= {'experiments...on.json', ...}\n  \n  Extra items in the left set:\n  'experiments/20261001-generalization-probe-pilot/results/driver_certification.json'\n  'scripts/generalization_probe_driver_mutation_check.py'\n  'tests/test_generalization_probe/test_driver.py'"
+        "text": "assert {'experiments...st_driver.py'} <= {'experiments...on.json', ...}\n  \n  Extra items in the left set:\n  'scripts/generalization_probe_driver_mutation_check.py'\n  'tests/test_generalization_probe/test_driver.py'\n  'experiments/20261001-generalization-probe-pilot/results/driver_certification.json'"
       }
     },
     {
@@ -4464,7 +4464,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert {'experiments...ce.json', ...} <= {'experiments...le.json', ...}\n  \n  Extra items in the left set:\n  'experiments/20261001-generalization-probe-pilot/manifest_main.json'\n  'experiments/20261001-generalization-probe-pilot/results/pilot/meta.json'\n  'experiments/20261001-generalization-probe-pi"
+        "text": "assert {'experiments...ce.json', ...} <= {'experiments...le.json', ...}\n  \n  Extra items in the left set:\n  'experiments/20261001-generalization-probe-pilot/manifest_main.json'\n  'experiments/20261001-generalization-probe-pilot/results/pilot/provenance.json'\n  'experiments/20261001-generalization-pr"
       }
     },
     {
@@ -4846,7 +4846,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "[driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6464\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-generalization-probe-"
+        "text": "[driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6745\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-generalization-probe-"
       }
     },
     {
@@ -4939,7 +4939,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert ModuleSpec(name='other_pkg.mod_a', loader=<scripts.generalization_probe_driver._PinnedLoader object at 0x?...\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-6468\\\\test_pinned_finder_runs_the_by0\\\\gp_driver_pinned_pkg\\\\mod_a.py') is None\n +  where ModuleSpec(name='other_pkg.mod_a', loader=<sc"
+        "text": "assert ModuleSpec(name='other_pkg.mod_a', loader=<scripts.generalization_probe_driver._PinnedLoader object at 0x?...\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-<user>\\\\pytest-6749\\\\test_pinned_finder_runs_the_by0\\\\gp_driver_pinned_pkg\\\\mod_a.py') is None\n +  where ModuleSpec(name='other_pkg.mod_a', loader=<sc"
       }
     },
     {
@@ -4967,7 +4967,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "Traceback (most recent call last):\n    File \"<tmp>\\pytest-of-<user>\\pytest-6469\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 292, in <module>\n      from scripts import generalization_probe_battery as bat\n    File \"<tmp>\\pytest-of-<user>\\pytest-6469\\test_command_line_"
+        "text": "Traceback (most recent call last):\n    File \"<tmp>\\pytest-of-<user>\\pytest-6750\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 298, in <module>\n      from scripts import generalization_probe_battery as bat\n    File \"<tmp>\\pytest-of-<user>\\pytest-6750\\test_command_line_"
       }
     },
     {
@@ -5104,7 +5104,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "[driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6475\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-generalization-probe-"
+        "text": "[driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6756\\test_command_line_launch_refus0\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-generalization-probe-"
       }
     },
     {
@@ -5174,7 +5174,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "UNPINNED CODE RAN\n  [driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6478\\test_command_line_launch_refus1\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-g"
+        "text": "UNPINNED CODE RAN\n  [driver] refuse to launch: driver certification unreadable: <tmp>\\pytest-of-<user>\\pytest-6759\\test_command_line_launch_refus1\\experiments\\20261001-generalization-probe-pilot\\results\\driver_certification.json\n  [driver] refuse to launch: not tracked by git: experiments/20261001-g"
       }
     },
     {
@@ -5290,7 +5290,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "Traceback (most recent call last):\n    File \"<tmp>\\pytest-of-<user>\\pytest-6482\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 185, in <module>\n      import argparse\n    File \"<frozen importlib._bootstrap>\", line 1176, in _find_and_load\n    File \"<frozen importlib._boo"
+        "text": "Traceback (most recent call last):\n    File \"<tmp>\\pytest-of-<user>\\pytest-6763\\test_command_line_launch_runs_0\\scripts\\generalization_probe_driver.py\", line 191, in <module>\n      import argparse\n    File \"<frozen importlib._bootstrap>\", line 1176, in _find_and_load\n    File \"<frozen importlib._boo"
       }
     },
     {
@@ -5312,7 +5312,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('<tmp>\\\\pytest-of-<user>\\\\pytest-6483\\\\test_in_environment_compares_w0\\\\env2\\\\m.py', ('<tmp>\\\\pytest-of-<user>\\\\pytest-6483\\\\test_in_environment_compares_w0\\\\env',))\n +    where <function _in_environment at 0x?> = drv._in_environment"
+        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('<tmp>\\\\pytest-of-<user>\\\\pytest-6764\\\\test_in_environment_compares_w0\\\\env2\\\\m.py', ('<tmp>\\\\pytest-of-<user>\\\\pytest-6764\\\\test_in_environment_compares_w0\\\\env',))\n +    where <function _in_environment at 0x?> = drv._in_environment"
       }
     },
     {
@@ -5390,7 +5390,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<tmp>\\\\pytest-of-<user>\\\\pytest-6486\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<tmp>\\\\pytest-of-<user>\\\\pytest-6767\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5534,7 +5534,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<tmp>\\\\pytest-of-<user>\\\\pytest-6492\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['run outside...\\by_spec.py)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_spec (<tmp>\\\\pytest-of-<user>\\\\pytest-6773\\\\test_outside_problems_require_0\\\\by_spec.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5556,7 +5556,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['run outside..._0\\\\by_path)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_path (<tmp>\\\\pytest-of-<user>\\\\pytest-6493\\\\test_outside_problems_require_0\\\\by_path)'\n  Use -v to get more diff"
+        "text": "assert [] == ['run outside..._0\\\\by_path)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: by_path (<tmp>\\\\pytest-of-<user>\\\\pytest-6774\\\\test_outside_problems_require_0\\\\by_path)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5607,7 +5607,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6495\\\\test_executed_problems_check_d0\\\\site\\\\sitecustomize.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6776\\\\test_executed_problems_check_d0\\\\site\\\\sitecustomize.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5633,7 +5633,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6496\\\\test_executed_problems_check_d0\\\\site\\\\sitecustomize.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6777\\\\test_executed_problems_check_d0\\\\site\\\\sitecustomize.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5655,7 +5655,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: usercustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6497\\\\test_startup_problems_find_cus0\\\\user\\\\usercustomize.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: usercustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6778\\\\test_startup_problems_find_cus0\\\\user\\\\usercustomize.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5677,7 +5677,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6498\\\\test_startup_problems_find_cus0\\\\out\\\\sitecustomize.py)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...ustomize.py)']\n  \n  Right contains one more item: 'startup code outside the environment: sitecustomize (<tmp>\\\\pytest-of-<user>\\\\pytest-6779\\\\test_startup_problems_find_cus0\\\\out\\\\sitecustomize.py)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5692,6 +5692,7 @@
       },
       "why": "site が起動時に実行する user site の .pth を見逃す",
       "failed": [
+        "test_executed_problems_check_driver_modules_and_pins",
         "test_startup_problems_find_customization_outside_the_environment"
       ],
       "witnessed_by": {
@@ -5699,7 +5700,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod..._site\\\\a.pth']\n  \n  Right contains one more item: 'startup code outside the environment: <tmp>\\\\pytest-of-<user>\\\\pytest-6499\\\\test_startup_problems_find_cus0\\\\user_site\\\\a.pth'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod..._site\\\\a.pth']\n  \n  Right contains one more item: 'startup code outside the environment: <tmp>\\\\pytest-of-<user>\\\\pytest-6780\\\\test_startup_problems_find_cus0\\\\user_site\\\\a.pth'\n  Use -v to get more diff"
       }
     },
     {
@@ -5721,7 +5722,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['run outside...re_0\\\\mixed)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: mixed (<tmp>\\\\pytest-of-<user>\\\\pytest-6500\\\\test_outside_problems_require_0\\\\mixed)'\n  Use -v to get more diff"
+        "text": "assert [] == ['run outside...re_0\\\\mixed)']\n  \n  Right contains one more item: 'run outside the pinned files and the environment: mixed (<tmp>\\\\pytest-of-<user>\\\\pytest-6781\\\\test_outside_problems_require_0\\\\mixed)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5743,7 +5744,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('<tmp>\\\\pytest-of-<user>\\\\pytest-6501\\\\test_in_environment_resolves_l0\\\\env\\\\to_out\\\\m.py', ('<tmp>\\\\pytest-of-<user>\\\\pytest-6501\\\\test_in_environment_resolves_l0\\\\env',))\n +    where <function _in_environment at 0x?> = drv._in_envi"
+        "text": "assert not True\n +  where True = <function _in_environment at 0x?>('<tmp>\\\\pytest-of-<user>\\\\pytest-6782\\\\test_in_environment_resolves_l0\\\\env\\\\to_out\\\\m.py', ('<tmp>\\\\pytest-of-<user>\\\\pytest-6782\\\\test_in_environment_resolves_l0\\\\env',))\n +    where <function _in_environment at 0x?> = drv._in_envi"
       }
     },
     {
@@ -5790,7 +5791,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert ['<home>\\\\prefix'] == ['<home>\\\\prefix']\n  \n  At index 2 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6503\\\\test_environment_roots_count_a0\\\\prefix' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6503\\\\test_environment_roots_count_a0\\\\exec_prefix'\n  Right contains one more item: '<tmp>\\\\pytest-of-<user>\\\\pyte"
+        "text": "assert ['<home>\\\\prefix'] == ['<home>\\\\prefix']\n  \n  At index 2 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6784\\\\test_environment_roots_count_a0\\\\prefix' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6784\\\\test_environment_roots_count_a0\\\\exec_prefix'\n  Right contains one more item: '<tmp>\\\\pytest-of-<user>\\\\pyte"
       }
     },
     {
@@ -5812,7 +5813,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert ['<home>\\\\prefix'] == ['<home>\\\\prefix']\n  \n  At index 0 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6504\\\\test_environment_roots_count_a0\\\\base_prefix' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6504\\\\test_environment_roots_count_a0\\\\base_exec_prefix'\n  Right contains one more item: '<tmp>\\\\pytest-of-<u"
+        "text": "assert ['<home>\\\\prefix'] == ['<home>\\\\prefix']\n  \n  At index 0 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6785\\\\test_environment_roots_count_a0\\\\base_prefix' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6785\\\\test_environment_roots_count_a0\\\\base_exec_prefix'\n  Right contains one more item: '<tmp>\\\\pytest-of-<u"
       }
     },
     {
@@ -5837,7 +5838,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...nd_cus0\\\\pp)']\n  \n  Right contains one more item: 'startup code outside the environment: PYTHONPATH (<tmp>\\\\pytest-of-<user>\\\\pytest-6505\\\\test_startup_problems_find_cus0\\\\pp)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...nd_cus0\\\\pp)']\n  \n  Right contains one more item: 'startup code outside the environment: PYTHONPATH (<tmp>\\\\pytest-of-<user>\\\\pytest-6786\\\\test_startup_problems_find_cus0\\\\pp)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5861,7 +5862,7 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert [] == ['startup cod...heck_d0\\\\pp)']\n  \n  Right contains one more item: 'startup code outside the environment: PYTHONPATH (<tmp>\\\\pytest-of-<user>\\\\pytest-6506\\\\test_executed_problems_check_d0\\\\pp)'\n  Use -v to get more diff"
+        "text": "assert [] == ['startup cod...heck_d0\\\\pp)']\n  \n  Right contains one more item: 'startup code outside the environment: PYTHONPATH (<tmp>\\\\pytest-of-<user>\\\\pytest-6787\\\\test_executed_problems_check_d0\\\\pp)'\n  Use -v to get more diff"
       }
     },
     {
@@ -5883,7 +5884,296 @@
         "param": null,
         "when": "call",
         "type": "builtins.AssertionError",
-        "text": "assert '<tmp>\\\\pytest-of-<user>\\\\pytest-6507\\\\test_user_site_reads_the_site_0' is None\n +  where '<tmp>\\\\pytest-of-<user>\\\\pytest-6507\\\\test_user_site_reads_the_site_0' = <function _user_site at 0x?>(namespace(ENABLE_USER_SITE=False, getusersitepackages=<function test_user_site_reads_the_site_module"
+        "text": "assert '<tmp>\\\\pytest-of-<user>\\\\pytest-6788\\\\test_user_site_reads_the_site_0' is None\n +  where '<tmp>\\\\pytest-of-<user>\\\\pytest-6788\\\\test_user_site_reads_the_site_0' = <function _user_site at 0x?>(namespace(ENABLE_USER_SITE=False, getusersitepackages=<function test_user_site_reads_the_site_module"
+      }
+    },
+    {
+      "label": "s17 起動の検査が user site を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "site が有効にした環境の外の user site の .pth を見ずに起動する (Codex 5 回目 LOW-2)",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['startup cod..._site\\\\a.pth']\n  \n  Right contains one more item: 'startup code outside the environment: <tmp>\\\\pytest-of-<user>\\\\pytest-6789\\\\test_executed_problems_check_d0\\\\user_site\\\\a.pth'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k1  startup_problems がレジストリの entry を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_startup_problems_find_customization_outside_the_environment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath がレジストリから足した環境の外の dir の _virtualenv.py 等を、site の .pth が実行して失敗しても起動する",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins",
+        "test_startup_problems_find_customization_outside_the_environment"
+      ],
+      "witnessed_by": {
+        "function": "test_startup_problems_find_customization_outside_the_environment",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['startup cod...nd_cus0\\\\pp)']\n  \n  Right contains one more item: 'startup code outside the environment: registry (<tmp>\\\\pytest-of-<user>\\\\pytest-6790\\\\test_startup_problems_find_cus0\\\\pp)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k2  起動の検査がレジストリの entry を渡さない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "レジストリの検索パスを見ずに起動する",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['startup cod...eck_d0\\\\reg)']\n  \n  Right contains one more item: 'startup code outside the environment: registry (<tmp>\\\\pytest-of-<user>\\\\pytest-6791\\\\test_executed_problems_check_d0\\\\reg)'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k3  子キーの既定値を読まない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath が venv でも常に足す子キーの path を見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['<home>\\\\on'] == ['<home>\\\\c']\n  \n  At index 0 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6792\\\\test_registry_paths_follow_get0\\\\on' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6792\\\\test_registry_paths_follow_get0\\\\a'\n  Right contains 3 more items, first extra item: '<tmp>\\\\pytest-of-<user>\\\\pytest-679"
+      }
+    },
+    {
+      "label": "k4  キー自身の既定値を sys.path に無くても数える",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "stdlib が見つかって使われていない既定値 (python.org 版を入れた機械) で、正当な起動を止める",
+      "failed": [
+        "test_command_line_launch_does_not_run_a_scripts_initializer",
+        "test_command_line_launch_runs_repo_code_from_hashed_bytes",
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['<home>\\\\c', ...] == ['<home>\\\\c']\n  \n  At index 2 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6793\\\\test_registry_paths_follow_get0\\\\off' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6793\\\\test_registry_paths_follow_get0\\\\on'\n  Left contains 3 more items, first extra item: ''\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k5  キー自身の既定値を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "stdlib が見つからず getpath がキー自身の既定値を足した起動で、その path を見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['<home>\\\\c'] == ['<home>\\\\c']\n  \n  At index 2 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6794\\\\test_registry_paths_follow_get0\\\\c' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6794\\\\test_registry_paths_follow_get0\\\\on'\n  Right contains one more item: '<tmp>\\\\pytest-of-<user>\\\\pytest-6794\\\\test_registry_p"
+      }
+    },
+    {
+      "label": "k6  HKLM を見ない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath が HKLM から足す path を見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['<home>\\\\on'] == ['<home>\\\\c']\n  \n  Right contains one more item: '<tmp>\\\\pytest-of-<user>\\\\pytest-6795\\\\test_registry_paths_follow_get0\\\\c'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k7  読めない子キーで止まる",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "読めない子キーの後ろにある子キーの path を見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['<home>\\\\c'] == ['<home>\\\\c']\n  \n  At index 0 diff: '<tmp>\\\\pytest-of-<user>\\\\pytest-6796\\\\test_registry_paths_follow_get0\\\\on' != '<tmp>\\\\pytest-of-<user>\\\\pytest-6796\\\\test_registry_paths_follow_get0\\\\a'\n  Right contains 2 more items, first extra item: '<tmp>\\\\pytest-of-<user>\\\\pytest-6796"
+      }
+    },
+    {
+      "label": "k8  key の名前に winver を入れない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath が読む key (この interpreter の版) と違う key を読み、足された path を見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['<home>\\\\c']\n  \n  Right contains 4 more items, first extra item: '<tmp>\\\\pytest-of-<user>\\\\pytest-6797\\\\test_registry_paths_follow_get0\\\\a'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k9  既定で実のレジストリを読まない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "Windows の起動で winreg を読まず、レジストリの検索パスを見逃す",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ([], []) == (['<home>\\\\a'], [])\n  \n  At index 0 diff: [] != ['<tmp>\\\\pytest-of-<user>\\\\pytest-6798\\\\test_registry_paths_follow_get0\\\\a']\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k10 getpath と違う key を読む",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath が読む key と違う key を読み、足された path を黙って見逃す (code-reviewer MEDIUM)",
+      "failed": [
+        "test_registry_paths_follow_getpath"
+      ],
+      "witnessed_by": {
+        "function": "test_registry_paths_follow_getpath",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['<home>\\\\c']\n  \n  Right contains 4 more items, first extra item: '<tmp>\\\\pytest-of-<user>\\\\pytest-6799\\\\test_registry_paths_follow_get0\\\\a'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "k11 起動の検査が渡されたレジストリの entry を使わない",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "注入した entry を捨てて実のレジストリを読む (検査の入力を test が決められない)",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['startup cod...eck_d0\\\\reg)'] == ['startup cod...k_d0\\\\other)']\n  \n  At index 0 diff: 'startup code outside the environment: registry (<tmp>\\\\pytest-of-<user>\\\\pytest-6800\\\\test_executed_problems_check_d0\\\\reg)' != 'startup code outside the environment: registry (<tmp>\\\\pytest-of-<user>\\\\pyt"
+      }
+    },
+    {
+      "label": "k12 -E/-I の起動でもレジストリを読む",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "getpath がレジストリを読まない起動で、使われていない entry を数えて起動を誤って止める",
+      "failed": [
+        "test_executed_problems_check_driver_modules_and_pins"
+      ],
+      "witnessed_by": {
+        "function": "test_executed_problems_check_driver_modules_and_pins",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['startup cod...eck_d0\\\\reg)'] == []\n  \n  Left contains one more item: 'startup code outside the environment: registry (<tmp>\\\\pytest-of-<user>\\\\pytest-6801\\\\test_executed_problems_check_d0\\\\reg)'\n  Use -v to get more diff"
       }
     }
   ],

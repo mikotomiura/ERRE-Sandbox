@@ -10,15 +10,17 @@
 証拠は、pytest の出力の文字列でなく、harness 自身を pytest の plugin として読み込ませ (``-p``)、hook
 ``pytest_exception_interact`` が失敗ごとに書く記録 (関数名・parametrize の id・段・先頭が assert 文か・例外の chain の
 型と文とフレーム) で照合する (Codex 3 回目 MEDIUM-1・LOW-1。出力を正規表現で切る方式は、assert 行の 2 形・
-見出しの下線・id の中の ``] - `` で 3 回崩れた)。hook ``pytest_sessionfinish`` が session の終わりを 1 行書く。
+見出しの下線・id の中の ``] - `` で 3 回崩れた)。hook ``pytest_runtest_logfinish`` が走りきった item を数え、
+``pytest_sessionfinish`` が session の終わり (exitstatus・選ばれた item の数・走りきった数・打ち切りの印) を 1 行書く。
 各 run には空の bytecode の置き場所 (``PYTHONPYCACHEPREFIX``) を渡し、書き込みも止める (前の変異の pyc で走らない。
 Codex 4 回目 MEDIUM-1)。判定は 3 通りに分けて報告する:
 
 * 対照が落ちた: 無変異で test が緑でない → harness を止める (変異の判定をしない)。
 * 変異が捕まらなかった: SURVIVED (test が緑のまま)。
 * 変異は落ちたが理由が違う: WRONG_REASON (期待診断の記録に証拠が無い) / COLLECTION_ERROR / TIMEOUT /
-  ABNORMAL_EXIT (pytest が通常の失敗 = exit 1 で終わっていない・session の終わりの記録が無い。計測が途中で
-  壊れた run の記録を証拠に数えない、Codex 4 回目 MEDIUM-2) / NO_FAILURE_RECORD (exit 1 で終わったが失敗の記録が無い)。
+  ABNORMAL_EXIT (pytest が通常の失敗 = exit 1 で終わっていない・session の終わりの記録が無い・``-x``/``--maxfail`` で
+  打ち切った・選ばれた item の全てが走りきっていない。計測が途中で壊れた run の記録を証拠に数えない、Codex 4 回目
+  MEDIUM-2・5 回目 MEDIUM-1) / NO_FAILURE_RECORD (exit 1 で終わったが失敗の記録が無い)。
   KILLED に数えるのは、期待診断の記録に証拠があるものだけ (``status_of``・``witnessed``)。既定の証拠は、期待診断の
   test の本体 (call) が test の ``assert`` 文で落ちたこと。fixture の setup の ERROR・teardown・assert 以外の例外
   (NameError・TypeError・autouse の封鎖の ``raise AssertionError``) は数えない (Codex MEDIUM-4・code-reviewer MEDIUM-4・
@@ -255,6 +257,7 @@ _LINKS = "test_in_environment_resolves_links"
 # code-reviewer (/review-changes) の HIGH-2・LOW-7
 _LAUNCH_PTH_SHADOW = "test_command_line_launch_refuses_a_pythonpath_shadow"
 _USER_SITE = "test_user_site_reads_the_site_module"
+_REGISTRY = "test_registry_paths_follow_getpath"
 _NO_IMPORT_ERROR = "DID NOT RAISE <class 'ImportError'>"
 _NOT_RAISED_SCHEDULE = (
     "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>"
@@ -1975,6 +1978,100 @@ MUTANTS: tuple[Mutant, ...] = (
         (_USER_SITE,),
         "site が無効にした user site の .pth を、起動前に走りうるものとして数える (起動を誤って止める)",
     ),
+    _m(
+        "s17 起動の検査が user site を渡さない",
+        "        _user_site(),\n",
+        "        None,\n",
+        (_EXECUTED,),
+        "site が有効にした環境の外の user site の .pth を見ずに起動する (Codex 5 回目 LOW-2)",
+    ),
+    # ============================ レジストリの検索パス (Codex 5 回目 HIGH-1、decisions DG-4)
+    _m(
+        "k1  startup_problems がレジストリの entry を見ない",
+        "    for path in registry:\n",
+        "    for path in ():\n",
+        (_STARTUP,),
+        "getpath がレジストリから足した環境の外の dir の _virtualenv.py 等を、site の .pth が実行して失敗しても起動する",
+    ),
+    _m(
+        "k2  起動の検査がレジストリの entry を渡さない",
+        "        registry = [] if sys.flags.ignore_environment else _registry_paths(search)\n",
+        "        registry = []\n",
+        (_EXECUTED,),
+        "レジストリの検索パスを見ずに起動する",
+    ),
+    _m(
+        "k3  子キーの既定値を読まない",
+        '                    found += str(r.QueryValue(key, sub)).split(";")\n',
+        "                    found += []\n",
+        (_REGISTRY,),
+        "getpath が venv でも常に足す子キーの path を見逃す",
+    ),
+    _m(
+        "k4  キー自身の既定値を sys.path に無くても数える",
+        "            found += [e for e in own if e and _norm(e) in on_path]\n",
+        "            found += own\n",
+        (_REGISTRY,),
+        "stdlib が見つかって使われていない既定値 (python.org 版を入れた機械) で、正当な起動を止める",
+    ),
+    _m(
+        "k5  キー自身の既定値を見ない",
+        "            found += [e for e in own if e and _norm(e) in on_path]\n",
+        "            found += []\n",
+        (_REGISTRY,),
+        "stdlib が見つからず getpath がキー自身の既定値を足した起動で、その path を見逃す",
+    ),
+    _m(
+        "k6  HKLM を見ない",
+        "    for hive in (r.HKEY_CURRENT_USER, r.HKEY_LOCAL_MACHINE):\n",
+        "    for hive in (r.HKEY_CURRENT_USER,):\n",
+        (_REGISTRY,),
+        "getpath が HKLM から足す path を見逃す",
+    ),
+    _m(
+        "k7  読めない子キーで止まる",
+        "                except OSError:  # 読めない子キーは飛ばして次へ (上位集合)\n"
+        "                    continue\n",
+        "                except OSError:  # 読めない子キーは飛ばして次へ (上位集合)\n"
+        "                    break\n",
+        (_REGISTRY,),
+        "読めない子キーの後ろにある子キーの path を見逃す",
+    ),
+    _m(
+        "k8  key の名前に winver を入れない",
+        '    key_name = _REGISTRY_KEY.format(getattr(sys, "winver", ""))\n',
+        '    key_name = _REGISTRY_KEY.format("")\n',
+        (_REGISTRY,),
+        "getpath が読む key (この interpreter の版) と違う key を読み、足された path を見逃す",
+    ),
+    _m(
+        "k9  既定で実のレジストリを読まない",
+        '    if reg is None and sys.platform != "win32":\n',
+        "    if reg is None:\n",
+        (_REGISTRY,),
+        "Windows の起動で winreg を読まず、レジストリの検索パスを見逃す",
+    ),
+    _m(
+        "k10 getpath と違う key を読む",
+        '_REGISTRY_KEY: Final[str] = r"SOFTWARE\\Python\\PythonCore\\{}\\PythonPath"\n',
+        '_REGISTRY_KEY: Final[str] = r"SOFTWARE\\Python\\PythonCore\\{}\\PythonPaths"\n',
+        (_REGISTRY,),
+        "getpath が読む key と違う key を読み、足された path を黙って見逃す (code-reviewer MEDIUM)",
+    ),
+    _m(
+        "k11 起動の検査が渡されたレジストリの entry を使わない",
+        "    if registry is None:\n",
+        "    if True:\n",
+        (_EXECUTED,),
+        "注入した entry を捨てて実のレジストリを読む (検査の入力を test が決められない)",
+    ),
+    _m(
+        "k12 -E/-I の起動でもレジストリを読む",
+        "        registry = [] if sys.flags.ignore_environment else _registry_paths(search)\n",
+        "        registry = _registry_paths(search)\n",
+        (_EXECUTED,),
+        "getpath がレジストリを読まない起動で、使われていない entry を数えて起動を誤って止める",
+    ),
 )
 
 # ---------------------------------------------------------------- meta-test
@@ -2087,15 +2184,27 @@ def pytest_exception_interact(node: object, call: object) -> None:
     )
 
 
-def pytest_sessionfinish(session: object, exitstatus: object) -> None:
-    """session の終わりを 1 行書く pytest の hook (Codex 4 回目 MEDIUM-2).
+# 走りきった item の nodeid (``pytest_runtest_logfinish``。打ち切りを session の終わりの記録で数える、Codex 5 回目 MEDIUM-1)
+_FINISHED_ITEMS: list[str] = []
 
-    計測が最後まで走ったことと pytest の終了の種類を、証拠と同じ記録に残す。``status_of`` は、この記録が
-    ちょうど 1 つで exitstatus が 1 (test の失敗) の run だけで証拠を照合する。
+
+def pytest_runtest_logfinish(nodeid: str) -> None:
+    """item の setup・call・teardown が走りきるたびに呼ばれる pytest の hook (``-p`` のときだけ働く)."""
+    _FINISHED_ITEMS.append(nodeid)
+
+
+def pytest_sessionfinish(session: object, exitstatus: object) -> None:
+    """session の終わりを 1 行書く pytest の hook (Codex 4 回目 MEDIUM-2・5 回目 MEDIUM-1).
+
+    計測が最後まで走ったことと pytest の終了の種類を、証拠と同じ記録に残す: exitstatus・選ばれた item の数 (``items``)・
+    走りきった item の数 (``ran``)・打ち切りの印 (``stopped`` = ``shouldstop`` か ``shouldfail``。``-x``・``--maxfail`` は
+    exit 1 のまま途中で止める)。``status_of`` は、この記録がちょうど 1 つで、exitstatus 1・打ち切りなし・全 item が
+    走りきった run だけで証拠を照合する (``finished_with_failures``)。
     """
     out = os.environ.get(_WITNESS_ENV)
     if not out:
         return
+    items = getattr(session, "items", None)
     _append(
         out,
         {
@@ -2103,6 +2212,10 @@ def pytest_sessionfinish(session: object, exitstatus: object) -> None:
             "exitstatus": int(exitstatus) if isinstance(exitstatus, int) else None,
             "collected": getattr(session, "testscollected", None),
             "failed": getattr(session, "testsfailed", None),
+            "items": len(items) if isinstance(items, list) else None,
+            "ran": len(_FINISHED_ITEMS),
+            "stopped": bool(getattr(session, "shouldstop", False))
+            or bool(getattr(session, "shouldfail", False)),
         },
     )
 
@@ -2207,9 +2320,14 @@ _LOCAL_TEXT = (
     ),
     (re.compile(r"/root(?=[\\/'\"\s]|$)"), "<home>"),
     (re.compile(r"pytest-of-[^\\/'\"\s]+"), "pytest-of-<user>"),
-    # address は object の repr (``<... at 0x...>``) の中だけ。比較の数値 (0xdead 等) は残す
-    (re.compile(r"(?<= at )0x[0-9A-Fa-f]+"), "0x?"),
+    # address = repr の `` at 0x`` の後の 8 桁以上 (64-bit の %p。function・code・frame・weakref の repr、pytest が
+    # 後ろを省いたもの)。比較の数値 (0xdead・``at 0xdead,`` 等の短いもの) は残す (Codex 5 回目 LOW-1・code-reviewer HIGH)
+    (re.compile(r"(?<= at )0x[0-9A-Fa-f]{8,}"), "0x?"),
+    # pytest が途中を省いて `` at 0x`` が切れた address の残り (``...00195CF8963E0>``)
+    (re.compile(r"(?<=\.\.\.)[0-9A-Fa-f]{6,}(?=>)"), "?"),
 )
+# 実の tmp・home の置き換えの終わり = path の要素が続かない (英数字・``_``・``.``・``-`` 以外、Codex 5 回目 LOW-1)
+_PATH_END = r"(?![\w.-])"
 
 
 def _tmp_dir() -> str:
@@ -2252,10 +2370,14 @@ def _local_user() -> str:
 def redact(text: str) -> str:
     """要約に書く文から、手元の tmp・home の path・ユーザー名・メモリの address を消す.
 
-    ユーザー名は英数字の境界の内側だけ (``AppData`` の ``data`` を消さない、code-reviewer LOW-8)。
+    ユーザー名は英数字の境界の内側だけ (``AppData`` の ``data`` を消さない、code-reviewer LOW-8)。実の tmp・home は、
+    path の要素の終わり (区切り・引用符・空白・行末) で終わるときだけ (``/home/ann`` で ``/home/annette`` を割らない、
+    Codex 5 回目 LOW-1。割らなかった home は汎用の規則が消す)。
     """
     for name, placeholder in _local_names():
-        text = re.sub(re.escape(name), placeholder, text, flags=re.IGNORECASE)
+        text = re.sub(
+            re.escape(name) + _PATH_END, placeholder, text, flags=re.IGNORECASE
+        )
     user = _local_user()
     if user:
         text = re.sub(
@@ -2312,13 +2434,23 @@ def witnessed(
 
 
 def finished_with_failures(code: int, records: list[dict[str, Any]]) -> bool:
-    """Test の失敗 (exit 1) で pytest が最後まで走ったか: session の終わりの記録がちょうど 1 つで exitstatus 1.
+    """Test の失敗 (exit 1) で pytest が最後まで走ったか.
 
-    INTERNALERROR (exit 3)・中断 (exit 2)・記録の書き込みの失敗の後に残った途中の記録を、証拠に数えない
-    (Codex 4 回目 MEDIUM-2)。
+    session の終わりの記録がちょうど 1 つで、exitstatus 1・打ち切りなし (``stopped`` が False)・選ばれた全 item が
+    走りきった (``ran == items``)。INTERNALERROR (exit 3)・中断 (exit 2)・記録の書き込みの失敗の後に残った途中の記録
+    (Codex 4 回目 MEDIUM-2) と、``-x``・``--maxfail`` で exit 1 のまま打ち切った run (Codex 5 回目 MEDIUM-1) を証拠に数えない。
     """
-    finish = [r.get("exitstatus") for r in records if r.get("when") == _FINISH]
-    return code == 1 and finish == [1]
+    finish = [r for r in records if r.get("when") == _FINISH]
+    if code != 1 or len(finish) != 1:
+        return False
+    done = finish[0]
+    items, ran = done.get("items"), done.get("ran")
+    return (
+        done.get("exitstatus") == 1
+        and done.get("stopped") is False
+        and type(items) is int
+        and items == ran
+    )
 
 
 def status_of(
