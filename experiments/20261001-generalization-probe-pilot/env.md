@@ -138,3 +138,28 @@
   - 変異 223 (レジストリの 12 件・user site の接続 1 件を足した) と meta-test 3 件で **223 / 223 KILLED**・meta-test 3 件成立・driver が
     sha256 で原状復帰・実行中に test と harness が変わっていない (約 125 分)。`manifest.driver_certification_violations` が `[]`。
     `--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。certification にユーザー名・メールアドレス・6 桁以上の address は 0 件。
+- Codex の 6 回目 (最後) の review (2026-10-04、5 回目の反映の差分、Verdict Revise・HIGH 1・MEDIUM 1・LOW 3) の反映の後に回し直した。
+  設計と採否は `.steering/20261004-generalization-probe-driver-sixth-review/` (ローカル)。起動の command は 4 回目から変わらない。
+  - 所在は、Windows の拡張表記 (長い path の接頭辞の付いた形) のドライブと UNC の path を通常の表記に揃えてから比べる (前は、環境の中の dir を
+    拡張表記で指す entry を環境の外として、正当な起動を止めた)。
+  - この機械の起動の経路 (確かめた): venv の launcher (`.venv/Scripts/python.exe`) は、シェルに `PYTHONHOME` が無いとき、子に
+    `PYTHONHOME` = base の Python の dir (pyvenv.cfg の home) を渡して base の python を起動し、venv は site が認識する。getpath は venv の
+    分岐を通らず、executable の dir は `.venv/Scripts` (環境の中)。レジストリのキー自身の既定値は (`PYTHONHOME` があるので) 使われない。
+  - **起動 (driver・run.sh) の前の確認を置き換えた** (repo root で。各 command が exit 0 で、出力が下のとおりであること。エラーを合格に数えない):
+    1. 未追跡・ignored の import できるもの (Windows は拡張子の大文字小文字を区別しないので `icase`) が無い:
+       `git ls-files --others -- ':(glob,icase)*.py' ':(glob,icase)*.pyw' ':(glob,icase)*.pyc' ':(glob,icase)*.pyd' ':(glob,icase)*.so'
+       ':(glob,icase)*/__init__.*' ':(glob,icase)scripts/*.py' ':(glob,icase)scripts/*.pyw' ':(glob,icase)scripts/*.pyc'
+       ':(glob,icase)scripts/*.pyd' ':(glob,icase)scripts/*.so' ':(glob,icase)scripts/*/__init__.*'` が何も出さない。
+    2. repo root と `scripts` に link (reparse point) が無い (PowerShell):
+       `Get-ChildItem -Force -LiteralPath ., scripts -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }`
+       が何も出さない。
+    3. 起動するシェルの `PYTHONPATH`・`PYTHONHOME` が未設定か空 (PowerShell: `"[$env:PYTHONPATH][$env:PYTHONHOME]"` が `[][]`)。
+       Python の中で読まないこと (launcher が `PYTHONHOME` を入れる)。
+    4. 同じ Python で読むレジストリの検索パスの子キーが無い (`sys.winver` と同じ registry view。`[]` を渡すのでキー自身の既定値は数えない):
+       `uv run python -c "import sys; sys.path.insert(0, '.'); from scripts import generalization_probe_driver as d; print(d._registry_paths([]))"`
+       が `[]`。
+    5. pilot・本走の間に Python の install・update をしない (レジストリは起動の後に読み直すので、getpath から検査までの間に変わらないことが前提)。
+  - 変異 230 (拡張表記の比べ方の 4 件・レジストリの値の扱いの 3 件を足し、証拠を専用の assert の文に結んだ) と meta-test 3 件で **230 / 230 KILLED**・
+    meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が変わっていない (約 113 分、2026-10-04 23:52〜10-05 01:45)。
+    `manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。certification に
+    ユーザー名・メールアドレス・6 桁以上の address は 0 件 (`...` の後の 16 進は pytest が省いた sha256 の digest)。

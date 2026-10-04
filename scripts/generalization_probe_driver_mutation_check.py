@@ -258,6 +258,9 @@ _LINKS = "test_in_environment_resolves_links"
 _LAUNCH_PTH_SHADOW = "test_command_line_launch_refuses_a_pythonpath_shadow"
 _USER_SITE = "test_user_site_reads_the_site_module"
 _REGISTRY = "test_registry_paths_follow_getpath"
+# Codex 6 回目 (HIGH-1)
+_ORDINARY = "test_ordinary_drops_only_the_drive_and_unc_extended_prefix"
+_EXTENDED = "test_extended_paths_are_compared_as_ordinary"
 _NO_IMPORT_ERROR = "DID NOT RAISE <class 'ImportError'>"
 _NOT_RAISED_SCHEDULE = (
     "DID NOT RAISE <class 'scripts.generalization_probe_driver.ScheduleError'>"
@@ -1928,8 +1931,8 @@ MUTANTS: tuple[Mutant, ...] = (
     ),
     _m(
         "g10 所在の link を解決しない",
-        "    return os.path.normcase(os.path.realpath(path))\n",
-        "    return os.path.normcase(os.path.abspath(path))\n",
+        "    resolved = os.path.normcase(os.path.realpath(path))\n",
+        "    resolved = os.path.normcase(os.path.abspath(path))\n",
         (_LINKS,),
         "環境の中の link の先にある外のコードを、環境の中として通す",
     ),
@@ -2071,6 +2074,64 @@ MUTANTS: tuple[Mutant, ...] = (
         "        registry = _registry_paths(search)\n",
         (_EXECUTED,),
         "getpath がレジストリを読まない起動で、使われていない entry を数えて起動を誤って止める",
+    ),
+    # ============================ 拡張表記の比べ方・レジストリの値の扱い (Codex 6 回目 HIGH-1・LOW-3、decisions DH-2・DH-3)
+    # 証拠は test の専用の assert の文に結ぶ (同じ test の別の assert に一致させない)
+    _m(
+        "e1  UNC の拡張表記を通常の表記に戻さない",
+        r'    if resolved.startswith("\\\\?\\unc\\"):' "\n",
+        "    if False:\n",
+        (_ORDINARY,),
+        "環境の中の UNC の dir を拡張表記で指す entry を、環境の外として起動を誤って止める",
+        Witness(assert_stmt=True, text="extended-unc"),
+    ),
+    _m(
+        "e2  ドライブの拡張表記を通常の表記に戻さない",
+        r'    if resolved.startswith("\\\\?\\") and resolved[5:7] == ":\\":' "\n",
+        "    if False:\n",
+        (_ORDINARY,),
+        "環境の中の dir を拡張表記で指す entry を、環境の外として起動を誤って止める",
+        Witness(assert_stmt=True, text="extended-drive"),
+    ),
+    _m(
+        "e3  ドライブでない名前空間の接頭辞も外す",
+        r'    if resolved.startswith("\\\\?\\") and resolved[5:7] == ":\\":' "\n",
+        r'    if resolved.startswith("\\\\?\\"):' "\n",
+        (_ORDINARY,),
+        "volume 等の名前空間の path を、別の path (相対) として比べる",
+        Witness(assert_stmt=True, text="other-namespace-kept"),
+    ),
+    _m(
+        "e4  所在を比べる前に拡張表記を揃えない",
+        '    return _ordinary(resolved) if os.name == "nt" else resolved\n',
+        "    return resolved\n",
+        (_EXTENDED,),
+        "realpath が接頭辞を保った環境の中の所在を、環境の外として起動を誤って止める",
+        Witness(assert_stmt=True, text="extended-in-environment"),
+    ),
+    _m(
+        "e5  子キーの値の空の entry を捨てる",
+        '                    found += str(r.QueryValue(key, sub)).split(";")\n',
+        '                    found += [e for e in str(r.QueryValue(key, sub)).split(";") if e]\n',
+        (_REGISTRY,),
+        "getpath が足し site が cwd にする空の entry (repo root) を見逃す",
+        Witness(assert_stmt=True, text="subkey-entries-verbatim"),
+    ),
+    _m(
+        "e6  子キーの値の entry の空白を削る",
+        '                    found += str(r.QueryValue(key, sub)).split(";")\n',
+        '                    found += [e.strip() for e in str(r.QueryValue(key, sub)).split(";")]\n',
+        (_REGISTRY,),
+        "getpath が削らない空白を削り、検索パスに入った entry と違う path を見る",
+        Witness(assert_stmt=True, text="subkey-entries-verbatim"),
+    ),
+    _m(
+        "e7  キー自身の既定値を正規化せずに sys.path と比べる",
+        "            found += [e for e in own if e and _norm(e) in on_path]\n",
+        "            found += [e for e in own if e and e in paths]\n",
+        (_REGISTRY,),
+        "site が絶対 path にした既定値の entry を、表記の違いで見逃す",
+        Witness(assert_stmt=True, text="own-default-compared-normalized"),
     ),
 )
 
