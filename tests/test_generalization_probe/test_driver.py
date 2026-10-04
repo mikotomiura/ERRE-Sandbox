@@ -2278,6 +2278,17 @@ def test_registry_paths_follow_getpath(
         mp.setattr(sys, "platform", "linux")
         elsewhere = drv._registry_paths([])
     assert (on_windows, elsewhere) == ([a], [])
+    # 子キーの値は getpath と同じく、空の entry (site が cwd にする) と空白を
+    # そのまま返す (Codex 6 回目 LOW-3)
+    verbatim = _FakeRegistry({"HKLM": ("", [f"{sep}{a}{sep}{sep}", f" {b}"])})
+    assert drv._registry_paths([], verbatim) == ["", a, "", "", f" {b}"], (
+        "subkey-entries-verbatim"
+    )
+    # キー自身の既定値は正規化して sys.path と比べる (相対の既定値・絶対の sys.path)
+    with monkeypatch.context() as mp:
+        mp.chdir(tmp_path)
+        relative = drv._registry_paths([own_on], _FakeRegistry({"HKCU": ("on", [])}))
+    assert relative == ["on"], "own-default-compared-normalized"
 
 
 def test_in_environment_compares_whole_path_components(tmp_path: Path) -> None:
@@ -2290,6 +2301,52 @@ def test_in_environment_compares_whole_path_components(tmp_path: Path) -> None:
     assert not drv._in_environment(str(tmp_path / "m.py"), roots)
     # 比べられない組 (別ドライブ・相対と絶対) は外
     assert not drv._under("relative", roots[0])
+
+
+def test_ordinary_drops_only_the_drive_and_unc_extended_prefix() -> None:
+    """Windows の拡張表記は、ドライブと UNC だけを通常の表記に戻す (Codex 6 回目).
+
+    decisions DH-2。文字列だけで確かめる (OS に依らない)。他の名前空間は変えない。
+    """
+    bs = chr(92)
+    ext = bs + bs + "?" + bs
+    drive = bs.join(["c:", "env", "lib"])
+    assert drv._ordinary(ext + drive) == drive, "extended-drive"
+    unc = bs.join(["server", "share", "env"])
+    assert drv._ordinary(ext + "unc" + bs + unc) == bs + bs + unc, "extended-unc"
+    volume = ext + bs.join(["volume{0f}", "env"])
+    assert drv._ordinary(volume) == volume, "other-namespace-kept"
+    assert drv._ordinary(drive) == drive
+    assert drv._ordinary(bs + bs + unc) == bs + bs + unc
+    # 区切りの無い形 (raw volume・drive 相対・share の無い unc) は変えない (外のまま)
+    for kept in (ext + "c:", ext + "c:lib", ext + "unc"):
+        assert drv._ordinary(kept) == kept
+
+
+@pytest.mark.skipif(os.name != "nt", reason="拡張表記は Windows の path")
+def test_extended_paths_are_compared_as_ordinary(tmp_path: Path) -> None:
+    """拡張表記の所在も、通常の表記と同じに比べる (Codex 6 回目 HIGH-1).
+
+    decisions DH-2。環境の中の拡張表記を拒否しない (正当な起動を止めない)。外と、
+    環境の中の link の先が外のものは、拡張表記でも拒否する。
+    """
+    ext = chr(92) * 2 + "?" + chr(92)
+    env, out = tmp_path / "env", tmp_path / "out"
+    for d in (env / "lib", out):
+        d.mkdir(parents=True)
+    inside = str(env / "lib")
+    roots = (drv._norm(str(env)),)
+    assert drv._norm(ext + inside) == drv._norm(inside), "extended-in-environment"
+    assert drv._in_environment(ext + inside, roots)
+    assert drv.startup_problems([], roots, None, None, [ext + inside]) == []
+    assert not drv._in_environment(ext + str(out), roots)
+    # 拡張表記の .. も畳んでから比べる (畳まずに外すと環境の中に見える)
+    assert not drv._in_environment(ext + str(env / ".." / "out"), roots)
+    _dir_link(env / "to_out", out)
+    assert not drv._in_environment(ext + str(env / "to_out"), roots)
+    # キー自身の既定値が拡張表記で、sys.path が通常の表記でも数える
+    reg = _FakeRegistry({"HKCU": (ext + inside, [])})
+    assert drv._registry_paths([inside], reg) == [ext + inside]
 
 
 def _file_spec(name: str, path: Path) -> importlib.machinery.ModuleSpec:
@@ -3211,7 +3268,8 @@ def test_harness_summary_drops_local_paths_and_addresses(
         f"{bs}{bs}server{bs}Users{bs}alice{bs}x": f"{bs}{bs}server<home>{bs}x",
         "/root/x": "<home>/x",
         "expected 0xdead, got 0xbeef": "expected 0xdead, got 0xbeef",
-        # address は object の repr の中だけ (Codex 5 回目 LOW-1)
+        # address は `` at 0x`` の後の 8 桁以上と、pytest が `` at 0x`` ごと省いた
+        # 残り (秘匿を優先した heuristic。短い比較の値は残す、Codex 5・6 回目 LOW-1)
         "expected at 0xdead, got at 0xbeef": "expected at 0xdead, got at 0xbeef",
         # repr の address は 8 桁以上: code・frame・weakref (2 つ)・pytest が後ろを
         # 省いたもの・`` at 0x`` ごと省かれた残り (code-reviewer HIGH)

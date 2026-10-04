@@ -63,20 +63,31 @@
   ``sys.path`` にあるとき。site が処理する ``.pth`` の import 行が、名前に依らず同名の module を読みうる、Codex 5 回目 HIGH-1)・
   user site の ``.pth`` の所在 (``startup_problems``。import に失敗したものは ``sys.modules`` に残らないので、実行されたかを問わず
   所在で拒否する、Codex 4 回目 HIGH-2・code-reviewer HIGH-2)、取り込まれたもの = ``sys.modules`` の所在 (``outside_problems``)。
-  CPython 3.11 の getpath が検索パスに足す出所は、環境変数の PYTHONPATH・zip・レジストリ・build 時の既定 (prefix の下)・stdlib と
-  platstdlib の dir・Windows の executable の dir (venv では Scripts)・``._pth`` で、PYTHONPATH とレジストリ以外は環境 (prefix) の中、
-  ``._pth`` は ``-E`` 扱いになり起動の前提が拒否する。レジストリのキー自身の既定値の **空の** entry (= cwd) は、driver が足す repo root と
-  区別できないので数えない (保証の外。キー自身の既定値は stdlib が見つからない起動でだけ使われる)。
+  検証した起動 = 起動するシェルに ``PYTHONHOME`` の無い ``uv run python`` (uv の CPython 3.11.15、``-E``/``-I`` でない・``._pth`` なし、
+  Codex 6 回目 LOW-2・code-reviewer HIGH)。venv の launcher (venv の ``Scripts`` の python) が子に ``PYTHONHOME`` = pyvenv.cfg の home
+  (base の Python の dir) を渡して base の python を起動し、getpath は venv の分岐を通らず、venv は site が認識する。このとき getpath が
+  検索パスに足す出所は、環境変数の PYTHONPATH・zip・レジストリ・build 時の既定 (この interpreter では prefix の下の相対)・stdlib と
+  platstdlib の dir・Windows の executable の dir (venv の ``Scripts``) で、PYTHONPATH とレジストリ以外は環境 (prefix) の中。
+  ``._pth`` は ``-E`` 扱いになり起動の前提が拒否する。Py_SetPath・埋め込みの再計算は対象外。レジストリのキー自身の既定値は、
+  ``PYTHONHOME`` (home) のある起動では使われず、他の起動でも stdlib が見つからないときだけ使われる (使われたかは ``sys.path`` に
+  あるかで見る)。その **空の** entry (= cwd) は、driver が足す repo root と区別できないので数えない (保証の外)。
+  レジストリは起動の後に読み直すので、getpath から検査までの間にレジストリと
+  検索パスが変わらないことを前提にする (pilot・本走の間に Python の install・update をしない、env.md)。所在は、Windows の拡張表記
+  (長い path の接頭辞の付いた形) のドライブと UNC の path を通常の表記に揃えてから比べる (``_ordinary``、Codex 6 回目 HIGH-1)。
   driver の最初の文の ``from __future__`` が import する ``__future__`` は、成功すれば ``sys.modules`` の走査が、失敗すれば
   driver の import の失敗が止める。
   主張: driver の process で実行した repo のコードは、来歴の hash が指す固定ファイルの bytes のコンパイル結果。
   保証の外: 環境の中のコード (第三者のライブラリ・標準ライブラリ・インタプリタ・venv の ``.pth``、版は uv.lock が固定する)、
   環境の ``.pth`` が足す環境の外の path (editable install の ``src``) が後の ``.pth`` の import 行を横取りする経路、
   意図的な不正 (偽の endpoint・門より前に取り込まれて自分を ``sys.modules`` から消し、自分のファイルも消すコード等)、
-  driver の外の process。凍結 ``run.sh`` の判定の process (manifest の照合・機械判定・scorer) は門を持たず、封印済みの
-  module が repo root を ``sys.path`` の先頭に入れるので、run.sh の前に、repo root 直下と ``scripts`` に未追跡・ignored の
+  起動するシェルの ``PYTHONHOME`` で環境の prefix 自体を変えた起動 (launcher は上書きせず、getpath がその dir を prefix にする)、
+  driver の外の process。
+  凍結 ``run.sh`` の判定の process (manifest の照合・機械判定・scorer) は門を持たず、封印済みの
+  module が repo root を ``sys.path`` の先頭に入れるので、run.sh と driver の起動の前に、repo root 直下と ``scripts`` に未追跡・ignored の
   import できるもの (source ``.py``・``.pyw``、source の無い ``.pyc``、拡張 module ``.pyd``・``.so``、package の initializer
-  ``__init__.*``) が無いことと、``PYTHONPATH`` が空であることを確かめる (運用、env.md の command、Codex 5 回目 MEDIUM-2)。
+  ``__init__.*``。Windows は拡張子の大文字小文字を区別しない) と link (reparse point) が無いこと、起動するシェルの ``PYTHONPATH``・
+  ``PYTHONHOME`` が未設定か空であること (process の中では launcher が入れた ``PYTHONHOME`` が見える)、同じ Python で読むレジストリの
+  検索パスの子キーが無いことを確かめる (運用、env.md の command、Codex 5 回目 MEDIUM-2・6 回目 MEDIUM-1)。
   Debian・Ubuntu の system Python を base にした venv では、標準ライブラリの sitecustomize が ``/etc`` への link なので、
   環境の外として起動を拒否されうる (安全側。uv が入れた Python では起きない)。
 
@@ -105,8 +116,22 @@ import sys
 _ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # noqa: PTH120
 
 
+def _ordinary(resolved: str) -> str:
+    r"""normcase 済みの Windows の拡張表記 (``\\?\c:\…``・``\\?\unc\…``) を通常の表記にする (Codex 6 回目 HIGH-1).
+
+    ``realpath`` は入力が拡張表記なら接頭辞を保つので、環境の中の dir が通常の表記の root の下と判定されない。ドライブと
+    UNC だけを戻し、他の名前空間 (``\\?\volume{…}`` 等) は変えない。比べるためだけで、開くのには使わない。
+    """
+    if resolved.startswith("\\\\?\\unc\\"):
+        return "\\\\" + resolved[8:]
+    if resolved.startswith("\\\\?\\") and resolved[5:7] == ":\\":
+        return resolved[4:]
+    return resolved
+
+
 def _norm(path: str) -> str:
-    return os.path.normcase(os.path.realpath(path))
+    resolved = os.path.normcase(os.path.realpath(path))
+    return _ordinary(resolved) if os.name == "nt" else resolved
 
 
 def _under(path: str, root: str) -> bool:
