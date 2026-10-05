@@ -227,3 +227,57 @@
   `MISMATCH: …/prereg.md: sha256 differs from the frozen manifest` で止まる (exit 1)。第 1 段の `manifest.json` は prereg の全文の sha256 を持ち、
   第 2 段の照合 (`stage1_seal_violations`) だけが prereg を `prereg_body_sha256` (status 行を除く) で比べる。pilot の判定の再計算は第 2 段の照合
   (`pilot_gate_violations`) が担う。以後の照合は `--stage main` で行う。
+
+## 本走 (`results/run/`、2026-10-05、GPU)
+
+- 認可: user 裁定 DS-3 (2026-10-05、AskUserQuestion。`.steering/20261005-generalization-probe-stage2-freeze/decisions.md`)。範囲は開始前の確認 →
+  `--stage main` の起動の予行 → 本走 (prereg §9.4、1,728 呼び出し) → `run.sh main` の判定 → 記録まで。記録は
+  `.steering/20261005-generalization-probe-main-run/` (ローカル)。
+- 実行環境: main = 147c56b (PR #149、第 2 段 FROZEN)。GPU = NVIDIA GeForce RTX 5060 Ti (16 GB、起動前の使用 1,606 MiB・4%、ロード中のモデルなし・
+  他の長時間の job なし)。Ollama 0.32.12 (Windows native)・`qwen3:8b` (500a1f067a9f)。pilot と同じ実行環境 (prereg §9.4 の 1)。
+- 開始の前: `--verify --stage main` = `MANIFEST OK (stage main)`・`driver_certification_violations` = `[]`・封印の対象 35 ファイル
+  (`manifest_main.json` の 34 + `manifest_main.json`) の作業木の bytes = HEAD の blob・gate.json と manifest_main.json の CR 0・固定ファイルに
+  未 commit の変更なし・`results/run/` なし。起動の前の確認 (driver の certification の 6 回目の節の 5 点): 1〜4 は全て exit 0 で出力が空
+  (`[][]`・`[]`)。5 は運用 (本走の間に Python の install・update をしていない)。
+- 起動の予行 (GPU なし・実の Ollama に触れない・tmp の dir、約 32 秒): driver をその bytes のまま `__main__` として実行し (`--stage` を渡さず
+  argparse で止めて、門と `_PinnedFinder` だけを入れる)、`launch_problems("main")` = `[]`・`executed_problems("main", …)` = `[]`。
+  `stage_from_gate` の段は plan 1,728 (A / A_rot / B / B_rot 各 432)・`reference_observed` = gate.json の `observed`・その予定表の
+  `schedule_violations` (gate の observed) = `[]` (作るだけで run しない)。127.0.0.1 の乱数 port の偽の Ollama (答え `sort cards.`) から
+  `read_observed` で取った偽の observed で `main_stage(tmp, 18, 偽の observed)` の全 run → `completed`・`published` true・`anomalies` []・
+  1,728 行 (`sort_cards` 1,728)。run の後の `executed_problems("main", …)` = `[]`・実の `results/run/` なし。
+- 起動 (PowerShell、同じ process の中で続けて): `$env:PYTHONUTF8 = "1"`・`$env:PYTHONHASHSEED = (Get-Content …/SEED).Trim()` (= 20261001) の後に
+  `Start-Process -WindowStyle Hidden -PassThru -WorkingDirectory C:/ERRE-Sand_Box -FilePath uv -ArgumentList 'run','python','scripts/generalization_probe_driver.py','--stage','main'`
+  (stdout・stderr は手元の log へ)。起動 2026-10-05 14:56:48 +09:00 (PID 5408、`uv`)。
+- 所要: driver の `started_at` 05:57:03.394 UTC 〜 `finished_at` 06:03:18.731 UTC = **約 6 分 15 秒** (1,728 呼び出し、平均 約 4.6 呼び出し / 秒。
+  起動から `started_at` までの約 14 秒は起動の検査、最初の 100 呼び出しはモデルのロードを含めて約 25 秒)。stdout は `[driver] 100 calls` 〜
+  `[driver] 1700 calls` の 17 行と `[driver] exit_reason=completed`、stderr は空。
+- provenance (`provenance.json`): `exit_reason` = `completed`・`status` = null (`not_computed` ではない)・`error` = null・`anomalies` = []・
+  `n_sent` = `n_records` = 1,728・`response_models` = `["qwen3:8b"]`・`n_resends` = 0・`n_finish_length` = 0・`pinned_changed` = []・
+  `manifest_problems_at_publication` = []・`read_back_problems` = []・`published` = true・`git_head` = 147c56b。`driver_sha256`
+  (`e557575b0baaf3f8c3e6b9962669a394989cc68d04a7560463ccf14f13d39f5a`)・`records_sha256`・`meta_sha256` は現在のファイルと一致。`git_dirty` = true は未追跡のファイル (手元の sketch の出力・
+  書きかけの `results/run/` 等。`git status --porcelain` は未追跡を含む) による。
+- observed (`meta.json`。provenance の開始と終了も同じ): `model_digest` = `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`・
+  `ollama_version` = `0.32.12`・`template_sha256` = `ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4`。pilot (gate.json の
+  `observed`) と同じ (prereg §4)。meta の `request` は凍結値 (`qwen3:8b`・think false・temperature 0.7・top_p 0.8・repeat_penalty 1.0・num_ctx 4096・
+  num_predict 32)。
+- 記録の記述 (判定ではない): A / A_rot / B / B_rot 各 432。parse の ⊥ は 4 arm とも 0 (上限 0.05、prereg §8.3)・`raw` = null 0・call_index は
+  0〜1,727 で一意・replicate は 0〜17。`attempts.jsonl` は 1,728 行全てが `outcome` = `ok`・`done_reason` = `stop`。sha256 (4 ファイルとも LF):
+  - records.jsonl `97ec2c5b88907583611135d36285e672c723329a9cd4eb2796ebb4348b14766d`
+  - meta.json `dce13c0e79e9bc38e62983f8e4bc88c3eac3c670efb1290d65b0254b3d8fb6f5`
+  - provenance.json `5832d9f1909e4c9ebb3f0ec6ada5e057428e125daabd00c22feb61599da24030`
+  - attempts.jsonl `9cea3fdfd64b25dfc96f9447e65f4017cdab7bfcb19af0fe69db0c1cb555c85a`
+- 判定: run.sh の前に起動の前の確認 1〜4 をもう一度 (全て空。run.sh を動かす Git Bash の `PYTHONPATH`・`PYTHONHOME` も空)。
+  `bash experiments/20261001-generalization-probe-pilot/run.sh main` (15:03:57〜15:04:21 +09:00) → `MANIFEST OK (stage main)` →
+  `[run.sh] main: repeat byte-identical`・exit 0。
+- **`results.json` の結論** (値は results.json から写した): **`"verdict": "NO_GO_EFFECT_ABSENT"`**・`"status": "computed"`・`"reasons": ["decided"]`・
+  `"C": 0.14930555555555552`・`"n_units": 288`・`"log_e_plus": -10.086646947521764`・`"log_e_minus": 43.82315972494753`・
+  `"log_e_zero": 34.41051499482183`・`"components"` = A 0.10416666666666666・A_rot 0.12962962962962962・B 0.20601851851851852・
+  B_rot 0.15740740740740738・`"lever_bottom_rates"` = 4 arm とも 0.0・`"bottom_max": 0.05`。
+  - 判定の枝 (prereg §5 の評価順): INVALID_SCORER なし → 計算する (transport 失敗・欠けなし) → ⊥ gate 通過 (4 arm とも 0.0 ≤ 0.05・族内差 0) →
+    PASS でない (log E⁺ < log 20) → **NO_GO** (log E⁻ = 43.8 ≥ log 20 ≈ 3.00)。
+- 読み (prereg §11 の claim の上限まで): 「この潜在構造 (生き物の分類)・この battery・この schedule での、平均の潜在方向の対比 E[C] は τ (0.30) 未満」まで。
+  言わないこと: 汎化の総量・汎化の存在の否定・選択分布の差全体の否定 (C は向き付きの平均で、正と逆向きの汎化が相殺しうる)・他の潜在構造。
+  E⁰ (`log_e_zero`、平均 > 0 の同型の e-value) は §5.1 で記述報告だけと登録したもので、判定語にも claim にも入れない。
+- 改行: `results.json` は scorer が Windows のテキストモードで書いたので、手元の作業木では CRLF (CR 25 個)。手で書き換えない。`.gitattributes` で
+  commit される正本は LF (LF の版の sha256 = `430f2724504f7114486ddc009b7dd753b7d58f17b90098cd0f9113d98dc71d44`)。他の 4 ファイルは LF。
+  `results/run/` は `manifest_main.json` の封印の対象ではない (本走の照合は run.sh の scorer が行う)。
