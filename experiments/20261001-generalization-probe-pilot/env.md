@@ -203,3 +203,27 @@
   `.gitattributes` が `*.json` を LF に固定するので、commit される正本は LF。manifest は gate.json を JSON の値で照合し (入力の sha256 は
   records・meta・certification・見取り図で、どれも LF)、bytes は照合しない。第 2 段で `manifest_main.json` が gate.json の sha256 を封印するときは、
   checkout した LF の版から取る。
+
+## 第 2 段の凍結 (`manifest_main.json`、2026-10-05、CPU のみ)
+
+- 認可: user 裁定 DP-3 (2026-10-05、AskUserQuestion。`.steering/20261005-generalization-probe-null-pilot/decisions.md`)。範囲は第 2 段の凍結
+  (prereg §9.3) まで。本走 (§9.4) は含まない (さらに別の user 裁定)。記録は `.steering/20261005-generalization-probe-stage2-freeze/` (ローカル)。
+- 開始の前 (main = de7cbaa、PR #148): `--verify --stage pilot` = `MANIFEST OK (stage pilot)`・`driver_certification_violations` = `[]`・
+  第 2 段の照合の予行 (`--verify --stage main`) は `cannot read …/manifest_main.json` と `NOT FROZEN: prereg: status is not FROZEN …` の 2 点だけ。
+  封印の対象 34 ファイル (`FROZEN_FILES` + `MAIN_EVIDENCE`) の作業木の bytes が HEAD の blob と同じ (`git hash-object --no-filters` = `git rev-parse HEAD:<path>`)・
+  `results/pilot/gate.json` の CR 0 (上の「改行」の注意を確かめた)。`results/run/` なし。
+- 変更: prereg の status 行 (3 行目) だけ。新しい行 = `- status: **FROZEN** (2026-10-05、user 裁定 DP-3。第 2 段の封印 = 確認実験。第 1 段 PILOT-FROZEN は 2026-10-02、DU-4)`。
+  本文の他の行 (§13 の「状態」の欄を含む) は第 1 段のまま (変えると第 1 段の封印の照合が落ちる)。status 行を除いた本文の sha256
+  (`prereg_body_sha256` = `777df23b…5b109`) は第 1 段の `manifest.json` の値と同じ。
+- `uv run python scripts/generalization_probe_manifest.py --write --stage main` → `wrote experiments/20261001-generalization-probe-pilot/manifest_main.json (34 files)`。
+  `manifest_main.json` の sha256 = `5395d9ed63fe85c7f479737397b28d19a49fe588d96395d5d242964254a554ee` (4,484 bytes・LF・CR 0)。
+  内訳 = 第 1 段の対象 25 + 足した証拠 (`MAIN_EVIDENCE`) 9。第 1 段の対象のうち prereg 以外の 24 ファイルの sha256 は第 1 段の値と同じ。
+  prereg は FROZEN の版の全文 (`c9012360…78c4f6`)。足した証拠のうち
+  `manifest.json` = `0d72b99c…048d0ad0`・`results/pilot/gate.json` = `28d4e258…7c612c939`。
+- `PYTHONUTF8=1 PYTHONHASHSEED=20261001 uv run python scripts/generalization_probe_manifest.py --verify --stage main` → `MANIFEST OK (stage main)`・exit 0。
+  = 第 1 段の封印・pilot の判定の再計算 (GO・R 18・masked の最大 ⊥ 率・observed)・入力の sha256・provenance の 3 項目・driver の certification・
+  status = FROZEN が全て通った (prereg §9.3 の 1)。
+- 注意 (設計どおり): status 行を変えた後は、`--verify --stage pilot` (と `run.sh pilot`) は
+  `MISMATCH: …/prereg.md: sha256 differs from the frozen manifest` で止まる (exit 1)。第 1 段の `manifest.json` は prereg の全文の sha256 を持ち、
+  第 2 段の照合 (`stage1_seal_violations`) だけが prereg を `prereg_body_sha256` (status 行を除く) で比べる。pilot の判定の再計算は第 2 段の照合
+  (`pilot_gate_violations`) が担う。以後の照合は `--stage main` で行う。
