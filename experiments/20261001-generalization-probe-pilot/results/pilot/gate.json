@@ -1,0 +1,63 @@
+{
+ "R": 18,
+ "decision": "GO",
+ "inputs_sha256": {
+  "cert": "241ad70a79a7d861ec0ebf1674d6ad64a7274b76855686780b9b45cfa0e09898",
+  "meta": "dce13c0e79e9bc38e62983f8e4bc88c3eac3c670efb1290d65b0254b3d8fb6f5",
+  "records": "eb9495cd63aa0893d8193a02f305619f3ebb7a2cb5f703a3f56b3027dceba4ef",
+  "sketch": "7313f50386541531ef2f820df7e92389c63d4e01ca623baf82144a6ac257001f"
+ },
+ "knowledge_failures": [],
+ "masked_bottom_rates": {
+  "A": 0.0,
+  "A_rot": 0.0,
+  "B": 0.0,
+  "B_rot": 0.0
+ },
+ "masked_max_bottom": 0.0,
+ "null_C": 0.008680555555555556,
+ "observed": {
+  "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "ollama_version": "0.32.12",
+  "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+ },
+ "oc": [
+  {
+   "R": 18,
+   "at_plant": {
+    "direction": 1,
+    "lambda": 0.5964973730297723,
+    "no_go": 0.0,
+    "pass": 1.0,
+    "realized_C": 0.6002896412037038
+   },
+   "at_tau": {
+    "direction": 1,
+    "lambda": 0.2938704028021015,
+    "no_go": 0.0025,
+    "pass": 0.003,
+    "realized_C": 0.29976475694444443
+   },
+   "at_zero": {
+    "direction": -1,
+    "lambda": 0.008605851979345956,
+    "no_go": 1.0,
+    "pass": 0.0,
+    "realized_C": 9.490740740740742e-05
+   },
+   "checks": {
+    "calibrated": true,
+    "power_no_go": true,
+    "power_pass": true,
+    "size_no_go": true,
+    "size_pass": true
+   },
+   "ok": true,
+   "size_cap": 0.065
+  }
+ ],
+ "reasons": [
+  "spike-in OC passed"
+ ],
+ "status": "computed"
+}

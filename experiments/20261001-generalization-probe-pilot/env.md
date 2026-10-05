@@ -1,8 +1,10 @@
 # 実行環境
 
 - Python 3.11、`uv.lock` で固定。追加依存なし (numpy のみ)。
-- 実モデル・GPU は使っていない。null pilot・本走・driver は起こしていない (prereg の冒頭)。
-- マシン: G-GEAR (Windows native、16 論理コア、CPU のみ)。長い計算は `Start-Process -WindowStyle Hidden` の detached process で走らせた。
+- 第 1 段の凍結と driver の certification までは、実モデル・GPU を使っていない。実モデル・GPU を使ったのは null pilot (2026-10-05、下の節) だけで、
+  本走は起こしていない。
+- マシン: G-GEAR (Windows native、16 論理コア)。見取り図・certification は CPU のみ。null pilot は Windows native の Ollama (GPU)。
+  長い計算は `Start-Process -WindowStyle Hidden` の detached process で走らせた。
 
 ## probe key の選定 (`results/key_selection.json`)
 
@@ -163,3 +165,41 @@
     meta-test 3 件成立・driver が sha256 で原状復帰・実行中に test と harness が変わっていない (約 113 分、2026-10-04 23:52〜10-05 01:45)。
     `manifest.driver_certification_violations` が `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。certification に
     ユーザー名・メールアドレス・6 桁以上の address は 0 件 (`...` の後の 16 進は pytest が省いた sha256 の digest)。
+
+## null pilot (`results/pilot/`、2026-10-05、GPU)
+
+- 認可: user 裁定 DH-4 (2026-10-05、AskUserQuestion。`.steering/20261004-generalization-probe-driver-sixth-review/decisions.md`)。範囲は null pilot
+  (prereg §8.1 の 684 呼び出し) と `run.sh pilot` の機械判定まで。第 2 段の凍結と本走は含まない。記録は `.steering/20261005-generalization-probe-null-pilot/` (ローカル)。
+- 実行環境: main = 41e4077 (PR #147、driver は 230 / 230 KILLED で certify 済み)。GPU = NVIDIA GeForce RTX 5060 Ti (16 GB、起動前の使用 1.6 GB・1%、
+  他の長時間の job なし)。Ollama 0.32.12 (Windows native)・`qwen3:8b`。
+- 起動の前の確認 (上の 6 回目の節の 5 点): 1〜4 は全て exit 0 で出力が空 (`[][]`・`[]`)。5 は運用 (pilot の間に Python の install・update をしていない)。
+  開始の前に `--verify --stage pilot` = `MANIFEST OK (stage pilot)`・`driver_certification_violations` = `[]`・固定ファイルに未 commit の変更なし・
+  `results/pilot/` なし。
+- 起動 (PowerShell、同じ process の中で続けて): `$env:PYTHONUTF8 = "1"`・`$env:PYTHONHASHSEED = (Get-Content …/SEED).Trim()` (= 20261001) の後に
+  `Start-Process -WindowStyle Hidden -PassThru -WorkingDirectory C:/ERRE-Sand_Box -FilePath uv -ArgumentList 'run','python','scripts/generalization_probe_driver.py','--stage','pilot'`
+  (stdout・stderr は手元の log へ)。起動 2026-10-05 11:57:34 +09:00。
+- 所要: driver の `started_at` 02:57:47.627 UTC 〜 `finished_at` 03:00:25.987 UTC = **約 2 分 38 秒** (684 呼び出し、約 4.3 呼び出し / 秒。
+  起動から `started_at` までの約 13 秒は起動の検査)。stdout は `[driver] 100 calls` 〜 `[driver] 600 calls` の 6 行と `[driver] exit_reason=completed`、
+  stderr は空。
+- provenance (`provenance.json`): `exit_reason` = `completed`・`status` = null (`not_computed` ではない)・`anomalies` = []・`n_sent` = `n_records` = 684・
+  `n_resends` = 0・`n_finish_length` = 0・`pinned_changed` = []・`manifest_problems_at_publication` = []・`read_back_problems` = []・`published` = true・
+  `driver_sha256`・`records_sha256`・`meta_sha256` は現在のファイルと一致。`git_dirty` = true は未追跡のファイル (手元の sketch の出力・
+  書きかけの `results/pilot/` 等。`git status --porcelain` は未追跡を含む) による。固定ファイルの照合は `pinned_changed` と manifest が別に見ている。
+- observed (`meta.json`。provenance の開始と終了も同じ): `model_digest` = `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`・
+  `ollama_version` = `0.32.12`・`template_sha256` = `ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4`。
+- 記録の記述 (判定ではない): KNOW 108・M_A / M_A_rot / M_B / M_B_rot 各 144。parse の ⊥ 0・`raw` = null 0・call_index は 0〜683 で一意・
+  masked の replicate は 50〜55。`attempts.jsonl` は 684 行全てが `outcome` = `ok`・`done_reason` = `stop`。
+- 機械判定: run.sh の前に起動の前の確認 1〜4 をもう一度 (全て空。run.sh を動かす Git Bash の `PYTHONPATH`・`PYTHONHOME` も空)。
+  `bash experiments/20261001-generalization-probe-pilot/run.sh pilot` (12:00:55〜12:01:08 +09:00) → `MANIFEST OK (stage pilot)` →
+  `[run.sh] pilot: repeat byte-identical`・exit 0。
+- **`gate.json` の結論** (値は gate.json から写した): `"decision": "GO"`・`"R": 18`・`"reasons": ["spike-in OC passed"]`・`"status": "computed"`・
+  `"knowledge_failures": []`・`"masked_bottom_rates"` = A / A_rot / B / B_rot とも 0.0・`"masked_max_bottom": 0.0`・`"null_C": 0.008680555555555556`。
+  OC (R = 18、`"size_cap": 0.065`): `"checks"` = calibrated・power_no_go・power_pass・size_no_go・size_pass が全て true、`"ok": true`。
+  `at_plant` (2τ) は pass 1.0・no_go 0.0 (`realized_C` 0.6002896412037038)、`at_tau` は pass 0.003・no_go 0.0025 (`realized_C` 0.29976475694444443)、
+  `at_zero` は pass 0.0・no_go 1.0 (`direction` −1・`realized_C` 9.490740740740742e-05)。
+- 本走への帰結 (prereg §8.3 の envelope): 本走の arm ごとの ⊥ 率の上限は min(0.2, 0.0 + 0.05) = **0.05**。pilot の記録は本走の verdict に使わない
+  (prereg §8.1)。第 2 段の凍結 (prereg §9.3) と本走は、それぞれ別の user 裁定。
+- 改行: `gate.json` は pilot_gate の script が Windows のテキストモードで書いたので、手元の作業木では CRLF だった (他の 4 ファイルは LF)。
+  `.gitattributes` が `*.json` を LF に固定するので、commit される正本は LF。manifest は gate.json を JSON の値で照合し (入力の sha256 は
+  records・meta・certification・見取り図で、どれも LF)、bytes は照合しない。第 2 段で `manifest_main.json` が gate.json の sha256 を封印するときは、
+  checkout した LF の版から取る。
