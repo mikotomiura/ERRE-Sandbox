@@ -8,6 +8,10 @@
 - null pilot の後 (第 1 段の凍結と別の user 裁定の後): `results/pilot/records.jsonl` (1 行 1 呼び出し、schema は prereg §4) と
   `results/pilot/meta.json`、機械判定の出力 `results/pilot/gate.json`。
 - 本走の後 (第 2 段の凍結と別の user 裁定の後): `results/run/records.jsonl`・`results/run/meta.json`・判定の出力 `results/run/results.json`。
+  - 本走 (2026-10-05、user 裁定 DS-3、GPU): `results/run/` に records.jsonl (1,728 行 = 4 arm × 432、1 行 1 呼び出し、schema は prereg §4)・
+    meta.json・provenance.json (driver の来歴)・attempts.jsonl (送信ごとの結果、1,728 行)・results.json (`run.sh main` の判定の出力、
+    verdict = `NO_GO_EFFECT_ABSENT`)。モデルの出力は records.jsonl の `raw` だけ (qwen3:8b、think=False、num_predict 32)。
+    pilot の記録は判定に使っていない (prereg §8.1)。来歴・sha256・判定の値は env.md の「本走」節。
 - 凍結 manifest: `manifest.json` (第 1 段) と `manifest_main.json` (第 2 段)。prereg §9。
   - `manifest_main.json` (2026-10-05、user 裁定 DP-3): 第 2 段の封印。34 ファイル (第 1 段の対象 25 + `manifest.json`・`results/pilot/` の
     records・meta・provenance・gate.json・driver・driver の harness・driver の test・driver の certification) の sha256 と `prereg_body_sha256`。
