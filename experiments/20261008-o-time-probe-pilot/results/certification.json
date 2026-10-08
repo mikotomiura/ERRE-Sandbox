@@ -1,0 +1,4045 @@
+{
+  "target_sha256": {
+    "scripts/o_time_probe_battery.py": "58198695cfdf6b27e82778f0c387fa2c4ea1eed5cdbe14a8b04a54314757f970",
+    "scripts/o_time_probe_fixtures.py": "99d266093dbf91e2d28814dba9dc8e42a2e3519078c6e336769ba42a6563f9d8",
+    "scripts/o_time_probe_scorer.py": "e11357155966e3c0880bb610b2f6bc3df7fd9cc28ee93367c2f7e6511ddf54c4",
+    "scripts/o_time_probe_sim.py": "8e689fce50d40412d8b8836be94d5656fda18f704c7827d9becd2eb782f6b54c",
+    "scripts/o_time_probe_pilot_gate.py": "5983e0dc792544ba007e410ce29dc0b1265abb066abe99e09d4e99572fbf71c4",
+    "scripts/stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2"
+  },
+  "tests_sha256": {
+    "tests/test_o_time_probe/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/test_o_time_probe/conftest.py": "f28cb4e0e361196700a2f308efa7c6d311e788c2b38508ff6b1368a8d088c9f8",
+    "tests/test_o_time_probe/test_battery.py": "03c25a54cb2b3f7450bea3df4a68397a750c56698789ec35a35e9d7d2385640e",
+    "tests/test_o_time_probe/test_fixtures.py": "0ff5f645f9d4b228576f98067ca15672a9f0b4143e99c1e9097dfc487de66f87",
+    "tests/test_o_time_probe/test_scorer.py": "f5e1d0de47d77d87f57de8b15f94cbbc72e40679e1d9b55ccc96b89759aa4060",
+    "tests/test_o_time_probe/test_sim.py": "9dd1f633008bbf4ef1a4c86a6a966ef518fdace62e104d9dbdbb1b20d64cc2cd",
+    "tests/test_o_time_probe/test_pilot_gate.py": "f8ae0e6a0c9099ac410b49e43ef800754020b5db7eb90240cbfe484c727abc0d",
+    "tests/test_o_time_probe/test_manifest.py": "1af710ee4caf81578726fc1dcc1a40ea867e9cc18a782ad57c48af7a24dd3a60"
+  },
+  "harness_sha256": "ca9103e73d83b65f118484a32d7ac8cc8cafd823eacfe73d1a1595506904e23d",
+  "manifest_sha256": "ffb5ea942545a11f673dc06303051c188e950c509b63427367d0c5bb5a3e4dc0",
+  "meta_test": [
+    {
+      "label": "decide を常に INCONCLUSIVE に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_decide_threshold",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_newer_pass"
+      ],
+      "failed": [
+        "test_cli_end_to_end",
+        "test_decide_threshold",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go"
+      ]
+    },
+    {
+      "label": "structure_violations を空に潰す",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_structure_grid",
+        "test_structure_prompt",
+        "test_structure_seed"
+      ],
+      "failed": [
+        "test_evaluate_structure",
+        "test_structure_call_index",
+        "test_structure_duplicate",
+        "test_structure_encoding_swapped",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed"
+      ]
+    }
+  ],
+  "mutants": [
+    {
+      "label": "mb01 第 2 の規則 = 第 1 の規則",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_rules_pinned"
+      ],
+      "reason": "全部屋で 2 つの規則が同じ行動を指し、w と foil が一致する",
+      "failed": [
+        "test_a_first_matches_layout",
+        "test_aggregator_is_daily",
+        "test_battery_checks_pass",
+        "test_bot_in_denominator",
+        "test_bottom_rates_per_arm",
+        "test_category",
+        "test_cell_score",
+        "test_cell_scores_shapes",
+        "test_chrono_only_is_calibrated_under_skewed_base",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_context_matches_renderer",
+        "test_describe",
+        "test_design_indices",
+        "test_discordance",
+        "test_entry_order_pinned_and_shared",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_battery_gate",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_meta",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_requires_certification",
+        "test_evaluate_structure",
+        "test_evaluate_transport_failure",
+        "test_expected_uses_the_pilot_namespaces",
+        "test_exposure_is_shared_within_family",
+        "test_fixture_gate_passes",
+        "test_fixture_table_passed_flag",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_injection_calibrates",
+        "test_injection_skips_bot",
+        "test_layer1_detects",
+        "test_layer1_holds",
+        "test_layer2_detects",
+        "test_layer2_holds",
+        "test_layer_checks_compare_the_whole_prompt",
+        "test_masked_states",
+        "test_masked_states_detect",
+        "test_meta_observed",
+        "test_non_leakage",
+        "test_non_leakage_detects",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop",
+        "test_pilot_meta_stop",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_records_stop",
+        "test_pilot_stop_on_power",
+        "test_pointed_is_newer_day",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_prompt_budget",
+        "test_prompt_budget_detects",
+        "test_registered_policies_exact_per_unit",
+        "test_render_probe_text",
+        "test_render_row_text",
+        "test_rules_pinned",
+        "test_schema_bool_is_rejected",
+        "test_schema_missing_field_and_bad_json",
+        "test_seed_reading_policy_is_zero",
+        "test_seed_shared_within_unit",
+        "test_spike_in_power_on_blind_null",
+        "test_state_table_check_detects",
+        "test_structure_call_index",
+        "test_structure_checks",
+        "test_structure_clean",
+        "test_structure_duplicate",
+        "test_structure_encoding_swapped",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed",
+        "test_suffix_reading_policy_is_not_cancelled",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "mb02 記録に無い label = 第 1 の規則",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_rules_pinned"
+      ],
+      "reason": "Ω の残り 1 つが foil と一致する",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_describe",
+        "test_discordance",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_pilot_m0_requires_components",
+        "test_rules_pinned"
+      ]
+    },
+    {
+      "label": "mb03 規則の列が日に依らない",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rules_pinned",
+        "test_state_rows_follow_daily_rule"
+      ],
+      "reason": "2 日とも同じ規則になり、時期の違いが消える",
+      "failed": [
+        "test_aggregator_is_daily",
+        "test_battery_checks_pass",
+        "test_bot_in_denominator",
+        "test_bottom_rates_per_arm",
+        "test_category",
+        "test_cell_score",
+        "test_cell_scores_shapes",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_context_matches_renderer",
+        "test_describe",
+        "test_design_indices",
+        "test_discordance",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_battery_gate",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_meta",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_requires_certification",
+        "test_evaluate_structure",
+        "test_evaluate_transport_failure",
+        "test_expected_uses_the_pilot_namespaces",
+        "test_fixture_gate_passes",
+        "test_fixture_table_passed_flag",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_injection_calibrates",
+        "test_injection_skips_bot",
+        "test_layer1_detects",
+        "test_layer1_holds",
+        "test_layer2_detects",
+        "test_layer2_holds",
+        "test_layer_checks_compare_the_whole_prompt",
+        "test_masked_states",
+        "test_masked_states_detect",
+        "test_meta_observed",
+        "test_multiset_invariant",
+        "test_non_leakage",
+        "test_non_leakage_detects",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop",
+        "test_pilot_meta_stop",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_records_stop",
+        "test_pilot_stop_on_power",
+        "test_pointed_is_newer_day",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_prompt_budget",
+        "test_prompt_budget_detects",
+        "test_registered_policies_exact_per_unit",
+        "test_render_probe_text",
+        "test_render_row_text",
+        "test_rules_pinned",
+        "test_schema_bool_is_rejected",
+        "test_schema_missing_field_and_bad_json",
+        "test_seed_reading_policy_is_zero",
+        "test_seed_shared_within_unit",
+        "test_spike_in_power_on_blind_null",
+        "test_state_table_check_detects",
+        "test_structure_call_index",
+        "test_structure_checks",
+        "test_structure_clean",
+        "test_structure_duplicate",
+        "test_structure_encoding_swapped",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed",
+        "test_suffix_reading_policy_is_not_cancelled",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "mb04 規則の列が arm の向きに依らない (AB = BA)",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pointed_is_newer_day",
+        "test_rules_pinned"
+      ],
+      "reason": "族の 2 arm が同じ列になり、差の源が消える",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_category",
+        "test_cell_score",
+        "test_cell_scores_shapes",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_exposure_is_shared_within_family",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_layer2_detects",
+        "test_layer2_holds",
+        "test_pilot_clean_go",
+        "test_pointed_is_newer_day",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_registered_policies_exact_per_unit",
+        "test_render_row_text",
+        "test_rules_pinned",
+        "test_seed_reading_policy_is_zero",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit"
+      ]
+    },
+    {
+      "label": "mb05 w と foil を入れ替える",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_newer_pass",
+        "test_pointed_is_newer_day"
+      ],
+      "reason": "推定量の向きが古い日になる",
+      "failed": [
+        "test_category",
+        "test_cell_score",
+        "test_cell_scores_shapes",
+        "test_design_indices",
+        "test_evaluate_literal_no_go",
+        "test_fixture_table_pinned",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_m0_requires_components",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_stop_on_power",
+        "test_pointed_is_newer_day",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_suffix_reading_policy_is_not_cancelled"
+      ]
+    },
+    {
+      "label": "mb06 試行を 1 回に",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_exposure_is_shared_within_family",
+        "test_state_rows_follow_daily_rule"
+      ],
+      "reason": "行の成功数が固定の文言 (成功 3) と合わない",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_context_matches_renderer",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_exposure_is_shared_within_family",
+        "test_render_row_text",
+        "test_state_rows_follow_daily_rule"
+      ]
+    },
+    {
+      "label": "mb07 aggregator が日をまたいで数える",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aggregator_is_daily",
+        "test_state_rows_follow_daily_rule"
+      ],
+      "reason": "日をまたぐと成功と失敗が混じり、行が残らない",
+      "failed": [
+        "test_aggregator_is_daily",
+        "test_battery_checks_pass",
+        "test_bot_in_denominator",
+        "test_bottom_rates_per_arm",
+        "test_cell_scores_shapes",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_context_matches_renderer",
+        "test_describe",
+        "test_discordance",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_battery_gate",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_meta",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_requires_certification",
+        "test_evaluate_structure",
+        "test_evaluate_transport_failure",
+        "test_expected_uses_the_pilot_namespaces",
+        "test_fixture_gate_passes",
+        "test_fixture_table_passed_flag",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_injection_calibrates",
+        "test_injection_skips_bot",
+        "test_layer1_detects",
+        "test_layer1_holds",
+        "test_layer2_detects",
+        "test_layer2_holds",
+        "test_layer_checks_compare_the_whole_prompt",
+        "test_m0_states",
+        "test_m0_states_detect",
+        "test_masked_states",
+        "test_masked_states_detect",
+        "test_meta_observed",
+        "test_multiset_detects",
+        "test_multiset_invariant",
+        "test_non_leakage",
+        "test_non_leakage_detects",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop",
+        "test_pilot_meta_stop",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_records_stop",
+        "test_pilot_stop_on_power",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_prompt_budget",
+        "test_prompt_budget_detects",
+        "test_registered_policies_exact_per_unit",
+        "test_render_probe_text",
+        "test_render_row_text",
+        "test_schema_bool_is_rejected",
+        "test_schema_missing_field_and_bad_json",
+        "test_seed_reading_policy_is_zero",
+        "test_seed_shared_within_unit",
+        "test_spike_in_power_on_blind_null",
+        "test_state_rows_follow_daily_rule",
+        "test_state_table_check_detects",
+        "test_structure_call_index",
+        "test_structure_checks",
+        "test_structure_clean",
+        "test_structure_duplicate",
+        "test_structure_encoding_swapped",
+        "test_structure_grid",
+        "test_structure_parse",
+        "test_structure_prompt",
+        "test_structure_seed",
+        "test_suffix_reading_policy_is_not_cancelled",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "mb08 aggregator が失敗のある行も残す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aggregator_is_daily"
+      ],
+      "reason": "失敗のある行動も成功行になる (日をまたぐ数え方で 2 行になる)",
+      "failed": [
+        "test_aggregator_is_daily"
+      ]
+    },
+    {
+      "label": "mb09 aggregator の 2 行の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aggregator_rejects_two_rows"
+      ],
+      "reason": "同じ日・部屋の 2 つの成功行を黙って上書きする",
+      "failed": [
+        "test_aggregator_rejects_two_rows"
+      ]
+    },
+    {
+      "label": "mb10 row_day の一意性の検査を緩める",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_row_day_requires_one_day"
+      ],
+      "reason": "同じ label が 2 日に記録された状態を通す",
+      "failed": [
+        "test_row_day_requires_one_day"
+      ]
+    },
+    {
+      "label": "mb11 並びが部屋に依らない",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_entry_order_pinned_and_shared"
+      ],
+      "reason": "単位の並びが部屋の間で共有され、凍結した並びと違う",
+      "failed": [
+        "test_chrono_only_is_calibrated_under_skewed_base",
+        "test_entry_order_pinned_and_shared",
+        "test_render_row_text"
+      ]
+    },
+    {
+      "label": "mb12 表示順の回転が部屋に依らない",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_option_order",
+        "test_render_probe_text"
+      ],
+      "reason": "凍結した表示順と違う",
+      "failed": [
+        "test_design_indices",
+        "test_option_order",
+        "test_render_probe_text"
+      ]
+    },
+    {
+      "label": "mb13 seed が部屋に依らない",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_seed"
+      ],
+      "reason": "部屋の間で seed を共有し、単位の独立の理想化が崩れる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_seed",
+        "test_seed_namespaces_detect",
+        "test_seed_shared_within_unit"
+      ]
+    },
+    {
+      "label": "mb14 seed の r の範囲の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed"
+      ],
+      "reason": "r ≥ 1000 で他の名前空間と交わる",
+      "failed": [
+        "test_seed"
+      ]
+    },
+    {
+      "label": "mb15 masked が札の数字を伏せない",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_masked_states"
+      ],
+      "reason": "null pilot の masked が時期を見せる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_expected_uses_the_pilot_namespaces",
+        "test_masked_states",
+        "test_tags_pinned"
+      ]
+    },
+    {
+      "label": "mb16 行の文面から失敗数を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_render_row_text"
+      ],
+      "reason": "凍結した行の文面と違う",
+      "failed": [
+        "test_render_row_text"
+      ]
+    },
+    {
+      "label": "mb17 M0 が古い日の行を描く",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_m0_states",
+        "test_pilot_clean_go"
+      ],
+      "reason": "陽性対照の lookup が古い規則を指す",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cell_scores_shapes",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_m0_states",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_m0_requires_components",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_stop_on_power"
+      ]
+    },
+    {
+      "label": "mb18 M0 の札が古い日",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_m0_states"
+      ],
+      "reason": "陽性対照の札が新しい日でない",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_m0_states"
+      ]
+    },
+    {
+      "label": "mb19 masked の mode を無視する",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_masked_states"
+      ],
+      "reason": "masked の状態が本走と同じになる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_expected_uses_the_pilot_namespaces",
+        "test_masked_states"
+      ]
+    },
+    {
+      "label": "mb20 probe の「今の状況」を変える",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_render_probe_text"
+      ],
+      "reason": "凍結した probe の文面と違う",
+      "failed": [
+        "test_render_probe_text"
+      ]
+    },
+    {
+      "label": "mb21 族の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_render_rejects_wrong_family"
+      ],
+      "reason": "別の族の単位で描画できてしまう",
+      "failed": [
+        "test_render_rejects_wrong_family"
+      ]
+    },
+    {
+      "label": "mb22 単位の 4 呼び出しの順を変える",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_units_order"
+      ],
+      "reason": "呼び出しの順の凍結と違う",
+      "failed": [
+        "test_units_order"
+      ]
+    },
+    {
+      "label": "mb23 mask_digits を no-op に",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_layer1_holds",
+        "test_mask_helpers"
+      ],
+      "reason": "定理 1 の前提の検査が数字の違いで常に落ちる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_layer1_holds",
+        "test_layer_checks_compare_the_whole_prompt",
+        "test_mask_helpers",
+        "test_masked_states",
+        "test_normalized_messages"
+      ]
+    },
+    {
+      "label": "mb24 mask_suffix を no-op に",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_layer2_holds",
+        "test_mask_helpers"
+      ],
+      "reason": "定理 2 の前提の検査が後ろの語の違いで常に落ちる",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_layer2_holds",
+        "test_mask_helpers"
+      ]
+    },
+    {
+      "label": "mb24b 定理の前提の検査を user の文面だけにする",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_layer_checks_compare_the_whole_prompt"
+      ],
+      "reason": "system・role・追加の message の差を見逃す (Codex HIGH-1)",
+      "failed": [
+        "test_layer_checks_compare_the_whole_prompt"
+      ]
+    },
+    {
+      "label": "mb25 既存の語の 4-gram の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vocabulary_detects"
+      ],
+      "reason": "既存の battery の語と字面を共有する語を通す",
+      "failed": [
+        "test_vocabulary_detects"
+      ]
+    },
+    {
+      "label": "mb26 語の数字の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_vocabulary_detects"
+      ],
+      "reason": "数字を含む語 (札の数字と紛れる) を通す",
+      "failed": [
+        "test_vocabulary_detects"
+      ]
+    },
+    {
+      "label": "mb27 規則の一致の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_rules_detect"
+      ],
+      "reason": "2 つの規則が同じ行動を指す部屋を通す",
+      "failed": [
+        "test_rules_detect"
+      ]
+    },
+    {
+      "label": "mb28 aggregator と規則の照合を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_state_table_check_detects"
+      ],
+      "reason": "規則と違う行を通す",
+      "failed": [
+        "test_state_table_check_detects"
+      ]
+    },
+    {
+      "label": "mb29 多重集合の照合を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_multiset_detects"
+      ],
+      "reason": "族の 2 状態の記録の集合が違っても通す (時期だけの違いが崩れる)",
+      "failed": [
+        "test_multiset_detects"
+      ]
+    },
+    {
+      "label": "mb30 札の書き方の中の照合を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tags_detect"
+      ],
+      "reason": "2 日の札が数字以外でも違う書き方を通す",
+      "failed": [
+        "test_tags_detect"
+      ]
+    },
+    {
+      "label": "mb31 数字の向きの照合を反転",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_tags_pinned"
+      ],
+      "reason": "凍結した札 (ago は新しい日が小さい数) を拒否する",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_tags_detect",
+        "test_tags_pinned"
+      ]
+    },
+    {
+      "label": "mb32 定理 1 の前提の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_layer1_detects"
+      ],
+      "reason": "2 arm の prompt が札の数字以外で違っても通す",
+      "failed": [
+        "test_layer1_detects",
+        "test_layer_checks_compare_the_whole_prompt"
+      ]
+    },
+    {
+      "label": "mb33 定理 2 の前提の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_layer2_detects"
+      ],
+      "reason": "書き方の対が後ろの語以外で違っても通す",
+      "failed": [
+        "test_layer2_detects",
+        "test_layer_checks_compare_the_whole_prompt"
+      ]
+    },
+    {
+      "label": "mb34 定理 2 の対の組を取り違える",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass",
+        "test_layer2_holds"
+      ],
+      "reason": "対の組を誤り、正しい設計を拒否する",
+      "failed": [
+        "test_battery_checks_pass",
+        "test_cli_end_to_end",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_lever_bottom",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_missing_rows",
+        "test_evaluate_newer_pass",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_evaluate_transport_failure",
+        "test_layer2_detects",
+        "test_layer2_holds"
+      ]
+    },
+    {
+      "label": "mb35 非漏洩で arm 名を許す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_leakage_detects"
+      ],
+      "reason": "arm 名が prompt に漏れても通す",
+      "failed": [
+        "test_non_leakage_detects"
+      ]
+    },
+    {
+      "label": "mb36 R が 3 の倍数かの検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_position_balance"
+      ],
+      "reason": "表示位置の均衡が取れない R を通す",
+      "failed": [
+        "test_position_balance"
+      ]
+    },
+    {
+      "label": "mb37 表示位置の均衡の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_position_balance_detects"
+      ],
+      "reason": "表示順が偏っても通す",
+      "failed": [
+        "test_position_balance_detects"
+      ]
+    },
+    {
+      "label": "mb38 byte 予算の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prompt_budget_detects"
+      ],
+      "reason": "切り詰めが起こりうる prompt を通す",
+      "failed": [
+        "test_prompt_budget_detects"
+      ]
+    },
+    {
+      "label": "mb39 masked の 2 arm の同一性の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_masked_states_detect"
+      ],
+      "reason": "masked の 2 arm の prompt が違っても通す",
+      "failed": [
+        "test_layer_checks_compare_the_whole_prompt",
+        "test_masked_states_detect"
+      ]
+    },
+    {
+      "label": "mb40 M0 の行の照合を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_m0_states_detect"
+      ],
+      "reason": "M0 の行が新しい日の行でなくても通す",
+      "failed": [
+        "test_m0_states_detect"
+      ]
+    },
+    {
+      "label": "mb41 seed の名前空間の分離の検査を外す",
+      "target": "o_time_probe_battery.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_namespaces_detect"
+      ],
+      "reason": "本走と pilot の seed が交わっても通す",
+      "failed": [
+        "test_seed_namespaces_detect"
+      ]
+    },
+    {
+      "label": "mx01 単位の d を fwd arm だけにする",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_passes",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit"
+      ],
+      "reason": "族内の打ち消しが消え、札を見ない方策の C が 0 でなくなる",
+      "failed": [
+        "test_evaluate_fixture_gate_real",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_registered_policies_exact_per_unit",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit"
+      ]
+    },
+    {
+      "label": "mx02 C を asc だけで計算する",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned"
+      ],
+      "reason": "書き方の対の打ち消しが消え、字面の方策が gate を越える",
+      "failed": [
+        "test_evaluate_fixture_gate_real",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls"
+      ]
+    },
+    {
+      "label": "mx03 foil を 0 に数える",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cell_score",
+        "test_positive_controls"
+      ],
+      "reason": "古い日に従う方策が C = 0 になる",
+      "failed": [
+        "test_cell_score",
+        "test_evaluate_fixture_gate_real",
+        "test_fixture_gate_passes",
+        "test_fixture_table_pinned",
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_registered_policies_exact_per_unit",
+        "test_theorem1_digit_blind_policies_are_zero_per_unit",
+        "test_theorem2_suffix_blind_policies_cancel_per_unit"
+      ]
+    },
+    {
+      "label": "mx04 文脈の札を取り違える",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_context_matches_renderer",
+        "test_positive_controls"
+      ],
+      "reason": "fixture の文脈が renderer と違う",
+      "failed": [
+        "test_context_matches_renderer",
+        "test_evaluate_literal_no_go",
+        "test_fixture_table_pinned",
+        "test_policy_c_averages_encodings",
+        "test_positive_controls",
+        "test_suffix_reading_policy_is_not_cancelled"
+      ]
+    },
+    {
+      "label": "mx05 ago の新しさの読みを反転",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_positive_controls"
+      ],
+      "reason": "陽性対照が ago で古い日に従う",
+      "failed": [
+        "test_fixture_table_passed_flag",
+        "test_fixture_violations_detect_small_nonzero",
+        "test_positive_controls",
+        "test_suffix_reading_policy_is_not_cancelled"
+      ]
+    },
+    {
+      "label": "mx06 3 族の厳密な 0 の検査を外す",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero"
+      ],
+      "reason": "定理で 0 のはずの方策が 0 でなくても通す",
+      "failed": [
+        "test_fixture_violations_detect",
+        "test_fixture_violations_detect_small_nonzero"
+      ]
+    },
+    {
+      "label": "mx07 gate の閾値を外す",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detect"
+      ],
+      "reason": "τ/4 を越える方策を通す",
+      "failed": [
+        "test_fixture_violations_detect"
+      ]
+    },
+    {
+      "label": "mx08 gate を τ/2 に",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_gate_passes"
+      ],
+      "reason": "凍結した gate (τ/4) と違う",
+      "failed": [
+        "test_fixture_gate_passes"
+      ]
+    },
+    {
+      "label": "mx09 登録方策を 1 つ外す",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "凍結した登録表と違う",
+      "failed": [
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "mx10 大きい数の方策を反転",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "方策の定義が名前と違う",
+      "failed": [
+        "test_evaluate_literal_no_go",
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "mx11 辞書順の方策を反転",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "方策の定義が名前と違う",
+      "failed": [
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "mx12 passed を常に真に",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_passed_flag"
+      ],
+      "reason": "gate を越えた表を合格と記録する",
+      "failed": [
+        "test_fixture_table_passed_flag"
+      ]
+    },
+    {
+      "label": "mx13 厳密な 0 の対象から字面の方策を外す",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_violations_detect"
+      ],
+      "reason": "定理 2 の対象の方策が 0 でなくても通す",
+      "failed": [
+        "test_fixture_violations_detect"
+      ]
+    },
+    {
+      "label": "mx14 大きい数が後の行だけの方策の位置を取り違える",
+      "target": "o_time_probe_fixtures.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_pinned"
+      ],
+      "reason": "方策の定義が名前と違う",
+      "failed": [
+        "test_fixture_table_pinned"
+      ]
+    },
+    {
+      "label": "ms01 think ブロックを除かない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_think_block"
+      ],
+      "reason": "think の中の label を拾う",
+      "failed": [
+        "test_parse_think_block"
+      ]
+    },
+    {
+      "label": "ms02 閉じない think を ⊥ にしない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_unclosed_think"
+      ],
+      "reason": "閉じない think の中の label を拾う",
+      "failed": [
+        "test_parse_unclosed_think"
+      ]
+    },
+    {
+      "label": "ms03 2 label を ⊥ にしない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_two_labels_is_bot"
+      ],
+      "reason": "2 つの label を含む応答を最初の label にする",
+      "failed": [
+        "test_parse_two_labels_is_bot"
+      ]
+    },
+    {
+      "label": "ms04 parse の前の単語境界を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_word_boundary"
+      ],
+      "reason": "語の一部の label を拾う",
+      "failed": [
+        "test_parse_word_boundary"
+      ]
+    },
+    {
+      "label": "ms05 NFKC を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_basic"
+      ],
+      "reason": "全角の label を ⊥ にする",
+      "failed": [
+        "test_parse_basic"
+      ]
+    },
+    {
+      "label": "ms06 category の w を foil に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_category",
+        "test_evaluate_newer_pass"
+      ],
+      "reason": "新しい日の選択を foil に数える",
+      "failed": [
+        "test_bot_in_denominator",
+        "test_category",
+        "test_cell_scores_shapes",
+        "test_cli_end_to_end",
+        "test_components_order",
+        "test_describe",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_envelope",
+        "test_evaluate_fixture_gate_real",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_newer_pass",
+        "test_evaluate_one_direction_not_reading",
+        "test_evaluate_partial_inconclusive",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_m0_requires_components",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_stop_on_power",
+        "test_seed_reading_policy_is_zero",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "ms07 category の other を oov に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_category",
+        "test_describe"
+      ],
+      "reason": "記録に無い行動を語彙外に数える",
+      "failed": [
+        "test_category",
+        "test_describe"
+      ]
+    },
+    {
+      "label": "ms08 セル得点の符号を足し算に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_blind_no_go",
+        "test_evaluate_older_no_go"
+      ],
+      "reason": "foil を w と同じ向きに数える",
+      "failed": [
+        "test_components_order",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_seed_reading_policy_is_zero",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "ms09 D を asc だけに",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_literal_no_go"
+      ],
+      "reason": "書き方の対の打ち消しが消え、字面の方策で C > 0",
+      "failed": [
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_literal_no_go"
+      ]
+    },
+    {
+      "label": "ms10 成分の並びを入れ替える",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_components_order"
+      ],
+      "reason": "成分の名前と値が対応しない",
+      "failed": [
+        "test_components_order",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "ms11 成分が向きを見ない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_asc_only_not_pass",
+        "test_unit_scores_average_of_four"
+      ],
+      "reason": "一方向だけの効果で 4 成分が正になる",
+      "failed": [
+        "test_components_order",
+        "test_evaluate_one_direction_not_reading",
+        "test_unit_scores_average_of_four"
+      ]
+    },
+    {
+      "label": "ms12 ⊥ 率の分母を倍に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_rates_per_arm"
+      ],
+      "reason": "⊥ 率を半分に数える",
+      "failed": [
+        "test_bottom_rates_per_arm",
+        "test_evaluate_envelope"
+      ]
+    },
+    {
+      "label": "ms13 CAP_PLUS を 1/(1−τ) に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact",
+        "test_frozen_constants"
+      ],
+      "reason": "因子が負になりうる λ を許す (有効性の証明が壊れる)",
+      "failed": [
+        "test_e_value_exact",
+        "test_e_value_respects_necessary_bound",
+        "test_e_value_zero_factor",
+        "test_frozen_constants"
+      ]
+    },
+    {
+      "label": "ms14 λ の混合を 1 点に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact",
+        "test_frozen_constants"
+      ],
+      "reason": "凍結した混合と違う",
+      "failed": [
+        "test_e_value_exact",
+        "test_e_value_zero_factor",
+        "test_expected_params_match_the_sim",
+        "test_frozen_constants",
+        "test_sim_power_and_null",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "ms15 混合を最大にする",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact"
+      ],
+      "reason": "λ の後選びで e-value が膨らむ (有効でない)",
+      "failed": [
+        "test_e_value_exact",
+        "test_e_value_zero_factor"
+      ]
+    },
+    {
+      "label": "ms16 NO_GO 枝の符号を反転",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_e_value_exact",
+        "test_no_go_reachable"
+      ],
+      "reason": "NO_GO 枝が C ≥ τ の帰無を棄却しない",
+      "failed": [
+        "test_e_value_exact",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_blind_no_go",
+        "test_evaluate_literal_no_go",
+        "test_evaluate_older_no_go",
+        "test_evaluate_one_direction_not_reading",
+        "test_no_go_reachable",
+        "test_pilot_clean_go",
+        "test_sim_power_and_null",
+        "test_spike_in_power_on_blind_null"
+      ]
+    },
+    {
+      "label": "ms17 PASS の閾値を厳しく (>)",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_threshold"
+      ],
+      "reason": "E⁺ = 1/α ちょうどを PASS にしない",
+      "failed": [
+        "test_decide_threshold"
+      ]
+    },
+    {
+      "label": "ms18 成分の条件を ≥ 0 に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_requires_positive_components"
+      ],
+      "reason": "動かない成分があっても PASS する",
+      "failed": [
+        "test_decide_requires_positive_components",
+        "test_evaluate_asc_only_not_pass",
+        "test_evaluate_one_direction_not_reading",
+        "test_pilot_m0_requires_components"
+      ]
+    },
+    {
+      "label": "ms19 NO_GO の閾値を厳しく (>)",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_threshold"
+      ],
+      "reason": "E⁻ = 1/α ちょうどを NO_GO にしない",
+      "failed": [
+        "test_decide_threshold"
+      ]
+    },
+    {
+      "label": "ms20 arm ごとの ⊥ の上限を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate",
+        "test_evaluate_lever_bottom"
+      ],
+      "reason": "⊥ の多い arm を通す",
+      "failed": [
+        "test_bottom_gate",
+        "test_evaluate_envelope",
+        "test_sim_bottom_gate"
+      ]
+    },
+    {
+      "label": "ms21 族内の ⊥ 差の上限を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bottom_gate_family_gap"
+      ],
+      "reason": "族内で ⊥ が偏っても通す",
+      "failed": [
+        "test_bottom_gate_family_gap"
+      ]
+    },
+    {
+      "label": "ms22 envelope を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_envelope_bottom_max",
+        "test_evaluate_envelope"
+      ],
+      "reason": "pilot の雑音から外れた ⊥ 率を通す",
+      "failed": [
+        "test_envelope_bottom_max",
+        "test_evaluate_envelope"
+      ]
+    },
+    {
+      "label": "ms23 certification の確認を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_requires_certification"
+      ],
+      "reason": "certify されていない判定コードで verdict を出す",
+      "failed": [
+        "test_evaluate_requires_certification"
+      ]
+    },
+    {
+      "label": "ms24 battery の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_battery_gate"
+      ],
+      "reason": "前提の崩れた battery で verdict を出す",
+      "failed": [
+        "test_evaluate_battery_gate"
+      ]
+    },
+    {
+      "label": "ms25 fixture gate を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_fixture_gate"
+      ],
+      "reason": "fixture gate を越えた設計で verdict を出す",
+      "failed": [
+        "test_evaluate_fixture_gate"
+      ]
+    },
+    {
+      "label": "ms26 meta の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_meta",
+        "test_meta_observed"
+      ],
+      "reason": "凍結と違う実行条件の記録で verdict を出す",
+      "failed": [
+        "test_evaluate_meta",
+        "test_meta_observed"
+      ]
+    },
+    {
+      "label": "ms27 記録の構造の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_structure"
+      ],
+      "reason": "seed や prompt の違う記録で verdict を出す",
+      "failed": [
+        "test_evaluate_structure"
+      ]
+    },
+    {
+      "label": "ms28 transport 失敗を not_computed にしない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_transport_failure"
+      ],
+      "reason": "欠けた応答を ⊥ として verdict を出す",
+      "failed": [
+        "test_evaluate_transport_failure"
+      ]
+    },
+    {
+      "label": "ms29 ⊥ gate を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom"
+      ],
+      "reason": "⊥ の多い記録で verdict を出す",
+      "failed": [
+        "test_evaluate_envelope",
+        "test_evaluate_lever_bottom"
+      ]
+    },
+    {
+      "label": "ms30 envelope を本走に使わない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_envelope"
+      ],
+      "reason": "pilot の雑音の外の ⊥ 率を通す",
+      "failed": [
+        "test_evaluate_envelope"
+      ]
+    },
+    {
+      "label": "ms31 meta の request の照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_meta"
+      ],
+      "reason": "凍結と違う decode 条件の記録を通す",
+      "failed": [
+        "test_evaluate_meta",
+        "test_pilot_meta_stop"
+      ]
+    },
+    {
+      "label": "ms32 観測環境の pilot との照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_observed"
+      ],
+      "reason": "pilot と違うモデルの記録を通す",
+      "failed": [
+        "test_meta_observed"
+      ]
+    },
+    {
+      "label": "ms33 seed の照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_evaluate_structure",
+        "test_structure_seed"
+      ],
+      "reason": "凍結と違う seed の記録を通す",
+      "failed": [
+        "test_evaluate_structure",
+        "test_structure_seed"
+      ]
+    },
+    {
+      "label": "ms34 prompt の照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_encoding_swapped",
+        "test_structure_prompt"
+      ],
+      "reason": "凍結と違う prompt の記録を通す",
+      "failed": [
+        "test_structure_encoding_swapped",
+        "test_structure_prompt"
+      ]
+    },
+    {
+      "label": "ms35 parse の照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_parse"
+      ],
+      "reason": "記録した parse と再 parse が違っても通す",
+      "failed": [
+        "test_structure_parse"
+      ]
+    },
+    {
+      "label": "ms36 重複の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_duplicate"
+      ],
+      "reason": "同じセルの重複を通す",
+      "failed": [
+        "test_structure_duplicate"
+      ]
+    },
+    {
+      "label": "ms37 grid 外の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_grid"
+      ],
+      "reason": "凍結した grid の外の記録を通す",
+      "failed": [
+        "test_structure_grid"
+      ]
+    },
+    {
+      "label": "ms38 call_index の検査を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_call_index"
+      ],
+      "reason": "call_index の重複を通す",
+      "failed": [
+        "test_structure_call_index"
+      ]
+    },
+    {
+      "label": "ms39 seed の名前空間を族に依らせない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_shared_within_unit"
+      ],
+      "reason": "族 1 の seed が凍結と違う",
+      "failed": [
+        "test_seed_shared_within_unit"
+      ]
+    },
+    {
+      "label": "ms40 schema が bool を int に数える",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schema_bool_is_rejected"
+      ],
+      "reason": "true / false を 1 / 0 として通す",
+      "failed": [
+        "test_schema_bool_is_rejected"
+      ]
+    },
+    {
+      "label": "ms41 schema の欄の照合を外す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_schema_missing_field_and_bad_json"
+      ],
+      "reason": "欄の欠けた記録を RecordError にしない",
+      "failed": [
+        "test_schema_missing_field_and_bad_json"
+      ]
+    },
+    {
+      "label": "ms42 certification の全 KILLED を見ない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification_requires_all_killed"
+      ],
+      "reason": "生き残りのある certification を通す",
+      "failed": [
+        "test_load_certification_requires_all_killed"
+      ]
+    },
+    {
+      "label": "ms43 certification の label の一意性を見ない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification_requires_all_killed"
+      ],
+      "reason": "label の重複した certification を通す",
+      "failed": [
+        "test_load_certification_requires_all_killed"
+      ]
+    },
+    {
+      "label": "ms44 certification の sha256 を見ない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification_detects_stale"
+      ],
+      "reason": "古いコードの certification を通す",
+      "failed": [
+        "test_load_certification_detects_stale"
+      ]
+    },
+    {
+      "label": "ms45 certification の空の明細を通す",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_load_certification"
+      ],
+      "reason": "変異 0 件の certification を通す",
+      "failed": [
+        "test_load_certification"
+      ]
+    },
+    {
+      "label": "ms46 CLI が pilot の GO を確かめない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "pilot が STOP でも本走の判定を出す",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "ms47 CLI が splitlines で行を割る",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "U+2028 を含む応答で記録の行が割れる",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "ms48 結果の JSON を LF で書かない",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "Windows で CRLF の結果を書く (G prereg BL-3)",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "ms49 τ を変える",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_frozen_constants"
+      ],
+      "reason": "凍結した τ と違う",
+      "failed": [
+        "test_band_points",
+        "test_bottom_gate_family_gap",
+        "test_expected_params_match_the_sim",
+        "test_expected_points_match_the_sim_plan",
+        "test_freeze_violations_stage_pilot",
+        "test_frozen_constants",
+        "test_judge_r_flags",
+        "test_most_favorable_requires_the_2tau_point",
+        "test_oc_conditions_each_matter",
+        "test_oc_for_r_uses_the_checks",
+        "test_run_output_shape",
+        "test_sim_power_and_null",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "ms50 記述の other_rate を oov に",
+      "target": "o_time_probe_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_describe"
+      ],
+      "reason": "記録に無い行動の率を数え違える",
+      "failed": [
+        "test_describe"
+      ]
+    },
+    {
+      "label": "mz01 w と foil の index を入れ替える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_design_indices",
+        "test_sim_power_and_null"
+      ],
+      "reason": "模擬の向きが凍結した推定量と逆",
+      "failed": [
+        "test_anti_coupling_null_is_centered_but_not_exact",
+        "test_asc_only_and_chrono_only",
+        "test_chrono_only_is_calibrated_under_skewed_base",
+        "test_crn_null_exact_zero",
+        "test_design_indices",
+        "test_logodds_calibration",
+        "test_registered_reach_matches_the_sim",
+        "test_sim_calibration",
+        "test_sim_power_and_null",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz02 表示先頭の index が部屋に依らない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_design_indices"
+      ],
+      "reason": "position_skew の base が凍結した表示順と違う",
+      "failed": [
+        "test_design_indices"
+      ]
+    },
+    {
+      "label": "mz03 時系列の表示の判定を反転",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_a_first_matches_layout"
+      ],
+      "reason": "時系列の表示でだけ評価する形が逆の arm に掛かる",
+      "failed": [
+        "test_a_first_matches_layout",
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz04 label_skew の対象を B 側に",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_base_probs"
+      ],
+      "reason": "事前偏りの base が登録と違う",
+      "failed": [
+        "test_base_probs",
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz05 asc だけの形を ago に",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_asc_only_and_chrono_only"
+      ],
+      "reason": "書き方の集中の形が登録と違う",
+      "failed": [
+        "test_asc_only_and_chrono_only"
+      ]
+    },
+    {
+      "label": "mz06 時系列の arm を入れ替える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_asc_only_and_chrono_only"
+      ],
+      "reason": "時系列の表示でだけ評価する形が逆の arm に掛かる",
+      "failed": [
+        "test_asc_only_and_chrono_only",
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz06b 時系列の形を較正しない (注入量 2t に戻す)",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chrono_only_is_calibrated_under_skewed_base"
+      ],
+      "reason": "偏った base の下で E[C] が目標からずれる (Codex HIGH-3)",
+      "failed": [
+        "test_chrono_only_is_calibrated_under_skewed_base"
+      ]
+    },
+    {
+      "label": "mz06c 較正係数で g を無視する",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_chrono_only_is_calibrated_under_skewed_base",
+        "test_registered_reach_matches_the_sim"
+      ],
+      "reason": "偏った base の残りの得点を較正に入れない",
+      "failed": [
+        "test_chrono_only_is_calibrated_under_skewed_base",
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz06d 較正の許容を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_calibration"
+      ],
+      "reason": "目標からずれた模擬を健全と記録する",
+      "failed": [
+        "test_judge_r_calibration"
+      ]
+    },
+    {
+      "label": "mz06e 診断の帯を条件 4 に数える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_band_diag_points",
+        "test_judge_r_flags"
+      ],
+      "reason": "条件 4 から外した点で選定が決まる (DU-3 と違う)",
+      "failed": [
+        "test_freeze_violations_stage_pilot",
+        "test_judge_r_flags",
+        "test_run_output_shape",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz07 部屋の集中の境界を変える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sparse_reach"
+      ],
+      "reason": "集中の形の部屋の数が登録と違う",
+      "failed": [
+        "test_sparse_reach"
+      ]
+    },
+    {
+      "label": "mz08 arm × 単位の全か無かを書き方ごとに",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_aon_arm_unit_shape"
+      ],
+      "reason": "形が登録 (書き方を通じて共通) と違う",
+      "failed": [
+        "test_aon_arm_unit_shape"
+      ]
+    },
+    {
+      "label": "mz09 項目の値の端数を切り上げる",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_item_values_stay_in_range"
+      ],
+      "reason": "項目の λ が [0, 1] の外に出る",
+      "failed": [
+        "test_item_values_stay_in_range"
+      ]
+    },
+    {
+      "label": "mz10 逆向きの項目を 1 つに",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_item_pattern_exact_mean"
+      ],
+      "reason": "逆向きの形の割合が登録 (1/6) と違う",
+      "failed": [
+        "test_item_pattern_exact_mean"
+      ]
+    },
+    {
+      "label": "mz11 crn を単位の中で共有しない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_crn_null_exact_zero",
+        "test_crn_shares_randomness_within_the_unit"
+      ],
+      "reason": "seed の共有の写しになっていない",
+      "failed": [
+        "test_crn_null_exact_zero",
+        "test_crn_shares_randomness_within_the_unit"
+      ]
+    },
+    {
+      "label": "mz12 anti を crn に",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_crn_shares_randomness_within_the_unit"
+      ],
+      "reason": "逆向きの結合が登録と違う",
+      "failed": [
+        "test_anti_coupling_null_is_centered_but_not_exact",
+        "test_crn_shares_randomness_within_the_unit"
+      ]
+    },
+    {
+      "label": "mz13 ⊥ のセルの得点を 0 にしない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sim_calibration"
+      ],
+      "reason": "⊥ のセルを w / foil に数え、較正がずれる",
+      "failed": [
+        "test_sim_calibration"
+      ]
+    },
+    {
+      "label": "mz14 D を asc だけに",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_asc_only_and_chrono_only"
+      ],
+      "reason": "書き方の対の平均が登録と違う",
+      "failed": [
+        "test_asc_only_and_chrono_only"
+      ]
+    },
+    {
+      "label": "mz15 模擬で ⊥ gate を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sim_bottom_gate"
+      ],
+      "reason": "凍結した判定 (⊥ gate) と違う",
+      "failed": [
+        "test_sim_bottom_gate"
+      ]
+    },
+    {
+      "label": "mz16 選定を最小の R に",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_the_largest_passing_candidate"
+      ],
+      "reason": "選定規則 (4 条件を満たす最大) と違う",
+      "failed": [
+        "test_run_output_shape",
+        "test_select_is_the_largest_passing_candidate",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz17 選定が帯の条件を見ない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_the_largest_passing_candidate"
+      ],
+      "reason": "決着しない確率の条件 (読み 5) を無視する",
+      "failed": [
+        "test_select_is_the_largest_passing_candidate"
+      ]
+    },
+    {
+      "label": "mz17b 選定が較正を見ない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_the_largest_passing_candidate"
+      ],
+      "reason": "較正の崩れた模擬で R を選ぶ",
+      "failed": [
+        "test_select_is_the_largest_passing_candidate"
+      ]
+    },
+    {
+      "label": "mz18 帯の条件を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "決着しない確率が大きくても帯を合格にする",
+      "failed": [
+        "test_judge_r_flags"
+      ]
+    },
+    {
+      "label": "mz19 帯の値から NO_GO を引かない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "NO_GO も決着しないに数える",
+      "failed": [
+        "test_freeze_violations_stage_pilot",
+        "test_judge_r_flags",
+        "test_run_output_shape",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz20 power の条件を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "2τ で power 0.8 に届かない R を選ぶ",
+      "failed": [
+        "test_judge_r_flags"
+      ]
+    },
+    {
+      "label": "mz21 NO_GO の power の条件を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "効果 0 で NO_GO に届かない R を選ぶ",
+      "failed": [
+        "test_judge_r_flags"
+      ]
+    },
+    {
+      "label": "mz22 size の閾値を 1 つ緩める",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "size の閾値を越える R を選ぶ",
+      "failed": [
+        "test_judge_r_flags"
+      ]
+    },
+    {
+      "label": "mz23 二項の閾値に多重性を入れない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_threshold_is_exact_binomial"
+      ],
+      "reason": "点の数に応じた誤棄却の制御をしない",
+      "failed": [
+        "test_registered_size_threshold_matches_its_definition",
+        "test_size_threshold_is_exact_binomial",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz24 境目の補間を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_boundary"
+      ],
+      "reason": "境目を格子の点で読む (memory feedback_boundary_from_sweep_not_grid)",
+      "failed": [
+        "test_boundary",
+        "test_registered_boundary_matches_its_definition",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz25 下がる境目の補間を外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_boundary"
+      ],
+      "reason": "NO_GO の境目を格子の点で読む",
+      "failed": [
+        "test_boundary",
+        "test_registered_boundary_matches_its_definition",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz26 最有利行が 2τ の点を見ない",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_most_favorable_requires_the_2tau_point"
+      ],
+      "reason": "2τ 以外の点の power で door-close を外す",
+      "failed": [
+        "test_most_favorable_requires_the_2tau_point"
+      ]
+    },
+    {
+      "label": "mz27 最有利行の結合を取り違える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_most_favorable_requires_the_2tau_point"
+      ],
+      "reason": "最も有利な行でない行で判定する",
+      "failed": [
+        "test_freeze_violations_stage_pilot",
+        "test_most_favorable_requires_the_2tau_point",
+        "test_run_output_shape",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz28 帯の幅を変える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_band_points"
+      ],
+      "reason": "帯の点が登録 (τ ± 0.05) と違う",
+      "failed": [
+        "test_band_points",
+        "test_expected_params_match_the_sim",
+        "test_expected_points_match_the_sim_plan",
+        "test_freeze_violations_stage_pilot",
+        "test_judge_r_flags",
+        "test_run_output_shape",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz29 帯を crn 以外にも",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_band_points"
+      ],
+      "reason": "帯の攪乱点が登録と違う",
+      "failed": [
+        "test_band_points",
+        "test_expected_points_match_the_sim_plan",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz29b 帯に label_skew を戻す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_band_points"
+      ],
+      "reason": "条件 4 の攪乱点が登録 (DU-3) と違う",
+      "failed": [
+        "test_band_diag_points",
+        "test_band_points",
+        "test_expected_params_match_the_sim",
+        "test_expected_points_match_the_sim_plan",
+        "test_run_output_shape",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz30弱い null を size の点から外す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_points_cover_forms"
+      ],
+      "reason": "帰無の領域の点が欠ける",
+      "failed": [
+        "test_expected_points_match_the_sim_plan",
+        "test_judge_r_flags",
+        "test_size_points_cover_forms",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz31 R の候補を変える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_select_is_the_largest_passing_candidate"
+      ],
+      "reason": "凍結した候補と違う",
+      "failed": [
+        "test_boundaries_are_independent_of_the_sim",
+        "test_expected_params_match_the_sim",
+        "test_fixture_table_binding",
+        "test_registry_catches_a_dropped_form",
+        "test_registry_catches_a_dropped_nuisance",
+        "test_run_output_shape",
+        "test_select_is_the_largest_passing_candidate",
+        "test_size_threshold_is_independent_of_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_detects_missing_points",
+        "test_sketch_recheck_power_flags",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz32 呼び出しの数を 2 倍で数える",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_judge_r_flags"
+      ],
+      "reason": "単位あたり 4 呼び出しの設計と違う",
+      "failed": [
+        "test_judge_r_flags",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mz33 対数オッズを foil に足す",
+      "target": "o_time_probe_sim.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_logodds_calibration"
+      ],
+      "reason": "対数オッズの形の向きが逆",
+      "failed": [
+        "test_logodds_calibration"
+      ]
+    },
+    {
+      "label": "mp01 pilot の seed の名前空間を masked に固定",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_uses_the_pilot_namespaces"
+      ],
+      "reason": "M0 の seed が凍結と違う",
+      "failed": [
+        "test_expected_uses_the_pilot_namespaces"
+      ]
+    },
+    {
+      "label": "mp02 pilot の prompt を本走の mode で描く",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_uses_the_pilot_namespaces"
+      ],
+      "reason": "masked と M0 の prompt が凍結と違う",
+      "failed": [
+        "test_expected_uses_the_pilot_namespaces"
+      ]
+    },
+    {
+      "label": "mp03 pilot の grid から M0 を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_grid_size"
+      ],
+      "reason": "陽性対照の腕が計画から抜ける",
+      "failed": [
+        "test_discordance",
+        "test_pilot_clean_go",
+        "test_pilot_envelope",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_grid_size",
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop",
+        "test_pilot_not_computed",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_stop_on_power",
+        "test_structure_checks"
+      ]
+    },
+    {
+      "label": "mp04 pilot の seed の照合を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_records_stop"
+      ],
+      "reason": "凍結と違う seed の pilot の記録を通す",
+      "failed": [
+        "test_pilot_records_stop"
+      ]
+    },
+    {
+      "label": "mp05 pilot の prompt の照合を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_checks"
+      ],
+      "reason": "凍結と違う prompt の pilot の記録を通す",
+      "failed": [
+        "test_structure_checks"
+      ]
+    },
+    {
+      "label": "mp06 pilot の重複の検査を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_checks"
+      ],
+      "reason": "重複した pilot の記録を通す",
+      "failed": [
+        "test_structure_checks"
+      ]
+    },
+    {
+      "label": "mp07 pilot の grid 外の検査を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_checks"
+      ],
+      "reason": "grid の外の pilot の記録を通す",
+      "failed": [
+        "test_structure_checks"
+      ]
+    },
+    {
+      "label": "mp08 cell_scores が mode を分けない",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cell_scores_shapes"
+      ],
+      "reason": "masked と M0 の記録が混じる",
+      "failed": [
+        "test_cell_scores_shapes",
+        "test_injection_skips_bot",
+        "test_pilot_clean_go",
+        "test_pilot_envelope"
+      ]
+    },
+    {
+      "label": "mp09 ⊥ 率を反転",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_clean_go"
+      ],
+      "reason": "⊥ でない率を ⊥ 率として扱う",
+      "failed": [
+        "test_pilot_clean_go",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_provenance_binds_driver_records_and_meta",
+        "test_pilot_stop_on_power"
+      ]
+    },
+    {
+      "label": "mp10 M0 を常に合格に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_m0_stop"
+      ],
+      "reason": "lookup が動かなくても本走を起こす",
+      "failed": [
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop"
+      ]
+    },
+    {
+      "label": "mp11 M0 の成分の条件を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_m0_requires_components"
+      ],
+      "reason": "凍結した PASS の規則 (4 成分) と違う",
+      "failed": [
+        "test_pilot_m0_requires_components"
+      ]
+    },
+    {
+      "label": "mp12 M0 の STOP を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop"
+      ],
+      "reason": "M0 の陽性対照が失敗しても本走を起こす",
+      "failed": [
+        "test_pilot_m0_requires_components",
+        "test_pilot_m0_stop"
+      ]
+    },
+    {
+      "label": "mp13 envelope の STOP を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_envelope"
+      ],
+      "reason": "⊥ の多い null で本走を起こす",
+      "failed": [
+        "test_pilot_envelope"
+      ]
+    },
+    {
+      "label": "mp14 不一致率を 0 に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_discordance"
+      ],
+      "reason": "決定性の理想化の監査が恒真になる",
+      "failed": [
+        "test_discordance"
+      ]
+    },
+    {
+      "label": "mp15 foil の注入の向きを w に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_injection_calibrates"
+      ],
+      "reason": "目標が null より小さいときに逆向きに注入する",
+      "failed": [
+        "test_injection_calibrates"
+      ]
+    },
+    {
+      "label": "mp16 層別の再標本化で回転を見ない",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_strata_keep_the_rotation"
+      ],
+      "reason": "本走の表示位置の割付を保たない",
+      "failed": [
+        "test_strata_keep_the_rotation"
+      ]
+    },
+    {
+      "label": "mp17 ⊥ のセルにも注入する",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_injection_skips_bot"
+      ],
+      "reason": "較正 (⊥ でないセルの割合で λ を決める) とずれる",
+      "failed": [
+        "test_injection_skips_bot"
+      ]
+    },
+    {
+      "label": "mp18 較正の許容を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "目標から外れた注入を合格にする",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp19 OC の PASS の power を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "2τ で power が足りなくても GO",
+      "failed": [
+        "test_oc_conditions_each_matter",
+        "test_oc_for_r_uses_the_checks"
+      ]
+    },
+    {
+      "label": "mp20 OC の NO_GO の power を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "効果 0 で NO_GO に届かなくても GO",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp21 OC の PASS の size を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "τ で PASS の率が大きくても GO",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp22 OC の NO_GO の size を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_conditions_each_matter"
+      ],
+      "reason": "τ で NO_GO の率が大きくても GO",
+      "failed": [
+        "test_oc_conditions_each_matter"
+      ]
+    },
+    {
+      "label": "mp23 OC の合否を常に合格に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_for_r_uses_the_checks"
+      ],
+      "reason": "条件を満たさなくても GO",
+      "failed": [
+        "test_oc_for_r_uses_the_checks"
+      ]
+    },
+    {
+      "label": "mp24 OC の size の閾値の点の数を 1 に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_oc_for_r_uses_the_checks"
+      ],
+      "reason": "登録した点の数 (2) の多重性と違う",
+      "failed": [
+        "test_oc_for_r_uses_the_checks"
+      ]
+    },
+    {
+      "label": "mp25 GO の R を記録しない",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_clean_go"
+      ],
+      "reason": "本走が読む R が欠ける",
+      "failed": [
+        "test_pilot_clean_go",
+        "test_pilot_gate_is_recomputed_from_its_inputs",
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mp26 power の STOP を GO に",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_stop_on_power"
+      ],
+      "reason": "検出力の無い設計で本走を起こす",
+      "failed": [
+        "test_pilot_stop_on_power"
+      ]
+    },
+    {
+      "label": "mp27 pilot の transport 失敗を見ない",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_not_computed"
+      ],
+      "reason": "欠けた応答を ⊥ として判定する",
+      "failed": [
+        "test_pilot_not_computed"
+      ]
+    },
+    {
+      "label": "mp28 pilot の certification の確認を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end",
+        "test_pilot_records_stop"
+      ],
+      "reason": "certify されていない判定コードで GO を出す",
+      "failed": [
+        "test_cli_end_to_end",
+        "test_pilot_records_stop"
+      ]
+    },
+    {
+      "label": "mp29 見取り図の選定の確認を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_records_stop"
+      ],
+      "reason": "見取り図が door-close でも pilot を判定する",
+      "failed": [
+        "test_cli_end_to_end",
+        "test_pilot_records_stop"
+      ]
+    },
+    {
+      "label": "mp30 CLI が bool の R を受け入れる",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_cli_end_to_end"
+      ],
+      "reason": "JSON の true を R として扱う",
+      "failed": [
+        "test_cli_end_to_end"
+      ]
+    },
+    {
+      "label": "mp31 pilot の meta の検査を外す",
+      "target": "o_time_probe_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_meta_stop"
+      ],
+      "reason": "凍結と違う実行条件の pilot を通す",
+      "failed": [
+        "test_pilot_meta_stop"
+      ]
+    },
+    {
+      "label": "mm01 改変の検出を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_detects_changed_and_missing_files"
+      ],
+      "reason": "改変されたファイルを通す",
+      "failed": [
+        "test_manifest_detects_changed_and_missing_files",
+        "test_stage1_seal_allows_only_the_status_line"
+      ]
+    },
+    {
+      "label": "mm02 欠けの検出を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_manifest_detects_changed_and_missing_files"
+      ],
+      "reason": "欠けたファイルで落ちる (例外) か通す",
+      "failed": [
+        "test_manifest_detects_changed_and_missing_files"
+      ]
+    },
+    {
+      "label": "mm03 第 1 段の prereg の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ],
+      "reason": "第 1 段の後に prereg の本文が変わっても通す",
+      "failed": [
+        "test_stage1_seal_allows_only_the_status_line"
+      ]
+    },
+    {
+      "label": "mm04 status 行を正規化しない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prereg_body_sha256_ignores_only_the_status_line",
+        "test_stage1_seal_allows_only_the_status_line"
+      ],
+      "reason": "status 行の変更も本文の変更として拒否する",
+      "failed": [
+        "test_prereg_body_sha256_ignores_only_the_status_line",
+        "test_stage1_seal_allows_only_the_status_line"
+      ]
+    },
+    {
+      "label": "mm05 第 1 段の封印の対象の集合を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stage1_seal_file_set"
+      ],
+      "reason": "対象の欠けた封印を通す",
+      "failed": [
+        "test_stage1_seal_file_set"
+      ]
+    },
+    {
+      "label": "mm06 期待した test で落ちたかを見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_requires_the_expected_failure"
+      ],
+      "reason": "違う理由の失敗を KILLED に数える",
+      "failed": [
+        "test_certification_requires_the_expected_failure",
+        "test_driver_certification_requires_the_expected_failures"
+      ]
+    },
+    {
+      "label": "mm07 登録の label の重複を通す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "後の登録が前を消し、一対一にならない",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm07b 空白だけの名前を通す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registry_rejects_empty_names"
+      ],
+      "reason": "空の label・test 名を登録として受け入れる (Codex LOW-6)",
+      "failed": [
+        "test_registry_rejects_empty_names"
+      ]
+    },
+    {
+      "label": "mm08 空の期待集合を通す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "失敗 0 でも成り立つ登録を通す",
+      "failed": [
+        "test_registries_must_be_well_formed"
+      ]
+    },
+    {
+      "label": "mm09 meta-test の状態と期待集合を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "期待どおりに落ちていない meta-test を通す",
+      "failed": [
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm10 meta-test の期待集合の部分集合を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "期待集合の一部しか落ちていない meta-test を通す",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm11 meta-test の label の重複を通す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_test_must_match_the_registered_cases"
+      ],
+      "reason": "同じケースの重複を通す",
+      "failed": [
+        "test_driver_certification_requires_the_expected_failures",
+        "test_meta_test_must_match_the_registered_cases"
+      ]
+    },
+    {
+      "label": "mm12 certification の all_killed を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "全 KILLED でない certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm13 certification のコードの sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "古いコードの certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm14 certification の test の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "古い test の certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm15 certification の harness の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "古い harness の certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm16 certification の manifest 検査の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "古い manifest 検査の certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm17 登録変異との一致を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "変異の欠けた certification を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm18 変異の行の KILLED を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_certification_binding"
+      ],
+      "reason": "生き残りの行を通す",
+      "failed": [
+        "test_certification_binding"
+      ]
+    },
+    {
+      "label": "mm19 帯の点を片側に",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_points_match_the_sim_plan"
+      ],
+      "reason": "条件 4 の点の一部を要求しない",
+      "failed": [
+        "test_expected_points_match_the_sim_plan",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm20 行の値の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "per_seed と合わない値を通す",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm21 帯の条件の再計算を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_band"
+      ],
+      "reason": "帯の不合格を合格と記録しても通す",
+      "failed": [
+        "test_sketch_recheck_band"
+      ]
+    },
+    {
+      "label": "mm22 size の閾値を 1 つ緩める",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_size_threshold_boundary"
+      ],
+      "reason": "size の閾値を越える R を合格とする",
+      "failed": [
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm23 power の条件の再計算を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_power_flags"
+      ],
+      "reason": "power の不足を合格と記録しても通す",
+      "failed": [
+        "test_sketch_recheck_power_flags"
+      ]
+    },
+    {
+      "label": "mm24 NO_GO の power の条件の再計算を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_power_flags"
+      ],
+      "reason": "NO_GO の power の不足を合格と記録しても通す",
+      "failed": [
+        "test_sketch_recheck_power_flags"
+      ]
+    },
+    {
+      "label": "mm25 帯の値から NO_GO を引かない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_accepts_a_consistent_sketch"
+      ],
+      "reason": "決着しない確率を誤って再計算する",
+      "failed": [
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm26 率の合計の検査を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "合計が 1 でない率を通す",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm27 率の格子の検査を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "MC の回数で作れない率を通す",
+      "failed": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm28 率の範囲の検査を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ],
+      "reason": "[0, 1] の外の率を通す",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r"
+      ]
+    },
+    {
+      "label": "mm29 bool を数値に数える",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_booleans"
+      ],
+      "reason": "JSON の true / false を 1 / 0 として通す",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm30 設定の照合で型を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_rejects_booleans"
+      ],
+      "reason": "1.0 を true にした設定を通す",
+      "failed": [
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm31 凍結した設定の値を変える",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_params_match_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch"
+      ],
+      "reason": "凍結した帯の上限と違う",
+      "failed": [
+        "test_expected_params_match_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm32 選定の再計算を最小の R に",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_recompute_selection"
+      ],
+      "reason": "選定規則と違う再計算",
+      "failed": [
+        "test_recompute_selection",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm33 選定の再計算で真偽値を緩める",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_recompute_selection"
+      ],
+      "reason": "1 を真として扱う",
+      "failed": [
+        "test_recompute_selection"
+      ]
+    },
+    {
+      "label": "mm33b 選定の再計算が較正を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_recompute_selection"
+      ],
+      "reason": "較正の崩れた見取り図の選定を通す",
+      "failed": [
+        "test_recompute_selection"
+      ]
+    },
+    {
+      "label": "mm33c 行の較正の再計算を緩める",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_calibration"
+      ],
+      "reason": "目標からずれた模擬を健全と照合する",
+      "failed": [
+        "test_sketch_recheck_calibration"
+      ]
+    },
+    {
+      "label": "mm33d sweep の較正の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_calibration"
+      ],
+      "reason": "目標からずれた sweep を通す",
+      "failed": [
+        "test_sketch_recheck_calibration"
+      ]
+    },
+    {
+      "label": "mm33e 登録の形を sim から導く",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch"
+      ],
+      "reason": "登録から形が欠ける",
+      "failed": [
+        "test_expected_points_match_the_sim_plan",
+        "test_registered_reach_matches_the_sim",
+        "test_registry_catches_a_dropped_form",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm33f 時系列の形の到達上限の符号を誤る",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_reach_matches_the_sim"
+      ],
+      "reason": "到達上限の独立な再計算が誤る",
+      "failed": [
+        "test_registered_reach_matches_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm34 sweep の no_go の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "per_seed と合わない no_go を通す",
+      "failed": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm35 sweep の点の完全性を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "点の欠けた sweep を通す",
+      "failed": [
+        "test_registry_catches_a_dropped_form",
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm36 境目の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_sweeps"
+      ],
+      "reason": "sweep と合わない境目を通す",
+      "failed": [
+        "test_boundaries_are_independent_of_the_sim",
+        "test_sketch_recheck_checks_the_sweeps"
+      ]
+    },
+    {
+      "label": "mm37 最有利行の到達の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ],
+      "reason": "最有利行の到達を偽っても通す",
+      "failed": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ]
+    },
+    {
+      "label": "mm38 実行した R の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_r_run"
+      ],
+      "reason": "一部の R だけを回した見取り図を通す",
+      "failed": [
+        "test_sketch_recheck_checks_r_run"
+      ]
+    },
+    {
+      "label": "mm39 選定の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ],
+      "reason": "規則と違う選定を通す",
+      "failed": [
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_recomputes_selection_and_reach"
+      ]
+    },
+    {
+      "label": "mm40 設定の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_checks_the_params"
+      ],
+      "reason": "凍結と違う設定の見取り図を通す",
+      "failed": [
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_rejects_booleans"
+      ]
+    },
+    {
+      "label": "mm41 凍結の R の候補の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_pilot"
+      ],
+      "reason": "候補の外の R の選定で凍結する",
+      "failed": [
+        "test_freeze_violations_stage_pilot"
+      ]
+    },
+    {
+      "label": "mm42 最有利行の到達の凍結条件を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_pilot"
+      ],
+      "reason": "設計容量の door-close で凍結する",
+      "failed": [
+        "test_freeze_violations_stage_pilot"
+      ]
+    },
+    {
+      "label": "mm43 draft の凍結条件を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_pilot"
+      ],
+      "reason": "status が draft のまま凍結する",
+      "failed": [
+        "test_freeze_violations_stage_pilot"
+      ]
+    },
+    {
+      "label": "mm44 FROZEN の status を読まない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_pilot"
+      ],
+      "reason": "FROZEN の prereg を draft と読む",
+      "failed": [
+        "test_freeze_violations_stage_pilot"
+      ]
+    },
+    {
+      "label": "mm45 第 2 段で第 1 段の封印を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_freeze_violations_stage_main_checks_the_seal"
+      ],
+      "reason": "第 1 段の封印が無くても第 2 段を凍結する",
+      "failed": [
+        "test_freeze_violations_stage_main_checks_the_seal"
+      ]
+    },
+    {
+      "label": "mm46 pilot の判定の再計算を照合しない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ],
+      "reason": "入力と合わない pilot の判定を通す",
+      "failed": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ]
+    },
+    {
+      "label": "mm47 pilot の R と選定の照合を外す",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ],
+      "reason": "見取り図と違う R の pilot を通す",
+      "failed": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ]
+    },
+    {
+      "label": "mm48 provenance の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ],
+      "reason": "別の実行の provenance を混ぜた記録を通す",
+      "failed": [
+        "test_pilot_provenance_binds_driver_records_and_meta"
+      ]
+    },
+    {
+      "label": "mm49 pilot の入力の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ],
+      "reason": "入力と結び付かない pilot の判定を通す",
+      "failed": [
+        "test_pilot_gate_is_recomputed_from_its_inputs"
+      ]
+    },
+    {
+      "label": "mm50 driver の all_killed を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract"
+      ],
+      "reason": "全 KILLED でない driver を通す",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm51 driver の行の KILLED を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract"
+      ],
+      "reason": "生き残りの driver の変異を通す",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm52 driver の登録変異との一致を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract",
+        "test_registries_must_be_well_formed"
+      ],
+      "reason": "登録と違う driver の certification を通す",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm53 driver の sha256 を見ない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_certification_contract"
+      ],
+      "reason": "古い driver の certification を通す",
+      "failed": [
+        "test_driver_certification_contract"
+      ]
+    },
+    {
+      "label": "mm54 fixture 表の再計算を照合しない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_table_binding"
+      ],
+      "reason": "コードと合わない fixture 表を通す",
+      "failed": [
+        "test_fixture_table_binding"
+      ]
+    },
+    {
+      "label": "mm55 単位と呼び出しの数を照合しない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "設計と違う単位の数を通す",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm56 size の閾値の記録を照合しない",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ],
+      "reason": "閾値を偽った見取り図を通す",
+      "failed": [
+        "test_sketch_recheck_recomputes_flags_and_values"
+      ]
+    },
+    {
+      "label": "mm57 size の閾値の独立な計算で P(X > x) を P(X ≥ x) にする",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_size_threshold_matches_its_definition"
+      ],
+      "reason": "manifest の閾値の再計算が定義からずれる (Codex 2 周目 MEDIUM-1)",
+      "failed": [
+        "test_registered_size_threshold_matches_its_definition",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm58 二項の項の漸化式を誤る",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_size_threshold_matches_its_definition"
+      ],
+      "reason": "manifest の閾値の再計算が二項分布でなくなる",
+      "failed": [
+        "test_boundaries_are_independent_of_the_sim",
+        "test_registered_size_threshold_matches_its_definition",
+        "test_registry_catches_a_dropped_form",
+        "test_registry_catches_a_dropped_nuisance",
+        "test_size_threshold_is_independent_of_the_sim",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_band",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_detects_missing_points",
+        "test_sketch_recheck_power_flags",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm59 境目の補間で下降の向きを無視する",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_boundary_matches_its_definition"
+      ],
+      "reason": "NO_GO の境目の再計算が誤る (Codex 2 周目 MEDIUM-1 の反例)",
+      "failed": [
+        "test_registered_boundary_matches_its_definition",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm60 境目の補間を区間の右端にする",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_boundary_matches_its_definition"
+      ],
+      "reason": "境目の再計算が補間しない",
+      "failed": [
+        "test_registered_boundary_matches_its_definition",
+        "test_sketch_recheck_accepts_a_consistent_sketch",
+        "test_sketch_recheck_calibration",
+        "test_sketch_recheck_checks_r_run",
+        "test_sketch_recheck_checks_the_params",
+        "test_sketch_recheck_checks_the_sweeps",
+        "test_sketch_recheck_recomputes_flags_and_values",
+        "test_sketch_recheck_recomputes_selection_and_reach",
+        "test_sketch_recheck_rejects_booleans",
+        "test_sketch_recheck_rejects_invalid_rates_and_row_r",
+        "test_sketch_recheck_size_threshold_boundary"
+      ]
+    },
+    {
+      "label": "mm61 manifest が sim の size の閾値を使う",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_size_threshold_is_independent_of_the_sim"
+      ],
+      "reason": "生成側の閾値の誤りを照合が共有する (Codex 2 周目 MEDIUM-1)",
+      "failed": [
+        "test_size_threshold_is_independent_of_the_sim"
+      ]
+    },
+    {
+      "label": "mm62 manifest が sim の境目 (上昇) を使う",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_boundaries_are_independent_of_the_sim"
+      ],
+      "reason": "生成側の境目の誤りを照合が共有する (Codex 2 周目 MEDIUM-1)",
+      "failed": [
+        "test_boundaries_are_independent_of_the_sim"
+      ]
+    },
+    {
+      "label": "mm63 manifest が sim の境目 (下降) を使う",
+      "target": "o_time_probe_manifest.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_boundaries_are_independent_of_the_sim"
+      ],
+      "reason": "生成側の境目の誤りを照合が共有する (Codex 2 周目 MEDIUM-1)",
+      "failed": [
+        "test_boundaries_are_independent_of_the_sim"
+      ]
+    }
+  ],
+  "all_killed": true
+}

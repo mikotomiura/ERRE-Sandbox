@@ -1,0 +1,28 @@
+{
+  "files": {
+    "experiments/20261008-o-time-probe-pilot/SEED": "306bcb101eb82bf8572227e6777c292900b4779ef24df53972a95f7ae8cb6953",
+    "experiments/20261008-o-time-probe-pilot/prereg.md": "0e35248449992a9fe5beb815356c932af64388d5dba20d0fa66c2b4967650bda",
+    "experiments/20261008-o-time-probe-pilot/results/certification.json": "e4f33ac65cc6bc03c95e560a6607a7441f927618194dff6327024192a1358728",
+    "experiments/20261008-o-time-probe-pilot/results/fixture_table.json": "2a0b8d6e477e8f7cac179c9b29deccd238c888ee27f28f0589919a05053e1b5f",
+    "experiments/20261008-o-time-probe-pilot/results/sketch.json": "c3f942c3b1938469022fa6fff823141e4ef570a7d64e976d510cc06813256186",
+    "experiments/20261008-o-time-probe-pilot/run.sh": "614135743f9b03376521b4f5ba2ab9f5c9bf5998c2ff72f3b572b6e7d207af40",
+    "scripts/o_time_probe_battery.py": "58198695cfdf6b27e82778f0c387fa2c4ea1eed5cdbe14a8b04a54314757f970",
+    "scripts/o_time_probe_fixtures.py": "99d266093dbf91e2d28814dba9dc8e42a2e3519078c6e336769ba42a6563f9d8",
+    "scripts/o_time_probe_manifest.py": "ffb5ea942545a11f673dc06303051c188e950c509b63427367d0c5bb5a3e4dc0",
+    "scripts/o_time_probe_mutation_check.py": "ca9103e73d83b65f118484a32d7ac8cc8cafd823eacfe73d1a1595506904e23d",
+    "scripts/o_time_probe_pilot_gate.py": "5983e0dc792544ba007e410ce29dc0b1265abb066abe99e09d4e99572fbf71c4",
+    "scripts/o_time_probe_render_sketch.py": "25d4a5f4a16e31c89cc63fdb2a6838313998d8446dc59daaac8fb0435b4e90e5",
+    "scripts/o_time_probe_scorer.py": "e11357155966e3c0880bb610b2f6bc3df7fd9cc28ee93367c2f7e6511ddf54c4",
+    "scripts/o_time_probe_sim.py": "8e689fce50d40412d8b8836be94d5656fda18f704c7827d9becd2eb782f6b54c",
+    "scripts/stage_b_scorer.py": "1b970d7c06e4f85bbdfb41c9ba202149d02c9d796276c66ea6f98fbca48350a2",
+    "tests/test_o_time_probe/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/test_o_time_probe/conftest.py": "f28cb4e0e361196700a2f308efa7c6d311e788c2b38508ff6b1368a8d088c9f8",
+    "tests/test_o_time_probe/test_battery.py": "03c25a54cb2b3f7450bea3df4a68397a750c56698789ec35a35e9d7d2385640e",
+    "tests/test_o_time_probe/test_fixtures.py": "0ff5f645f9d4b228576f98067ca15672a9f0b4143e99c1e9097dfc487de66f87",
+    "tests/test_o_time_probe/test_manifest.py": "1af710ee4caf81578726fc1dcc1a40ea867e9cc18a782ad57c48af7a24dd3a60",
+    "tests/test_o_time_probe/test_pilot_gate.py": "f8ae0e6a0c9099ac410b49e43ef800754020b5db7eb90240cbfe484c727abc0d",
+    "tests/test_o_time_probe/test_scorer.py": "f5e1d0de47d77d87f57de8b15f94cbbc72e40679e1d9b55ccc96b89759aa4060",
+    "tests/test_o_time_probe/test_sim.py": "9dd1f633008bbf4ef1a4c86a6a966ef518fdace62e104d9dbdbb1b20d64cc2cd"
+  },
+  "prereg_body_sha256": "2a4b1ab765a5b5a44ed1d51dface93adccf6986a6f3ac06c8736845c436d851f"
+}
