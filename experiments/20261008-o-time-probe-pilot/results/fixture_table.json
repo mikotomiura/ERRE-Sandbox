@@ -1,0 +1,604 @@
+{
+ "gate": 0.075,
+ "max_abs_C": 0.0,
+ "passed": true,
+ "tables": {
+  "R192": {
+   "R": 192,
+   "gate": 0.075,
+   "max_abs_C": 0.0,
+   "passed": true,
+   "policies": {
+    "bigger_digit_if_later[first]": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "bigger_digit_if_later[third]": {
+     "C": 0.0,
+     "C_ago": -0.5,
+     "C_asc": 0.5,
+     "family": "tag_literal"
+    },
+    "digit_is_1": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_is_2": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_plus_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[max]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[min]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "majority_tag_first3": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "match_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "match_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "minority_tag_tail5": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "most_frequent[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "most_frequent[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "neighbor_copy": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "same_tag_as_first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "same_tag_as_last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "tag_length[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_length[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "third_option": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    }
+   },
+   "positive_controls": {
+    "follow_newer": {
+     "C": 1.0,
+     "C_ago": 1.0,
+     "C_asc": 1.0
+    },
+    "follow_older": {
+     "C": -1.0,
+     "C_ago": -1.0,
+     "C_asc": -1.0
+    },
+    "newer_in_asc_only": {
+     "C": 0.5,
+     "C_ago": 0.0,
+     "C_asc": 1.0
+    }
+   }
+  },
+  "R288": {
+   "R": 288,
+   "gate": 0.075,
+   "max_abs_C": 0.0,
+   "passed": true,
+   "policies": {
+    "bigger_digit_if_later[first]": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "bigger_digit_if_later[third]": {
+     "C": 0.0,
+     "C_ago": -0.5,
+     "C_asc": 0.5,
+     "family": "tag_literal"
+    },
+    "digit_is_1": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_is_2": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_plus_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[max]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[min]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "majority_tag_first3": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "match_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "match_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "minority_tag_tail5": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "most_frequent[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "most_frequent[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "neighbor_copy": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "same_tag_as_first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "same_tag_as_last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "tag_length[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_length[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "third_option": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    }
+   },
+   "positive_controls": {
+    "follow_newer": {
+     "C": 1.0,
+     "C_ago": 1.0,
+     "C_asc": 1.0
+    },
+    "follow_older": {
+     "C": -1.0,
+     "C_ago": -1.0,
+     "C_asc": -1.0
+    },
+    "newer_in_asc_only": {
+     "C": 0.5,
+     "C_ago": 0.0,
+     "C_asc": 1.0
+    }
+   }
+  },
+  "R96": {
+   "R": 96,
+   "gate": 0.075,
+   "max_abs_C": 0.0,
+   "passed": true,
+   "policies": {
+    "bigger_digit_if_later[first]": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "bigger_digit_if_later[third]": {
+     "C": 0.0,
+     "C_ago": -0.5,
+     "C_asc": 0.5,
+     "family": "tag_literal"
+    },
+    "digit_is_1": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_is_2": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "digit_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "digit_plus_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[max]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_alpha[min]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "label_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "majority_tag_first3": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "match_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "match_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "minority_tag_tail5": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "most_frequent[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "most_frequent[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "neighbor_copy": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_first": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "option_last": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "row_count_position": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    },
+    "same_tag_as_first_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "same_tag_as_last_row": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_relative"
+    },
+    "tag_length[first]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_length[last]": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_max": {
+     "C": 0.0,
+     "C_ago": -1.0,
+     "C_asc": 1.0,
+     "family": "tag_literal"
+    },
+    "tag_lex_min": {
+     "C": 0.0,
+     "C_ago": 1.0,
+     "C_asc": -1.0,
+     "family": "tag_literal"
+    },
+    "third_option": {
+     "C": 0.0,
+     "C_ago": 0.0,
+     "C_asc": 0.0,
+     "family": "tag_blind"
+    }
+   },
+   "positive_controls": {
+    "follow_newer": {
+     "C": 1.0,
+     "C_ago": 1.0,
+     "C_asc": 1.0
+    },
+    "follow_older": {
+     "C": -1.0,
+     "C_ago": -1.0,
+     "C_asc": -1.0
+    },
+    "newer_in_asc_only": {
+     "C": 0.5,
+     "C_ago": 0.0,
+     "C_asc": 1.0
+    }
+   }
+  }
+ }
+}
