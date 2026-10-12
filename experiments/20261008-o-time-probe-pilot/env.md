@@ -46,3 +46,19 @@
 - 他の manifest 6 本 (G の `--stage main`・v5・v4・v2・v3・body_walk) の `--verify` は開始時と同じ出力 (body_walk は設計どおり door-close)。
   G の封印ファイル (`manifest_main.json` の 34 ファイル) と `src/` は変えていない。
 - env.md・data.md は封印の対象に入れていない (記録の追記のため)。
+
+## driver の certification (`results/driver_certification.json`、2026-10-12)
+
+- driver・変異 harness・driver の test (`scripts/o_time_probe_driver.py`・`scripts/o_time_probe_driver_mutation_check.py`・
+  `tests/test_o_time_probe/test_driver.py`) は、候補 G の driver 一式を写して O_time の構造で書き直した (G の scripts は import しない)。
+  設計と採否は `.steering/20261012-o-time-probe-driver/` (ローカル、/reimagine はハイブリッド = DOT-1)。実モデル・GPU は使っていない
+  (test は偽の Ollama だけ)。
+- `uv run python scripts/o_time_probe_driver_mutation_check.py --out experiments/20261008-o-time-probe-pilot/results/driver_certification.json --workers 4`
+  (`PYTHONUTF8=1`、`Start-Process -WindowStyle Hidden` の detached で起動)。harness は変異を repo の外の複製ツリーにだけ当て、
+  4 つの複製で並列に回す (repo の driver は書き換えない)。
+- 経緯: 書き直した・足した変異 25 個を先に `--only` で回して全 KILLED を確かめた。Codex review 1 回目 (gpt-6-astra / xhigh、
+  Approve-with-changes、HIGH 0・MEDIUM 1・LOW 0、323,035 tokens) の MEDIUM-1 (実行中に test・harness が変わったときの終了コード) を
+  反映してから本番を回した (2026-10-12 19:13〜19:53、約 40 分)。
+- **232 / 232 KILLED**、meta-test 3 件とも登録どおりに落ちた (FAILED_AS_EXPECTED)、repo の driver が開始時と同じ bytes、実行中に test と
+  harness が変わっていない。`manifest.driver_certification_violations` は `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
+- null pilot (GPU) は未実行 (別の user 裁定)。
