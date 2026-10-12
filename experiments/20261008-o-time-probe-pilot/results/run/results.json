@@ -1,0 +1,30 @@
+{
+ "C": 0.10496238425925926,
+ "bottom_max": 0.05,
+ "components": {
+  "bwd_ago": 0.19849537037037038,
+  "bwd_asc": 0.10185185185185185,
+  "fwd_ago": 0.12760416666666666,
+  "fwd_asc": -0.008101851851851851
+ },
+ "describe": {
+  "C_ago": 0.16304976851851852,
+  "C_asc": 0.046875,
+  "other_rate": 0.03464988425925926
+ },
+ "lever_bottom_rates": {
+  "AB": 0.0,
+  "BA": 0.0,
+  "CD": 0.0,
+  "DC": 0.0
+ },
+ "log_e_minus": 485.4140264628137,
+ "log_e_plus": -138.83059635329838,
+ "log_e_zero": 196.9486631376363,
+ "n_units": 3456,
+ "reasons": [
+  "decided"
+ ],
+ "status": "computed",
+ "verdict": "NO_GO_EFFECT_ABSENT"
+}

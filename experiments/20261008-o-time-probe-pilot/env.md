@@ -106,4 +106,54 @@
   `MISMATCH: experiments/20261008-o-time-probe-pilot/prereg.md: sha256 differs from the frozen manifest` → `MANIFEST MISMATCH (1)` で止まる (exit 1)。
   第 1 段の `manifest.json` は prereg の全文の sha256 を持ち、第 2 段の照合 (`stage1_seal_violations`) だけが prereg を `prereg_body_sha256` で比べる。
   pilot の判定の再計算は第 2 段の照合 (`pilot_gate_violations`) が担う。以後の照合は `--stage main` で行う。
-- 本走 (GPU、`results/run/`) は未実行 (別の user 裁定)。
+- 本走 (GPU、`results/run/`) は下の節 (user 裁定 OS2-5)。
+
+## 本走 (GPU、`results/run/`、2026-10-13、user 裁定 OS2-5)
+
+- 認可: user 裁定 OS2-5 (2026-10-13、AskUserQuestion。`.steering/20261012-o-time-probe-stage2-freeze/decisions.md`)。範囲は開始前の確認 →
+  `--stage main` の起動の予行 → 本走 (prereg §9.4、13,824 呼び出し) → `run.sh main` の判定 → 記録まで。記録は
+  `.steering/20261013-o-time-probe-main-run/` (ローカル)。
+- 実行環境: main = 2ee2a79 (PR #155、第 2 段 FROZEN)。G-GEAR (Windows 11、RTX 5060 Ti 16 GB、起動前の使用 1,284 MiB・3%、他の長時間の job なし)。
+  Ollama 0.32.12 (Windows native)・`qwen3:8b` (500a1f067a9f)。pilot と同じ実行環境 (prereg §9.4 の 1)。
+- 開始の前: `--verify --stage main` = `MANIFEST OK (stage main)`・`driver_certification_violations` = `[]`・封印の対象 33 ファイル
+  (`FROZEN_FILES` + `MAIN_EVIDENCE` の 32 + `manifest_main.json`) の作業木の bytes = HEAD の blob・gate.json と manifest_main.json の CR 0・
+  固定ファイルに未 commit の変更なし・`results/run/` なし。起動の前の確認 (driver の docstring の 5 点): 1〜4 は全て exit 0 で出力が空
+  (`[][]`・`[]`)。5 は運用 (本走の間に Python の install・update をしていない)。
+- 起動の予行 (GPU なし・実の Ollama に触れない・tmp の dir、約 2 分 20 秒): driver をその bytes のまま `__main__` として実行し (`--stage` を渡さず
+  argparse で止めて、門と `_PinnedFinder` だけを入れる)、`launch_problems("main")` = `[]`・`executed_problems("main", …)` = `[]`。
+  `stage_from_gate` の段は plan 13,824 (AB / BA / CD / DC 各 3,456)・`reference_observed` = gate.json の `observed`・その予定表の
+  `schedule_violations` (gate の observed) = `[]` (作るだけで run しない)。`httpx.MockTransport` の偽の Ollama (答え = `I choose <表示の先頭の label>.`)
+  から取った偽の observed で `main_stage(tmp, 288, 偽の observed)` の全 run → `completed`・`published` true・`anomalies` []・`n_resends` 0・
+  13,824 行 (6 label 各 2,304)。run の後の `executed_problems("main", …)` = `[]`・実の `results/run/` なし。
+- 起動 (PowerShell、同じ process の中で続けて): `$env:PYTHONUTF8 = "1"`・`$env:PYTHONHASHSEED = (Get-Content …/SEED).Trim()` (= 20261008) の後に
+  `Start-Process -WindowStyle Hidden -PassThru -WorkingDirectory C:/ERRE-Sand_Box -FilePath uv -ArgumentList 'run','python','scripts/o_time_probe_driver.py','--stage','main'`
+  (stdout・stderr は手元の log へ)。起動 2026-10-13 01:34:54 +09:00 (PID 14108、`uv`)。
+- 所要: driver の `started_at` 16:35:02.156 UTC 〜 `finished_at` 18:40:27.160 UTC = **約 2 時間 5 分** (13,824 呼び出し、平均 約 1.8 呼び出し / 秒)。
+  見込み (pilot の 約 4.4 呼び出し / 秒から約 50〜55 分) より遅い。1,000 呼び出しあたり約 5〜16 分とぶれた (GPU の他の利用の有無は未確認)。
+  stdout は `[driver] 100 calls` 〜 `[driver] 13800 calls` と `[driver] exit_reason=completed`、stderr は空。
+- transport 失敗 2 回 (`attempts.jsonl`): call_index 6086 (17:19:04 UTC) と 7339 (17:38:20 UTC)、ともに `HTTP 500`・attempt 0。
+  どちらも同じ body (同じ seed) の再送 1 回で解けた (prereg §4 の再送の範囲内。raw = null の行なし)。
+- provenance (`provenance.json`): `exit_reason` = `completed`・`status` = null (`not_computed` ではない)・`error` = null・`anomalies` = []・
+  `n_sent` 13,826・`n_records` 13,824・`response_models` = `["qwen3:8b"]`・`n_resends` = 2・`n_finish_length` = 0・`pinned_changed` = []・
+  `manifest_problems_at_publication` = []・`read_back_problems` = []・`published` = true・`git_head` = 2ee2a79。
+  `driver_sha256` = `ea0a24fed13e641ac472426216956e880f11d8806d9c94c6d16318028113e5d9`・
+  `records_sha256` = `26a18bcd9e179dd4d7f049865b2a024050bdf270f15a65c4c2adb8e9665eb972`・
+  `meta_sha256` = `dce13c0e79e9bc38e62983f8e4bc88c3eac3c670efb1290d65b0254b3d8fb6f5` は現在のファイルと一致。`git_dirty` = true は固定ファイル外の未追跡
+  (`jote-submit/` 等) による。
+- observed (`meta.json`。provenance の開始と終了も同じ): `model_digest` = `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`・
+  `ollama_version` = `0.32.12`・`template_sha256` = `ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4`。pilot (gate.json の
+  `observed`) と同じ (prereg §4)。meta.json の bytes は pilot の meta.json と同じ (sha256 `dce13c0e…`)。
+- ⊥ (記述、判定ではない): lever 4 arm とも 0 / 3,456 (率 0.0)。上限 min(0.2, 0.0 + 0.05) = 0.05 (prereg §8.3) の内。
+- 判定の前に起動の前の確認 1〜4 をもう一度 (全て exit 0・出力が空・`[][]`・`[]`)。
+- `bash experiments/20261008-o-time-probe-pilot/run.sh main` (Git Bash): `MANIFEST OK (stage main)` → `[run.sh] main: repeat byte-identical` → exit 0。
+  `results/run/results.json` (608 bytes・LF・CR 0、sha256 `156c64affadc6a7e962b321bad8cd218941895e7543d3eb1d95f0a7dc618e274`)。
+- 判定 (verbatim): `"verdict": "NO_GO_EFFECT_ABSENT"`・`"status": "computed"`・`"reasons": ["decided"]`・`"n_units": 3456`・
+  `"C": 0.10496238425925926`・`"log_e_minus": 485.4140264628137`・`"log_e_plus": -138.83059635329838`・`"bottom_max": 0.05`・
+  `"lever_bottom_rates": {"AB": 0.0, "BA": 0.0, "CD": 0.0, "DC": 0.0}`。
+  成分 (向き × 書き方の標本平均): `"bwd_ago": 0.19849537037037038`・`"bwd_asc": 0.10185185185185185`・`"fwd_ago": 0.12760416666666666`・
+  `"fwd_asc": -0.008101851851851851`。
+  記述 (判定に使わない): `"C_ago": 0.16304976851851852`・`"C_asc": 0.046875`・`"other_rate": 0.03464988425925926`・`"log_e_zero": 196.9486631376363`。
+- 読み (prereg §11 の上限まで): この battery・この schedule での、現在の規則の向きの平均の対比 E[C] は τ = 0.30 未満 (E⁻ ≥ 1/α)。
+  時期の評価の不在・選択分布の差全体の否定・`ago` の難しさによる NO_GO の排除・M1 全体の close は言わない。`log_e_zero` (記述) から
+  「τ 未満の正の効果」とも読まない (§5.1)。打ち止め (c) (§0) では、M1 の 2 候補のうち O_time が `NO_GO_EFFECT_ABSENT`。候補 O の
+  事前登録は別の user 裁定による。
