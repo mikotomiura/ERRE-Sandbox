@@ -1,0 +1,79 @@
+{
+ "R": 288,
+ "decision": "GO",
+ "describe": {
+  "m0_other_rate": 0.017361111111111112,
+  "masked_discordance": 0.020833333333333332,
+  "masked_null_C": -0.006944444444444444,
+  "masked_other_rate": 0.027777777777777776
+ },
+ "inputs_sha256": {
+  "cert": "e4f33ac65cc6bc03c95e560a6607a7441f927618194dff6327024192a1358728",
+  "meta": "dce13c0e79e9bc38e62983f8e4bc88c3eac3c670efb1290d65b0254b3d8fb6f5",
+  "records": "29935540360d8efdf4863bd1674554cdb356c390b23b7a149c1f73f7fb1dd13b",
+  "sketch": "c3f942c3b1938469022fa6fff823141e4ef570a7d64e976d510cc06813256186"
+ },
+ "m0": {
+  "C": 0.9756944444444444,
+  "components": [
+   0.9722222222222222,
+   0.9583333333333334,
+   1.0,
+   0.9722222222222222
+  ],
+  "log_e_plus": 28.517468485672033,
+  "n_units": 72,
+  "passed": true,
+  "verdict": "PASS"
+ },
+ "masked_bottom_rates": {
+  "AB": 0.0,
+  "BA": 0.0,
+  "CD": 0.0,
+  "DC": 0.0
+ },
+ "masked_max_bottom": 0.0,
+ "null_C": -0.006944444444444444,
+ "observed": {
+  "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "ollama_version": "0.32.12",
+  "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+ },
+ "oc": {
+  "R": 288,
+  "at_plant": {
+   "direction": 1,
+   "lambda": 0.6027586206896551,
+   "no_go": 0.0,
+   "pass": 1.0,
+   "realized_C": 0.600040943287037
+  },
+  "at_tau": {
+   "direction": 1,
+   "lambda": 0.30482758620689654,
+   "no_go": 0.0,
+   "pass": 0.0005,
+   "realized_C": 0.299972583912037
+  },
+  "at_zero": {
+   "direction": 1,
+   "lambda": 0.006896551724137931,
+   "no_go": 1.0,
+   "pass": 0.0,
+   "realized_C": 1.6276041666666668e-06
+  },
+  "checks": {
+   "calibrated": true,
+   "power_no_go": true,
+   "power_pass": true,
+   "size_no_go": true,
+   "size_pass": true
+  },
+  "ok": true,
+  "size_cap": 0.063
+ },
+ "reasons": [
+  "spike-in OC passed"
+ ],
+ "status": "computed"
+}
