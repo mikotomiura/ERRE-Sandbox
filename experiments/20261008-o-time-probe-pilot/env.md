@@ -62,3 +62,23 @@
 - **232 / 232 KILLED**、meta-test 3 件とも登録どおりに落ちた (FAILED_AS_EXPECTED)、repo の driver が開始時と同じ bytes、実行中に test と
   harness が変わっていない。`manifest.driver_certification_violations` は `[]`。`--verify --stage pilot` は `MANIFEST OK (stage pilot)` のまま。
 - null pilot (GPU) は未実行 (別の user 裁定)。
+
+## null pilot (GPU、`results/pilot/`、2026-10-12、user 裁定 DOT-7)
+
+- 実行機 = G-GEAR (Windows 11、RTX 5060 Ti 16 GB)、Ollama 0.32.12 (Windows native)、`qwen3:8b` (digest `500a1f06…b8b41`)。
+  起動前の確認 (driver の docstring の 5 点) は起動の前と run.sh の前の 2 回とも合格。
+- 起動: PowerShell で `PYTHONUTF8=1`・`PYTHONHASHSEED=20261008` (SEED) を入れ、`Start-Process -WindowStyle Hidden` で
+  `uv run python scripts/o_time_probe_driver.py --stage pilot` (detached、2026-10-12 21:29:38 JST)。
+- driver: `started_at` 2026-10-12T12:29:42Z → `finished_at` 12:31:53Z (約 2 分 11 秒)、`exit_reason=completed`。
+  576 呼び出し・再送 0・`n_finish_length` 0、provenance の `status` = null (`not_computed` でない)・`anomalies` []・`published` true・
+  `pinned_changed` []・`read_back_problems` []。`git_dirty` true は固定ファイル外の未追跡 (`jote-submit/` 等) による。
+  `driver_sha256` `ea0a24fe…`・`records_sha256` `29935540…`・`meta_sha256` `dce13c0e…`。
+  observed (開始と終わりで同じ) = model_digest `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`・
+  ollama_version `0.32.12`・template_sha256 `ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4`。
+- `bash experiments/20261008-o-time-probe-pilot/run.sh pilot` (Git Bash): `MANIFEST OK (stage pilot)` →
+  `[run.sh] pilot: repeat byte-identical` → exit 0。
+- `results/pilot/gate.json` の判定 (verbatim): `"decision": "GO"`・`"R": 288`・`"reasons": ["spike-in OC passed"]`・`"status": "computed"`。
+  M0 = `"verdict": "PASS"` (`"passed": true`、72 単位)。envelope: `"masked_max_bottom": 0.0`。
+  OC: `"checks": {"calibrated": true, "power_no_go": true, "power_pass": true, "size_no_go": true, "size_pass": true}`・`"ok": true`。
+- 記述 (判定に使わない): masked の不一致率 0.0208・masked の null の C −0.0069・M0 の C 0.976・記録に無い行動の率 masked 0.0278 / M0 0.0174。
+- pilot の記録は本走の verdict に使わない (prereg §8.1)。第 2 段の凍結 (§9.3) と本走は、それぞれ別の user 裁定。
