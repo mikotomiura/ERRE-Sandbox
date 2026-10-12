@@ -1,0 +1,18 @@
+{
+  "observed": {
+    "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "ollama_version": "0.32.12",
+    "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+  },
+  "request": {
+    "model": "qwen3:8b",
+    "options": {
+      "num_ctx": 4096,
+      "num_predict": 32,
+      "repeat_penalty": 1.0,
+      "temperature": 0.7,
+      "top_p": 0.8
+    },
+    "think": false
+  }
+}
