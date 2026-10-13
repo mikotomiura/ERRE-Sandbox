@@ -30,6 +30,8 @@ from typing import Final
 
 import yaml
 
+from tests.conftest import closed_chain_ignored
+
 REPO_ROOT: Final = Path(__file__).resolve().parents[2]
 CI_WORKFLOW: Final = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 PRE_PUSH_PS1: Final = REPO_ROOT / "scripts" / "dev" / "pre-push-check.ps1"
@@ -79,12 +81,30 @@ _SH_MARKER_RE: Final = re.compile(r'^CI_MARKER_EXPRESSION="([^"]+)"', re.MULTILI
 _CLI_MARKER_RE: Final = re.compile(r'-m\s+"([^"]+)"')
 _IGNORE_PATH_RE: Final = re.compile(r"--ignore=(\S+)")
 _NEGATED_MARKER_RE: Final = re.compile(r"not\s+([A-Za-z_][A-Za-z0-9_]*)")
+_CLOSED_CHAINS_OPTION_RE: Final = re.compile(r"--closed-chains=(\S+)")
+
+# The two legs per OS that split the suite at the sealed closed-chain test
+# directories (``tests/conftest.py`` CLOSED_CHAIN_DIRS,
+# .steering/20261013-ci-closed-chain-split/decisions.md CC-1 to CC-3). Their
+# union is the whole selection; test_closed_chain_selection.py proves it.
+CI_CLOSED_CHAIN_LEGS: Final[tuple[str, ...]] = ("exclude", "only")
+CI_OPERATING_SYSTEMS: Final[tuple[str, ...]] = ("ubuntu-latest", "windows-latest")
+CI_MATRIX_CHAINS_ARGUMENT: Final = "--closed-chains=${{ matrix.chains }}"
 
 
 def _ci_test_job() -> dict:
     """Return the ``test`` job of the CI workflow (the selection SSOT)."""
     workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
     return workflow["jobs"]["test"]
+
+
+def _ci_pytest_run() -> str:
+    """Return the ``run`` line of the CI ``test`` job's single pytest step."""
+    steps = [s for s in _ci_test_job()["steps"] if "pytest" in (s.get("run") or "")]
+    assert len(steps) == 1, (
+        f"expected exactly one pytest step in the CI test job, found {len(steps)}."
+    )
+    return steps[0]["run"]
 
 
 def _ci_marker_expression() -> str:
@@ -305,6 +325,7 @@ def test_g1_witness_tests_survive_the_ci_selection() -> None:
             "no:cacheprovider",
             "-m",
             _ci_marker_expression(),
+            "--closed-chains=exclude",
             *witness_files,
         ],
         cwd=REPO_ROOT,
@@ -326,3 +347,68 @@ def test_g1_witness_tests_survive_the_ci_selection() -> None:
             f"both OS legs; a green CI without it proves nothing about "
             f"cross-platform replay."
         )
+    for witness_file in witness_files:
+        # Files passed explicitly bypass directory traversal, so the collection
+        # above alone cannot show the ``exclude`` leg keeps them. Ask the hook.
+        assert closed_chain_ignored(REPO_ROOT / witness_file, "exclude") is None, (
+            f"{witness_file} would be skipped by the --closed-chains=exclude leg; "
+            f"the G1 witnesses must stay in the ordinary leg on both OSes."
+        )
+
+
+def test_ci_test_job_splits_the_suite_into_closed_chain_legs() -> None:
+    """The test matrix is OS x {exclude, only}, each OS keeping its timeout.
+
+    The two legs of one OS must differ by ``--closed-chains`` alone: any other
+    selector on the run line (``--ignore``, ``--deselect``, ``-k`` or a path)
+    would make the partition proof in test_closed_chain_selection.py speak
+    about a different selection than CI runs.
+    """
+    job = _ci_test_job()
+    matrix = job["strategy"]["matrix"]
+    assert tuple(matrix["os"]) == CI_OPERATING_SYSTEMS, matrix
+    assert tuple(matrix["chains"]) == CI_CLOSED_CHAIN_LEGS, matrix
+    timeouts = {entry["os"]: entry.get("timeout") for entry in matrix["include"]}
+    assert set(timeouts) == set(CI_OPERATING_SYSTEMS), timeouts
+    assert all(isinstance(minutes, int) for minutes in timeouts.values()), timeouts
+    assert job["timeout-minutes"] == "${{ matrix.timeout }}", job["timeout-minutes"]
+    assert "${{ matrix.chains }}" in job["name"], job["name"]
+
+    run = _ci_pytest_run()
+    assert run.count(CI_MATRIX_CHAINS_ARGUMENT) == 1, run
+    assert len(_CLOSED_CHAINS_OPTION_RE.findall(run)) == 1, run
+    tokens = run.split()
+    for forbidden in ("--ignore", "--deselect", "-k", "--pyargs"):
+        assert not any(
+            t == forbidden or t.startswith(forbidden + "=") for t in tokens
+        ), (
+            f"{forbidden} on the CI pytest run line changes the selection outside "
+            f"--closed-chains: {run!r}"
+        )
+    assert not any(t.startswith(("tests/", "tests\\")) for t in tokens), run
+
+
+def test_pre_push_scripts_run_both_closed_chain_legs() -> None:
+    """Each script runs pytest once per CI leg, with CI's marker expression."""
+    variables = {
+        PRE_PUSH_PS1: "$CiMarkerExpression",
+        PRE_PUSH_SH: '"$CI_MARKER_EXPRESSION"',
+    }
+    for path, source in _script_sources().items():
+        lines = [
+            line
+            for line in _executable_lines(source).splitlines()
+            if "-m pytest" in line
+        ]
+        assert len(lines) == len(CI_CLOSED_CHAIN_LEGS), (
+            f"{path.name} must invoke pytest once per CI leg; found {lines!r}"
+        )
+        for line in lines:
+            assert f"-m {variables[path]}" in line, (
+                f"{path.name}: pytest line lacks the CI marker variable: {line!r}"
+            )
+        legs = [_CLOSED_CHAINS_OPTION_RE.findall(line) for line in lines]
+        assert sorted(leg for found in legs for leg in found) == sorted(
+            CI_CLOSED_CHAIN_LEGS
+        ), f"{path.name} runs legs {legs!r}, CI runs {CI_CLOSED_CHAIN_LEGS!r}"
+        assert all(len(found) == 1 for found in legs), legs

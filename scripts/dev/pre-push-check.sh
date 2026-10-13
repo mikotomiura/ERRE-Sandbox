@@ -4,7 +4,7 @@
 # 使い方:
 #   bash scripts/dev/pre-push-check.sh
 #
-# CI (.github/workflows/ci.yml) と同じ 4 段階を local で実行する。
+# CI (.github/workflows/ci.yml) と同じ 4 段階を local で実行する (pytest は CI の 2 leg に合わせて 2 回)。
 # 1 段でも fail なら exit 非ゼロ。push / `gh pr create` の前に必ず実行する。
 #
 # Memory: feedback_pre_push_ci_parity.md (PR #181 reflection で起票)
@@ -25,6 +25,12 @@ set -uo pipefail
 # CI (`.github/workflows/ci.yml` の `test` job) と同一の marker 式。
 # 変更するときは ci.yml を先に直すこと (ci.yml が SSOT)。
 CI_MARKER_EXPRESSION="not godot and not eval and not spike and not training and not inference"
+
+# CI の `test` job は OS ごとに `--closed-chains=exclude` と `--closed-chains=only` の
+# 2 leg に分けて回す (matrix の `chains` 軸、封印された閉じた chain の test dir を別 leg に)。
+# ここでも同じ 2 回に分けて両方を回す: 和が CI 全体で、CI と同じ分け方なので
+# leg をまたぐ順序依存の通り方もここで出る
+# (.steering/20261013-ci-closed-chain-split/decisions.md CC-3)。
 
 # CI の `test` job が `env:` で立てているものと同じ。Windows (Git Bash) から
 # 回したときに subprocess の stdout 読み取りが legacy codepage で落ちるのを防ぐ。
@@ -76,7 +82,8 @@ step() {
 [[ "$NO_FORMAT" == "0" ]] && step "ruff format --check" "$PYTHON" -m ruff format --check src tests
 [[ "$NO_LINT" == "0" ]]   && step "ruff check"          "$PYTHON" -m ruff check src tests
 [[ "$NO_MYPY" == "0" ]]   && step "mypy src"            "$PYTHON" -m mypy src
-[[ "$NO_PYTEST" == "0" ]] && step "pytest -q -m (CI selection)" "$PYTHON" -m pytest -q -m "$CI_MARKER_EXPRESSION"
+[[ "$NO_PYTEST" == "0" ]] && step "pytest -q -m (CI selection, closed-chains=exclude)" "$PYTHON" -m pytest -q -m "$CI_MARKER_EXPRESSION" --closed-chains=exclude
+[[ "$NO_PYTEST" == "0" ]] && step "pytest -q -m (CI selection, closed-chains=only)" "$PYTHON" -m pytest -q -m "$CI_MARKER_EXPRESSION" --closed-chains=only
 
 TOTAL_DUR=$(( $(date +%s) - STARTED ))
 echo ""

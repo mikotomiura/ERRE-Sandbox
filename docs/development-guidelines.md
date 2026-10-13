@@ -123,7 +123,7 @@ feat(cognition): add DMN-inspired idle reflection window
 - [ ] `uv run ruff check src tests` が通る (pre-commit + CI lint job)
 - [ ] `uv run ruff format --check src tests` が通る (pre-commit + CI lint job)
 - [ ] `uv run mypy src` が通る (CI typecheck job)
-- [ ] `uv run pytest -m "not godot and not eval and not spike and not training and not inference"` が通る (CI test job と同一選択。`bash scripts/dev/pre-push-check.sh` / `pwsh scripts/dev/pre-push-check.ps1` が 4 段まとめて実行する)
+- [ ] `uv run pytest -m "not godot and not eval and not spike and not training and not inference"` が通る (CI test job と同一選択。CI はこれを `--closed-chains=exclude` / `only` の 2 leg に分けて回し、オプションなしは両方の和。`bash scripts/dev/pre-push-check.sh` / `pwsh scripts/dev/pre-push-check.ps1` が 4 段まとめて実行し、pytest は CI と同じ 2 回に分ける)
 - [ ] 型ヒントが付与されている
 
 ### 手動チェック (セルフレビュー / Claude Code `/review`)

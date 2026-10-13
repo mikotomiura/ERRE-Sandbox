@@ -49,7 +49,7 @@ jobs:
         run: uv run mypy src
 
   test:
-    name: pytest non-godot (${{ matrix.os }})
+    name: pytest non-godot (${{ matrix.os }}, closed-chains=${{ matrix.chains }})
     runs-on: ${{ matrix.os }}
     strategy:
       # 片方の leg が落ちても、もう片方を cancel しない。cross-platform の
@@ -57,6 +57,15 @@ jobs:
       # しない。
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 閉じた研究 chain の封印済み test dir (tests/conftest.py の
+        # CLOSED_CHAIN_DIRS) を別 leg に分ける。exclude = それ以外の全部、
+        # only = 封印 dir だけ。2 leg の和が suite 全体で、交わらないことは
+        # tests/test_architecture/test_closed_chain_selection.py が検査する。
+        # 削除はしない (封印 manifest と論文 03 の replay-verify が bytes を固定)。
+        # 毎 PR で両 OS とも並列に回す
+        # (.steering/20261013-ci-closed-chain-split/decisions.md CC-1〜CC-2)。
+        chains: [exclude, only]
         include:
           # timeout の方針は「最悪実測 × 1.5」(50% headroom)。
           # 実測 (成功 38 run、2026-09-13〜09-28、job の started→completed):
@@ -77,6 +86,10 @@ jobs:
           # 41 × 1.5 = 61.5 → 62。
           - os: windows-latest
             timeout: 62
+          # 分割後も当面は両 leg とも上の値に据え置く。分割前の内訳
+          # (run 38300592763) では封印 dir が windows 約 18 / 32 分、ubuntu 約
+          # 8 / 19 分。leg ごとの実測が溜まったら「最悪実測 × 1.5」で見直す
+          # (decisions.md CC-4、blockers.md)。
     timeout-minutes: ${{ matrix.timeout }}
     env:
       # 両 leg の text decode を揃える。Windows runner の既定 console codepage は
@@ -114,7 +127,10 @@ jobs:
         #
         # ``--durations=25`` は選択を変えない。次に headroom が痩せたとき、
         # どの test が伸びたかを CI ログから直接読むためのもの。
-        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference" --durations=25
+        #
+        # ``--closed-chains`` は leg の分割だけを変える (上の matrix の注記)。
+        # ``--durations=25`` は leg ごとの上位になる。
+        run: uv run pytest -m "not godot and not eval and not spike and not training and not inference" --closed-chains=${{ matrix.chains }} --durations=25
 
   repro:
     # Paper 03 gate G5 ("a reproduction procedure a third party can run, checked

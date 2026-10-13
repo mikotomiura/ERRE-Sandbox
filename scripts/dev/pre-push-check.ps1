@@ -3,7 +3,7 @@
 # 使い方:
 #   .\scripts\dev\pre-push-check.ps1
 #
-# CI (.github/workflows/ci.yml) と同じ 4 段階を local で実行する。
+# CI (.github/workflows/ci.yml) と同じ 4 段階を local で実行する (pytest は CI の 2 leg に合わせて 2 回)。
 # 1 段でも fail なら exit 非ゼロ。push / `gh pr create` の前に必ず実行する。
 #
 # Memory: feedback_pre_push_ci_parity.md (PR #181 reflection で起票)
@@ -37,6 +37,12 @@ $Script:Started = Get-Date
 # CI (`.github/workflows/ci.yml` の `test` job) と同一の marker 式。
 # 変更するときは ci.yml を先に直すこと (ci.yml が SSOT)。
 $CiMarkerExpression = "not godot and not eval and not spike and not training and not inference"
+
+# CI の `test` job は OS ごとに `--closed-chains=exclude` と `--closed-chains=only` の
+# 2 leg に分けて回す (matrix の `chains` 軸、封印された閉じた chain の test dir を別 leg に)。
+# ここでも同じ 2 回に分けて両方を回す: 和が CI 全体で、CI と同じ分け方なので
+# leg をまたぐ順序依存の通り方もここで出る
+# (.steering/20261013-ci-closed-chain-split/decisions.md CC-3)。
 
 # CI の `test` job が `env:` で立てているものと同じ。Windows console の既定
 # codepage (cp932 等) だと subprocess の stdout を読むテストが
@@ -91,7 +97,8 @@ if (-not $NoMypy) {
 }
 
 if (-not $NoPytest) {
-    Step "pytest -q -m (CI selection)" { & $Python -m pytest -q -m $CiMarkerExpression }
+    Step "pytest -q -m (CI selection, closed-chains=exclude)" { & $Python -m pytest -q -m $CiMarkerExpression --closed-chains=exclude }
+    Step "pytest -q -m (CI selection, closed-chains=only)" { & $Python -m pytest -q -m $CiMarkerExpression --closed-chains=only }
 }
 
 $totalDur = ((Get-Date) - $Script:Started).TotalSeconds
