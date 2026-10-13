@@ -126,6 +126,13 @@ restated here by hand: `.github/workflows/ci.yml`'s `test` job owns it and
 `tests/test_architecture/test_pre_push_ci_parity.py` fails if this file's copy
 drifts from it.
 
+Public CI runs this selection as two legs per operating system:
+`--closed-chains=exclude` (everything except the test directories sealed by
+closed research chains) and `--closed-chains=only` (just those directories,
+listed in `tests/conftest.py`). The command above, with no option, runs both at
+once. That the two legs partition the suite is checked by
+`tests/test_architecture/test_closed_chain_selection.py`.
+
 The three tests that carry the cross-platform claim specifically are:
 
 ```

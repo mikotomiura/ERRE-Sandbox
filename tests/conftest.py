@@ -8,8 +8,10 @@ reuse this baseline to avoid re-inventing construction boilerplate.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
-from typing import Any
+from pathlib import Path
+from typing import Any, Final
 
 import pytest
 
@@ -251,3 +253,90 @@ _ENVELOPE_BUILDERS: dict[str, Callable[[int, dict[str, Any]], ControlEnvelope]] 
     "dialog_turn": _build_dialog_turn,
     "dialog_close": _build_dialog_close,
 }
+
+
+# ---------------------------------------------------------------------------
+# Closed-chain split (.steering/20261013-ci-closed-chain-split)
+# ---------------------------------------------------------------------------
+# The top-level test directories whose every file is sha256-sealed by a closed
+# research chain: an ``experiments/*/manifest*.json`` (the first seven) or a
+# driver certificate ``experiments/*/results/driver_mutation.json`` (the four
+# ``*_driver`` ones). Sealed bytes cannot carry a marker, so the selection is
+# made here, outside every seal, one directory at a time.
+#
+# CI runs the suite as two legs per OS (``--closed-chains=exclude`` and
+# ``--closed-chains=only``, ``.github/workflows/ci.yml``); the default
+# ``include`` collects everything, so ``uv run pytest -m "..."`` with no option
+# is still the union of both legs (REPRODUCING.md section 3). The list is not
+# trusted by hand: ``tests/test_architecture/test_closed_chain_selection.py``
+# derives it from the seals and proves the two legs partition the suite.
+#
+# The option is a command-line flag and never an environment variable:
+# sealed tests launch child pytest processes with a copy of ``os.environ``
+# against trees that do not load this conftest, where an inherited
+# ``PYTEST_ADDOPTS=--closed-chains=...`` would be an unknown option.
+# The mode only governs directory traversal: initial conftest discovery still
+# imports the sealed directories' ``conftest.py`` in every mode, and a path
+# passed explicitly on the command line is collected regardless.
+CLOSED_CHAIN_DIRS: Final[frozenset[str]] = frozenset(
+    {
+        "test_skill_lever",
+        "test_skill_experience",
+        "test_closed_loop",
+        "test_closed_loop_v5",
+        "test_body_walk",
+        "test_generalization_probe",
+        "test_o_time_probe",
+        "test_skill_lever_driver",
+        "test_skill_experience_driver",
+        "test_closed_loop_driver",
+        "test_closed_loop_v5_driver",
+    }
+)
+CLOSED_CHAIN_MODES: Final[tuple[str, ...]] = ("include", "exclude", "only")
+_TESTS_ROOT: Final = Path(__file__).resolve().parent
+
+
+def closed_chain_ignored(collection_path: Path | str, mode: str) -> bool | None:
+    """Return ``True`` to skip ``collection_path`` under ``mode``, else ``None``.
+
+    ``None`` (never ``False``) because ``pytest_ignore_collect`` is a
+    first-result hook: ``False`` would stop pytest's own ``--ignore`` and
+    ``collect_ignore`` handling from running. Paths outside ``tests/`` (or on
+    another drive) and ``tests/`` itself are never skipped.
+    """
+    if mode not in CLOSED_CHAIN_MODES:
+        msg = f"unknown --closed-chains mode {mode!r}; expected {CLOSED_CHAIN_MODES}"
+        raise ValueError(msg)
+    if mode == "include":
+        return None
+    try:
+        relative = os.path.relpath(
+            os.path.normcase(Path(collection_path).resolve()),
+            os.path.normcase(_TESTS_ROOT),
+        )
+    except ValueError:
+        return None
+    parts = Path(relative).parts
+    if not parts or parts[0] in (os.curdir, os.pardir):
+        return None
+    in_closed_chain = parts[0] in CLOSED_CHAIN_DIRS
+    if mode == "exclude":
+        return True if in_closed_chain else None
+    return None if in_closed_chain else True
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--closed-chains",
+        choices=CLOSED_CHAIN_MODES,
+        default="include",
+        help=(
+            "include (default): collect everything; exclude: skip the sealed "
+            "closed-chain test directories; only: collect nothing else"
+        ),
+    )
+
+
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool | None:
+    return closed_chain_ignored(collection_path, config.getoption("closed_chains"))
