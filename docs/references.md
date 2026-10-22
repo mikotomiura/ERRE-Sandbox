@@ -75,6 +75,12 @@
 | [62] | DOI:10.18053/jctres.03.2017s2.007 | Harms, C. & Lakens, D. — *Making 'null effects' informative: statistical techniques and inferential frameworks* | Journal of Clinical and Translational Research, 3(2), 382, 2018 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §7.2、非有意は効果の不在の証拠ではない) | active |
 | [63] | DOI:10.1037/pspa0000056 | Zhou, H. & Fishbach, A. — *The pitfall of experimenting on the web: How unattended selective attrition leads to surprising (yet false) research conclusions* | Journal of Personality and Social Psychology, 111(4), 493–504, 2016 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、異なる理由で条件から脱落する参加者は比較を交絡させうる。オンライン実験からの類推として) | active |
 | [64] | DOI:10.1136/bmj.e8668 | Bell, M. L., Kenward, M. G., Fairclough, D. L. & Horton, N. J. — *Differential dropout and bias in randomised controlled trials: when it matters and when it may not* | BMJ, 346, e8668, 2013 | C:\ERRE-Papers\collapsed-decision-space\manuscript\refs.md (論文02 §1、脱落率の差だけでは偏りを示さない。臨床試験からの類推として) | active |
+| [65] | arXiv:2411.00640 | Miller, E. — *Adding Error Bars to Evals: A Statistical Approach to Language Model Evaluations* | arXiv:2411.00640, 2024 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、評価が関心の仮説を検定できるかを決める power analysis の推奨) | active |
+| [66] | arXiv:2507.02825 | Zhu, Y., Jin, T., Pruksachatkun, Y., Zhang, A., Liu, S., Cui, S., Kapoor, S., Longpre, S., Meng, K., Weiss, R., Barez, F., Gupta, R., Dhamala, J., Merizian, J., Giulianelli, M., Coppock, H., Ududec, C., Sekhon, J., Steinhardt, J., Kellermann, A., Schwettmann, S., Zaharia, M., Stoica, I., Liang, P. & Kang, D. — *Establishing Best Practices for Building Rigorous Agentic Benchmarks* | arXiv:2507.02825, 2025 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、check が成功を本当に示すかの確立。空の応答を成功と数える失敗の例) | active |
+| [67] | arXiv:2405.14782 | Biderman, S., Schoelkopf, H., Sutawika, L., Abbasi, B., Forde, J. Z., Gao, L., Tow, J., Aji, A. F., Ammanamanchi, P. S., Black, S., Clive, J., DiPofi, A., Etxaniz, J., Fattori, B., Foster, C., Hsu, J., Jaiswal, M., Lee, W. Y., Li, H., Lovering, C., Muennighoff, N., Pavlick, E., Phang, J., Skowron, A., Tan, S., Tang, X., Wang, K. A., Winata, G. I., Yvon, F. & Zou, A. — *Lessons from the Trenches on Reproducible Evaluation of Language Models* | arXiv:2405.14782, 2024 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、生成的な評価では回答の取り出し方を記述する) | active |
+| [68] | DOI:10.1177/2515245920952393 | Flake, J. K. & Fried, E. I. — *Measurement Schmeasurement: Questionable Measurement Practices and How to Avoid Them* | Advances in Methods and Practices in Psychological Science, 3(4), 456–465, 2020 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、測定の妥当性に疑いを生む研究者の決定。透明性は必要だが十分ではない) | active |
+| [69] | DOI:10.1098/rsos.180448 | Hardwicke, T. E., Mathur, M. B., MacDonald, K., Nilsonne, G., Banks, G. C., Kidwell, M. C., Hofelich Mohr, A., Clayton, E., Yoon, E. J., Henry Tessler, M., Lenne, R. L., Altman, S., Long, B. & Frank, M. C. — *Data availability, reusability, and analytic reproducibility: evaluating the impact of a mandatory open data policy at the journal Cognition* | Royal Society Open Science, 5(8), 180448, 2018 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、共有データだけでは報告値の再現性は保証されない) | active |
+| [70] | DOI:10.1098/rsos.201494 | Hardwicke, T. E., Bohn, M., MacDonald, K., Hembacher, E., Nuijten, M. B., Peloquin, B. N., deMayo, B. E., Long, B., Yoon, E. J. & Frank, M. C. — *Analytic reproducibility in articles receiving open data badges at the journal Psychological Science: an observational study* | Royal Society Open Science, 8(1), 201494, 2021 | collapsed-decision-space/manuscript/refs.json (論文02 §6.3、共有データだけでは報告値の再現性は保証されない) | active |
 
 ## 追加・撤回ルール
 
@@ -215,3 +221,14 @@
   - [63] の題: Crossref の値は末尾に "." を含む。書誌では落とした ([47] と同じ扱い)。
   - [64] の著者: Crossref は頭文字しか持たないので、頭文字で書く。issue 欄の値 ("jan21 1") は書誌に書かない。
   - 照合の表と不採用の候補 (理由つき) は `.steering/20261003-paper02-jote-lit/refs-verification.md` (ローカル)。
+
+- **[65]〜[70] — 2026-10-23 確認 (論文02 の JOTE 改稿の §6.3 で引く文献)**:
+  論文02 の原稿では [65]〜[70] を仮の番号として使っていた。登録の時点で中央書誌の最大は [64]、全 branch でも [65] 以降の
+  登録は無く、6 本の DOI / arXiv ID はどの既存の行とも重ならないので、仮の番号をそのまま恒久 ID とした。
+  書誌は、DOI の 3 本 ([68]〜[70]) は Crossref API の生 JSON、arXiv の 3 本 ([65]〜[67]) は OpenAlex の記録と arXiv の PDF
+  の表紙から写した (外への要求に連絡先・User-Agent の指定は付けていない)。
+  - [67] の著者の並び: OpenAlex の記録の並び (Gao, Tow, Abbasi, Aji …) は原典と違う。arXiv の PDF (v3) の表紙の並び
+    (Abbasi, Forde, Gao, Tow, Aji …) で書く。
+  - [66] の著者: arXiv の PDF (v5) の表紙の 25 人。[65]〜[67] は preprint で、年は最初の版の年。
+  - 本文は arXiv の PDF ([65]〜[67])、PsyArXiv の著者版 ([68])、Europe PMC の全文 XML ([69] [70]) で読み、論文02 §6.3 の
+    引き方と照合した。
