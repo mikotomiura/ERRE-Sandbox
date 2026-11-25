@@ -21,6 +21,7 @@ import math
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from fractions import Fraction
 from pathlib import Path
 from statistics import NormalDist
 from typing import TYPE_CHECKING, Any, Final
@@ -95,13 +96,24 @@ INPUTS: Final[dict[str, tuple[str, str]]] = {
 
 BATTERIES: Final[tuple[str, ...]] = ("v2", "v3", "G", "O_time")
 
-# rules.md §5: 1 呼び出しあたりの秒 (qwen3:8b の本走の実績。ADR §2 の表 = 時間 / 呼び出し数)
-SEC_PER_CALL: Final[dict[str, float]] = {
-    "v2": 200.0 / 1200,  # 約 3 分 20 秒
-    "v3": 420.0 / 2160,  # 約 7 分
-    "G": 375.0 / 1728,  # 約 6 分 15 秒
-    "O_time": 7500.0 / 13824,  # 約 2 時間 5 分
+# rules.md §5: 1 呼び出しあたりの秒 = qwen3:8b の本走の実績 (ADR §2 の表の 秒 / 呼び出し数)。
+# 費用は有理数で正確に計算する (Codex HIGH-3)。
+SEC_PER_CALL: Final[dict[str, Fraction]] = {
+    "v2": Fraction(200, 1200),  # 約 3 分 20 秒
+    "v3": Fraction(420, 2160),  # 約 7 分
+    "G": Fraction(375, 1728),  # 約 6 分 15 秒
+    "O_time": Fraction(7500, 13824),  # 約 2 時間 5 分
 }
+# 表示位置が一巡する R の倍数 (各 battery の check_position_balance。Codex HIGH-1)
+R_MULTIPLE: Final[dict[str, int]] = {
+    "v2": v2bat.N_POSITIONS,
+    "v3": v2bat.N_POSITIONS,  # v3 は v2 の layout を使う
+    "G": gbat.N_POSITIONS,
+    "O_time": obat.N_POSITIONS,
+}
+SPEED_14B: Final[int] = (
+    2  # 14B は qwen3:8b の 2 倍遅いと仮定 (未実測。記述の列だけに使う)
+)
 ALPHA: Final[float] = 0.05
 N_PAIRS: Final[int] = 15  # 6 モデルの対
 POWER: Final[float] = 0.8
@@ -115,7 +127,9 @@ BOT_HOLD: Final[float] = 0.2  # いずれかの arm の ⊥ 率がこれを超�
 Q_HOLD: Final[float] = 0.5  # battery 全体の q がこれ未満なら保留
 CEILING: Final[float] = 0.95  # C + Z_CEIL·SE がこれ以上なら保留
 Z_CEIL: Final[float] = 1.96
-BUDGET_HOURS: Final[float] = 3.0  # 1 モデルあたりの累計時間の上限
+BUDGET_SECONDS: Final[int] = (
+    3 * 3600
+)  # 1 モデルあたりの累計 (qwen3:8b 換算・モデルの平均。DU-7)
 C_MATCH_TOL: Final[float] = 1e-12  # results.json の C との一致
 
 CATEGORIES: Final[tuple[str, ...]] = ("w", "foil", "other", "oov", "bot")
@@ -240,7 +254,7 @@ class BatteryData:
         str, list[float]
     ]  # 項目 → replicate ごとの項目の値 (対を完成させたもの)
     cats: dict[str, Counter[str]]  # lever arm → 出力の分類の数
-    calls_per_rep: float
+    total_calls: int  # 記録の全呼び出し (C0・対照 arm を含む)
     describe: dict[str, Any] = field(default_factory=dict)
 
 
@@ -305,7 +319,7 @@ def _v2v3(
         rep_units=rep_units,
         items=items,
         cats=cats,
-        calls_per_rep=len(samples) / r_count,
+        total_calls=len(samples),
     )
 
 
@@ -395,7 +409,7 @@ def battery_g(lines: Sequence[str], r_count: int) -> BatteryData:
         rep_units=rep_units,
         items=items,
         cats=cats,
-        calls_per_rep=len(samples) / r_count,
+        total_calls=len(samples),
     )
 
 
@@ -420,6 +434,23 @@ def battery_o_time(lines: Sequence[str], r_count: int) -> BatteryData:
             cats[arm][osc.category(c, arm, i)] += 1
     d, s_cell = o_time_units(choices, r_count)
     units = obat.units(r_count)
+    mine = []
+    for u in units:
+        fwd, bwd = obat.FAMILIES[u.family]
+        per_enc = []
+        for enc in obat.ENCODINGS:
+            arm_s = [
+                _cell(
+                    choices[(a, enc, u.room, u.replicate)],
+                    lambda c, a=a, i=u.room: osc.category(c, a, i),
+                )
+                for a in (fwd, bwd)
+            ]
+            per_enc.append((arm_s[0] + arm_s[1]) / 2.0)
+        mine.append((per_enc[0] + per_enc[1]) / 2.0)
+    if not np.allclose(np.array(mine), d, rtol=0.0, atol=C_MATCH_TOL):
+        msg = "O_time: unit values differ from the frozen scorer"
+        raise InputError(msg)
     per_rep = len(units) // r_count
     rep_units = d.reshape(r_count, per_rep)
     items: dict[str, list[float]] = {f"room{i}": [] for i in range(obat.N_ROOMS)}
@@ -436,7 +467,7 @@ def battery_o_time(lines: Sequence[str], r_count: int) -> BatteryData:
         rep_units=rep_units,
         items=items,
         cats=cats,
-        calls_per_rep=len(samples) / r_count,
+        total_calls=len(samples),
         describe={
             **{k: float(v) for k, v in desc.items()},
             "components": {
@@ -502,7 +533,7 @@ def output_classes(cats: Mapping[str, Counter[str]]) -> dict[str, Any]:
             **{k: c[k] / n for k in CATEGORIES},
             "n": n,
             "q": (w + f) / n,
-            "r": (w / (w + f)) if w + f else float("nan"),
+            "r": (w / (w + f)) if w + f else None,
             "bot_rate": c["bot"] / n,
         }
     tot: Counter[str] = Counter()
@@ -512,26 +543,58 @@ def output_classes(cats: Mapping[str, Counter[str]]) -> dict[str, Any]:
     return {
         "per_arm": per_arm,
         "q": (tot["w"] + tot["foil"]) / n,
-        "r": tot["w"] / (tot["w"] + tot["foil"])
-        if tot["w"] + tot["foil"]
-        else float("nan"),
+        "r": (tot["w"] / (tot["w"] + tot["foil"])) if tot["w"] + tot["foil"] else None,
         "max_bot_rate": max(v["bot_rate"] for v in per_arm.values()),
     }
 
 
-def r_table(name: str, sigma_up: float, calls_per_rep: float) -> dict[str, Any]:
+def r_cost(r_raw: int, multiple: int) -> int:
+    """表示位置が一巡する最小の倍数に切り上げる (Codex HIGH-1)."""
+    return -(-r_raw // multiple) * multiple
+
+
+def cost_seconds(name: str, r: int, total_calls: int, r_count: int) -> Fraction:
+    """R replicate の本走の時間 (秒、qwen3:8b 換算、正確な有理数)."""
+    return r * Fraction(total_calls, r_count) * SEC_PER_CALL[name]
+
+
+def r_table(
+    name: str, sigma_up: float, total_calls: int, r_count: int
+) -> dict[str, Any]:
+    """単一 battery で差 0 の対から Δ を識別する、1 対あたりの R の概算 (rules.md §5)."""
     rows = {}
     for delta in DELTA_GRID:
-        r_obs = r_needed(sigma_up, delta)
-        r_max = r_needed(1.0, delta)
+        r_raw = r_needed(sigma_up, delta)
+        r_c = r_cost(r_raw, R_MULTIPLE[name])
+        sec = cost_seconds(name, r_c, total_calls, r_count)
+        r1 = r_cost(r_needed(1.0, delta), R_MULTIPLE[name])
+        sec1 = cost_seconds(name, r1, total_calls, r_count)
         rows[f"{delta:.2f}"] = {
-            "R": r_obs,
-            "calls": r_obs * calls_per_rep,
-            "hours": r_obs * calls_per_rep * SEC_PER_CALL[name] / 3600.0,
-            "R_sigma1": r_max,
-            "hours_sigma1": r_max * calls_per_rep * SEC_PER_CALL[name] / 3600.0,
+            "R_raw": r_raw,
+            "R_cost": r_c,
+            "calls": float(r_c * Fraction(total_calls, r_count)),
+            "seconds_exact": [sec.numerator, sec.denominator],
+            "hours_8b": float(sec / 3600),
+            "hours_14b_assumed": float(sec * SPEED_14B / 3600),
+            "R_cost_sigma1": r1,
+            "hours_8b_sigma1": float(sec1 / 3600),
         }
     return rows
+
+
+def _check_inputs(name: str, row: Mapping[str, Any]) -> None:
+    """判定の入力の検証。q の NaN (validity で保留) 以外の非有限値は停止 (Codex LOW-1)."""
+    vals = [
+        row["output_classes"]["max_bot_rate"],
+        row["noise"]["C"],
+        row["noise"]["se"],
+    ]
+    if not all(
+        isinstance(v, float | int) and not isinstance(v, bool) and math.isfinite(v)
+        for v in vals
+    ):
+        msg = f"{name}: non-finite decision input"
+        raise InputError(msg)
 
 
 def decide(rows: Mapping[str, Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -539,32 +602,33 @@ def decide(rows: Mapping[str, Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     passing = []
     for name, row in rows.items():
+        _check_inputs(name, row)
         oc = row["output_classes"]
         nz = row["noise"]
-        reasons = []
         if oc["max_bot_rate"] > BOT_HOLD or not oc["q"] >= Q_HOLD:
-            reasons.append("validity")
+            out[name] = {"decision": DECISION_HOLD, "reason": "validity"}
         elif nz["C"] + Z_CEIL * nz["se"] >= CEILING:
-            reasons.append("ceiling")
-        if reasons:
-            out[name] = {"decision": DECISION_HOLD, "reason": reasons[0]}
+            out[name] = {"decision": DECISION_HOLD, "reason": "ceiling"}
         else:
             passing.append(name)
-    hours = {n: rows[n]["r_table"][f"{DELTA_REF:.2f}"]["hours"] for n in passing}
-    cum = 0.0
-    for name in sorted(passing, key=lambda n: (hours[n], n)):
-        if cum + hours[name] <= BUDGET_HOURS:
-            cum += hours[name]
+    sec = {
+        n: Fraction(*rows[n]["r_table"][f"{DELTA_REF:.2f}"]["seconds_exact"])
+        for n in passing
+    }
+    cum = Fraction(0)
+    for name in sorted(passing, key=lambda n: (sec[n], n)):
+        if cum + sec[name] <= BUDGET_SECONDS:
+            cum += sec[name]
             out[name] = {
                 "decision": DECISION_ADOPT,
                 "reason": "within_budget",
-                "cumulative_hours": cum,
+                "cumulative_hours_8b": float(cum / 3600),
             }
         else:
             out[name] = {
                 "decision": DECISION_HOLD,
                 "reason": "cost",
-                "cumulative_hours_if_added": cum + hours[name],
+                "cumulative_hours_8b_if_added": float((cum + sec[name]) / 3600),
             }
     return out
 
@@ -579,13 +643,25 @@ def _finite(x: Any) -> bool:
     return True
 
 
+def replicates(n_units: object, per_rep: int) -> int:
+    """n_units から R を逆算する。整数・割り切れる・R ≥ 2 でなければ停止 (Codex LOW-2)."""
+    if type(n_units) is not int:
+        msg = f"n_units {n_units!r} is not an int"
+        raise InputError(msg)
+    r, rem = divmod(n_units, per_rep)
+    if rem or r < R_FLOOR:
+        msg = f"n_units {n_units} is not R x {per_rep} with R >= {R_FLOOR}"
+        raise InputError(msg)
+    return r
+
+
 def analyse(root: Path) -> dict[str, Any]:
     hashes = verify_inputs(root)
-    g_r = int(_read_json(root, "g_results")["n_units"]) // (
-        len(gbat.FAMILIES) * gbat.N_TRIPLES
+    g_r = replicates(
+        _read_json(root, "g_results")["n_units"], len(gbat.FAMILIES) * gbat.N_TRIPLES
     )
-    ot_r = int(_read_json(root, "ot_results")["n_units"]) // (
-        len(obat.FAMILIES) * obat.N_ROOMS
+    ot_r = replicates(
+        _read_json(root, "ot_results")["n_units"], len(obat.FAMILIES) * obat.N_ROOMS
     )
     data = {
         "v2": battery_v2(_read_lines(root, "v2_records")),
@@ -617,9 +693,10 @@ def analyse(root: Path) -> dict[str, Any]:
             "noise": nz,
             "items": items,
             "output_classes": output_classes(bd.cats),
-            "calls_per_rep": bd.calls_per_rep,
-            "sec_per_call": SEC_PER_CALL[name],
-            "r_table": r_table(name, nz["sigma_up"], bd.calls_per_rep),
+            "total_calls": bd.total_calls,
+            "calls_per_rep": bd.total_calls / nz["R"],
+            "sec_per_call_8b": float(SEC_PER_CALL[name]),
+            "r_table": r_table(name, nz["sigma_up"], bd.total_calls, nz["R"]),
             "describe": bd.describe,
         }
     nulls = {
@@ -657,11 +734,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "stage1.json").write_text(
-        json.dumps(res, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(res, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
+        + "\n",
         encoding="utf-8",
         newline="\n",
     )
-    for name, d in res["decisions"].items():
+    for name, d in sorted(res["decisions"].items()):
         print(f"{name}: {d['decision']} ({d['reason']})")
     return 0
 
