@@ -292,18 +292,21 @@ def compute_gate(
         for n, sr in run.segments.items()
         if sr.stage == rd.STAGE_REPLAY
     }
-    return {
-        "schema": SCHEMA,
-        "status": STATUS_OK,
-        "violations": [],
-        "K": k_tests,
-        "sum_M": sum_m,
-        "lookup": {m: _jsonable(looks[m][1]) for m in rd.MODELS},
-        "batteries": batteries,
-        "observed": observed,
-        "replay": replay,
-        "inputs": inputs,
-    }
+    # 非有限の float は gate 全体で文字列にする (DD-7。pilot_C・spike_negative_all の p も含む)
+    return _jsonable(  # type: ignore[return-value]
+        {
+            "schema": SCHEMA,
+            "status": STATUS_OK,
+            "violations": [],
+            "K": k_tests,
+            "sum_M": sum_m,
+            "lookup": {m: looks[m][1] for m in rd.MODELS},
+            "batteries": batteries,
+            "observed": observed,
+            "replay": replay,
+            "inputs": inputs,
+        }
+    )
 
 
 def gate_text(gate: Mapping[str, Any]) -> str:

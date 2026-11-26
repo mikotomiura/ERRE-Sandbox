@@ -24,6 +24,7 @@ from scripts import benchmark_stage2_records as rd
 from scripts import benchmark_stage2_stats as st
 from scripts import benchmark_stage2_units as un
 from scripts import generalization_probe_battery as gbat
+from scripts import generalization_probe_pilot_gate as gpg
 from scripts import o_time_probe_battery as obat
 from scripts import o_time_probe_pilot_gate as opg
 from scripts import o_time_probe_scorer as osc
@@ -837,3 +838,186 @@ def test_envelope_is_an_exact_fraction(asym_gate: dict[str, Any]) -> None:
     assert env == Fraction(7, 40)
     assert not st.envelope_exceeded([84], 480, env)
     assert st.envelope_exceeded([85], 480, env)
+
+
+# ---------------------------------------- 段 3.5 の certification で足したもの
+# (変異 harness の witness。既存の test が捕まえなかった読み手・pilot gate の行)
+
+
+def _table(run_dir: pathlib.Path) -> tuple[pathlib.Path, dict[str, Any]]:
+    tpath = run_dir / pl.STAGE_PILOT / dr.SEGMENTS_NAME
+    return tpath, json.loads(tpath.read_text(encoding="utf-8"))
+
+
+def _meta_path(run_dir: pathlib.Path, name: str) -> pathlib.Path:
+    return _records_path(run_dir, name).with_name(dr.META_NAME)
+
+
+def _rewrite_meta(
+    run_dir: pathlib.Path, name: str, mutate: Callable[[dict[str, Any]], None]
+) -> None:
+    """meta.json を書き換え、状態表の meta の sha を合わせる."""
+    path = _meta_path(run_dir, name)
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    mutate(meta)
+    data = dr.json_text(meta).encode("utf-8")
+    path.write_bytes(data)
+    tpath, table = _table(run_dir)
+    table["segments"][name]["meta_sha256"] = _sha(data)
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+
+
+def test_meta_sha_mismatch_stops(one_run: pathlib.Path) -> None:
+    name = "pilot/v3/qwen3:8b"
+    path = _meta_path(one_run, name)
+    # 中身は同じで bytes だけが違う (meta の欄の照合は通り、sha の照合だけが落ちる)
+    path.write_bytes(
+        json.dumps(json.loads(path.read_text(encoding="utf-8"))).encode("utf-8")
+    )
+    run = _read(one_run, ONE)
+    assert run.violations == [f"{name}: meta sha differs from segments.json"]
+
+
+def test_meta_fields_must_match_the_registration(one_run: pathlib.Path) -> None:
+    name = "pilot/O_time/qwen3:8b"
+    _rewrite_meta(one_run, name, lambda m: m.__setitem__("attempt", 2))
+    assert f"{name}: meta attempt differs" in _read(one_run, ONE).violations
+
+
+def test_meta_template_sha_must_be_the_sha_of_the_template(
+    one_run: pathlib.Path,
+) -> None:
+    name = "pilot/G/qwen3:8b"
+    _rewrite_meta(one_run, name, lambda m: m.__setitem__("template", "edited"))
+    assert _read(one_run, ONE).violations == [
+        f"{name}: meta template_sha256 is not the sha of the template"
+    ]
+
+
+def test_adopted_attempt_on_a_non_completed_segment_stops(
+    tmp_path: pathlib.Path,
+) -> None:
+    write_pilot(
+        tmp_path / "run", models=ONE, status={"pilot/v2/qwen3:8b": dr.S_TRANSPORT}
+    )
+    tpath, table = _table(tmp_path / "run")
+    table["segments"]["pilot/v2/qwen3:8b"]["adopted_attempt"] = 1
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    assert _read(tmp_path / "run", ONE).violations == [
+        "pilot/v2/qwen3:8b: adopted_attempt on a non-completed segment"
+    ]
+
+
+def test_n_sends_out_of_range_stops(one_run: pathlib.Path) -> None:
+    def five(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows[7]["n_sends"] = 1 + dr.RESENDS + 1
+        return rows
+
+    rewrite(one_run, "pilot/v2/qwen3:8b", five)
+    assert any("n_sends out of range" in v for v in _read(one_run, ONE).violations)
+
+
+def test_expected_ollama_version_differs_stops(one_run: pathlib.Path) -> None:
+    tpath, table = _table(one_run)
+    table["expected_ollama_version"] = "0.33.0"
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    assert _read(one_run, ONE).violations == [
+        "segments.json expected_ollama_version differs from models.json"
+    ]
+
+
+def test_invalid_meta_makes_the_model_invalid_in_that_battery(
+    six_model_run: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    run = tmp_path / "run"
+    shutil.copytree(six_model_run, run)
+    tpath, table = _table(run)
+    for m in pl.MODELS:  # G の全モデルの区切りが digest の違いで閉じた
+        table["segments"][f"pilot/G/{m}"].update(
+            status=dr.S_INVALID_META,
+            reason=f"{m}: model_digest differs",
+            adopted_attempt=None,
+            records_sha256=None,
+            meta_sha256=None,
+        )
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    gate = _gate(run)
+    g = gate["batteries"]["G"]
+    assert {g["models"][m]["status"] for m in pl.MODELS} == {pg.M_INVALID}
+    assert g["entrants"] == []
+    # 資格を計算したモデルが無い battery は NOT_QUALIFIED でなく not_computed
+    assert g["gate"] == pg.G_NOT_COMPUTED
+    # 他の battery では同じモデルが入場する (そのモデルをその battery で INVALID)
+    assert "qwen3:8b" in gate["batteries"]["O_time"]["entrants"]
+
+
+def test_g_masked_bottom_keeps_the_model_out(
+    six_model_run: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    run = tmp_path / "run"
+    shutil.copytree(six_model_run, run)
+    arm = next(m for m, lv in gpg.MASKED_ARMS.items() if lv == gbat.LEVER_ARMS[0])
+
+    def bottom(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for row in rows:
+            if row["purpose"] == pl.P_MASKED and row["arm"] == arm:
+                row["raw"] = BOT  # masked の 1 arm だけ ⊥
+        return rows
+
+    rewrite(run, "pilot/G/qwen3:8b", bottom)
+    g = _gate(run)["batteries"]["G"]
+    assert g["models"]["qwen3:8b"]["status"] == st.REASON_ENVELOPE
+    assert g["models"]["qwen3:8b"]["masked_bottom_rates"][0] == 1.0
+
+
+def test_worst_pair_names_the_stats_pair(six_model_run: pathlib.Path) -> None:
+    run = _read(six_model_run)
+    gate = _gate(six_model_run)
+    for b, entry in gate["batteries"].items():
+        ents = entry["entrants"]
+        units = np.stack(
+            [pg.pilot_units(b, run.segments[f"pilot/{b}/{m}"]) for m in ents]
+        )
+        a, c = st.worst_pair(units)
+        assert a < c
+        assert entry["worst_pair"] == [ents[a], ents[c]]
+
+
+def test_budget_labels_reach_the_gate(six_model_run: pathlib.Path) -> None:
+    def largest(
+        spec: st.BatterySpec, units: np.ndarray, k: int
+    ) -> tuple[int | None, list[st.SpikeRow]]:
+        del units, k
+        return st.r_candidates(spec)[-1], []
+
+    gate = _gate(six_model_run, select_r=largest)
+    labels = {b: e["gate"] for b, e in gate["batteries"].items()}
+    assert labels == st.budget({b: e["R"] for b, e in gate["batteries"].items()})
+    assert st.GATE_HELD_COST in labels.values()
+    assert st.GATE_GO in labels.values()
+
+
+def test_gate_json_writes_non_finite_floats_as_strings(
+    six_model_run: pathlib.Path,
+) -> None:
+    gate = _gate(six_model_run, negative_all=lambda *_a, **_k: float("nan"))
+    assert gate["batteries"]["v2"]["spike_negative_all"]["p"] == "nan"
+    assert '"p": "nan"' in pg.gate_text(gate)
+
+
+def test_segment_digest_tamper_stops(one_run: pathlib.Path) -> None:
+    tpath, table = _table(one_run)
+    table["segments"]["pilot/v3/qwen3:8b"]["segment_digest"] = "0" * 64
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    assert _read(one_run, ONE).violations == [
+        "pilot/v3/qwen3:8b: segment digest differs from the frozen schedule"
+    ]
+
+
+def test_adopted_attempt_must_be_the_last_attempt(one_run: pathlib.Path) -> None:
+    tpath, table = _table(one_run)
+    table["segments"]["pilot/v2/qwen3:8b"]["attempts_run"] = 2  # 採用は attempt-1
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    assert _read(one_run, ONE).violations == [
+        "pilot/v2/qwen3:8b: adopted_attempt is not the last attempt"
+    ]
