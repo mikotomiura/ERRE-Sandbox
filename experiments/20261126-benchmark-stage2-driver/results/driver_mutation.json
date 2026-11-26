@@ -1,0 +1,4349 @@
+{
+  "version": "pre_pilot",
+  "scope": "pilot が実行・判定に使う code (DD-6)。scorer・fixtures は本走前の版で加える",
+  "target_sha256": {
+    "benchmark_stage2_driver.py": "5d13ce0055fad53993881ef1884a2288d0b70da891008d11ae0027beb01bc258",
+    "benchmark_stage2_plan.py": "9edcbd6ee97550b236ad44fbcb40cce72ef2565313c198dbea20d89b8bccd69d",
+    "benchmark_stage2_units.py": "d281c20346cfa599c287ce350b2cde49556fcbfa5e989692765e8ccbfc5d3ea1",
+    "benchmark_stage2_records.py": "4838fc9745458379c435402fedb1f42e9141d7834c45e6b773036fce63eec2f9",
+    "benchmark_stage2_pilot_gate.py": "96c43605a7b9c383c275c766042f21eef4aef4ba3402d7afae215b40ac9f7699",
+    "benchmark_stage2_stats.py": "2bb7766ec45b36fb519af12d4a32d7ac3921b3e93011f3f1e9017041d68402b1",
+    "benchmark_stage2_driver_mutation_check.py": "a13a1192e1d941e203201d15169586f17fe81dde8e307537f3bd5b363387680e",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/conftest.py": "6ffaefb3244cfe04163c9cce75bf2f3eb59f55dc3d9bbcfe248bbb49cb86a71f",
+    "tests/test_certificate.py": "3ec37a4376a79bb972584e3e1f2f6176eef9c50437d68fc53fa90777c162631d",
+    "tests/test_driver.py": "b72cdff4404ae1f90f73e8133259c6813b477068fae2d331472d1c58c5ada688",
+    "tests/test_driver_contract.py": "22f1532d8d214492cb1de0eb70560eeff74359dd0d17bdcfc27569c9fee07d8f",
+    "tests/test_pilot_gate.py": "4369fe665f060c9dbb26655bdfc970e8a57194a361b2b92d7c79868f2b2def29",
+    "tests/test_plan.py": "7cc1fbd5c665660ee333d320fba5f9f105df86601f15cc1b72a7de91af80855b",
+    "tests/test_stats_contract.py": "0bf1d57845cadd41b7ed9fdbcf0eec35f0ef55babeef0327414236e8cee5c22d",
+    "tests/test_units.py": "a57e69f13606165fe4c919a31f82ed749cf4522fb87dbf81139bf42df08f83bb"
+  },
+  "witness_tests_sha256": {
+    "tests/test_benchmark_stage2/test_stats.py": "dee784f358882931cfeb0c8d3e8d729d1db4f604f04e5070d657f7680c7a2482"
+  },
+  "targets": {
+    "driver": "scripts/benchmark_stage2_driver.py",
+    "plan": "scripts/benchmark_stage2_plan.py",
+    "units": "scripts/benchmark_stage2_units.py",
+    "records": "scripts/benchmark_stage2_records.py",
+    "pilot_gate": "scripts/benchmark_stage2_pilot_gate.py",
+    "stats": "scripts/benchmark_stage2_stats.py"
+  },
+  "meta_test": [
+    {
+      "label": "送信前の照合 ObservingTransport を素通りに潰す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "failed": [
+        "test_deadline_during_retry",
+        "test_deadline_mid_segment_then_not_started",
+        "test_digest_mismatch_invalidates_only_that_model",
+        "test_meta_read_failure_after_the_deadline_is_a_timeout",
+        "test_meta_read_failure_is_transport_and_retried",
+        "test_observer_rejects_body_not_in_plan",
+        "test_reader_accepts_driver_output",
+        "test_record_lines_are_ascii_sorted",
+        "test_replay_accounted_separately",
+        "test_replay_runs_last_and_only_replay_can_be_left",
+        "test_request_timeout_is_cut_at_the_deadline",
+        "test_resend_resolves_within_three",
+        "test_retry_only_once",
+        "test_retry_runs_before_the_replay",
+        "test_runs_segments_in_order_and_publishes",
+        "test_template_mismatch_invalidates_only_that_model",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces",
+        "test_version_change_mid_run_invalidates_all"
+      ]
+    },
+    {
+      "label": "記録の読み手の completed の検査 _read_completed を素通りに潰す",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_plain_missing_rows_are_not_computed",
+        "test_sha_mismatch_stops",
+        "test_structure_violations_stop_records"
+      ],
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_differing_from_models_json_stops",
+        "test_meta_fields_must_match_the_registration",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_n_sends_out_of_range_stops",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_reader_accepts_driver_output",
+        "test_reader_only_reads_the_adopted_attempt",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_stop_records_gate_has_no_decisions",
+        "test_structure_violations_stop_records",
+        "test_worst_pair_names_the_stats_pair"
+      ]
+    },
+    {
+      "label": "gate.json の契約 read_gate の検査を素通りに潰す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "FAILED_AS_EXPECTED",
+      "expected_all_of": [
+        "test_main_r_from_gate",
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "failed": [
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_main_plan_from_gate_file",
+        "test_main_r_from_gate",
+        "test_plan_for_refuses_a_model_outside_the_entrants",
+        "test_read_gate_refuses_an_r_without_three_entrants",
+        "test_read_gate_refuses_an_unregistered_battery",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_stop_records_gate_has_no_decisions"
+      ]
+    }
+  ],
+  "control_file_sets": [
+    [
+      "tests/test_benchmark_stage2/test_stats.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_driver.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_driver.py",
+      "tests/test_benchmark_stage2_driver/test_driver_contract.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_driver.py",
+      "tests/test_benchmark_stage2_driver/test_pilot_gate.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_driver_contract.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_pilot_gate.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_pilot_gate.py",
+      "tests/test_benchmark_stage2_driver/test_plan.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_plan.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_stats_contract.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_units.py"
+    ]
+  ],
+  "mutants": [
+    {
+      "label": "d01 再送の回数 3 → 2",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_resolves_within_three"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: 同じ body の再送は 3 回 (送信は最大 4 回)",
+      "failed": [
+        "test_deadline_during_retry",
+        "test_resend_resolves_within_three",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_resend_resolves_within_three",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [5.0, 30.0] == [5.0, 30.0, 120.0]\n  \n  Right contains one more item: 120.0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d02 backoff の 3 回目 120 → 60",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_run_constants"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H の backoff の表 (test_driver は定数から期待値を作るので値そのものを pin する)",
+      "failed": [
+        "test_last_resend_failing_after_the_deadline_is_a_timeout",
+        "test_registered_run_constants"
+      ],
+      "witnessed_by": {
+        "function": "test_registered_run_constants",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (5.0, 30.0, 60.0) == (5.0, 30.0, 120.0)\n  \n  At index 2 diff: 60.0 != 120.0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d03 n_sends を 1 少なく数える",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_resolves_within_three",
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "記録の n_sends = 実送信数",
+      "failed": [
+        "test_resend_resolves_within_three",
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "witnessed_by": {
+        "function": "test_runs_segments_in_order_and_publishes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 1"
+      }
+    },
+    {
+      "label": "d04 解けない呼び出しの n_sends を 3 にする",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "解けない呼び出しの n_sends = 1 + 再送 3",
+      "failed": [
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_segment_closes_and_next_runs_then_retry_replaces",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 3 == 4"
+      }
+    },
+    {
+      "label": "d05 通信の欠測を再実行しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_read_failure_is_transport_and_retried",
+        "test_retry_only_once",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§F-2・H6: 通信の欠測はモデル単位で 1 回再実行する",
+      "failed": [
+        "test_deadline_during_retry",
+        "test_meta_read_failure_is_transport_and_retried",
+        "test_retry_only_once",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_segment_closes_and_next_runs_then_retry_replaces",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'not_computed_transport' == 'completed'\n  \n  - completed\n  + not_computed_transport"
+      }
+    },
+    {
+      "label": "d06 meta の違反も再実行する",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digest_mismatch_invalidates_only_that_model",
+        "test_template_mismatch_invalidates_only_that_model"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: meta の違反は再実行しない",
+      "failed": [
+        "test_digest_mismatch_invalidates_only_that_model",
+        "test_template_mismatch_invalidates_only_that_model"
+      ],
+      "witnessed_by": {
+        "function": "test_digest_mismatch_invalidates_only_that_model",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 2 == 1"
+      }
+    },
+    {
+      "label": "d07 再実行を再生の後に回す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_retry_runs_before_the_replay"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: pilot の再実行を済ませてから再生",
+      "failed": [
+        "test_retry_runs_before_the_replay"
+      ],
+      "witnessed_by": {
+        "function": "test_retry_runs_before_the_replay",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = all(<generator object test_retry_runs_before_the_replay.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "d08 新しい区切りを期限ちょうどで始める",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_runs_last_and_only_replay_can_be_left"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: 期限に当たった後は新しい区切りを始めない (not_started)",
+      "failed": [
+        "test_replay_runs_last_and_only_replay_can_be_left"
+      ],
+      "witnessed_by": {
+        "function": "test_replay_runs_last_and_only_replay_can_be_left",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['not_compute...uted_timeout'] == ['not_started', 'not_started']\n  \n  At index 0 diff: 'not_computed_timeout' != 'not_started'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d09 期限の後の meta の読みの失敗を通信の欠測にする",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_read_failure_after_the_deadline_is_a_timeout"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-5: 期限を過ぎた後の meta の読みの失敗は時間切れ",
+      "failed": [
+        "test_meta_read_failure_after_the_deadline_is_a_timeout"
+      ],
+      "witnessed_by": {
+        "function": "test_meta_read_failure_after_the_deadline_is_a_timeout",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'not_computed_transport' == 'not_computed_timeout'\n  \n  - not_computed_timeout\n  ?               ^^^ ^\n  + not_computed_transport\n  ?               ^^^^^ ^"
+      }
+    },
+    {
+      "label": "d10 区切りの開始時の版の違いを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: 途中で違う版を見た区切りには送らない",
+      "failed": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "witnessed_by": {
+        "function": "test_version_change_mid_run_invalidates_all",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 6 == 3\n +  where 6 = len([{'messages': [{'content': 'あなたは与えられた状況で、示された行動の中から 1 つを選ぶ。', 'role': 'system'}, {'content': '状況: 天候=rain、時刻=dusk、同伴=p..., 'options': {'num_ctx': 4096, 'num_predict': 32, 'repeat_penalty': 1.0, 'seed': 20501001, ...}, 'stream': False, ...}])\n +    where [{'messages': "
+      }
+    },
+    {
+      "label": "d11 終わりに版の違いで全区切りを無効にしない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_version_change_mid_run_invalidates_all",
+        "test_version_mismatch_at_start_invalidates_all"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: 版を混ぜない (run の全区切りを invalid_version)",
+      "failed": [
+        "test_version_change_mid_run_invalidates_all",
+        "test_version_mismatch_at_start_invalidates_all"
+      ],
+      "witnessed_by": {
+        "function": "test_version_mismatch_at_start_invalidates_all",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'not_started'} == {'invalid_version'}\n  \n  Extra items in the left set:\n  'not_started'\n  Extra items in the right set:\n  'invalid_version'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d12 版の違いを見た後も新しい区切りを始める",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-5: 違う版を見たら以後の区切りを始めない (GPU を使わない)",
+      "failed": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "witnessed_by": {
+        "function": "test_version_change_mid_run_invalidates_all",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 1 == 0"
+      }
+    },
+    {
+      "label": "d13 起動時の版の違いでも chat を送る",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_version_mismatch_at_start_touches_no_segment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-5: 起動時の版が違えば区切りを 1 つも始めない (meta の読みもしない)",
+      "failed": [
+        "test_version_mismatch_at_start_touches_no_segment"
+      ],
+      "witnessed_by": {
+        "function": "test_version_mismatch_at_start_touches_no_segment",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['accounting....s.json', 'v2'] == ['accounting....egments.json']\n  \n  Left contains one more item: 'v2'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d14 終わりの無効化で adopted_attempt を残す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: 無効な区切りに採用 attempt を残さない",
+      "failed": [
+        "test_version_change_mid_run_invalidates_all"
+      ],
+      "witnessed_by": {
+        "function": "test_version_change_mid_run_invalidates_all",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = all(<generator object test_version_change_mid_run_invalidates_all.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "d15 digest の違いを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digest_mismatch_invalidates_only_that_model"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1・§F-1: digest の違いはそのモデルを INVALID",
+      "failed": [
+        "test_digest_mismatch_invalidates_only_that_model"
+      ],
+      "witnessed_by": {
+        "function": "test_digest_mismatch_invalidates_only_that_model",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['completed', 'completed'] == ['invalid_met...invalid_meta']\n  \n  At index 0 diff: 'completed' != 'invalid_meta'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d16 template の違いを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_template_mismatch_invalidates_only_that_model"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1・§F-1: template の違いはそのモデルを INVALID",
+      "failed": [
+        "test_template_mismatch_invalidates_only_that_model"
+      ],
+      "witnessed_by": {
+        "function": "test_template_mismatch_invalidates_only_that_model",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['completed', 'completed'] == ['invalid_met...invalid_meta']\n  \n  At index 0 diff: 'completed' != 'invalid_meta'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d17 送信前の照合を外す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "送信前に wire の body を plan と型まで照合する",
+      "failed": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "witnessed_by": {
+        "function": "test_observer_rejects_body_not_in_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.SentBodyMismatchError'>"
+      }
+    },
+    {
+      "label": "d18 same が型を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_same_distinguishes_types"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "False と 0、4096.0 と 4096 を区別する",
+      "failed": [
+        "test_observer_rejects_body_not_in_plan",
+        "test_same_distinguishes_types"
+      ],
+      "witnessed_by": {
+        "function": "test_same_distinguishes_types",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function same at 0x?>(False, 0)\n +    where <function same at 0x?> = dr.same"
+      }
+    },
+    {
+      "label": "d19 same が dict の余分な key を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "KeyError",
+        "text": "top_k",
+        "via": "same",
+        "assert_stmt": false
+      },
+      "why": "body に余分な・欠けた key があれば違う (欠けた key で same が KeyError)",
+      "failed": [
+        "test_observer_rejects_body_not_in_plan",
+        "test_same_distinguishes_types"
+      ],
+      "witnessed_by": {
+        "function": "test_observer_rejects_body_not_in_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.KeyError",
+        "text": "'top_k'"
+      }
+    },
+    {
+      "label": "d20 /api/show を meta の読みの外でも許す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "POST /api/show は meta の読みの間だけ",
+      "failed": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "witnessed_by": {
+        "function": "test_observer_rejects_body_not_in_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.SentBodyMismatchError'>"
+      }
+    },
+    {
+      "label": "d21 chat・show 以外の POST を許す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "POST は /api/chat と /api/show だけ",
+      "failed": [
+        "test_observer_rejects_body_not_in_plan"
+      ],
+      "witnessed_by": {
+        "function": "test_observer_rejects_body_not_in_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.SentBodyMismatchError'>"
+      }
+    },
+    {
+      "label": "d22 raw を verbatim で残さない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "記録は parse しない (raw を verbatim)",
+      "failed": [
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "witnessed_by": {
+        "function": "test_runs_segments_in_order_and_publishes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'A \\u2028B' == 'A\\n\\u2028B'\n  \n  + A \n  \n  - A\n  - \n  \n    B"
+      }
+    },
+    {
+      "label": "d23 再送を初回に数える",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_resend_resolves_within_three"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "M3: 初回・再送を別に数える",
+      "failed": [
+        "test_resend_resolves_within_three",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_resend_resolves_within_three",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 6 == 3"
+      }
+    },
+    {
+      "label": "d24 再実行を初回に数える",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "M3: 再実行の送信を別に数える",
+      "failed": [
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_segment_closes_and_next_runs_then_retry_replaces",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 3\n +  where 3 = len((CallSpec(battery='v2', purpose='c0', arm='C0', encoding=None, replicate=1000, probe_id='q00', k=0, seed=30260926, mes...選ぶ。'), ('user', '状況: 天候=rain、時刻=dusk、同伴=paired。\\n次の行動から 1 つだけ選び、行動名だけを答えよ: read_book、walk_path、sit_quiet、talk_peer')))))\n +    where (CallSpec(batt"
+      }
+    },
+    {
+      "label": "d25 再生を初回に数える",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_accounted_separately"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "M3: 再生は pilot の枠で別に数える",
+      "failed": [
+        "test_replay_accounted_separately"
+      ],
+      "witnessed_by": {
+        "function": "test_replay_accounted_separately",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'initial': 9...0, 'retry': 0} == {'initial': 3...0, 'retry': 0}\n  \n  Omitting 2 identical items, use -vv to show\n  Differing items:\n  {'replay': 0} != {'replay': 6}\n  {'initial': 9} != {'initial': 3}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d26 8B 換算の費用を battery によらず v2 の秒で",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_accounted_separately"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "M3: 8B 換算は battery の秒の表",
+      "failed": [
+        "test_replay_accounted_separately"
+      ],
+      "witnessed_by": {
+        "function": "test_replay_accounted_separately",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '1' == '875/384'\n  \n  - 875/384\n  + 1"
+      }
+    },
+    {
+      "label": "d27 採用 attempt を常に 1",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: 採用 attempt = 公開した attempt",
+      "failed": [
+        "test_meta_read_failure_is_transport_and_retried",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_unresolved_segment_closes_and_next_runs_then_retry_replaces",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 1 == 2"
+      }
+    },
+    {
+      "label": "d28 records の sha を meta の bytes から",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: 状態表の records の sha = 公開した records の bytes",
+      "failed": [
+        "test_runs_segments_in_order_and_publishes",
+        "test_unresolved_segment_closes_and_next_runs_then_retry_replaces"
+      ],
+      "witnessed_by": {
+        "function": "test_runs_segments_in_order_and_publishes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '772558fc7a45...f87b44b73fd1b' == 'bcbd73d364b5...653aa2b2ad24f'\n  \n  - bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f\n  + 772558fc7a459b4a4d3c9a29d895c70300b9113caecd68575e2f87b44b73fd1b"
+      }
+    },
+    {
+      "label": "d29 meta の sha を records の bytes から",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: 状態表の meta の sha = 書いた meta の bytes",
+      "failed": [
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "witnessed_by": {
+        "function": "test_runs_segments_in_order_and_publishes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'bcbd73d364b5...653aa2b2ad24f' == '6b51525e6cc9...8f5cb57791714'\n  \n  - 6b51525e6cc97f7283b66c879111d5c0e0f7e101c53012af9e98f5cb57791714\n  + bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f"
+      }
+    },
+    {
+      "label": "d30 空でない run dir を拒まない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_refuses_non_empty_run_dir"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "再開しない (空でない <run>/<stage> を拒否)",
+      "failed": [
+        "test_refuses_non_empty_run_dir"
+      ],
+      "witnessed_by": {
+        "function": "test_refuses_non_empty_run_dir",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d31 記録の行を escape しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_record_lines_are_ascii_sorted"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "UnicodeEncodeError",
+        "text": "ascii",
+        "assert_stmt": false
+      },
+      "why": "1 記録 = 1 行の ASCII (U+2028 等を escape)",
+      "failed": [
+        "test_record_lines_are_ascii_sorted",
+        "test_runs_segments_in_order_and_publishes"
+      ],
+      "witnessed_by": {
+        "function": "test_record_lines_are_ascii_sorted",
+        "param": null,
+        "when": "call",
+        "type": "builtins.UnicodeEncodeError",
+        "text": "'ascii' codec can't encode characters in position 317-318: ordinal not in range(128)"
+      }
+    },
+    {
+      "label": "d32 記録の key を並べない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_record_lines_are_ascii_sorted"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "記録は sort_keys",
+      "failed": [
+        "test_record_lines_are_ascii_sorted"
+      ],
+      "witnessed_by": {
+        "function": "test_record_lines_are_ascii_sorted",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '{\"stage\": \"p...\"n_sends\": 1}' == '{\"arm\": \"C0\"...ge\": \"pilot\"}'\n  \n  - {\"arm\": \"C0\", \"attempt\": 1, \"battery\": \"v2\", \"call_index\": 0, \"done_reason\": \"stop\", \"encoding\": null, \"eval_count\": 2, \"k\": 0, \"model\": \"qwen3:8b\", \"n_sends\": 1, \"probe_id\": \"q00\", \"prompt_eval_count\": 17, \"prompt_sha256"
+      }
+    },
+    {
+      "label": "d33 再生を pilot の root の直下に置く",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_runs_last_and_only_replay_can_be_left"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-5: 再生は <run>/pilot/replay/ (pilot の G・O_time の qwen3:8b と衝突しない)",
+      "failed": [
+        "test_replay_runs_last_and_only_replay_can_be_left"
+      ],
+      "witnessed_by": {
+        "function": "test_replay_runs_last_and_only_replay_can_be_left",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'pilot' == 'replay'\n  \n  - replay\n  + pilot"
+      }
+    },
+    {
+      "label": "d34 本走に再生の区切りを許す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_stage_rejects_a_replay_segment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "再生は pilot の枠だけ (§H)",
+      "failed": [
+        "test_main_stage_rejects_a_replay_segment"
+      ],
+      "witnessed_by": {
+        "function": "test_main_stage_rejects_a_replay_segment",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'ValueError'>"
+      }
+    },
+    {
+      "label": "d35 公開前の検査で行数を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "公開前: 行が区切りの呼び出しと 1 対 1",
+      "failed": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_bytes_rows_and_keys",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '2 rows for 3 calls' in ''\n +  where '' = <function test_publication_problems_check_bytes_rows_and_keys.<locals>.problems at 0x?>(['{\"arm\": \"C0\", \"attempt\": 1, \"battery\": \"v2\", \"call_index\": 0, \"done_reason\": \"stop\", \"encoding\": null, \"eval_count\":...8\", \"purpose\": \"c0\", \"raw\": \"A\", \"replicat"
+      }
+    },
+    {
+      "label": "d36 公開前の検査で key の欄を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "公開前: 各行の key の欄が plan の順の呼び出しと一致",
+      "failed": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_bytes_rows_and_keys",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'row 1: key fields differ' in ''\n +  where '' = <function test_publication_problems_check_bytes_rows_and_keys.<locals>.problems at 0x?>(['{\"arm\": \"C0\", \"attempt\": 1, \"battery\": \"v2\", \"call_index\": 0, \"done_reason\": \"stop\", \"encoding\": null, \"eval_count\":...8\", \"purpose\": \"c0\", \"raw\": \"A\", \"re"
+      }
+    },
+    {
+      "label": "d37 公開前の検査で書いた bytes との一致を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "公開前: partial がこの run の書いた bytes と同じ",
+      "failed": [
+        "test_publication_problems_check_bytes_rows_and_keys"
+      ],
+      "witnessed_by": {
+        "function": "test_publication_problems_check_bytes_rows_and_keys",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'partial differs' in ''\n +  where '' = <function test_publication_problems_check_bytes_rows_and_keys.<locals>.problems at 0x?>(['{\"arm\": \"C0\", \"attempt\": 1, \"battery\": \"v2\", \"call_index\": 0, \"done_reason\": \"stop\", \"encoding\": null, \"eval_count\":...8\", \"purpose\": \"c0\", \"raw\": \"A\", \"replicate\":"
+      }
+    },
+    {
+      "label": "d38 gate の schema・status を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_r_from_gate",
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>2",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: gate.json の schema と status = OK",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>2",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d39 gate の入場の並びを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>3",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: 入場は登録モデルの §A.1 の順",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>3",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d40 gate の n_entered を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>4",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: n_entered = 入場の本数",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>4",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d41 gate の R が候補かを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>5",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: R ∈ r_candidates",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>5",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d42 gate の R が int かを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_r_from_gate",
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>6",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: R は整数 (6.0・True を拒む)",
+      "failed": [
+        "test_main_r_from_gate",
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>6",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d43 gate の STOP_POWER・NOT_QUALIFIED の R を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_refuses_an_r_without_three_entrants"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: 入場 < 3 の battery に R は無い",
+      "failed": [
+        "test_read_gate_refuses_an_r_without_three_entrants"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_refuses_an_r_without_three_entrants",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d44 gate の envelope の型を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>8",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: envelope は整数の分数 (浮動小数を経由しない)",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>8",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d45 gate の K・ΣM を再計算と照合しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>0",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: K・ΣM は入場数から再計算して照合",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>0",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d46 gate の GO / HELD_COST を予算の規則と照合しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "expected_witness": {
+        "item": "<lambda>7",
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5・§G-5: GO / HELD_COST = stats.budget",
+      "failed": [
+        "test_read_gate_rejects_contract_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_rejects_contract_violations",
+        "param": "<lambda>7",
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d47 gate の 4 battery を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_read_gate_refuses_an_unregistered_battery"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: 登録の 4 battery (余分な battery を拒む)",
+      "failed": [
+        "test_read_gate_refuses_an_unregistered_battery"
+      ],
+      "witnessed_by": {
+        "function": "test_read_gate_refuses_an_unregistered_battery",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d48 本走の plan に入場集合を渡さない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_plan_from_gate_file"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "PreflightError",
+        "text": "outside the pilot entrants",
+        "assert_stmt": false
+      },
+      "why": "H5: 本走は pilot の入場モデルだけ",
+      "failed": [
+        "test_main_plan_from_gate_file"
+      ],
+      "witnessed_by": {
+        "function": "test_main_plan_from_gate_file",
+        "param": null,
+        "when": "call",
+        "type": "scripts.benchmark_stage2_driver.PreflightError",
+        "text": "main plan has a model outside the pilot entrants"
+      }
+    },
+    {
+      "label": "d49 本走の区切りが入場集合の内かを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_for_refuses_a_model_outside_the_entrants"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "H5: 報告集合 ⊆ 入場集合",
+      "failed": [
+        "test_plan_for_refuses_a_model_outside_the_entrants"
+      ],
+      "witnessed_by": {
+        "function": "test_plan_for_refuses_a_model_outside_the_entrants",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>"
+      }
+    },
+    {
+      "label": "d50 終了コードで completed でない区切りを見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_exit_codes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-5: completed でない区切りがあれば終了コード 3",
+      "failed": [
+        "test_main_exit_codes"
+      ],
+      "witnessed_by": {
+        "function": "test_main_exit_codes",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--stage', 'pilot', '--run-dir', '<tmp>\\\\pytest-of-<user>\\\\pytest-415\\\\test_main_exit_codes0'])\n +    where <function main at 0x?> = dr.main\n +  and   3 = dr.EXIT_INCOMPLETE"
+      }
+    },
+    {
+      "label": "d51 pilot の期限 12 → 24 時間",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_run_constants"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: pilot の実時間の停止は 12 時間",
+      "failed": [
+        "test_registered_run_constants"
+      ],
+      "witnessed_by": {
+        "function": "test_registered_run_constants",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'main': 1296...lot': 86400.0} == {'main': 1296...lot': 43200.0}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'pilot': 86400.0} != {'pilot': 43200.0}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "d52 期待する Ollama の版を変える",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_registered_run_constants"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: 版 = results/models.json の版",
+      "failed": [
+        "test_registered_run_constants"
+      ],
+      "witnessed_by": {
+        "function": "test_registered_run_constants",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert '0.32.13' == '0.32.12'\n  \n  - 0.32.12\n  ?       ^\n  + 0.32.13\n  ?       ^"
+      }
+    },
+    {
+      "label": "d53 4 回目の送信の失敗の後に期限を見ない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_last_resend_failing_after_the_deadline_is_a_timeout"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H・DD-5: 期限の後の送信の失敗は時間切れ (通信の欠測の行を書かない)",
+      "failed": [
+        "test_last_resend_failing_after_the_deadline_is_a_timeout"
+      ],
+      "witnessed_by": {
+        "function": "test_last_resend_failing_after_the_deadline_is_a_timeout",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'not_computed_transport' == 'not_computed_timeout'\n  \n  - not_computed_timeout\n  ?               ^^^ ^\n  + not_computed_transport\n  ?               ^^^^^ ^"
+      }
+    },
+    {
+      "label": "d54 request の timeout を期限で切らない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_request_timeout_is_cut_at_the_deadline"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "driver の契約: 期限は request の timeout にも適用する",
+      "failed": [
+        "test_request_timeout_is_cut_at_the_deadline"
+      ],
+      "witnessed_by": {
+        "function": "test_request_timeout_is_cut_at_the_deadline",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [300.0, 300.0, 300.0] == [100.0, 90.0, 80.0]\n  \n  At index 0 diff: 300.0 != 100.0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p01 top_k 20 → 40",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_body_has_exact_registered_options"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DM-9: top_k = 20 を全モデル・全 stage で明示",
+      "failed": [
+        "test_body_has_exact_registered_options"
+      ],
+      "witnessed_by": {
+        "function": "test_body_has_exact_registered_options",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'num_ctx': 4...30260926, ...} == {'num_ctx': 4...30260926, ...}\n  \n  Omitting 6 identical items, use -vv to show\n  Differing items:\n  {'top_k': 40} != {'top_k': 20}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p02 body の stream を真に",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_body_has_exact_registered_options"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: stream = false",
+      "failed": [
+        "test_body_has_exact_registered_options"
+      ],
+      "witnessed_by": {
+        "function": "test_body_has_exact_registered_options",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert True is False"
+      }
+    },
+    {
+      "label": "p03 送る seed を 1 ずらす",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_body_has_exact_registered_options"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "送る seed = 凍結の sample_seed",
+      "failed": [
+        "test_body_has_exact_registered_options"
+      ],
+      "witnessed_by": {
+        "function": "test_body_has_exact_registered_options",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'num_ctx': 4...30260927, ...} == {'num_ctx': 4...30260926, ...}\n  \n  Omitting 6 identical items, use -vv to show\n  Differing items:\n  {'seed': 30260927} != {'seed': 30260926}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p04 v2 の arm の巡回を外す",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_v2_order_matches_frozen_driver"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の v2 の順: block mod 4 の巡回",
+      "failed": [
+        "test_v2_order_matches_frozen_driver",
+        "test_v2_rotation_phase_is_absolute_in_r"
+      ],
+      "witnessed_by": {
+        "function": "test_v2_order_matches_frozen_driver",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('C0', 0, 0,...0, 0, 5), ...] == [('C0', 0, 0,...0, 0, 5), ...]\n  \n  At index 244 diff: ('A', 0, 0, 1) != ('A_rot', 0, 0, 1)\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p06 v2 の C0 を落とす",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_arm_composition",
+        "test_pilot_call_counts_match_registration"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§G.1: v2 は C0 を含む 5 arm",
+      "failed": [
+        "test_main_calls_per_replicate",
+        "test_pilot_arm_composition",
+        "test_pilot_call_counts_match_registration",
+        "test_v2_order_matches_frozen_driver"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_call_counts_match_registration",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'G': 1836, '...0, 'v3': 3240} == {'G': 1836, '...0, 'v3': 3240}\n  \n  Omitting 3 identical items, use -vv to show\n  Differing items:\n  {'v2': 2880} != {'v2': 3600}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p07 v3 の block の順を固定",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_v3_order_matches_frozen_driver"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の v3 の順: block_arm_order(call_block)",
+      "failed": [
+        "test_v3_order_matches_frozen_driver"
+      ],
+      "witnessed_by": {
+        "function": "test_v3_order_matches_frozen_driver",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('C0', 0, 0,...0, 1, 0), ...] == [('C0', 0, 0,...0, 1, 0), ...]\n  \n  At index 248 diff: ('A', 0, 0, 1) != ('A_rot', 0, 0, 1)\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p08 v3 の L arm を判定の arm に数える",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_arm_composition"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "v3 の L arm の目的は control (資格の材料、判定に使わない)",
+      "failed": [
+        "test_pilot_arm_composition"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_arm_composition",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'c0': 360, 'lever': 2880} == {'c0': 360, '...'lever': 1440}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'lever': 2880} != {'lever': 1440}\n  Right contains 1 more item:\n  {'control': 1440}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p09 G の masked を本走の名前空間の seed で",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_seed_and_prompt_match_frozen_expected"
+      ],
+      "expected_witness": {
+        "item": "G",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: masked は pilot の名前空間の seed",
+      "failed": [
+        "test_battery_checks_pass_on_registered_r",
+        "test_pilot_seed_and_prompt_match_frozen_expected",
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_seed_and_prompt_match_frozen_expected",
+        "param": "G",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "('G', 'M_A', None, 24, 'q00', 0)\nassert (20501001, '1...40202421cdc0') == (23501001, '1...40202421cdc0')\n  \n  At index 0 diff: 20501001 != 23501001\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p10 G の族内の arm を逆順",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_g_order_matches_frozen_driver"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の G の順: 族内の 2 arm",
+      "failed": [
+        "test_g_order_matches_frozen_driver"
+      ],
+      "witnessed_by": {
+        "function": "test_g_order_matches_frozen_driver",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('A_rot', 0,...q02', 0), ...] == [('A', 0, 'q0...q02', 0), ...]\n  \n  At index 0 diff: ('A_rot', 0, 'q00', 0) != ('A', 0, 'q00', 0)\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p11 G の KNOW の seed の試行を 0 に",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_calls_unique_within_battery_stage",
+        "test_pilot_seed_and_prompt_match_frozen_expected"
+      ],
+      "expected_witness": {
+        "item": "G",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: KNOW は旧 pilot と同じ seed (試行ごと)",
+      "failed": [
+        "test_pilot_seed_and_prompt_match_frozen_expected"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_seed_and_prompt_match_frozen_expected",
+        "param": "G",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "('G', 'KNOW', None, 0, 'k00', 1)\nassert (26261001, 'c...59565d6417f8') == (26261002, 'c...59565d6417f8')\n  \n  At index 0 diff: 26261001 != 26261002\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p12 O_time の masked・M0 を本走の名前空間の seed で",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_seed_and_prompt_match_frozen_expected"
+      ],
+      "expected_witness": {
+        "item": "O_time",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: masked・M0 は pilot の名前空間の seed",
+      "failed": [
+        "test_battery_checks_pass_on_registered_r",
+        "test_pilot_seed_and_prompt_match_frozen_expected"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_seed_and_prompt_match_frozen_expected",
+        "param": "O_time",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "('O_time', 'M_AB', 'asc', 312, 'x0', 0)\nassert (23381008, '3...48fc1b4ab542') == (53381008, '3...48fc1b4ab542')\n  \n  At index 0 diff: 23381008 != 53381008\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p13 O_time の masked と M0 の順を入れ替える",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_o_time_order_matches_frozen_driver"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の旧 pilot の順: 単位ごとに masked → M0",
+      "failed": [
+        "test_o_time_order_matches_frozen_driver"
+      ],
+      "witnessed_by": {
+        "function": "test_o_time_order_matches_frozen_driver",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('P_AB', 'as...'x0', 0), ...] == [('M_AB', 'as...'x0', 0), ...]\n  \n  At index 0 diff: ('P_AB', 'asc', 300, 'x0', 0) != ('M_AB', 'asc', 300, 'x0', 0)\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p14 pilot の lever の r を本走の始点から",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass_on_registered_r"
+      ],
+      "expected_witness": {
+        "item": "v2-8",
+        "when": "call",
+        "text": "pilot r range differs",
+        "assert_stmt": true
+      },
+      "why": "§C: pilot の r は SPECS の pilot_r0 から R_PILOT 個",
+      "failed": [
+        "test_battery_checks_pass_on_registered_r",
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages",
+        "test_violation_at_a_stage2_r_only_is_caught"
+      ],
+      "witnessed_by": {
+        "function": "test_battery_checks_pass_on_registered_r",
+        "param": "v2-8",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['pilot:r_ran...ever overlap'] == []\n  \n  Left contains 5 more items, first extra item: 'pilot:r_range: v2: pilot r range differs from the registered value'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p15 pilot の補助の r の始点を 1 巡ずらす",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_independent_enumeration_agrees_with_the_plan"
+      ],
+      "expected_witness": {
+        "item": "pilot-O_time-None",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: O_time の masked・M0 の r は 312–317",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_independent_enumeration_agrees_with_the_plan",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_fields_must_match_the_registration",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_independent_enumeration_agrees_with_the_plan",
+        "param": "pilot-O_time-None",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('AB', 'asc'...r', ...), ...] == [('AB', 'asc'...r', ...), ...]\n  \n  At index 576 diff: ('M_AB', 'asc', 312, 'x0', 0, 'masked', 53381008, '3a0a64043d03922bec3e1026a098851f68bc8da5d1439c134fc448fc1b4ab542') != ('M_AB', 'asc', 315, 'x0', 0, 'masked', 53411008, 'ecaab73a2fb9a7197b819669d57399ee"
+      }
+    },
+    {
+      "label": "p16 本走の r を pilot の始点から",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_seed_and_prompt_match_frozen_expected"
+      ],
+      "expected_witness": {
+        "item": "v2",
+        "when": "call",
+        "exc": "ValueError",
+        "text": "main r0 differs from the registered value",
+        "assert_stmt": false
+      },
+      "why": "§C: 本走の r は SPECS の main_r0 から (main_calls の r の範囲の検査が拒む)",
+      "failed": [
+        "test_battery_checks_pass_on_registered_r",
+        "test_main_calls_per_replicate",
+        "test_main_plan_orders_batteries_by_cost_then_models",
+        "test_main_seed_and_prompt_match_frozen_expected",
+        "test_v2_v3_stage2_seeds_disjoint"
+      ],
+      "witnessed_by": {
+        "function": "test_main_seed_and_prompt_match_frozen_expected",
+        "param": "v2",
+        "when": "call",
+        "type": "builtins.ValueError",
+        "text": "v2: main r0 differs from the registered value"
+      }
+    },
+    {
+      "label": "p17 本走の r の範囲の検査を外す",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_calls_reject_registered_r_violations"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "§C: 本走の r の範囲は機械検査を通る",
+      "failed": [
+        "test_main_calls_reject_registered_r_violations"
+      ],
+      "witnessed_by": {
+        "function": "test_main_calls_reject_registered_r_violations",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'ValueError'>"
+      }
+    },
+    {
+      "label": "p18 再生の r を 1 に",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_replay_counts_and_seeds_are_the_old_r0"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: 再生は旧 prompt・seed (r 0)",
+      "failed": [
+        "test_replay_counts_and_seeds_are_the_old_r0"
+      ],
+      "witnessed_by": {
+        "function": "test_replay_counts_and_seeds_are_the_old_r0",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {1} == {0}\n  \n  Extra items in the left set:\n  1\n  Extra items in the right set:\n  0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p19 pilot の順を battery → モデルに",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_pilot_plan_order"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: モデルは表の順、各モデルの中は v2 → v3 → G → O_time",
+      "failed": [
+        "test_pilot_plan_order"
+      ],
+      "witnessed_by": {
+        "function": "test_pilot_plan_order",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('pilot', 'v...ma2:9b'), ...] == [('pilot', 'v...q4_K_M'), ...]\n  \n  At index 1 diff: ('pilot', 'v2', 'qwen3:4b-q4_K_M') != ('pilot', 'v3', 'qwen3:1.7b')\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p20 本走の battery を名前の順に",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_main_order_is_by_cost_not_by_name"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: GO の battery を費用の安い順 (既存の test は費用の順が名前の順と同じ R だった)",
+      "failed": [
+        "test_main_order_is_by_cost_not_by_name"
+      ],
+      "witnessed_by": {
+        "function": "test_main_order_is_by_cost_not_by_name",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['G', 'O_time', 'v2'] == ['O_time', 'v2', 'G']\n  \n  At index 0 diff: 'G' != 'O_time'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p21 本走で入場外のモデルも回す",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digests_and_order_agree_with_the_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H5: 本走は入場モデルだけ",
+      "failed": [
+        "test_digests_and_order_agree_with_the_plan",
+        "test_main_plan_runs_only_entrants",
+        "test_reader_accepts_driver_output"
+      ],
+      "witnessed_by": {
+        "function": "test_digests_and_order_agree_with_the_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['main/G/qwen...-q4_K_M', ...] == ['main/G/qwen...mma2:9b', ...]\n  \n  At index 0 diff: 'main/G/qwen3:8b' != 'main/G/qwen3:1.7b'\n  Right contains 5 more items, first extra item: 'main/v3/qwen3:4b-q4_K_M'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "p22 messages の sha を ensure_ascii で",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_messages_sha_formula_matches_every_frozen_scorer"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "4 battery の凍結の messages_sha256 と同じ式",
+      "failed": [
+        "test_main_seed_and_prompt_match_frozen_expected",
+        "test_messages_sha_formula_matches_every_frozen_scorer",
+        "test_pilot_seed_and_prompt_match_frozen_expected",
+        "test_replay_counts_and_seeds_are_the_old_r0"
+      ],
+      "witnessed_by": {
+        "function": "test_messages_sha_formula_matches_every_frozen_scorer",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 2 == 1\n +  where 2 = len({'20ba25dcaf6e90fc2b3db5675ea3b933a687aff8028d34b483e94d7a0d661468', '554d6a9e8667221b5b054588c4243673308f1843e181ec6369b77a8ccd31bedb'})"
+      }
+    },
+    {
+      "label": "p23 区切りの digest から seed を外す",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digests_and_order_agree_with_the_plan",
+        "test_plan_digest_is_deterministic_and_sensitive"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "meta の digest は seed を含む",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_differing_from_models_json_stops",
+        "test_meta_fields_must_match_the_registration",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_n_sends_out_of_range_stops",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_partial_invalid_version_stops",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_plan_digest_is_deterministic_and_sensitive",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_reader_accepts_driver_output",
+        "test_reader_only_reads_the_adopted_attempt",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_structure_violations_stop_records",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_digests_and_order_agree_with_the_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('pilot/v2/q...b3013c'), ...] == [('pilot/v2/q...a0acfb'), ...]\n  \n  At index 0 diff: ('pilot/v2/qwen3:1.7b', '8bffb9ef3f0f5dc11ba6515ef8d50fdecb8b0b3a6f2379f57ad1176a200ccc6d') != ('pilot/v2/qwen3:1.7b', 'b8955e4d2c656b3a8146910a96540d4c0c2b1dca66e8595fc72e55d1f021e641')\n  Use -v to get mor"
+      }
+    },
+    {
+      "label": "p24 plan digest から区切りの名前を外す",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digests_and_order_agree_with_the_plan"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "plan digest = (区切りの名前, digest) の列",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_reader_accepts_driver_output",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_digests_and_order_agree_with_the_plan",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'b0ffe2379f9e...b7b9223883ce2' == '8ca796a6c36e...0785a34ac1c39'\n  \n  - 8ca796a6c36ebb3e2e26271cd82b59f71aebcbb771656922afa0785a34ac1c39\n  + b0ffe2379f9ec88c2543a6bdb32879ef3cc18970aecdcb1484bb7b9223883ce2"
+      }
+    },
+    {
+      "label": "p25 ずらした検査で r をずらさない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_shifted_evaluates_at_real_r_and_restores",
+        "test_violation_at_a_stage2_r_only_is_caught"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H3: 凍結の検査を実 r で評価する",
+      "failed": [
+        "test_shifted_evaluates_at_real_r_and_restores",
+        "test_violation_at_a_stage2_r_only_is_caught"
+      ],
+      "witnessed_by": {
+        "function": "test_shifted_evaluates_at_real_r_and_restores",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 3 == 1003\n +  where 3 = Layout(replicate=3, option_order={'q00': ('talk_peer', 'read_book', 'walk_path', 'sit_quiet'), 'q01': ('read_book', 'w...ired'), ('wind', 'noon', 'alone'), ('rain', 'dawn', 'alone'), ('clear', 'noon', 'paired'), ('wind', 'dawn', 'paired'))).replicate\n +    where Layout"
+      }
+    },
+    {
+      "label": "p26 ずらした関数を元に戻さない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_shifted_evaluates_at_real_r_and_restores"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "差し替えは一時的 (凍結の関数を残す)",
+      "failed": [
+        "test_shifted_evaluates_at_real_r_and_restores"
+      ],
+      "witnessed_by": {
+        "function": "test_shifted_evaluates_at_real_r_and_restores",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 8203 == 1003\n +  where 8203 = Layout(replicate=8203, option_order={'q00': ('talk_peer', 'read_book', 'walk_path', 'sit_quiet'), 'q01': ('read_book',...ne'), ('rain', 'dawn', 'paired'), ('clear', 'dusk', 'paired'), ('wind', 'dawn', 'paired'), ('clear', 'noon', 'alone'))).replicate\n +    where "
+      }
+    },
+    {
+      "label": "p27 G の masked の状態の検査を本登録の r で回さない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_masked_violation_at_r24_only_is_caught"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H3: r 固定の masked の検査は本登録の r の列で書き直す",
+      "failed": [
+        "test_masked_violation_at_r24_only_is_caught"
+      ],
+      "witnessed_by": {
+        "function": "test_masked_violation_at_r24_only_is_caught",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert []"
+      }
+    },
+    {
+      "label": "p28 O_time の M0 の状態の検査を回さない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_m0_violation_at_r312_only_is_caught"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H3: r 固定の M0 の検査は本登録の r の列で書き直す",
+      "failed": [
+        "test_m0_violation_at_r312_only_is_caught"
+      ],
+      "witnessed_by": {
+        "function": "test_m0_violation_at_r312_only_is_caught",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert []"
+      }
+    },
+    {
+      "label": "p29 stage 内の seed の重なりを見ない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: 目的の違う呼び出しの seed は交わらない",
+      "failed": [
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages"
+      ],
+      "witnessed_by": {
+        "function": "test_seed_namespaces_catch_overlap_with_used_and_between_stages",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_seed_namespaces_catch_overlap_with_used_and_between_stages.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "p30 使用済みの seed との重なりを見ない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: 段 2 の seed は旧 chain・段 1 と交わらない",
+      "failed": [
+        "test_seed_namespaces_catch_overlap_with_used_and_between_stages"
+      ],
+      "witnessed_by": {
+        "function": "test_seed_namespaces_catch_overlap_with_used_and_between_stages",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_seed_namespaces_catch_overlap_with_used_and_between_stages.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "p31 送る prompt の byte 予算を見ない",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_prompt_budget_sent_catches_long_prompt"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: 送る全 prompt の byte 数 ≤ 凍結の上限",
+      "failed": [
+        "test_prompt_budget_sent_catches_long_prompt"
+      ],
+      "witnessed_by": {
+        "function": "test_prompt_budget_sent_catches_long_prompt",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert []\n +  where [] = <function prompt_budget_problems at 0x?>([CallSpec(battery='v2', purpose='c0', arm='C0', encoding=None, replicate=1000, probe_id='q00', k=0, seed=30260926, mes...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "label": "p32 本走の r の範囲を pilot の規則で",
+      "target": "scripts/benchmark_stage2_plan.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_battery_checks_pass_on_registered_r"
+      ],
+      "expected_witness": {
+        "item": "v2-8",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§C: 本走の r の範囲の検査",
+      "failed": [
+        "test_battery_checks_pass_on_registered_r"
+      ],
+      "witnessed_by": {
+        "function": "test_battery_checks_pass_on_registered_r",
+        "param": "v2-8",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['main:r_rang...stered value'] == []\n  \n  Left contains one more item: 'main:r_range: v2: pilot r range differs from the registered value'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "u01 v2・v3 の単位の順を k 外・probe 内に",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_single_cell_lands_at_its_explicit_position"
+      ],
+      "expected_witness": {
+        "item": "v2",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H2: 単位の順 = strata の順 (probe 外・k 内)",
+      "failed": [
+        "test_single_cell_lands_at_its_explicit_position"
+      ],
+      "witnessed_by": {
+        "function": "test_single_cell_lands_at_its_explicit_position",
+        "param": "v2",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert np.int64(3) == 1"
+      }
+    },
+    {
+      "label": "u02 v2 の同じ seed の arm を別単位に割る",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_units_share_seed_within_unit_and_differ_across"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H2: 単位のセルは seed を共有する呼び出し",
+      "failed": [
+        "test_units_share_seed_within_unit_and_differ_across"
+      ],
+      "witnessed_by": {
+        "function": "test_units_share_seed_within_unit_and_differ_across",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "('v2', (1000, 0, 0))\nassert 2 == 1\n +  where 2 = len({30260926, 30260927})"
+      }
+    },
+    {
+      "label": "u03 G の単位の族を取り違える",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_g_units_match_frozen_unit_by_unit"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "Not equal to tolerance",
+        "assert_stmt": false
+      },
+      "why": "H2: G の単位 = (r, 族, つ組)",
+      "failed": [
+        "test_g_units_match_frozen_unit_by_unit"
+      ],
+      "witnessed_by": {
+        "function": "test_g_units_match_frozen_unit_by_unit",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "\nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 140 / 192 (72.9%)\nFirst 5 mismatches are at indices:\n [1]: 0.0 (ACTUAL), 0.16666666666666666 (DESIRED)\n [2]: 0.16666666666666666 (ACTUAL), -0.16666666666666666 (DESIRED)\n [3]: 0.16666666666666666 (ACTUAL), 0.0 (DESIRED)\n [4]: 0.0 ("
+      }
+    },
+    {
+      "label": "u04 O_time の単位の部屋をずらす",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_o_time_units_match_frozen_unit_by_unit"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "Not equal to tolerance",
+        "assert_stmt": false
+      },
+      "why": "H2: O_time の単位 = (r, 族, 部屋)",
+      "failed": [
+        "test_o_time_units_match_frozen_unit_by_unit"
+      ],
+      "witnessed_by": {
+        "function": "test_o_time_units_match_frozen_unit_by_unit",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "\nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 106 / 144 (73.6%)\nFirst 5 mismatches are at indices:\n [0]: 0.25 (ACTUAL), 0.5 (DESIRED)\n [1]: 0.5 (ACTUAL), 0.25 (DESIRED)\n [2]: 0.25 (ACTUAL), 0.5 (DESIRED)\n [3]: -0.5 (ACTUAL), 0.25 (DESIRED)\n [4]: -0.25 (ACTUAL), -0.5 (DESIRED)\n"
+      }
+    },
+    {
+      "label": "u05 単位の値の分母を 4 に固定",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_g_units_match_frozen_unit_by_unit"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "Not equal to tolerance",
+        "assert_stmt": false
+      },
+      "why": "§D: 単位の値 = (t − f) / n (G は n = 6)",
+      "failed": [
+        "test_g_units_match_frozen_unit_by_unit",
+        "test_six_classes_and_q_r"
+      ],
+      "witnessed_by": {
+        "function": "test_g_units_match_frozen_unit_by_unit",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "\nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 128 / 192 (66.7%)\nFirst 5 mismatches are at indices:\n [0]: -0.25 (ACTUAL), -0.16666666666666666 (DESIRED)\n [1]: 0.25 (ACTUAL), 0.16666666666666666 (DESIRED)\n [2]: -0.25 (ACTUAL), -0.16666666666666666 (DESIRED)\n [4]: -0.25 (ACTUAL),"
+      }
+    },
+    {
+      "label": "u07 欠けたセルを ⊥ に畳む",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_cell_is_not_bottom"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "§F-2: 欠けは not_computed (⊥ に畳まない)",
+      "failed": [
+        "test_missing_cell_is_not_bottom"
+      ],
+      "witnessed_by": {
+        "function": "test_missing_cell_is_not_bottom",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_units.MissingCellError'>"
+      }
+    },
+    {
+      "label": "u08 v2 の ⊥ の arm から C0 を外す",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bot_counts_shapes_and_values"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: v2 の parse の規則は C0 を含む 5 本",
+      "failed": [
+        "test_bot_counts_shapes_and_values"
+      ],
+      "witnessed_by": {
+        "function": "test_bot_counts_shapes_and_values",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 4 == 5\n +  where 4 = len((116, 93, 98, 95))"
+      }
+    },
+    {
+      "label": "u09 通信の欠測を ⊥ に数える",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_six_classes_and_q_r"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§B: 6 分類 (⊥ と通信の欠測を分ける)",
+      "failed": [
+        "test_six_classes_and_q_r"
+      ],
+      "witnessed_by": {
+        "function": "test_six_classes_and_q_r",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 0 == 1\n +  where 0 = sum(<generator object test_six_classes_and_q_r.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "u10 q を target の率だけで",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_six_classes_and_q_r"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "q = target か foil を選んだ率",
+      "failed": [
+        "test_six_classes_and_q_r"
+      ],
+      "witnessed_by": {
+        "function": "test_six_classes_and_q_r",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert np.float64(0....2916666666666) == 0.00969992354740062 ± 1.0e-12\n  \n  comparison failed\n  Obtained: 0.01822916666666666\n  Expected: 0.00969992354740062 ± 1.0e-12"
+      }
+    },
+    {
+      "label": "u11 v2 の k を 9 に",
+      "target": "scripts/benchmark_stage2_units.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_bot_counts_shapes_and_values"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "v2 の FROZEN_K = 10",
+      "failed": [
+        "test_bot_counts_shapes_and_values",
+        "test_half_labels_follow_explicit_r",
+        "test_single_cell_lands_at_its_explicit_position",
+        "test_v2_units_match_frozen_per_replicate"
+      ],
+      "witnessed_by": {
+        "function": "test_bot_counts_shapes_and_values",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 648 == 720"
+      }
+    },
+    {
+      "label": "r01 重複した key を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_drop_dup-duplicate key",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 重複は STOP (records)",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_drop_dup-duplicate key",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '9031c842f47cf693cf6a0185a2318bf6cc39ffc08f550e75c553034bd10ab3fe'}}}).stop"
+      }
+    },
+    {
+      "label": "r02 範囲外の key を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_out_of_range-outside the registered grid",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 範囲外は STOP (records)",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_out_of_range-outside the registered grid",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '4421e5e15df5bc183177d2bbfda25dd9b5b4b93c051d4c6bc4842169d00f9c53'}}}).stop"
+      }
+    },
+    {
+      "label": "r03 呼び出しの順を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_swap-call order",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 呼び出し順は凍結の順",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_swap-call order",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '95c5637034a599bc5038c4f8950d8fb3ae7d0ac001296f5e1509238dcdea7ac9'}}}).stop"
+      }
+    },
+    {
+      "label": "r04 seed を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_seed-seed differs",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: seed は凍結の expected_sample",
+      "failed": [
+        "test_stop_records_gate_has_no_decisions",
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_seed-seed differs",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '10fdcbdfbd3451bfda7e834b607821553c09ff4493cf0e2de103199bc79a6ad6'}}}).stop"
+      }
+    },
+    {
+      "label": "r05 prompt の sha を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_prompt-prompt differs",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: prompt の sha は凍結の renderer",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_prompt-prompt differs",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '71410ff528d60b2f9a9925147505524605a956b99e1cc6f44d92da298bec304d'}}}).stop"
+      }
+    },
+    {
+      "label": "r06 応答の model を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_other_model-response_model",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 応答の model を採用 attempt に結ぶ",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_other_model-response_model",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '2fc7989df7cfdd29c64c49e4c508180b4efea13dd6af866361748ade401e0ac7'}}}).stop"
+      }
+    },
+    {
+      "label": "r07 int の欄に bool を許す",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_bool_k-k is not int",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "schema: int の欄は bool を拒む",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_bool_k-k is not int",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "[\"pilot/v2/qwen3:8b: duplicate key ('C0', None, 1000, 'q00', False)\"]\nassert False\n +  where False = any(<generator object test_structure_violations_stop_records.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r08 目的を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_structure_violations_stop_records"
+      ],
+      "expected_witness": {
+        "item": "_purpose_swap-purpose differs",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 目的は登録の grid の目的",
+      "failed": [
+        "test_structure_violations_stop_records"
+      ],
+      "witnessed_by": {
+        "function": "test_structure_violations_stop_records",
+        "param": "_purpose_swap-purpose differs",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'b11c95623ba1355bdc5a2ccfcb8300fe1d7675acfa71b832e0bc8c77de7554cc'}}}).stop"
+      }
+    },
+    {
+      "label": "r09 records の sha を状態表と照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_sha_mismatch_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: records の sha を状態表に結ぶ",
+      "failed": [
+        "test_sha_mismatch_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_sha_mismatch_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_sha_mismatch_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r10 meta の sha を状態表と照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_sha_mismatch_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: meta の sha を状態表に結ぶ",
+      "failed": [
+        "test_meta_sha_mismatch_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_meta_sha_mismatch_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pilot/v3/qw...egments.json']\n  \n  Right contains one more item: 'pilot/v3/qwen3:8b: meta sha differs from segments.json'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r11 meta の欄を登録と照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_fields_must_match_the_registration"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-7: completed の区切りの meta は区切り・attempt・版・digest・request が登録どおり",
+      "failed": [
+        "test_meta_fields_must_match_the_registration"
+      ],
+      "witnessed_by": {
+        "function": "test_meta_fields_must_match_the_registration",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'pilot/O_time/qwen3:8b: meta attempt differs' in []\n +  where [] = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'eeafac9ac832e26ccc1eb44cb0b799aacff754884c7ce1af4ec54f9"
+      }
+    },
+    {
+      "label": "r12 meta の digest・template を models.json と照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_differing_from_models_json_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§G.2-1: completed の区切りの meta が models.json と食い違えば STOP",
+      "failed": [
+        "test_meta_differing_from_models_json_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_meta_differing_from_models_json_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_meta_differing_from_models_json_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r13 meta の template と sha の一致を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_meta_template_sha_must_be_the_sha_of_the_template"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-2: template の全文と sha が一致",
+      "failed": [
+        "test_meta_template_sha_must_be_the_sha_of_the_template"
+      ],
+      "witnessed_by": {
+        "function": "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pilot/G/qwe...the template']\n  \n  Right contains one more item: 'pilot/G/qwen3:8b: meta template_sha256 is not the sha of the template'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r14 区切りの digest を照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_segment_digest_tamper_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-7: 区切りの digest を独立に再計算して照合",
+      "failed": [
+        "test_segment_digest_tamper_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_segment_digest_tamper_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pilot/v3/qw...zen schedule']\n  \n  Right contains one more item: 'pilot/v3/qwen3:8b: segment digest differs from the frozen schedule'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r15 plan digest を照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digest_or_order_tamper_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-7: plan digest を独立に再計算して照合",
+      "failed": [
+        "test_digest_or_order_tamper_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_digest_or_order_tamper_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_digest_or_order_tamper_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r16 区切りの順を照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_digest_or_order_tamper_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: 状態表の区切りの順",
+      "failed": [
+        "test_digest_or_order_tamper_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_digest_or_order_tamper_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_digest_or_order_tamper_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r17 正しい行の欠けを ok のままにする",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plain_missing_rows_are_not_computed"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: 正しい行の単なる欠けは not_computed",
+      "failed": [
+        "test_plain_missing_rows_are_not_computed"
+      ],
+      "witnessed_by": {
+        "function": "test_plain_missing_rows_are_not_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'ok' == 'not_computed'\n  \n  - not_computed\n  + ok"
+      }
+    },
+    {
+      "label": "r18 採用 attempt が最後の attempt かを見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_adopted_attempt_must_be_the_last_attempt"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: 読み手は採用 attempt (= 最後の attempt) だけを読む",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt"
+      ],
+      "witnessed_by": {
+        "function": "test_adopted_attempt_must_be_the_last_attempt",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pilot/v2/qw...last attempt']\n  \n  Right contains one more item: 'pilot/v2/qwen3:8b: adopted_attempt is not the last attempt'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r19 completed でない区切りの採用 attempt を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_adopted_attempt_on_a_non_completed_segment_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H6: completed でない区切りに採用 attempt は無い",
+      "failed": [
+        "test_adopted_attempt_on_a_non_completed_segment_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['pilot/v2/qw...eted segment']\n  \n  Right contains one more item: 'pilot/v2/qwen3:8b: adopted_attempt on a non-completed segment'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r20 一部だけの invalid_version を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_partial_invalid_version_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: 版の違いは run の全モデル (一部だけなら STOP)",
+      "failed": [
+        "test_partial_invalid_version_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_partial_invalid_version_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_partial_invalid_version_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r21 invalid_meta を not_computed に畳む",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_non_completed_segments_are_not_computed"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1・§F-1: digest・template の違いはそのモデルを INVALID (欠測ではない)",
+      "failed": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_non_completed_segments_are_not_computed"
+      ],
+      "witnessed_by": {
+        "function": "test_non_completed_segments_are_not_computed",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'not_computed' == 'invalid_meta'\n  \n  - invalid_meta\n  + not_computed"
+      }
+    },
+    {
+      "label": "r22 n_sends の範囲を見ない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n_sends_out_of_range_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§H: n_sends ∈ [1, 4]",
+      "failed": [
+        "test_n_sends_out_of_range_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_n_sends_out_of_range_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = any(<generator object test_n_sends_out_of_range_stops.<locals>.<genexpr> at 0x?>)"
+      }
+    },
+    {
+      "label": "r23 状態表の Ollama の版を models.json と照合しない",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_expected_ollama_version_differs_stops"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1: 状態表の版 = models.json の版",
+      "failed": [
+        "test_expected_ollama_version_differs_stops"
+      ],
+      "witnessed_by": {
+        "function": "test_expected_ollama_version_differs_stops",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['segments.js... models.json']\n  \n  Right contains one more item: 'segments.json expected_ollama_version differs from models.json'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r24 G の KNOW を lever の parse で読む",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H1: G の KNOW は凍結の parse_class",
+      "failed": [
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_main_plan_runs_only_entrants",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_qualification_reasons_follow_section_a",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['sparrow', '...'hornet', ...] == ['hornet']\n  \n  At index 0 diff: 'sparrow' != 'hornet'\n  Left contains 35 more items, first extra item: 'trout'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "r25 v2 の C0 を lever の block に混ぜる",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_independent_enumeration_agrees_with_the_plan"
+      ],
+      "expected_witness": {
+        "item": "pilot-v2-None",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の v2 の順: C0 が先",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_independent_enumeration_agrees_with_the_plan",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_n_sends_out_of_range_stops",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_partial_invalid_version_stops",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_reader_only_reads_the_adopted_attempt",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_structure_violations_stop_records",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_independent_enumeration_agrees_with_the_plan",
+        "param": "pilot-v2-None",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('C0', None,...0', ...), ...] == [('C0', None,...0', ...), ...]\n  \n  At index 1 diff: ('A', None, 1000, 'q00', 0, 'lever', 30260926, '2a6ad381a11a3219df274783bae361819084ca7c253e3189bd94988ceff930af') != ('C0', None, 1000, 'q00', 1, 'c0', 30260927, 'c454c8193fb65de2a2bc23d32b72a23cea235ac143"
+      }
+    },
+    {
+      "label": "r26 G の族内の arm の順を逆に",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_independent_enumeration_agrees_with_the_plan"
+      ],
+      "expected_witness": {
+        "item": "pilot-G-None",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の G の順: 族内の arm",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_independent_enumeration_agrees_with_the_plan",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_independent_enumeration_agrees_with_the_plan",
+        "param": "pilot-G-None",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('A_rot', No...r', ...), ...] == [('A', None, ...r', ...), ...]\n  \n  At index 0 diff: ('A_rot', None, 24, 'q00', 0, 'lever', 20501001, '883527074c46be7586f4e7d87199b699fb6b2f273020769e68b667dca90ce45e') != ('A', None, 24, 'q00', 0, 'lever', 20501001, '8dda95c232e54520471dcbfed581066dfb0e10b2"
+      }
+    },
+    {
+      "label": "r27 O_time の masked と M0 の順を入れ替える",
+      "target": "scripts/benchmark_stage2_records.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_independent_enumeration_agrees_with_the_plan"
+      ],
+      "expected_witness": {
+        "item": "pilot-O_time-None",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "凍結の旧 pilot の順: 単位ごとに masked → M0",
+      "failed": [
+        "test_adopted_attempt_must_be_the_last_attempt",
+        "test_adopted_attempt_on_a_non_completed_segment_stops",
+        "test_budget_labels_reach_the_gate",
+        "test_digests_and_order_agree_with_the_plan",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_expected_ollama_version_differs_stops",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_independent_enumeration_agrees_with_the_plan",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_meta_fields_must_match_the_registration",
+        "test_meta_sha_mismatch_stops",
+        "test_meta_template_sha_must_be_the_sha_of_the_template",
+        "test_non_completed_segments_are_not_computed",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_one_model_run_reads_clean",
+        "test_pilot_units_follow_the_registered_order",
+        "test_plain_missing_rows_are_not_computed",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_segment_digest_tamper_stops",
+        "test_sha_mismatch_stops",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_independent_enumeration_agrees_with_the_plan",
+        "param": "pilot-O_time-None",
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [('AB', 'asc'...r', ...), ...] == [('AB', 'asc'...r', ...), ...]\n  \n  At index 576 diff: ('P_AB', 'asc', 312, 'x0', 0, 'm0', 73381008, 'fc8f5ff2bff9be3277069e0d49cc5ae38b64a9933d7213f87526f2fef94b8770') != ('M_AB', 'asc', 312, 'x0', 0, 'masked', 53381008, '3a0a64043d03922bec3e1026a098851f68bc"
+      }
+    },
+    {
+      "label": "g01 m0_check を辞書の真偽で読む",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: lookup = m0_check(...)[\"passed\"] (辞書を真偽にしない)",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'entered' == 'lookup_not_established'\n  \n  - lookup_not_established\n  + entered"
+      }
+    },
+    {
+      "label": "g02 M0 の区切りが無いモデルを不合格にする",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: M0 の欠測 (not_computed) と M0 の不合格 (lookup 不成立) を分ける",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'lookup_not_established' == 'lookup_not_computed'\n  \n  - lookup_not_computed\n  + lookup_not_established"
+      }
+    },
+    {
+      "label": "g03 lookup が計算できないモデルを資格の判定に回す",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-7: M0 が completed でないモデルは全 battery で lookup_not_computed",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'lookup_not_established' == 'lookup_not_computed'\n  \n  - lookup_not_computed\n  + lookup_not_established"
+      }
+    },
+    {
+      "label": "g04 M0 の行の写しで r を付け替えない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "IndexError",
+        "text": "out of bounds",
+        "assert_stmt": false
+      },
+      "why": "H3: 凍結の集計は r を [300, 306) に付け替えた写しで",
+      "failed": [
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.IndexError",
+        "text": "index 12 is out of bounds for axis 2 with size 6"
+      }
+    },
+    {
+      "label": "g05 v3 の L arm を 3 本",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "ValueError",
+        "text": "v3 control arms differ from the registered 4",
+        "assert_stmt": false
+      },
+      "why": "H4: v3 の L arm は 4 本 (本数を検査する)",
+      "failed": [
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.ValueError",
+        "text": "v3 control arms differ from the registered 4"
+      }
+    },
+    {
+      "label": "g06 G の KNOW の失敗を見ない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: KNOW = 36 × 3 完全 + knowledge_failures が空",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'entered' == 'know'\n  \n  - know\n  + entered"
+      }
+    },
+    {
+      "label": "g07 G の masked の写しで r を付け替えない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "IndexError",
+        "text": "out of bounds",
+        "assert_stmt": false
+      },
+      "why": "H3: 凍結の集計は r を付け替えた写しで",
+      "failed": [
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.IndexError",
+        "text": "index -26 is out of bounds for axis 2 with size 6"
+      }
+    },
+    {
+      "label": "g08 G の masked の envelope を見ない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_g_masked_bottom_keeps_the_model_out"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: masked = 凍結の bottom_gate_ok",
+      "failed": [
+        "test_g_masked_bottom_keeps_the_model_out"
+      ],
+      "witnessed_by": {
+        "function": "test_g_masked_bottom_keeps_the_model_out",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'entered' == 'masked_envelope'\n  \n  - masked_envelope\n  + entered"
+      }
+    },
+    {
+      "label": "g09 O_time の masked の envelope を見ない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H4: masked = 凍結の bottom_gate_ok",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'entered' == 'masked_envelope'\n  \n  - masked_envelope\n  + entered"
+      }
+    },
+    {
+      "label": "g10 O_time の masked の写しで r を付け替えない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "IndexError",
+        "text": "out of bounds",
+        "assert_stmt": false
+      },
+      "why": "H3: 凍結の集計は r を付け替えた写しで",
+      "failed": [
+        "test_budget_labels_reach_the_gate",
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction",
+        "test_g_masked_bottom_keeps_the_model_out",
+        "test_gate_json_writes_non_finite_floats_as_strings",
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_main_plan_runs_only_entrants",
+        "test_masked_counts_reach_the_frozen_gate",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.IndexError",
+        "text": "index 12 is out of bounds for axis 2 with size 6"
+      }
+    },
+    {
+      "label": "g11 envelope を浮動小数を経由して",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_envelope_is_an_exact_fraction"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H5: envelope は Fraction の分子と分母 (浮動小数を経由しない)",
+      "failed": [
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_envelope_is_an_exact_fraction"
+      ],
+      "witnessed_by": {
+        "function": "test_envelope_is_an_exact_fraction",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert Fraction(3602879701896397, 72057594037927936) == Fraction(1, 20)"
+      }
+    },
+    {
+      "label": "g12 ΣM に入場 < 3 の battery を数える",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_not_qualified_and_not_computed_batteries"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§E: ΣM = 入場 ≥ 3 の battery の入場数の和",
+      "failed": [
+        "test_not_qualified_and_not_computed_batteries"
+      ],
+      "witnessed_by": {
+        "function": "test_not_qualified_and_not_computed_batteries",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 14 == 12"
+      }
+    },
+    {
+      "label": "g13 NOT_QUALIFIED と not_computed を入れ替える",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_not_qualified_and_not_computed_batteries"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§G.2: 計算できた battery の入場 < 3 は NOT_QUALIFIED、計算できないのは not_computed",
+      "failed": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "test_not_qualified_and_not_computed_batteries"
+      ],
+      "witnessed_by": {
+        "function": "test_not_qualified_and_not_computed_batteries",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'NOT_QUALIFIED' == 'not_computed'\n  \n  - not_computed\n  + NOT_QUALIFIED"
+      }
+    },
+    {
+      "label": "g14 INVALID を計算できたに数える",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "INVALID のモデルは資格を計算していない",
+      "failed": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery"
+      ],
+      "witnessed_by": {
+        "function": "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'NOT_QUALIFIED' == 'not_computed'\n  \n  - not_computed\n  + NOT_QUALIFIED"
+      }
+    },
+    {
+      "label": "g15 invalid_meta を not_computed に",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§A.1・§F-1: digest・template の違いはそのモデルを INVALID",
+      "failed": [
+        "test_invalid_meta_makes_the_model_invalid_in_that_battery"
+      ],
+      "witnessed_by": {
+        "function": "test_invalid_meta_makes_the_model_invalid_in_that_battery",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'not_computed'} == {'INVALID'}\n  \n  Extra items in the left set:\n  'not_computed'\n  Extra items in the right set:\n  'INVALID'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g16 STOP_POWER の記述の R を候補の最小に",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stop_power_keeps_k_and_records_the_largest_candidate"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§G-4: STOP (power) の spike_negative_all は候補の最大で",
+      "failed": [
+        "test_stop_power_keeps_k_and_records_the_largest_candidate"
+      ],
+      "witnessed_by": {
+        "function": "test_stop_power_keeps_k_and_records_the_largest_candidate",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (6, 120, (6, 192)) == (36, 120, (6, 192))\n  \n  At index 0 diff: 6 != 36\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g17 予算の規則を gate に写さない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_budget_labels_reach_the_gate"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "§G-5: GO / HELD_COST = stats.budget",
+      "failed": [
+        "test_budget_labels_reach_the_gate"
+      ],
+      "witnessed_by": {
+        "function": "test_budget_labels_reach_the_gate",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'G': 'GO', '...', 'v3': 'GO'} == {'G': 'GO', '...: 'HELD_COST'}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'v3': 'GO'} != {'v3': 'HELD_COST'}\n  {'v2': 'GO'} != {'v2': 'HELD_COST'}\n  {'O_time': 'GO'} != {'O_time': 'HELD_COST'}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g18 STOP (records) でも判定を続ける",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_stop_records_gate_has_no_decisions"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "KeyError",
+        "via": "compute_gate",
+        "assert_stmt": false
+      },
+      "why": "§G.2-1: STOP (records) は以後を計算しない",
+      "failed": [
+        "test_stop_records_gate_has_no_decisions"
+      ],
+      "witnessed_by": {
+        "function": "test_stop_records_gate_has_no_decisions",
+        "param": null,
+        "when": "call",
+        "type": "builtins.KeyError",
+        "text": "'pilot/O_time/qwen3:1.7b'"
+      }
+    },
+    {
+      "label": "g19 gate.json を上書きする",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "DD-7: gate.json を上書きしない",
+      "failed": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'FileExistsError'>"
+      }
+    },
+    {
+      "label": "g20 非有限の float を文字列にしない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_gate_json_writes_non_finite_floats_as_strings"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-7: 非有限の float は文字列 (allow_nan=False の JSON)",
+      "failed": [
+        "test_gate_json_writes_non_finite_floats_as_strings"
+      ],
+      "witnessed_by": {
+        "function": "test_gate_json_writes_non_finite_floats_as_strings",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert nan == 'nan'"
+      }
+    },
+    {
+      "label": "g21 入場を表の順でなく名前の順に",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_end_to_end_gate_with_the_frozen_selection"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H5: 入場は §A.1 の表の順",
+      "failed": [
+        "test_end_to_end_gate_with_the_frozen_selection",
+        "test_main_plan_runs_only_entrants",
+        "test_not_qualified_and_not_computed_batteries",
+        "test_qualification_reasons_follow_section_a",
+        "test_read_gate_rejects_contract_violations",
+        "test_stop_power_keeps_k_and_records_the_largest_candidate"
+      ],
+      "witnessed_by": {
+        "function": "test_end_to_end_gate_with_the_frozen_selection",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['gemma2:9b',...', 'qwen3:8b'] == ['qwen3:1.7b'..., 'gemma2:9b']\n  \n  At index 0 diff: 'gemma2:9b' != 'qwen3:1.7b'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g22 worst_pair の名前を逆に",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "記述: worst_pair は stats.worst_pair の対",
+      "failed": [
+        "test_worst_pair_names_the_stats_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_worst_pair_names_the_stats_pair",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert ['qwen3:4b-q4... 'qwen3:1.7b'] == ['qwen3:1.7b'...n3:4b-q4_K_M']\n  \n  At index 0 diff: 'qwen3:4b-q4_K_M' != 'qwen3:1.7b'\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "g23 v3 の L arm の ⊥ を記録しない",
+      "target": "scripts/benchmark_stage2_pilot_gate.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H5: arm 別の整数の ⊥ 数を保存",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert [] == [0, 0, 0, 73]\n  \n  Right contains 4 more items, first extra item: 0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s01 λ の最上段 0.98 → 0.97",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: 固定 λ の格子 (§D)",
+      "failed": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "witnessed_by": {
+        "function": "test_lambda_grid_is_frozen_geometric",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert np.float64(0.97) == 0.98 ± 9.8e-07\n  \n  comparison failed\n  Obtained: 0.97\n  Expected: 0.98 ± 9.8e-07"
+      }
+    },
+    {
+      "label": "s02 λ の比 0.7 → 0.75",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: 固定 λ の格子 (§D)",
+      "failed": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "witnessed_by": {
+        "function": "test_lambda_grid_is_frozen_geometric",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert False\n +  where False = <function allclose at 0x?>((array([0.735     , 0.55125   , 0.4134375 , 0.31007812, 0.23255859,\\n       0.17441895, 0.13081421, 0.09811066, 0.07358299, 0.05518724,\\n       0.04139043]) / array([0.98      , 0.735     , 0.55125   , 0.4134375 , 0.31007812,\\n       0.232558"
+      }
+    },
+    {
+      "label": "s03 λ の数 12 → 11",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: 固定 λ の格子 (§D)",
+      "failed": [
+        "test_lambda_grid_is_frozen_geometric"
+      ],
+      "witnessed_by": {
+        "function": "test_lambda_grid_is_frozen_geometric",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 11 == 12\n +  where 11 = st.N_LAMBDA"
+      }
+    },
+    {
+      "label": "s04 K を順序なしの対で数える",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: K = 資格を通った battery × 順序対",
+      "failed": [
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "witnessed_by": {
+        "function": "test_n_tests_counts_qualified_batteries_only",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 28 == ((30 + 20) + 6)\n +  where 28 = <function n_tests at 0x?>({'G': 5, 'O_time': 3, 'v2': 6, 'v3': 2})\n +    where <function n_tests at 0x?> = st.n_tests"
+      }
+    },
+    {
+      "label": "s05 K に入場 < 3 の battery を数える",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: K は資格を通った battery だけ",
+      "failed": [
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "witnessed_by": {
+        "function": "test_n_tests_counts_qualified_batteries_only",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 58 == ((30 + 20) + 6)\n +  where 58 = <function n_tests at 0x?>({'G': 5, 'O_time': 3, 'v2': 6, 'v3': 2})\n +    where <function n_tests at 0x?> = st.n_tests"
+      }
+    },
+    {
+      "label": "s06 parse の族内差を ≤ で",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_rule_exact_boundary"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §A.3 の族内差は厳密な < τ/4",
+      "failed": [
+        "test_parse_rule_exact_boundary",
+        "test_qualify_order"
+      ],
+      "witnessed_by": {
+        "function": "test_parse_rule_exact_boundary",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True"
+      }
+    },
+    {
+      "label": "s07 parse の ⊥ の上限を < で",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_rule_exact_boundary"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §A.3 の ⊥ の上限は ≤ 1/5",
+      "failed": [
+        "test_parse_rule_exact_boundary"
+      ],
+      "witnessed_by": {
+        "function": "test_parse_rule_exact_boundary",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (False, Fraction(1, 5)) == (True, Fraction(1, 5))\n  \n  At index 0 diff: False != True\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s08 envelope の上限 1/5 を外す",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_parse_rule_exact_boundary"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §F-3 の envelope = min(1/5, pilot の最大 + 1/20)",
+      "failed": [
+        "test_parse_rule_exact_boundary"
+      ],
+      "witnessed_by": {
+        "function": "test_parse_rule_exact_boundary",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (True, Fraction(1, 4)) == (True, Fraction(1, 5))\n  \n  At index 1 diff: Fraction(1, 4) != Fraction(1, 5)\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s09 envelope を超えるの判定を ≥ で",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_envelope_exceeded_exact_boundary"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §F-3 の「超える」は厳密な >",
+      "failed": [
+        "test_envelope_exceeded_exact_boundary"
+      ],
+      "witnessed_by": {
+        "function": "test_envelope_exceeded_exact_boundary",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert not True\n +  where True = <function envelope_exceeded at 0x?>((168, 0, 0, 0, 0), 960, Fraction(7, 40))\n +    where <function envelope_exceeded at 0x?> = st.envelope_exceeded"
+      }
+    },
+    {
+      "label": "s10 v3 の L arm の上限を < で",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_control_arm_bottom_boundary_is_inclusive"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §A の L arm の ⊥ ≤ 1/5",
+      "failed": [
+        "test_control_arm_bottom_boundary_is_inclusive"
+      ],
+      "witnessed_by": {
+        "function": "test_control_arm_bottom_boundary_is_inclusive",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'length_format_control' == 'entered'\n  \n  - entered\n  + length_format_control"
+      }
+    },
+    {
+      "label": "s11 資格で lookup を見ない",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §A の順の最初は lookup",
+      "failed": [
+        "test_qualification_reasons_follow_section_a"
+      ],
+      "witnessed_by": {
+        "function": "test_qualification_reasons_follow_section_a",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'entered' == 'lookup_not_established'\n  \n  - lookup_not_established\n  + entered"
+      }
+    },
+    {
+      "label": "s12 予算の境界を < で",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_budget_boundary_is_inclusive"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §G-5 の累計は予算ちょうどまで GO",
+      "failed": [
+        "test_budget_boundary_is_inclusive"
+      ],
+      "witnessed_by": {
+        "function": "test_budget_boundary_is_inclusive",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert {'v2': 'HELD_COST'} == {'v2': 'GO'}\n  \n  Differing items:\n  {'v2': 'HELD_COST'} != {'v2': 'GO'}\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s13 R の候補で上限を外す",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_r_candidates_respect_caps"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: R の候補は上限まで (上限を含む)",
+      "failed": [
+        "test_r_candidates_respect_caps"
+      ],
+      "witnessed_by": {
+        "function": "test_r_candidates_respect_caps",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 30 == 36"
+      }
+    },
+    {
+      "label": "s14 判定の水準を α / K から α に",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_level_is_alpha_over_k"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §D の Bonferroni (α / K)",
+      "failed": [
+        "test_decide_level_is_alpha_over_k"
+      ],
+      "witnessed_by": {
+        "function": "test_decide_level_is_alpha_over_k",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'ESTABLISHED' == 'INCONCLUSIVE'\n  \n  - INCONCLUSIVE\n  + ESTABLISHED"
+      }
+    },
+    {
+      "label": "s15 確立の閾値を Δ_min から 0 に",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_decide_threshold_is_delta_min"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §F の確立 = 下限 ≥ Δ_min",
+      "failed": [
+        "test_decide_threshold_is_delta_min"
+      ],
+      "witnessed_by": {
+        "function": "test_decide_threshold_is_delta_min",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'ESTABLISHED' == 'INCONCLUSIVE'\n  \n  - INCONCLUSIVE\n  + ESTABLISHED"
+      }
+    },
+    {
+      "label": "s16 同等域を ±0.2 に",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_equivalence_band_is_point_one"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §F の同等域 ±0.10",
+      "failed": [
+        "test_equivalence_band_is_point_one"
+      ],
+      "witnessed_by": {
+        "function": "test_equivalence_band_is_point_one",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'CALIBRATED_NEGATIVE' == 'INCONCLUSIVE'\n  \n  - INCONCLUSIVE\n  + CALIBRATED_NEGATIVE"
+      }
+    },
+    {
+      "label": "s17 半分の再現を片方の半分だけで",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_split_half_blocks_establishment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §E の split-half は両方の半分",
+      "failed": [
+        "test_split_half_blocks_establishment"
+      ],
+      "witnessed_by": {
+        "function": "test_split_half_blocks_establishment",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'ESTABLISHED' != 'ESTABLISHED'\n +  where 'ESTABLISHED' = BatteryDecision(verdict='ESTABLISHED', established=((2, 0), (2, 1)), sensitivity_ok=(), lower_bounds={'0-1': -0.007247... '2-1': 0.32183178624811815}, concentration=None, model_c=(0.2999999999999999, 0.2999999999999999, 0.65), n_exclude"
+      }
+    },
+    {
+      "label": "s18 集中の水準を α / ΣM に",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_concentration_level_is_alpha_over_two_sum_m"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §E の集中の同時区間は各側 α / (2 ΣM)",
+      "failed": [
+        "test_concentration_level_is_alpha_over_two_sum_m"
+      ],
+      "witnessed_by": {
+        "function": "test_concentration_level_is_alpha_over_two_sum_m",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'floor' is None\n +  where 'floor' = <function concentration at 0x?>(array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\\n        0., 0., 0., 0., 0., 0., 0., 0., 0., 0...., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\\n        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., "
+      }
+    },
+    {
+      "label": "s19 集中で確立を外さない",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_floor_concentration_blocks_establishment"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: §F の (1) は集中でないとき",
+      "failed": [
+        "test_classify_vectorized_branches",
+        "test_floor_concentration_blocks_establishment"
+      ],
+      "witnessed_by": {
+        "function": "test_floor_concentration_blocks_establishment",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 'ESTABLISHED' != 'ESTABLISHED'\n +  where 'ESTABLISHED' = BatteryDecision(verdict='ESTABLISHED', established=((2, 0), (2, 1)), sensitivity_ok=(), lower_bounds={'0-1': -0.000726...-0': 0.1492195249681043, '2-1': 0.1492195249681043}, concentration='floor', model_c=(-0.07, -0.07, 0.08), n_exclude"
+      }
+    },
+    {
+      "label": "s20 worst_pair の同点を後の対に",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_worst_pair_breaks_ties_to_the_first_pair"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: 同点は番号の若い対",
+      "failed": [
+        "test_worst_pair_breaks_ties_to_the_first_pair"
+      ],
+      "witnessed_by": {
+        "function": "test_worst_pair_breaks_ties_to_the_first_pair",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert (1, 2) == (0, 1)\n  \n  At index 0 diff: 1 != 0\n  Use -v to get more diff"
+      }
+    },
+    {
+      "label": "s21 最小の入場数 3 → 2",
+      "target": "scripts/benchmark_stage2_stats.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "H7: 入場 ≥ 3 の battery だけを判定する",
+      "failed": [
+        "test_branch_not_qualified",
+        "test_n_tests_counts_qualified_batteries_only"
+      ],
+      "witnessed_by": {
+        "function": "test_n_tests_counts_qualified_batteries_only",
+        "param": null,
+        "when": "call",
+        "type": "builtins.AssertionError",
+        "text": "assert 58 == ((30 + 20) + 6)\n +  where 58 = <function n_tests at 0x?>({'G': 5, 'O_time': 3, 'v2': 6, 'v3': 2})\n +    where <function n_tests at 0x?> = st.n_tests"
+      }
+    }
+  ],
+  "all_killed": true
+}

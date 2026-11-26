@@ -1,0 +1,16 @@
+"""Fixtures for tests/test_benchmark_stage2_driver.
+
+判別性 gate 段 2 の plan・units・driver・pilot gate・scorer は
+``scripts/benchmark_stage2_*.py``。repository root を ``sys.path`` に置き、
+``scripts.benchmark_stage2_plan`` などとして import する
+(``tests/test_benchmark_stage2/conftest.py`` と同じ型)。
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)

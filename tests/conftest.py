@@ -292,6 +292,7 @@ CLOSED_CHAIN_DIRS: Final[frozenset[str]] = frozenset(
         "test_skill_experience_driver",
         "test_closed_loop_driver",
         "test_closed_loop_v5_driver",
+        "test_benchmark_stage2_driver",
     }
 )
 CLOSED_CHAIN_MODES: Final[tuple[str, ...]] = ("include", "exclude", "only")
