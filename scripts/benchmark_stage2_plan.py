@@ -446,12 +446,19 @@ def main_order(r_by_battery: Mapping[str, int]) -> list[str]:
     return sorted(cost, key=lambda b: (cost[b], b))
 
 
-def main_plan(r_by_battery: Mapping[str, int]) -> tuple[Segment, ...]:
-    """§H: GO の battery を安い順に、各 battery の中はモデルを §A.1 の表の順."""
+def main_plan(
+    r_by_battery: Mapping[str, int],
+    models_by_battery: Mapping[str, Sequence[str]] | None = None,
+) -> tuple[Segment, ...]:
+    """§H: GO の battery を安い順に、各 battery の中はモデルを §A.1 の表の順.
+
+    ``models_by_battery`` (pilot の入場集合、gate.json) を渡せば、その battery の入場モデルだけを回す。
+    """
     return tuple(
         Segment(STAGE_MAIN, b, m, main_calls(b, r_by_battery[b]))
         for b in main_order(r_by_battery)
         for m in MODELS
+        if models_by_battery is None or m in models_by_battery[b]
     )
 
 

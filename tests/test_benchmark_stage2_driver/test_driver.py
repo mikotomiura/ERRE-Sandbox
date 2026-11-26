@@ -488,14 +488,46 @@ def test_pilot_plan_shape_for_cli() -> None:
     assert [s.stage for s in segs[-2:]] == [pl.STAGE_REPLAY] * 2
 
 
+def _min_gate(go: dict[str, int], stop: Sequence[str] = ()) -> dict[str, Any]:
+    """gate.json の契約 (H5) を満たす最小の形.
+
+    GO・STOP_POWER の battery は 3 モデルが入場、他は NOT_QUALIFIED。
+    """
+    ents = list(pl.MODELS[:3])
+    env = {"numerator": 1, "denominator": 20}
+    batteries: dict[str, Any] = {}
+    for b in st.BATTERIES:
+        if b in go or b in stop:
+            batteries[b] = {
+                "entrants": ents,
+                "n_entered": 3,
+                "gate": st.GATE_GO if b in go else st.GATE_STOP_POWER,
+                "R": go.get(b),
+                "models": {m: {"envelope": env} for m in ents},
+            }
+        else:
+            batteries[b] = {
+                "entrants": [],
+                "n_entered": 0,
+                "gate": st.VERDICT_NOT_QUALIFIED,
+                "R": None,
+                "models": {},
+            }
+    n = len(go) + len(stop)
+    return {
+        "schema": dr.GATE_SCHEMA,
+        "status": "OK",
+        "K": 6 * n,
+        "sum_M": 3 * n,
+        "batteries": batteries,
+    }
+
+
 def test_main_plan_from_gate_file(tmp_path: pathlib.Path) -> None:
     gate = tmp_path / "gate.json"
-    gate.write_text(
-        json.dumps({"batteries": {"O_time": {"gate": st.GATE_GO, "R": 6}}}),
-        encoding="utf-8",
-    )
+    gate.write_text(json.dumps(_min_gate({"O_time": 6})), encoding="utf-8")
     segs = dr.plan_for(pl.STAGE_MAIN, gate)
-    assert [s.model for s in segs] == list(pl.MODELS)
+    assert [s.model for s in segs] == list(pl.MODELS[:3])  # 入場モデルだけ
     assert {s.battery for s in segs} == {"O_time"}
     assert all(s.stage == pl.STAGE_MAIN for s in segs)
 
@@ -555,22 +587,24 @@ def test_run_stage_rejects_foreign_segments(tmp_path: pathlib.Path) -> None:
 
 
 def test_main_r_from_gate() -> None:
-    gate = {
-        "batteries": {
-            "v3": {"gate": st.GATE_GO, "R": 8},
-            "G": {"gate": st.GATE_STOP_POWER, "R": None},
-        }
-    }
+    gate = _min_gate({"v3": 8}, stop=("G",))
     assert dr.main_r_from_gate(gate) == {"v3": 8}
-    for bad in (
+
+    def bad(f: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
+        g = json.loads(json.dumps(gate))
+        f(g)
+        return g
+
+    for g in (
         {},
-        {"batteries": {"G": {"gate": st.GATE_STOP_POWER}}},
-        {"batteries": {"v3": {"gate": st.GATE_GO, "R": 8.0}}},
-        {"batteries": {"v3": {"gate": st.GATE_GO, "R": True}}},
-        {"batteries": {"x": {"gate": st.GATE_GO, "R": 8}}},
+        _min_gate({}, stop=("G",)),  # GO が無い
+        bad(lambda g: g["batteries"]["v3"].__setitem__("R", 8.0)),
+        bad(lambda g: g["batteries"]["v3"].__setitem__("R", True)),  # noqa: FBT003
+        bad(lambda g: g["batteries"].__setitem__("x", g["batteries"].pop("v2"))),
+        bad(lambda g: g["batteries"]["G"].__setitem__("R", 6)),
     ):
         with pytest.raises(dr.PreflightError):
-            dr.main_r_from_gate(bad)
+            dr.main_r_from_gate(g)
 
 
 def test_main_requires_gate() -> None:

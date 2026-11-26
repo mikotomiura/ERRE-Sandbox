@@ -888,28 +888,103 @@ async def run_stage(
         return await runner.run()
 
 
-def main_r_from_gate(gate: Mapping[str, Any]) -> dict[str, int]:
-    """gate.json から本走の R を読む (暫定の形 ``{"batteries": {b: {"gate": "GO", "R": int}}}``、契約は段 3、DD-5)."""
+GATE_SCHEMA: Final[str] = (
+    "benchmark_stage2_pilot_gate/1"  # benchmark_stage2_pilot_gate.SCHEMA
+)
+GATE_NOT_QUALIFIED: Final[str] = st.VERDICT_NOT_QUALIFIED
+GATE_NOT_COMPUTED: Final[str] = st.VERDICT_NOT_COMPUTED
+
+
+@dataclass(frozen=True)
+class MainGate:
+    """gate.json (H5) から本走が使う値。entrants は battery ごとの pilot の入場集合 (§A.1 の順)."""
+
+    r_by_battery: dict[str, int]  # GO の battery だけ
+    entrants: dict[str, tuple[str, ...]]  # 全 battery
+    k_tests: int
+    sum_m: int
+
+
+def _gate_error(msg: str) -> PreflightError:
+    return PreflightError(f"gate.json: {msg}")
+
+
+def read_gate(gate: Mapping[str, Any]) -> MainGate:
+    """gate.json の契約 (H5) を検査して読む。K・ΣM・予算の判定は入場数と R から再計算して照合する."""
+    if gate.get("schema") != GATE_SCHEMA or gate.get("status") != "OK":
+        raise _gate_error("schema or status is not an OK pilot gate")
     batteries = gate.get("batteries")
-    if not isinstance(batteries, dict):
-        msg = "gate.json has no batteries"
-        raise PreflightError(msg)
-    out: dict[str, int] = {}
-    for name, entry in batteries.items():
-        if name not in st.SPECS or not isinstance(entry, dict):
-            msg = f"gate.json: bad battery entry {name!r}"
-            raise PreflightError(msg)
-        if entry.get("gate") != st.GATE_GO:
-            continue
+    if not isinstance(batteries, dict) or set(batteries) != set(st.BATTERIES):
+        raise _gate_error("batteries differ from the registered 4")
+    entrants: dict[str, tuple[str, ...]] = {}
+    r_all: dict[str, int] = {}
+    labels: dict[str, str] = {}
+    for name in st.BATTERIES:
+        entry = batteries[name]
+        if not isinstance(entry, dict):
+            raise _gate_error(f"{name}: entry is not an object")
+        ent = entry.get("entrants")
+        if (
+            not isinstance(ent, list)
+            or not all(isinstance(m, str) for m in ent)
+            or ent != [m for m in pl.MODELS if m in ent]
+            or len(set(ent)) != len(ent)
+            or not _same_int(entry.get("n_entered"), len(ent))
+        ):
+            raise _gate_error(f"{name}: entrants are not registered models in order")
+        entrants[name] = tuple(ent)
+        label = entry.get("gate")
         r = entry.get("R")
-        if type(r) is not int or r <= 0:
-            msg = f"gate.json: {name}: R {r!r} is not a positive int"
-            raise PreflightError(msg)
-        out[name] = r
-    if not out:
-        msg = "gate.json: no GO battery"
-        raise PreflightError(msg)
-    return out
+        qualified = len(ent) >= st.MIN_ENTRANTS
+        if label in (st.GATE_GO, st.GATE_HELD_COST):
+            if (
+                not qualified
+                or type(r) is not int
+                or r not in st.r_candidates(st.SPECS[name])
+            ):
+                raise _gate_error(f"{name}: R {r!r} is not a registered candidate")
+            r_all[name] = r
+            labels[name] = label
+        elif label == st.GATE_STOP_POWER:
+            if not qualified or r is not None:
+                raise _gate_error(f"{name}: STOP_POWER needs >= 3 entrants and no R")
+        elif label in (GATE_NOT_QUALIFIED, GATE_NOT_COMPUTED):
+            if qualified or r is not None:
+                raise _gate_error(f"{name}: {label} with >= 3 entrants or an R")
+        else:
+            raise _gate_error(f"{name}: unknown gate {label!r}")
+        models = entry.get("models")
+        for m in ent:
+            env = (
+                models.get(m, {}).get("envelope") if isinstance(models, dict) else None
+            )
+            if (
+                not isinstance(env, dict)
+                or type(env.get("numerator")) is not int
+                or type(env.get("denominator")) is not int
+                or env["denominator"] <= 0
+            ):
+                raise _gate_error(f"{name}/{m}: envelope is not an integer fraction")
+    n_entered = {b: len(e) for b, e in entrants.items()}
+    k_tests = st.n_tests(n_entered)
+    sum_m = sum(n for n in n_entered.values() if n >= st.MIN_ENTRANTS)
+    if not _same_int(gate.get("K"), k_tests) or not _same_int(gate.get("sum_M"), sum_m):
+        raise _gate_error("K or sum_M differs from the entrants")
+    if st.budget(r_all) != labels:
+        raise _gate_error("GO / HELD_COST differ from the budget rule")
+    r_go = {b: r for b, r in r_all.items() if labels[b] == st.GATE_GO}
+    if not r_go:
+        raise _gate_error("no GO battery")
+    return MainGate(r_go, entrants, k_tests, sum_m)
+
+
+def _same_int(got: object, want: int) -> bool:
+    return type(got) is int and got == want
+
+
+def main_r_from_gate(gate: Mapping[str, Any]) -> dict[str, int]:
+    """gate.json から本走の R (GO の battery だけ)."""
+    return read_gate(gate).r_by_battery
 
 
 def plan_for(stage: str, gate_path: pathlib.Path | None) -> tuple[pl.Segment, ...]:
@@ -918,8 +993,13 @@ def plan_for(stage: str, gate_path: pathlib.Path | None) -> tuple[pl.Segment, ..
     if gate_path is None:
         msg = "--stage main requires --gate"
         raise PreflightError(msg)
-    gate = json.loads(gate_path.read_text(encoding="utf-8"))
-    return pl.main_plan(main_r_from_gate(gate))
+    gate = read_gate(json.loads(gate_path.read_text(encoding="utf-8")))
+    segs = pl.main_plan(gate.r_by_battery, gate.entrants)
+    # 報告集合 ⊆ 入場集合: 本走は pilot の入場モデルだけを回す
+    if any(s.model not in gate.entrants[s.battery] for s in segs):
+        msg = "main plan has a model outside the pilot entrants"
+        raise PreflightError(msg)
+    return segs
 
 
 def main(argv: list[str] | None = None) -> int:
