@@ -287,6 +287,7 @@ CLOSED_CHAIN_DIRS: Final[frozenset[str]] = frozenset(
         "test_body_walk",
         "test_generalization_probe",
         "test_o_time_probe",
+        "test_benchmark_stage2",
         "test_skill_lever_driver",
         "test_skill_experience_driver",
         "test_closed_loop_driver",

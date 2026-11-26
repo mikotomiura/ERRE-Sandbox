@@ -1,0 +1,59 @@
+{
+  "models": {
+    "gemma2:9b": {
+      "default_parameters": "stop                           \"<start_of_turn>\"\nstop                           \"<end_of_turn>\"",
+      "family": "gemma2",
+      "model_digest": "ff02c3702f322b9e075e9568332d96c0a7028002f1a5a056e0a6784320a4db0b",
+      "parameter_size": "9.2B",
+      "quantization_level": "Q4_0",
+      "size_bytes": 5443152417,
+      "template_sha256": "109037bec39c0becc8221222ae23557559bc594290945a2c4221ab4f303b8871"
+    },
+    "llama3.1:8b": {
+      "default_parameters": "stop                           \"<|start_header_id|>\"\nstop                           \"<|end_header_id|>\"\nstop                           \"<|eot_id|>\"",
+      "family": "llama",
+      "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+      "parameter_size": "8.0B",
+      "quantization_level": "Q4_K_M",
+      "size_bytes": 4920753328,
+      "template_sha256": "948af2743fc78a328dcb3b0f5a31b3d75f415840fdb699e8b1235978392ecf85"
+    },
+    "qwen3:1.7b": {
+      "default_parameters": "top_p                          0.95\nrepeat_penalty                 1\nstop                           \"<|im_start|>\"\nstop                           \"<|im_end|>\"\ntemperature                    0.6\ntop_k                          20",
+      "family": "qwen3",
+      "model_digest": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+      "parameter_size": "2.0B",
+      "quantization_level": "Q4_K_M",
+      "size_bytes": 1359293444,
+      "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+    },
+    "qwen3:14b": {
+      "default_parameters": "top_k                          20\ntop_p                          0.95\nrepeat_penalty                 1\nstop                           \"<|im_start|>\"\nstop                           \"<|im_end|>\"\ntemperature                    0.6",
+      "family": "qwen3",
+      "model_digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8",
+      "parameter_size": "14.8B",
+      "quantization_level": "Q4_K_M",
+      "size_bytes": 9276198565,
+      "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+    },
+    "qwen3:4b-q4_K_M": {
+      "default_parameters": "repeat_penalty                 1\nstop                           \"<|im_start|>\"\nstop                           \"<|im_end|>\"\ntemperature                    0.6\ntop_k                          20\ntop_p                          0.95",
+      "family": "qwen3",
+      "model_digest": "2bfd38a7daaf4b1037efe517ccb73d1a3bbd4822cf89f1a82be1569050a114e0",
+      "parameter_size": "4.0B",
+      "quantization_level": "Q4_K_M",
+      "size_bytes": 2620788260,
+      "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+    },
+    "qwen3:8b": {
+      "default_parameters": "repeat_penalty                 1\nstop                           \"<|im_start|>\"\nstop                           \"<|im_end|>\"\ntemperature                    0.6\ntop_k                          20\ntop_p                          0.95",
+      "family": "qwen3",
+      "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "parameter_size": "8.2B",
+      "quantization_level": "Q4_K_M",
+      "size_bytes": 5225388164,
+      "template_sha256": "ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4"
+    }
+  },
+  "ollama_version": "0.32.12"
+}

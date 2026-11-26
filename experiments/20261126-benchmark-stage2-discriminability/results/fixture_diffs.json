@@ -1,0 +1,158 @@
+{
+ "batteries": {
+  "G": {
+   "max_abs_C": 0.041666666667,
+   "n_policies": 120,
+   "nuisance_pairs_over_delta_min": [],
+   "pairs_over_delta_min": [],
+   "source": {
+    "path": "experiments/20261001-generalization-probe-pilot/results/fixture_table.json",
+    "sha256": "d7d1d9d249b7ab69424baac9c316b67187648cd9c2ddeb911a336f52bc9033ef",
+    "table": "R18"
+   }
+  },
+  "O_time": {
+   "max_abs_C": 0.0,
+   "n_policies": 29,
+   "nuisance_pairs_over_delta_min": [],
+   "pairs_over_delta_min": [],
+   "source": {
+    "path": "experiments/20261008-o-time-probe-pilot/results/fixture_table.json",
+    "sha256": "2a0b8d6e477e8f7cac179c9b29deccd238c888ee27f28f0589919a05053e1b5f",
+    "table": "R288"
+   }
+  },
+  "v2": {
+   "max_abs_C": 1.0,
+   "n_policies": 5,
+   "nuisance_pairs_over_delta_min": [],
+   "pairs_over_delta_min": [
+    {
+     "diff": 1.0,
+     "high": "positive_control_rule_lookup",
+     "low": "label_prior"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_rule_lookup",
+     "low": "position"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_rule_lookup",
+     "low": "priming"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_rule_lookup",
+     "low": "recency_last_entry"
+    }
+   ],
+   "source": {
+    "path": "experiments/20260926-skill-lever-pilot/prereg.md §2 (登録 nuisance class は合成 fixture で 0)"
+   }
+  },
+  "v3": {
+   "max_abs_C": 1.0,
+   "n_policies": 7,
+   "nuisance_pairs_over_delta_min": [
+    {
+     "diff": 1.0,
+     "high": "first_or_last_success_row",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "most_success_label",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "outcome_blind",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 0.9166666666666666,
+     "high": "row_after_success",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0833333333333333,
+     "high": "row_before_success",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 0.16666666666666666,
+     "high": "row_before_success",
+     "low": "row_after_success"
+    }
+   ],
+   "pairs_over_delta_min": [
+    {
+     "diff": 1.0,
+     "high": "first_or_last_success_row",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "most_success_label",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "outcome_blind",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_weather_match",
+     "low": "first_or_last_success_row"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_weather_match",
+     "low": "most_success_label"
+    },
+    {
+     "diff": 2.0,
+     "high": "positive_control_weather_match",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0,
+     "high": "positive_control_weather_match",
+     "low": "outcome_blind"
+    },
+    {
+     "diff": 1.0833333333333333,
+     "high": "positive_control_weather_match",
+     "low": "row_after_success"
+    },
+    {
+     "diff": 0.9166666666666666,
+     "high": "positive_control_weather_match",
+     "low": "row_before_success"
+    },
+    {
+     "diff": 0.9166666666666666,
+     "high": "row_after_success",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 1.0833333333333333,
+     "high": "row_before_success",
+     "low": "nearest_neighbor_ignoring_weather"
+    },
+    {
+     "diff": 0.16666666666666666,
+     "high": "row_before_success",
+     "low": "row_after_success"
+    }
+   ],
+   "source": {
+    "path": "experiments/20260926-experience-skill-pilot/prereg.md §2.5 の表 (R = 8)"
+   }
+  }
+ },
+ "delta_min": 0.1
+}

@@ -1,0 +1,20 @@
+{
+ "files": {
+  "experiments/20261126-benchmark-stage2-discriminability/results/fixture_diffs.json": "9843da06ac58a0f09d30190ab5d744b8021602f3e416de248235f8b670473ebb",
+  "experiments/20261126-benchmark-stage2-discriminability/results/models.json": "d4215ee25ca65b35b4e6b10f89afeb2c2fddce3b44d49497ccdc6fa1a9c6e236",
+  "experiments/20261126-benchmark-stage2-discriminability/results/sketch.json": "82b65469a2d26bb610e0ae20994a6963cf6a9c144988f18f33c2a04acf764bb7",
+  "experiments/20261126-benchmark-stage2-discriminability/run.sh": "f1206496233fe7e197ae3b60fae28a66b15b20462bb1a22b93f15ed2169a108f",
+  "scripts/benchmark_stage1_reanalysis.py": "1a7d698636142609303d184a3ba67b20436e54cf6b36bac937e137f5c77ae1b9",
+  "scripts/benchmark_stage2_manifest.py": "d2db3c1e9de0760fd22314e308905571a6004dd8a79153bb7fe1e537341d57ef",
+  "scripts/benchmark_stage2_sim.py": "b74ca4cf21a068bb6d28133a702930e29dee6739906adee494e11acdbe434694",
+  "scripts/benchmark_stage2_stats.py": "2bb7766ec45b36fb519af12d4a32d7ac3921b3e93011f3f1e9017041d68402b1",
+  "tests/test_benchmark_stage2/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "tests/test_benchmark_stage2/conftest.py": "09def53a31df1bd84dba7b92f42030e55adccbd3c10e4f8b5d4b30f7bfa5a5dd",
+  "tests/test_benchmark_stage2/test_manifest.py": "026d0e4bcb0ccd78908ba2f993e04cb2458789e3fbee70801768fb8d1fe530ef",
+  "tests/test_benchmark_stage2/test_sim.py": "588d2d9a65989dcfa2f8142e4bf079be031d7fd801d5f5a2378d2f37bed919a8",
+  "tests/test_benchmark_stage2/test_stats.py": "dee784f358882931cfeb0c8d3e8d729d1db4f604f04e5070d657f7680c7a2482"
+ },
+ "prereg_body_sha256": "0e49d785a82b8dc2b720ccc3103ccfa2e4b9aaed90237730209015ab293d65ba",
+ "prereg_sha256": "9ce25ba63a7281b7645b920197f88724f66dfe1f0e9c835646dfa9a8abce324a",
+ "stage": "pilot"
+}
