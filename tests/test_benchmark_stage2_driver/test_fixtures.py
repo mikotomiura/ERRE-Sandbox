@@ -242,6 +242,9 @@ def test_real_gate_diffs(real_diffs: dict[str, Any]) -> None:
     b = real_diffs["batteries"]
     assert b["G"] == {"status": fxm.NOT_SELECTED, "gate": st.GATE_STOP_POWER}
     assert (b["v2"]["R"], b["v3"]["R"], b["O_time"]["R"]) == (32, 80, 138)
+    for name, r_count in (("v2", 32), ("v3", 80), ("O_time", 138)):
+        r0 = rd.MAIN_R0[name]
+        assert b[name]["r_list"] == [r0, r0 + r_count]
     assert b["v2"]["nuisance_pairs_over_delta_min"] == []
     assert b["O_time"]["nuisance_pairs_over_delta_min"] == []
     over = b["v3"]["nuisance_pairs_over_delta_min"]

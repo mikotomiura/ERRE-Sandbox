@@ -909,10 +909,20 @@ def _gate_error(msg: str) -> PreflightError:
     return PreflightError(f"gate.json: {msg}")
 
 
-def read_gate(gate: Mapping[str, Any]) -> MainGate:
-    """gate.json の契約 (H5) を検査して読む。K・ΣM・予算の判定は入場数と R から再計算して照合する."""
+def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> MainGate:
+    """gate.json の契約 (H5) を検査して読む。K・ΣM・予算の判定は入場数と R から再計算して照合する.
+
+    入場は models の status、envelope は保存の ⊥ の数から復元して照合する (DD-12 H1)。
+    ``models_json_sha256`` は本走が使う models.json の sha (gate が同じ models.json から作られたか、M1)。
+    """
     if gate.get("schema") != GATE_SCHEMA or gate.get("status") != "OK":
         raise _gate_error("schema or status is not an OK pilot gate")
+    inputs = gate.get("inputs")
+    if (
+        not isinstance(inputs, dict)
+        or inputs.get("models_json_sha256") != models_json_sha256
+    ):
+        raise _gate_error("models_json_sha256 differs from the models.json in use")
     batteries = gate.get("batteries")
     if not isinstance(batteries, dict) or set(batteries) != set(st.BATTERIES):
         raise _gate_error("batteries differ from the registered 4")
@@ -923,16 +933,18 @@ def read_gate(gate: Mapping[str, Any]) -> MainGate:
         entry = batteries[name]
         if not isinstance(entry, dict):
             raise _gate_error(f"{name}: entry is not an object")
+        models = entry.get("models")
+        if not isinstance(models, dict):
+            raise _gate_error(f"{name}: models is not an object")
         ent = entry.get("entrants")
-        if (
-            not isinstance(ent, list)
-            or not all(isinstance(m, str) for m in ent)
-            or ent != [m for m in pl.MODELS if m in ent]
-            or len(set(ent)) != len(ent)
-            or not _same_int(entry.get("n_entered"), len(ent))
-        ):
-            raise _gate_error(f"{name}: entrants are not registered models in order")
-        entrants[name] = tuple(ent)
+        entered = [
+            m
+            for m in pl.MODELS
+            if isinstance(models.get(m), dict) and models[m].get("status") == st.ENTERED
+        ]
+        if ent != entered or not _same_int(entry.get("n_entered"), len(entered)):
+            raise _gate_error(f"{name}: entrants differ from the entered models")
+        entrants[name] = tuple(entered)
         label = entry.get("gate")
         r = entry.get("R")
         qualified = len(ent) >= st.MIN_ENTRANTS
@@ -953,11 +965,10 @@ def read_gate(gate: Mapping[str, Any]) -> MainGate:
                 raise _gate_error(f"{name}: {label} with >= 3 entrants or an R")
         else:
             raise _gate_error(f"{name}: unknown gate {label!r}")
-        models = entry.get("models")
-        for m in ent:
-            env = (
-                models.get(m, {}).get("envelope") if isinstance(models, dict) else None
-            )
+        for m in entered:
+            env = models[m].get("envelope")
+            counts = models[m].get("bot_counts")
+            n_bot = models[m].get("bot_n")
             if (
                 not isinstance(env, dict)
                 or type(env.get("numerator")) is not int
@@ -965,6 +976,22 @@ def read_gate(gate: Mapping[str, Any]) -> MainGate:
                 or env["denominator"] <= 0
             ):
                 raise _gate_error(f"{name}/{m}: envelope is not an integer fraction")
+            # ⊥ の数: 登録の arm の数の [0, bot_n] の整数・入場なら parse の規則を通る (DD-12 H1)
+            if not isinstance(counts, list):
+                raise _gate_error(f"{name}/{m}: bot_counts is not a list")
+            if len(counts) != st.N_ARMS[name]:
+                raise _gate_error(f"{name}/{m}: bot_counts differ from the arms")
+            if type(n_bot) is not int or n_bot <= 0:
+                raise _gate_error(f"{name}/{m}: bot_n is not a positive integer")
+            if not all(type(k) is int for k in counts):
+                raise _gate_error(f"{name}/{m}: bot_counts are not integers")
+            if not all(0 <= k <= n_bot for k in counts):
+                raise _gate_error(f"{name}/{m}: bot_counts are outside [0, bot_n]")
+            parse_ok, want_env = st.parse_rule(counts, n_bot)
+            if not parse_ok:
+                raise _gate_error(f"{name}/{m}: entered but fails the parse rule")
+            if Fraction(env["numerator"], env["denominator"]) != want_env:
+                raise _gate_error(f"{name}/{m}: envelope differs from the bot counts")
     n_entered = {b: len(e) for b, e in entrants.items()}
     k_tests = st.n_tests(n_entered)
     sum_m = sum(n for n in n_entered.values() if n >= st.MIN_ENTRANTS)
@@ -982,18 +1009,26 @@ def _same_int(got: object, want: int) -> bool:
     return type(got) is int and got == want
 
 
-def main_r_from_gate(gate: Mapping[str, Any]) -> dict[str, int]:
+def main_r_from_gate(
+    gate: Mapping[str, Any], models_json_sha256: str
+) -> dict[str, int]:
     """gate.json から本走の R (GO の battery だけ)."""
-    return read_gate(gate).r_by_battery
+    return read_gate(gate, models_json_sha256).r_by_battery
 
 
-def plan_for(stage: str, gate_path: pathlib.Path | None) -> tuple[pl.Segment, ...]:
+def plan_for(
+    stage: str, gate_path: pathlib.Path | None, models_path: pathlib.Path = MODELS_JSON
+) -> tuple[pl.Segment, ...]:
+    """区切りの plan。本走は gate.json を、本走が照合に使う models.json の sha と結んで読む."""
     if stage == pl.STAGE_PILOT:
         return pl.pilot_plan()
     if gate_path is None:
         msg = "--stage main requires --gate"
         raise PreflightError(msg)
-    gate = read_gate(json.loads(gate_path.read_text(encoding="utf-8")))
+    gate = read_gate(
+        json.loads(gate_path.read_text(encoding="utf-8")),
+        sha256_bytes(models_path.read_bytes()),
+    )
     segs = pl.main_plan(gate.r_by_battery, gate.entrants)
     # 報告集合 ⊆ 入場集合: 本走は pilot の入場モデルだけを回す
     if any(s.model not in gate.entrants[s.battery] for s in segs):

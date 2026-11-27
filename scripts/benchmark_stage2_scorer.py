@@ -115,16 +115,19 @@ def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> GateRead:
         entry = batteries[b]
         if not isinstance(entry, dict):
             raise GateError(f"{b}: entry is not an object")
+        models = entry.get("models")
+        if not isinstance(models, dict):
+            raise GateError(f"{b}: models is not an object")
         ent = entry.get("entrants")
-        if (
-            not isinstance(ent, list)
-            or not all(isinstance(m, str) for m in ent)
-            or ent != [m for m in rd.MODELS if m in ent]
-            or len(set(ent)) != len(ent)
-            or not _int_eq(entry.get("n_entered"), len(ent))
-        ):
-            raise GateError(f"{b}: entrants are not registered models in order")
-        entrants[b] = tuple(ent)
+        # 入場 = models の status が entered のモデル (§A.1 の順)。pilot gate の生成規則と同じ
+        entered = [
+            m
+            for m in rd.MODELS
+            if isinstance(models.get(m), dict) and models[m].get("status") == st.ENTERED
+        ]
+        if ent != entered or not _int_eq(entry.get("n_entered"), len(entered)):
+            raise GateError(f"{b}: entrants differ from the entered models")
+        entrants[b] = tuple(entered)
         label = entry.get("gate")
         r = entry.get("R")
         qualified = len(ent) >= st.MIN_ENTRANTS
@@ -145,20 +148,37 @@ def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> GateRead:
         else:
             raise GateError(f"{b}: unknown gate {label!r}")
         labels[b] = label
-        models = entry.get("models")
-        for m in ent:
-            env = (
-                models.get(m, {}).get("envelope") if isinstance(models, dict) else None
-            )
+        for m in entered:
+            env = models[m].get("envelope")
             if (
                 not isinstance(env, dict)
                 or type(env.get("numerator")) is not int
                 or type(env.get("denominator")) is not int
                 or env["denominator"] <= 0
-                or env["numerator"] < 0
             ):
                 raise GateError(f"{b}/{m}: envelope is not an integer fraction")
             envelopes[(b, m)] = Fraction(env["numerator"], env["denominator"])
+            # 保存の ⊥ の数は登録の arm の数の [0, bot_n] の整数で、入場モデルは parse の規則を
+            # 通り (stats.qualify)、envelope はその数から復元した分数と一致する (DD-12 H1)
+            counts = models[m].get("bot_counts")
+            n_bot = models[m].get("bot_n")
+            if not isinstance(counts, list):
+                raise GateError(f"{b}/{m}: bot_counts is not a list")
+            if len(counts) != st.N_ARMS[b]:
+                raise GateError(f"{b}/{m}: bot_counts differ from the registered arms")
+            if type(n_bot) is not int or n_bot <= 0:
+                raise GateError(f"{b}/{m}: bot_n is not a positive integer")
+            if not all(type(k) is int for k in counts):
+                raise GateError(f"{b}/{m}: bot_counts are not integers")
+            if not all(0 <= k <= n_bot for k in counts):
+                raise GateError(f"{b}/{m}: bot_counts are outside [0, bot_n]")
+            parse_ok, want_env = st.parse_rule(counts, n_bot)
+            if not parse_ok:
+                raise GateError(
+                    f"{b}/{m}: entered but the bot counts fail the parse rule"
+                )
+            if envelopes[(b, m)] != want_env:
+                raise GateError(f"{b}/{m}: envelope differs from the pilot bot counts")
     n_entered = {b: len(e) for b, e in entrants.items()}
     k_tests = st.n_tests(n_entered)
     sum_m = sum(n for n in n_entered.values() if n >= st.MIN_ENTRANTS)
@@ -191,6 +211,23 @@ def _jsonable(x: object) -> object:
     if isinstance(x, list | tuple):
         return [_jsonable(v) for v in x]
     return x
+
+
+def six_classes_by_encoding(
+    choices: Mapping[tuple[Any, ...], str | None], r_list: Sequence[int]
+) -> dict[str, dict[str, int]]:
+    """O_time の 6 分類を (arm, 書き方) ごとに (§B の記述、DD-12 M4)。key = ``"<arm>|<書き方>"``.
+
+    分類は ``units.six_classes`` と同じ (``units.category``)。O_time のセルの key は (arm, 書き方, r, probe, k)。
+    本走の記録に通信の欠測の行は無い (記録の読み手が区切りごと拒む) ので ``missing`` は 0。
+    """
+    out: dict[str, dict[str, int]] = {}
+    for cell in un.lever_cells("O_time", r_list):
+        arm, enc = cell.key[0], cell.key[1]
+        row = out.setdefault(f"{arm}|{enc}", dict.fromkeys(un.CLASSES, 0))
+        cat = un.category("O_time", cell.key, choices[cell.key])
+        row[un._CAT_TO_CLASS[cat]] += 1  # noqa: SLF001
+    return out
 
 
 def main_r_list(battery: str, r_count: int) -> list[int]:
@@ -447,6 +484,10 @@ def score_battery(
             "envelope": {"numerator": env.numerator, "denominator": env.denominator},
             "six_classes": un.six_classes(battery, choices, r_list),
         }
+        if battery == "O_time":
+            models_out[m]["six_classes_by_encoding"] = six_classes_by_encoding(
+                choices, r_list
+            )
         if st.envelope_exceeded(bots, n_arm, env):
             excluded.append(
                 {
@@ -673,11 +714,13 @@ def run_scorer(
     fixture_path: pathlib.Path = FIXTURE_JSON,
 ) -> str:
     body = compute_twice(run_dir, gate_path, models_json, fixture_path)
-    if out.exists():
-        msg = f"refusing to overwrite {out}"
-        raise FileExistsError(msg)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(body.encode("utf-8"))
+    try:  # 排他的作成 (存在の確認と書き込みの間に別のプロセスが書く競合を残さない、DD-12 L1)
+        with out.open("xb") as fh:
+            fh.write(body.encode("utf-8"))
+    except FileExistsError as exc:
+        msg = f"refusing to overwrite {out}"
+        raise FileExistsError(msg) from exc
     return body
 
 

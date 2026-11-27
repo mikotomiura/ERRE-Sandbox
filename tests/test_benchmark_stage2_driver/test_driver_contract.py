@@ -17,6 +17,7 @@ from scripts import benchmark_stage2_driver as dr
 from scripts import benchmark_stage2_plan as pl
 
 from tests.test_benchmark_stage2_driver.test_driver import (
+    MODELS_SHA,
     FakeClock,
     FakeOllama,
     _min_gate,
@@ -243,10 +244,10 @@ def test_main_stage_rejects_a_replay_segment(tmp_path: pathlib.Path) -> None:
 
 def test_read_gate_refuses_an_r_without_three_entrants() -> None:
     gate = _min_gate({"v3": 8})
-    dr.read_gate(gate)
+    dr.read_gate(gate, MODELS_SHA)
     gate["batteries"]["G"]["R"] = 6  # NOT_QUALIFIED の battery に R
     with pytest.raises(dr.PreflightError, match="NOT_QUALIFIED with >= 3 entrants"):
-        dr.read_gate(gate)
+        dr.read_gate(gate, MODELS_SHA)
 
 
 def test_last_resend_failing_after_the_deadline_is_a_timeout(
@@ -287,4 +288,4 @@ def test_read_gate_refuses_an_unregistered_battery() -> None:
     gate = _min_gate({"v3": 8})
     gate["batteries"]["v4"] = dict(gate["batteries"]["v2"])  # 登録の 4 battery の外
     with pytest.raises(dr.PreflightError, match="registered 4"):
-        dr.read_gate(gate)
+        dr.read_gate(gate, MODELS_SHA)

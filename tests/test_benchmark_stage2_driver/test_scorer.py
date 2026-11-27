@@ -9,6 +9,7 @@ G は STOP_POWER、6 モデル入場)。
 from __future__ import annotations
 
 import ast
+import dataclasses
 import json
 import pathlib
 import shutil
@@ -49,16 +50,26 @@ Policy = "Callable[[str, pl.CallSpec], str]"
 
 
 def make_gate(
-    envelopes: Mapping[tuple[str, str], tuple[int, int]] | None = None,
+    bots: Mapping[tuple[str, str], tuple[list[int], int]] | None = None,
 ) -> dict[str, Any]:
+    """契約どおりの gate.
+
+    envelope は pilot の ⊥ の数 (既定は全 arm 0/720) から pilot gate と同じ規則で作る。
+    """
     batteries: dict[str, Any] = {}
     for b in st.BATTERIES:
         models = {}
         for m in pl.MODELS:
-            num, den = (envelopes or {}).get((b, m), (1, 20))
+            counts, n = (bots or {}).get((b, m), ([0] * st.N_ARMS[b], 720))
+            env = st.parse_rule(counts, n)[1]
             models[m] = {
                 "status": st.ENTERED,
-                "envelope": {"numerator": num, "denominator": den},
+                "bot_counts": list(counts),
+                "bot_n": n,
+                "envelope": {
+                    "numerator": env.numerator,
+                    "denominator": env.denominator,
+                },
             }
         batteries[b] = {
             "models": models,
@@ -282,10 +293,55 @@ def test_v3_named_pairs_carry_the_fixture_pairs(graded_verdict: dict[str, Any]) 
     v3 = graded_verdict["batteries"]["v3"]
     fx_pairs = v3["named"][0]["fixture_pairs"]
     assert any(q["low"] == "nearest_neighbor_ignoring_weather" for q in fx_pairs)
-    assert all(p["fixture_pairs"] == fx_pairs for p in v3["named"])
     assert any("でも説明しうる" in line for line in v3["report_text"])
     assert any("得点差までに固定" in line for line in v3["report_text"])
     assert graded_verdict["batteries"]["v2"]["named"][0]["fixture_pairs"] == []
+
+
+def test_named_pairs_carry_every_fixture_pair_of_the_file(
+    graded_verdict: dict[str, Any], tmp_path: pathlib.Path
+) -> None:
+    """§J: 各名指しの併記 = 同じ gate の fixture ファイルの対の全部.
+
+    名指しどうしの比較でなく file と直接照合する (DD-12 M3)。
+    """
+    paths = write_inputs(tmp_path, make_gate())
+    want = json.loads(paths["fixtures"].read_text(encoding="utf-8"))["batteries"]
+    v3_want = want["v3"]["nuisance_pairs_over_delta_min"]
+    # 近傍の方策との対の他の対 (直前 − 直後 など) もある:
+    # 一部の対だけを残す転記を区別できる
+    assert any("nearest" not in q["low"] for q in v3_want)
+    for b in R_MAIN:
+        named = graded_verdict["batteries"][b]["named"]
+        assert named
+        for p in named:
+            assert p["fixture_pairs"] == want[b]["nuisance_pairs_over_delta_min"]
+
+
+def _o_time_by_encoding(model: str, spec: pl.CallSpec) -> str:
+    """O_time の同じ arm で、asc はすべて target、ago はすべて foil (書き方の非対称)."""
+    if spec.battery == "O_time" and spec.purpose == pl.P_LEVER:
+        return _lever(spec, "w" if spec.encoding == "asc" else "foil")
+    return graded(model, spec)
+
+
+def test_o_time_six_classes_are_split_by_encoding(tmp_path: pathlib.Path) -> None:
+    """§B: O_time の 6 分類は (arm, 書き方) ごと (DD-12 M4).
+
+    arm だけの集計は 2 つを足した 1 行になる。
+    """
+    run = tmp_path / "run"
+    write_main(run, _o_time_by_encoding)
+    o = score(tmp_path, run)["batteries"]["O_time"]["models"]["qwen3:8b"]
+    by_enc = o["six_classes_by_encoding"]
+    arms = list(o["six_classes"])
+    assert set(by_enc) == {f"{a}|{e}" for a in arms for e in ("asc", "ago")}
+    for a in arms:
+        asc, ago = by_enc[f"{a}|asc"], by_enc[f"{a}|ago"]
+        n = o["six_classes"][a]["target"] + o["six_classes"][a]["foil"]
+        assert asc == {**dict.fromkeys(asc, 0), "target": n // 2}
+        assert ago == {**dict.fromkeys(ago, 0), "foil": n // 2}
+        assert {k: asc[k] + ago[k] for k in asc} == o["six_classes"][a]
 
 
 def test_qwen3_prediction_is_reported(graded_verdict: dict[str, Any]) -> None:
@@ -367,6 +423,16 @@ def test_invalid_meta_excludes_the_model(tmp_path: pathlib.Path) -> None:
             "detail": "invalid_meta: synthetic",
         }
     ]
+    # 名指しの全対と向きを、残りのモデルから独立に作って完全一致
+    # (DD-12 M2: 添字の取り違えを区別する)
+    rest = [m for m in pl.MODELS if m != "qwen3:8b"]
+    assert v2["report_set"] == rest
+    c = {m: (2 * N_TARGET[m] - 4) / 4 for m in rest}
+    want = {(a, b) for a in rest for b in rest if c[a] - c[b] > st.DELTA_MIN}
+    assert want
+    named = [tuple(p["pair"]) for p in v2["named"]]
+    assert len(named) == len(set(named))
+    assert set(named) == want
 
 
 def test_all_models_invalid_meta_is_invalid(tmp_path: pathlib.Path) -> None:
@@ -374,6 +440,43 @@ def test_all_models_invalid_meta_is_invalid(tmp_path: pathlib.Path) -> None:
     bad = {rd.seg_name(rd.STAGE_MAIN, "v2", m): dr.S_INVALID_META for m in pl.MODELS}
     write_main(run, graded, status=bad)
     assert score(tmp_path, run)["batteries"]["v2"]["verdict"] == st.VERDICT_INVALID
+
+
+def test_run_wide_invalid_version_is_invalid(tmp_path: pathlib.Path) -> None:
+    """§A.1: run の全区切りが invalid_version なら全 battery INVALID.
+
+    not_computed ではない。
+    """
+    run = tmp_path / "run"
+    segs = pl.main_plan(R_MAIN, dict.fromkeys(R_MAIN, pl.MODELS))
+    write_main(run, graded, status={s.name: dr.S_INVALID_VERSION for s in segs})
+    out = score(tmp_path, run)
+    assert out["record_violations"] == []
+    for b in R_MAIN:
+        v = out["batteries"][b]
+        assert v["verdict"] == st.VERDICT_INVALID
+        assert {e["reason"] for e in v["excluded"]} == {sc.EXCL_INVALID}
+        assert len(v["excluded"]) == len(pl.MODELS)
+
+
+def test_insensitive_named_pair_is_limited_to_the_score_gap(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§M: 感度の条件を満たさない名指しの対は「得点差まで」と書く (v2・O_time でも)."""
+    real = st.decide_battery
+
+    def no_sensitivity(*a: Any, **kw: Any) -> st.BatteryDecision:
+        return dataclasses.replace(real(*a, **kw), sensitivity_ok=())
+
+    monkeypatch.setattr(st, "decide_battery", no_sensitivity)
+    run = tmp_path / "run"
+    write_main(run, graded)
+    v2 = score(tmp_path, run)["batteries"]["v2"]
+    assert v2["verdict"] == st.VERDICT_ESTABLISHED
+    assert v2["named"]
+    assert not any(p["sensitivity_ok"] for p in v2["named"])
+    limited = [line for line in v2["report_text"] if "得点差まで" in line]
+    assert len(limited) == len(v2["named"])
 
 
 @pytest.mark.parametrize(("n_bot", "excluded"), [(24, False), (25, True)])
@@ -397,12 +500,18 @@ def test_envelope_boundary_is_strict(
 
 
 def test_envelope_comes_from_the_gate(tmp_path: pathlib.Path) -> None:
-    """Gate の envelope (整数の分数) を使う: 24/480 = 1/20 を 1/21 にすると外れる."""
+    """Gate の envelope (整数の分数) を使う.
+
+    pilot の ⊥ 2/720 → envelope 2/720 + 1/20 = 19/360。本走 25/480 (< 19/360) は残る
+    (固定の 1/20 なら外れる)。
+    """
     run = tmp_path / "run"
-    write_main(run, with_bots("qwen3:14b", 24, graded))
-    gate = make_gate({("v2", "qwen3:14b"): (1, 21)})
+    write_main(run, with_bots("qwen3:14b", 25, graded))
+    gate = make_gate({("v2", "qwen3:14b"): ([2, 0, 0, 0, 0], 720)})
+    env = gate["batteries"]["v2"]["models"]["qwen3:14b"]["envelope"]
+    assert Fraction(env["numerator"], env["denominator"]) == Fraction(19, 360)
     v2 = score(tmp_path, run, gate)["batteries"]["v2"]
-    assert "qwen3:14b" not in v2["report_set"]
+    assert "qwen3:14b" in v2["report_set"]
 
 
 def test_record_violation_makes_the_battery_invalid(
@@ -485,7 +594,68 @@ GATE_MUTATIONS = [
         or g["batteries"][b].__setitem__("R", None)
         for b in R_MAIN
     ],
+    # 16: 入場 2 の battery を GO と書く (n_entered・K・ΣM は正直な値)
+    lambda g: _set_entrants(g, "v2", list(pl.MODELS[:2])),
+    # 17: 入場 6 の battery を NOT_QUALIFIED と書く (R なし、K・ΣM は正直な値)
+    lambda g: g["batteries"]["v2"].update(gate=st.VERDICT_NOT_QUALIFIED, R=None),
+    # 18: models の status は 6 本とも entered のまま、entrants を先頭 3 本に
+    # (K・ΣM は正直な値、H1)
+    lambda g: _set_entrants(g, "G", list(pl.MODELS[:3]), statuses=False),
+    # 19: pilot の ⊥ は 0 のまま envelope を 1/5 と書く (H1)
+    lambda g: g["batteries"]["v3"]["models"]["qwen3:8b"].__setitem__(
+        "envelope", {"numerator": 1, "denominator": 5}
+    ),
+    # 20: envelope の負の分子 (M1)
+    lambda g: g["batteries"]["v3"]["models"]["qwen3:8b"]["envelope"].__setitem__(
+        "numerator", -1
+    ),
+    # 21: ⊥ の数が整数でない (bot_n を浮動小数に)
+    lambda g: g["batteries"]["v3"]["models"]["qwen3:8b"].__setitem__("bot_n", 720.0),
+    # 22: ⊥ の数が parse の規則の外 (bot_n = 0)
+    lambda g: g["batteries"]["v3"]["models"]["qwen3:8b"].__setitem__("bot_n", 0),
+    # 23: models が object でない
+    lambda g: g["batteries"]["O_time"].__setitem__("models", []),
+    # 24〜28 (code-reviewer MEDIUM): ⊥ の数そのものの妥当性。envelope は数と整合させる
+    # 24: arm の数が登録と違う (v2 の 5 arm を 4 本に)
+    lambda g: _set_bots(g, "v2", "qwen3:8b", [0, 0, 0, 0]),
+    # 25: bot_counts が list でない
+    lambda g: g["batteries"]["v3"]["models"]["qwen3:8b"].__setitem__(
+        "bot_counts", None
+    ),
+    # 26: bot_counts が浮動小数 (parse_rule の int() で黙って 0 になる)
+    lambda g: _set_bots(g, "v3", "qwen3:8b", [0.0, 0.0, 0.0, 0.0]),
+    # 27: 負の数 (parse_rule は通し、envelope は負の分数で復元と一致する)
+    lambda g: _set_bots(g, "v3", "qwen3:8b", [-200, -200, -200, -200]),
+    # 28: parse の規則を通らない数のまま status が entered (145/720 > 1/5、envelope 1/5)
+    lambda g: _set_bots(g, "v3", "qwen3:8b", [145, 0, 0, 0]),
 ]
+
+
+def _set_bots(
+    g: dict[str, Any], battery: str, model: str, counts: list[Any], n: int = 720
+) -> None:
+    """⊥ の数を書き換え、envelope を同じ規則の復元に合わせる.
+
+    envelope の照合では拒めない形。
+    """
+    env = st.parse_rule(counts, n)[1]
+    g["batteries"][battery]["models"][model].update(
+        bot_counts=counts,
+        bot_n=n,
+        envelope={"numerator": env.numerator, "denominator": env.denominator},
+    )
+
+
+def _set_entrants(
+    g: dict[str, Any], battery: str, ents: list[str], *, statuses: bool = True
+) -> None:
+    g["batteries"][battery].update(entrants=ents, n_entered=len(ents))
+    if statuses:  # 入場の外のモデルの status を entered から外す (gate の内部で整合)
+        for m, mm in g["batteries"][battery]["models"].items():
+            mm["status"] = st.ENTERED if m in ents else pg.M_NOT_COMPUTED
+    n_entered = {b: len(e["entrants"]) for b, e in g["batteries"].items()}
+    g["K"] = st.n_tests(n_entered)
+    g["sum_M"] = sum(n for n in n_entered.values() if n >= st.MIN_ENTRANTS)
 
 
 @pytest.mark.parametrize("mutate", GATE_MUTATIONS)
@@ -494,13 +664,27 @@ def test_gate_contract_violations_are_refused(
 ) -> None:
     good = make_gate()
     sc.read_gate(good, _ref_sha())
-    dr.read_gate(good)  # driver の読み手も同じ gate を受ける
+    dr.read_gate(good, _ref_sha())  # driver の読み手も同じ gate を受ける
     with pytest.raises(sc.GateError):
         sc.read_gate(_bad(good, mutate), _ref_sha())
 
 
+@pytest.mark.parametrize("mutate", GATE_MUTATIONS)
+def test_driver_refuses_every_gate_the_scorer_refuses(
+    mutate: Callable[[dict[str, Any]], None],
+) -> None:
+    """2 つの独立な読み手は同じ負例をすべて拒否する.
+
+    DD-12 M1: driver が受け scorer が拒む gate を残さない。
+    """
+    with pytest.raises(dr.PreflightError):
+        dr.read_gate(_bad(make_gate(), mutate), _ref_sha())
+
+
 def test_gate_envelope_is_an_exact_fraction() -> None:
-    g = sc.read_gate(make_gate({("v2", "qwen3:8b"): (37, 720)}), _ref_sha())
+    g = sc.read_gate(
+        make_gate({("v2", "qwen3:8b"): ([1, 0, 0, 0, 0], 720)}), _ref_sha()
+    )
     assert g.envelopes[("v2", "qwen3:8b")] == Fraction(37, 720)
     assert g.r_go == R_MAIN
     assert g.k_tests == 120
@@ -609,6 +793,96 @@ def test_component_sign_labels() -> None:
     assert sc.component_sign({"a": -0.1, "b": -0.2}) == "all_negative"
     assert sc.component_sign({"a": -0.1, "b": 0.2}) == "mixed_signs"
     assert sc.component_sign({"a": 0.0, "b": 0.2}) == "neither"
+
+
+def test_descriptive_bounds_use_the_registered_levels(
+    graded_verdict: dict[str, Any],
+) -> None:
+    """記述の対は判定と同じ α/K、モデルの C は両側 α/(2ΣM) (DD-10・§M).
+
+    graded の単位の値はモデルごとに定数なので、期待値を定数の配列から直接作る。
+    """
+    v2 = graded_verdict["batteries"]["v2"]
+    n = R_MAIN["v2"] * st.SPECS["v2"].units_per_rep
+    c = {m: v2["models"][m]["C"] for m in pl.MODELS}
+    level = st.ALPHA / 120
+    for p in v2["pairs"]:
+        a, b = p["pair"]
+        d = np.full(n, c[a] - c[b])
+        assert p["n_units"] == n
+        assert p["lower_bound_a_minus_b"] == sc._f(st.lower_bound(d, -2.0, 2.0, level))
+        assert p["lower_bound_b_minus_a"] == sc._f(st.lower_bound(-d, -2.0, 2.0, level))
+    for p in v2["named"]:
+        d = np.full(n, c[p["pair"][0]] - c[p["pair"][1]])
+        assert p["lower_bound"] == sc._f(st.lower_bound(d, -2.0, 2.0, level))
+    level_c = st.ALPHA / (2 * 24)
+    for m in pl.MODELS:
+        u = np.full(n, c[m])
+        assert v2["models"][m]["C_interval"] == [
+            sc._f(st.lower_bound(u, -1.0, 1.0, level_c)),
+            sc._f(st.upper_bound(u, -1.0, 1.0, level_c)),
+        ]
+
+
+def test_decide_battery_gets_the_gate_levels_and_halves(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§D・§F: 判定には gate の K・ΣM・入場数と、本走の r の半分を渡す.
+
+    1 モデルを外した run でも K・ΣM・n_entered は gate の値のまま。
+    """
+    run = tmp_path / "run"
+    name = rd.seg_name(rd.STAGE_MAIN, "v2", "gemma2:9b")
+    write_main(run, equal_zero, status={name: dr.S_TIMEOUT})
+    seen: list[tuple[int, int, np.ndarray, int, int]] = []
+    real = st.decide_battery
+
+    def spy(units: np.ndarray, k: int, m: int, halves: np.ndarray, **kw: Any) -> Any:
+        seen.append((k, m, halves, kw["n_entered"], units.shape[1]))
+        return real(units, k, m, halves, **kw)
+
+    monkeypatch.setattr(st, "decide_battery", spy)
+    score(tmp_path, run)  # 2 回計算する
+    order = [b for b in st.BATTERIES if b in R_MAIN] * 2
+    assert len(seen) == len(order)
+    for (k, m, halves, n_entered, n_units), b in zip(seen, order, strict=True):
+        assert (k, m, n_entered) == (120, 24, 6)
+        r_list = sc.main_r_list(b, R_MAIN[b])
+        np.testing.assert_array_equal(halves, st.half_labels(st.SPECS[b], r_list))
+        assert halves.size == n_units
+        assert 0 < halves.sum() < halves.size
+
+
+def test_run_wide_violation_makes_every_battery_invalid(
+    graded_run: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    """区切りの外 (状態表) の違反は全 battery を INVALID にする (DD-10)."""
+    run = tmp_path / "run"
+    shutil.copytree(graded_run, run)
+    tpath = run / rd.STAGE_MAIN / dr.SEGMENTS_NAME
+    table = json.loads(tpath.read_text(encoding="utf-8"))
+    table["expected_ollama_version"] = "0.0.0"
+    tpath.write_bytes(dr.json_text(table).encode("utf-8"))
+    out = score(tmp_path, run)
+    assert out["record_violations"]
+    for b in R_MAIN:
+        assert out["batteries"][b]["verdict"] == st.VERDICT_INVALID
+        assert any(
+            "expected_ollama_version" in v for v in out["batteries"][b]["violations"]
+        )
+
+
+def test_gate_with_a_not_qualified_battery_is_read() -> None:
+    """入場 2 の battery は K・ΣM に数えない (§D)。その gate を受ける."""
+    gate = make_gate()
+    _set_entrants(gate, "G", list(pl.MODELS[:2]))
+    gate["batteries"]["G"].update(gate=st.VERDICT_NOT_QUALIFIED, R=None)
+    assert gate["sum_M"] == 18
+    read = sc.read_gate(gate, _ref_sha())
+    dr.read_gate(gate, _ref_sha())
+    assert read.sum_m == 18
+    assert read.k_tests == gate["K"]
+    assert read.labels["G"] == st.VERDICT_NOT_QUALIFIED
 
 
 def _imports(mod: Any) -> set[str]:

@@ -510,11 +510,13 @@ def main(argv: list[str] | None = None) -> int:
         same = args.out.read_bytes() == body.encode("utf-8")
         print("[fixtures] " + ("MATCH" if same else "DIFFERS"))  # noqa: T201
         return 0 if same else 3
-    if args.out.exists():
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    try:  # 排他的作成 (DD-12 L1)
+        with args.out.open("xb") as fh:
+            fh.write(body.encode("utf-8"))
+    except FileExistsError:
         print(f"[fixtures] refusing to overwrite {args.out}", file=sys.stderr)  # noqa: T201
         return 2
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_bytes(body.encode("utf-8"))
     print(f"[fixtures] wrote {args.out}")  # noqa: T201
     return 0
 
