@@ -1,0 +1,27 @@
+{
+  "attempt": 1,
+  "battery": "G",
+  "model": "gemma2:9b",
+  "model_digest": "ff02c3702f322b9e075e9568332d96c0a7028002f1a5a056e0a6784320a4db0b",
+  "n_calls": 1836,
+  "ollama_version": "0.32.12",
+  "plan_digest": "b0ffe2379f9ec88c2543a6bdb32879ef3cc18970aecdcb1484bb7b9223883ce2",
+  "request": {
+    "options_without_seed": {
+      "num_ctx": 4096,
+      "num_predict": 32,
+      "repeat_penalty": 1.0,
+      "temperature": 0.7,
+      "top_k": 20,
+      "top_p": 0.8
+    },
+    "stream": false,
+    "think": false
+  },
+  "segment_digest": "b66191075790a044bbb9fd392cf8e52271b2fdf3ba905572149a8fc43b8eba98",
+  "stage": "pilot",
+  "started_at": "2026-11-27T05:10:37.165105+00:00",
+  "template": "<start_of_turn>user\n{{ if .System }}{{ .System }} {{ end }}{{ .Prompt }}<end_of_turn>\n<start_of_turn>model\n{{ .Response }}<end_of_turn>\n",
+  "template_segment_sha256": "47c241ffa04340b375ea40e00e97bb454ef1dfbae538368fe7db77bfb7ea54d9",
+  "template_sha256": "109037bec39c0becc8221222ae23557559bc594290945a2c4221ab4f303b8871"
+}

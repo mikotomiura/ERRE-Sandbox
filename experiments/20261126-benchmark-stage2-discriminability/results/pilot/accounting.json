@@ -1,0 +1,25 @@
+{
+  "cost_8b_h_total_float": 3.76875,
+  "cost_8b_s": {
+    "initial": "108165/8",
+    "replay": "375/8",
+    "resend": "0",
+    "retry": "0"
+  },
+  "cost_8b_s_float": {
+    "initial": 13520.625,
+    "replay": 46.875,
+    "resend": 0.0,
+    "retry": 0.0
+  },
+  "cost_8b_s_total": "27135/2",
+  "elapsed_wall_s": 12171.828000000009,
+  "sends": {
+    "initial": 58968,
+    "replay": 144,
+    "resend": 0,
+    "retry": 0
+  },
+  "sends_total": 59112,
+  "stage": "pilot"
+}
