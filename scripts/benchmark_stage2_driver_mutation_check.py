@@ -1,15 +1,18 @@
 #!/usr/bin/env python
-"""判別性 gate 段 2 の pilot 前の certification — 対象の行を壊すと、意図した test が意図した理由で落ちるか.
+"""判別性 gate 段 2 の本走前の certification — 対象の行を壊すと、意図した test が意図した理由で落ちるか.
 
-対象 (DD-6: pilot が実行・判定に使う code) = ``scripts/benchmark_stage2_{driver,plan,units,records,pilot_gate,stats}.py``。
+対象 (DD-6・DD-11: 本走が実行・判定に使う code の全体) =
+``scripts/benchmark_stage2_{driver,plan,units,records,pilot_gate,stats,fixtures,scorer}.py``。
 witness の test = ``tests/test_benchmark_stage2_driver/`` (証明書の読み手 ``test_certificate.py`` を除く) と、凍結の
-``tests/test_benchmark_stage2/test_stats.py`` (stats の変異の一部)。scorer・fixtures を加えた本走前の版は段 5 で別に作る。
+``tests/test_benchmark_stage2/test_stats.py`` (stats の変異の一部)。``test_fixtures.py`` が原本として import する
+凍結の test 2 つと pilot の ``gate.json`` も sha で束ねる。段 3.5 の pilot 前の版 (pre_pilot) は同じ path に
+あったものを本走前の版で上書きした (git の履歴に残る)。
 
 枠組みは O_time の driver の harness (``scripts/o_time_probe_driver_mutation_check.py``、Codex review 6 回) を写し、
-対象を 6 ファイルに広げたもの。変わった点だけ書く (他は O_time の docstring のとおり):
+対象を 8 ファイル (段 3.5 は 6、段 5 で fixtures・scorer を追加) に広げたもの。変わった点だけ書く (他は O_time の docstring のとおり):
 
 * **変異は複製ツリーにだけ当てる** (memory feedback_harness_stop_leaves_mutant)。``--workers`` 個の worker が
-  それぞれ複製ツリー (repo の外の一時 dir) を持ち、写しの bytes (6 対象・witness の test・harness の sha256) が repo と
+  それぞれ複製ツリー (repo の外の一時 dir) を持ち、写しの bytes (8 対象・witness の test・harness の sha256) が repo と
   同じこと・無変異の対照が緑であることを確かめてから、queue の変異を 1 つずつ当てて元の bytes に戻す。凍結の
   ``benchmark_stage2_stats.py`` (manifest の 13 ファイルの 1 つ) を書き換えるのも複製の中だけ。
 * 変異は ``(label, 対象, old → new, 期待 test, why, Witness)``。各 run は期待 test を含む test ファイルだけを回す
@@ -43,12 +46,23 @@ witness の test = ``tests/test_benchmark_stage2_driver/`` (証明書の読み�
 * O_time の単位の ``Unit`` の部屋だけをずらす (units ``unit_cells``): ``unit_calls`` の (arm, 書き方) の集合は
   部屋に依らず、セルの並びだけが変わる (単位の値は和なので等価)。部屋の取り違えは probe_id の変異 u04 が pin する。
 
+* (段 5、DD-11) scorer の ``segments missing`` の検査を外す: 読み手が区切りを返さないのは区切りの外の違反
+  (状態表の order・segments の不一致・読めない) があるときだけで、その違反で battery は既に INVALID。
+  scorer の ``half_labels`` に 0 起点の r を渡す: ``half_labels`` は r_list[0] からの相対なので等価
+  (半分を潰す変異 c18 は、判定に渡す引数の test の中で stats が空の半分で止める)。fixtures の Δ_min の ``>`` → ``>=``: 許容 10^-12 を
+  足した閾値ちょうどの差でだけ違う (閾値の向きは f12 が pin)。fixtures の ``fewest_failures`` の符号を落とす:
+  v3 の状態では各セルで全選択肢の失敗の数が等しく (r ∈ [0, 40) ∪ [3000, 3080) の 2,880 セルで確認)、方策は常に
+  同点 → 表示順になるので、符号に依らず同じ label (原本も同じ)。
+* (段 5b、DD-12) scorer の envelope の負の分子の検査は消した: ⊥ の数を [0, bot_n] に限る検査 (c55) の下では
+  復元した envelope は 1/20 以上なので、負の分子は復元との一致 (c46) で拒まれる (負例 20)。⊥ の数が負なら
+  envelope も負の分数で整合してしまう (負例 27) ので、負の分子を拒むのは範囲の検査 c55 の役目。
+
 meta-test (計測台 §4.4): 複製ツリーで検査関数を素通りに潰し、依存する test が実際に落ちることを一度見る。
 
-証明書 (``--out``): 全 KILLED・meta-test 成立・原状復帰 (repo の 6 対象が開始時と同じ bytes)・実行中に test と
+証明書 (``--out``): 全 KILLED・meta-test 成立・原状復帰 (repo の 8 対象が開始時と同じ bytes)・実行中に test と
 harness が変わっていないときだけ書く。``target_sha256`` は ``tests/test_architecture/test_closed_chain_selection``
 の探索規則が読める形 (dir 名の付かない ``benchmark_stage2_*.py`` key と、新 test dir の全 .py を ``tests/<name>``)。
-版 (``version``) = ``pre_pilot`` (DD-6。本走前の版と区別する)。
+版 (``version``) = ``pre_main`` (DD-11。pilot 前の版 pre_pilot と区別する)。
 
 実行 (repo root から、長いので detached で)::
 
@@ -84,15 +98,26 @@ _TARGETS: dict[str, str] = {
     "records": "scripts/benchmark_stage2_records.py",
     "pilot_gate": "scripts/benchmark_stage2_pilot_gate.py",
     "stats": "scripts/benchmark_stage2_stats.py",
+    "fixtures": "scripts/benchmark_stage2_fixtures.py",
+    "scorer": "scripts/benchmark_stage2_scorer.py",
 }
 _TARGET_FILES = frozenset(pathlib.PurePath(p).name for p in _TARGETS.values())
 _HARNESS_REL = "scripts/benchmark_stage2_driver_mutation_check.py"
 _TEST_DIR = "tests/test_benchmark_stage2_driver"
 _STATS_TEST = "tests/test_benchmark_stage2/test_stats.py"
+# test_fixtures.py が原本として import する凍結の test (方策の移植の照合の相手)
+_ORIGINAL_TESTS = (
+    "tests/test_skill_lever/test_scorer.py",
+    "tests/test_skill_experience/test_nuisance.py",
+)
+_WITNESS_EXTRA = (_STATS_TEST, *_ORIGINAL_TESTS)
+_PILOT_GATE_REL = (
+    "results/pilot/gate.json"  # test_fixtures の実の gate (pilot の記録は他を写さない)
+)
 _CERT_TEST = "test_certificate.py"  # 証明書の読み手 (変異中は必ず落ちて生き残りを覆うので回さない)
 _EXP_REL = "experiments/20261126-benchmark-stage2-discriminability"
 _EXP_STAGE1 = "experiments/20261126-benchmark-stage1-reanalysis"
-_VERSION = "pre_pilot"
+_VERSION = "pre_main"
 _TEST_TIMEOUT_S = 1800
 _WITNESS_ENV = "BS2_DRIVER_WITNESS"
 _PLUGIN = "scripts.benchmark_stage2_driver_mutation_check"
@@ -112,14 +137,12 @@ def _witness_test_files(root: pathlib.Path = _REPO_ROOT) -> list[str]:
     return [*found, _STATS_TEST]
 
 
-_TEST_FILE_NAMES = frozenset(
-    pathlib.PurePath(p).name for p in _witness_test_files()
-)
+_TEST_FILE_NAMES = frozenset(pathlib.PurePath(p).name for p in _witness_test_files())
 
 
 @dataclass(frozen=True)
 class Witness:
-    """変異が落とすべき証拠 (O_time の harness と同じ照合。``via`` は対象 6 ファイルのどれかのフレームの関数名)."""
+    """変異が落とすべき証拠 (O_time の harness と同じ照合。``via`` は対象 8 ファイルのどれかのフレームの関数名)."""
 
     item: str | None = None
     when: str = "call"
@@ -306,6 +329,42 @@ _S_SPLIT = "test_split_half_blocks_establishment"
 _S_FLOOR = "test_floor_concentration_blocks_establishment"
 _S_CONC = "test_concentration_level_is_alpha_over_two_sum_m"
 _S_WORST = "test_worst_pair_breaks_ties_to_the_first_pair"
+_G_WORST_IDX = "test_worst_pair_is_written_from_the_stats_indices"
+# scorer (test_scorer.py)
+_C_GRADED = "test_graded_run_establishes_and_names_every_pair"
+_C_FX_PAIRS = "test_v3_named_pairs_carry_the_fixture_pairs"
+_C_QWEN = "test_qwen3_prediction_is_reported"
+_C_EQUAL = "test_equal_run_is_calibrated_negative_with_floor_components"
+_C_DROPPED = "test_dropped_model_gives_negative_on_subset_and_keeps_k"
+_C_NOT_QUAL = "test_too_few_reported_models_is_not_qualified"
+_C_NOT_COMP = "test_all_models_missing_is_not_computed"
+_C_INV_META = "test_invalid_meta_excludes_the_model"
+_C_ALL_INV = "test_all_models_invalid_meta_is_invalid"
+_C_ENV_BOUND = "test_envelope_boundary_is_strict"
+_C_ENV_GATE = "test_envelope_comes_from_the_gate"
+_C_REC_VIOL = "test_record_violation_makes_the_battery_invalid"
+_C_RUN_VIOL = "test_run_wide_violation_makes_every_battery_invalid"
+_C_FX_MISMATCH = "test_fixture_mismatch_makes_every_battery_invalid"
+_C_GATE = "test_gate_contract_violations_are_refused"
+_C_GATE_NQ = "test_gate_with_a_not_qualified_battery_is_read"
+_C_OUTPUT = "test_output_is_written_once_and_checked"
+_C_NONDET = "test_nondeterminism_is_caught"
+_C_LEVELS = "test_descriptive_bounds_use_the_registered_levels"
+_C_DECIDE_ARGS = "test_decide_battery_gets_the_gate_levels_and_halves"
+_C_INV_VERSION = "test_run_wide_invalid_version_is_invalid"
+_C_INSENSITIVE = "test_insensitive_named_pair_is_limited_to_the_score_gap"
+_C_DR_GATE = "test_driver_refuses_every_gate_the_scorer_refuses"  # DD-12 M1 (driver の読み手に同じ負例)
+_C_FX_FILE = "test_named_pairs_carry_every_fixture_pair_of_the_file"  # DD-12 M3
+_C_EXCL_META = (
+    "test_invalid_meta_excludes_the_model"  # DD-12 M2 (除外後の名指しの完全一致)
+)
+_C_ENCODING = "test_o_time_six_classes_are_split_by_encoding"  # DD-12 M4
+# fixtures (test_fixtures.py)
+_F_PORTED = "test_ported_policies_match_the_originals_on_stage2_r"
+_F_LABEL_PRIOR = "test_label_prior_prefers_a_fixed_label"
+_F_PAIRS = "test_pairs_and_over_delta_min"
+_F_REAL = "test_real_gate_diffs"
+_F_CLI = "test_cli_writes_once_and_checks"
 
 # ------------------------------------------------------------ 変異の登録
 
@@ -375,8 +434,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d08 新しい区切りを期限ちょうどで始める",
         "driver",
-        "        if self.deadline.remaining() <= 0:\n            return \"deadline\"\n",
-        "        if self.deadline.remaining() < 0:\n            return \"deadline\"\n",
+        '        if self.deadline.remaining() <= 0:\n            return "deadline"\n',
+        '        if self.deadline.remaining() < 0:\n            return "deadline"\n',
         (_D_REPLAY_LAST,),
         "§H: 期限に当たった後は新しい区切りを始めない (not_started)",
     ),
@@ -407,8 +466,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d12 版の違いを見た後も新しい区切りを始める",
         "driver",
-        "        if any(v != OLLAMA_VERSION for v in self.versions_seen):\n            return \"Ollama version mismatch seen\"\n",
-        "        if False:\n            return \"Ollama version mismatch seen\"\n",
+        '        if any(v != OLLAMA_VERSION for v in self.versions_seen):\n            return "Ollama version mismatch seen"\n',
+        '        if False:\n            return "Ollama version mismatch seen"\n',
         (_D_VER_MID,),
         "DD-5: 違う版を見たら以後の区切りを始めない (GPU を使わない)",
     ),
@@ -423,16 +482,16 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d14 終わりの無効化で adopted_attempt を残す",
         "driver",
-        "                state.reason = f\"Ollama version {seen} != {OLLAMA_VERSION} (§A.1)\"\n"
+        '                state.reason = f"Ollama version {seen} != {OLLAMA_VERSION} (§A.1)"\n'
         "                state.adopted_attempt = None\n",
-        "                state.reason = f\"Ollama version {seen} != {OLLAMA_VERSION} (§A.1)\"\n",
+        '                state.reason = f"Ollama version {seen} != {OLLAMA_VERSION} (§A.1)"\n',
         (_D_VER_MID,),
         "H6: 無効な区切りに採用 attempt を残さない",
     ),
     _m(
         "d15 digest の違いを見ない",
         "driver",
-        "    if obs.model_digest != ref.get(\"model_digest\"):\n",
+        '    if obs.model_digest != ref.get("model_digest"):\n',
         "    if False:\n",
         (_D_DIGEST,),
         "§A.1・§F-1: digest の違いはそのモデルを INVALID",
@@ -440,7 +499,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d16 template の違いを見ない",
         "driver",
-        "    if obs.template_sha256 != ref.get(\"template_sha256\"):\n",
+        '    if obs.template_sha256 != ref.get("template_sha256"):\n',
         "    if False:\n",
         (_D_TEMPLATE,),
         "§A.1・§F-1: template の違いはそのモデルを INVALID",
@@ -484,7 +543,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "d21 chat・show 以外の POST を許す",
         "driver",
         "            elif path != CHAT_PATH:\n",
-        "            elif path not in (CHAT_PATH, \"/api/generate\"):\n",
+        '            elif path not in (CHAT_PATH, "/api/generate"):\n',
         (_D_OBSERVER,),
         "POST は /api/chat と /api/show だけ",
         _raised(),
@@ -492,8 +551,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d22 raw を verbatim で残さない",
         "driver",
-        "            \"raw\": None if reply is None else reply.content,\n",
-        "            \"raw\": None if reply is None else reply.content.replace(\"\\n\", \" \"),\n",
+        '            "raw": None if reply is None else reply.content,\n',
+        '            "raw": None if reply is None else reply.content.replace("\\n", " "),\n',
         (_D_ORDER,),
         "記録は parse しない (raw を verbatim)",
     ),
@@ -525,7 +584,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "d26 8B 換算の費用を battery によらず v2 の秒で",
         "driver",
         "        self.cost_8b_s[category] += st.SPECS[battery].sec_per_call\n",
-        "        self.cost_8b_s[category] += st.SPECS[\"v2\"].sec_per_call\n",
+        '        self.cost_8b_s[category] += st.SPECS["v2"].sec_per_call\n',
         (_D_REPLAY_ACC,),
         "M3: 8B 換算は battery の秒の表",
     ),
@@ -591,7 +650,7 @@ MUTANTS: tuple[Mutant, ...] = (
         "d34 本走に再生の区切りを許す",
         "driver",
         "            seg.stage == pl.STAGE_REPLAY and run_stage_name != pl.STAGE_PILOT\n",
-        "            seg.stage == pl.STAGE_REPLAY and run_stage_name == \"never\"\n",
+        '            seg.stage == pl.STAGE_REPLAY and run_stage_name == "never"\n',
         (_D_MAIN_REPLAY,),
         "再生は pilot の枠だけ (§H)",
         _raised(),
@@ -599,7 +658,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d35 公開前の検査で行数を見ない",
         "driver",
-        "    if len(rows) != len(seg.calls):\n        out.append(f\"{len(rows)} rows for {len(seg.calls)} calls\")\n        return out\n",
+        '    if len(rows) != len(seg.calls):\n        out.append(f"{len(rows)} rows for {len(seg.calls)} calls")\n        return out\n',
         "    if len(rows) != len(seg.calls):\n        return out\n",
         (_D_PUB,),
         "公開前: 行が区切りの呼び出しと 1 対 1",
@@ -623,26 +682,26 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d38 gate の schema・status を見ない",
         "driver",
-        "    if gate.get(\"schema\") != GATE_SCHEMA or gate.get(\"status\") != \"OK\":\n",
+        '    if gate.get("schema") != GATE_SCHEMA or gate.get("status") != "OK":\n',
         "    if False:\n",
         (_G_READ_GATE, _D_GATE_R),
         "H5: gate.json の schema と status = OK",
         _raised(item="<lambda>2"),
     ),
     _m(
-        "d39 gate の入場の並びを見ない",
+        "d39 gate の入場を models の status と照合しない",
         "driver",
-        "            or ent != [m for m in pl.MODELS if m in ent]\n",
-        "            or False\n",
+        '        if ent != entered or not _same_int(entry.get("n_entered"), len(entered)):\n',
+        '        if not _same_int(entry.get("n_entered"), len(entered)):\n',
         (_G_READ_GATE,),
-        "H5: 入場は登録モデルの §A.1 の順",
+        "H5・DD-12 H1: 入場 = models の status が entered のモデル (§A.1 の順)",
         _raised(item="<lambda>3"),
     ),
     _m(
         "d40 gate の n_entered を見ない",
         "driver",
-        "            or not _same_int(entry.get(\"n_entered\"), len(ent))\n",
-        "            or False\n",
+        '        if ent != entered or not _same_int(entry.get("n_entered"), len(entered)):\n',
+        "        if ent != entered:\n",
         (_G_READ_GATE,),
         "H5: n_entered = 入場の本数",
         _raised(item="<lambda>4"),
@@ -677,16 +736,17 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "d44 gate の envelope の型を見ない",
         "driver",
-        "                or type(env.get(\"numerator\")) is not int\n",
+        '                or type(env.get("numerator")) is not int\n',
         "                or False\n",
         (_G_READ_GATE,),
         "H5: envelope は整数の分数 (浮動小数を経由しない)",
-        _raised(item="<lambda>8"),
+        # DD-12 で envelope を Fraction に組んで照合するので、浮動小数の分子は Fraction が拒む
+        Witness(item="<lambda>8", exc="TypeError", text="Rational"),
     ),
     _m(
         "d45 gate の K・ΣM を再計算と照合しない",
         "driver",
-        "    if not _same_int(gate.get(\"K\"), k_tests) or not _same_int(gate.get(\"sum_M\"), sum_m):\n",
+        '    if not _same_int(gate.get("K"), k_tests) or not _same_int(gate.get("sum_M"), sum_m):\n',
         "    if False:\n",
         (_G_READ_GATE,),
         "H5: K・ΣM は入場数から再計算して照合",
@@ -769,6 +829,87 @@ MUTANTS: tuple[Mutant, ...] = (
         (_D_REQ_TIMEOUT,),
         "driver の契約: 期限は request の timeout にも適用する",
     ),
+    _m(
+        "d55 gate の models.json の sha を見ない",
+        "driver",
+        '        or inputs.get("models_json_sha256") != models_json_sha256\n',
+        "        or False\n",
+        (_C_DR_GATE,),
+        "DD-12 M1: 本走が使う models.json から作られた gate だけを読む",
+        _raised("<lambda>4"),
+    ),
+    _m(
+        "d56 gate の envelope を ⊥ の数からの復元と照合しない",
+        "driver",
+        '            if Fraction(env["numerator"], env["denominator"]) != want_env:\n',
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: envelope = parse_rule(保存の ⊥ の数) の 2 つ目",
+        _raised("<lambda>19"),
+    ),
+    _m(
+        "d57 ⊥ の数の型を見ない",
+        "driver",
+        "            if not all(type(k) is int for k in counts):\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: ⊥ の数は整数 (浮動小数は parse_rule の int() で黙って丸まる)",
+        _raised("<lambda>26"),
+    ),
+    _m(
+        "d59 ⊥ の数が list かを見ない",
+        "driver",
+        "            if not isinstance(counts, list):\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: ⊥ の数は arm ごとの list",
+        Witness(item="<lambda>25", exc="TypeError", text="has no len"),
+    ),
+    _m(
+        "d60 ⊥ の数の arm の数を見ない",
+        "driver",
+        "            if len(counts) != st.N_ARMS[name]:\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: ⊥ の数は登録の arm の数 (stats.qualify と同じ)",
+        _raised("<lambda>24"),
+    ),
+    _m(
+        "d61 bot_n が正の整数かを見ない",
+        "driver",
+        "            if type(n_bot) is not int or n_bot <= 0:\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: bot_n は正の整数",
+        Witness(item="<lambda>21", exc="TypeError", text="Rational"),
+    ),
+    _m(
+        "d62 ⊥ の数の範囲 [0, bot_n] を見ない",
+        "driver",
+        "            if not all(0 <= k <= n_bot for k in counts):\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: ⊥ の数は [0, bot_n] (負の数は envelope の負の分数と整合してしまう)",
+        _raised("<lambda>27"),
+    ),
+    _m(
+        "d63 入場モデルの parse の規則を見ない",
+        "driver",
+        "            if not parse_ok:\n",
+        "            if False:\n",
+        (_C_DR_GATE,),
+        "DD-12 H1: entered は parse の規則を通る (stats.qualify)",
+        _raised("<lambda>28"),
+    ),
+    _m(
+        "d58 gate の models が object かを見ない",
+        "driver",
+        '        if not isinstance(models, dict):\n            raise _gate_error(f"{name}: models is not an object")\n',
+        '        if False:\n            raise _gate_error(f"{name}: models is not an object")\n',
+        (_C_DR_GATE,),
+        "DD-12 H1: 入場の照合は models の object を読む",
+        Witness(item="<lambda>23", exc="AttributeError", text="has no attribute 'get'"),
+    ),
     # ---------------------------------------------------------------- plan
     _m(
         "p01 top_k 20 → 40",
@@ -781,16 +922,16 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p02 body の stream を真に",
         "plan",
-        "        \"stream\": False,\n        \"think\": THINK,\n",
-        "        \"stream\": True,\n        \"think\": THINK,\n",
+        '        "stream": False,\n        "think": THINK,\n',
+        '        "stream": True,\n        "think": THINK,\n',
         (_P_BODY,),
         "§A.1: stream = false",
     ),
     _m(
         "p03 送る seed を 1 ずらす",
         "plan",
-        "    return {**DECODE, \"seed\": seed}\n",
-        "    return {**DECODE, \"seed\": seed + 1}\n",
+        '    return {**DECODE, "seed": seed}\n',
+        '    return {**DECODE, "seed": seed + 1}\n',
         (_P_BODY,),
         "送る seed = 凍結の sample_seed",
     ),
@@ -829,8 +970,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p09 G の masked を本走の名前空間の seed で",
         "plan",
-        "            ns = f\"pilot_fam{fi}\" if masked else f\"fam{fi}\"\n",
-        "            ns = f\"fam{fi}\"\n",
+        '            ns = f"pilot_fam{fi}" if masked else f"fam{fi}"\n',
+        '            ns = f"fam{fi}"\n',
         (_P_PILOT_SEED,),
         "§C: masked は pilot の名前空間の seed",
         _assert_in("G"),
@@ -846,8 +987,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p11 G の KNOW の seed の試行を 0 に",
         "plan",
-        "            gbat.sample_seed(\"know\", 0, i, k),\n",
-        "            gbat.sample_seed(\"know\", 0, i, 0),\n",
+        '            gbat.sample_seed("know", 0, i, k),\n',
+        '            gbat.sample_seed("know", 0, i, 0),\n',
         (_P_PILOT_SEED, _P_UNIQUE),
         "§C: KNOW は旧 pilot と同じ seed (試行ごと)",
         _assert_in("G"),
@@ -855,8 +996,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p12 O_time の masked・M0 を本走の名前空間の seed で",
         "plan",
-        "    ns = f\"fam{unit.family}\" if mode == \"main\" else f\"{mode}_fam{unit.family}\"\n",
-        "    ns = f\"fam{unit.family}\"\n",
+        '    ns = f"fam{unit.family}" if mode == "main" else f"{mode}_fam{unit.family}"\n',
+        '    ns = f"fam{unit.family}"\n',
         (_P_PILOT_SEED,),
         "§C: masked・M0 は pilot の名前空間の seed",
         _assert_in("O_time"),
@@ -864,8 +1005,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p13 O_time の masked と M0 の順を入れ替える",
         "plan",
-        "        out += _o_unit_specs(u, \"masked\")\n        out += _o_unit_specs(u, \"m0\")\n",
-        "        out += _o_unit_specs(u, \"m0\")\n        out += _o_unit_specs(u, \"masked\")\n",
+        '        out += _o_unit_specs(u, "masked")\n        out += _o_unit_specs(u, "m0")\n',
+        '        out += _o_unit_specs(u, "m0")\n        out += _o_unit_specs(u, "masked")\n',
         (_P_O_ORDER,),
         "凍結の旧 pilot の順: 単位ごとに masked → M0",
     ),
@@ -881,8 +1022,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p15 pilot の補助の r の始点を 1 巡ずらす",
         "plan",
-        "PILOT_AUX_R0: Final[dict[str, int]] = {\"G\": 24, \"O_time\": 312}",
-        "PILOT_AUX_R0: Final[dict[str, int]] = {\"G\": 24, \"O_time\": 315}",
+        'PILOT_AUX_R0: Final[dict[str, int]] = {"G": 24, "O_time": 312}',
+        'PILOT_AUX_R0: Final[dict[str, int]] = {"G": 24, "O_time": 315}',
         (_R_ENUM,),
         "§C: O_time の masked・M0 の r は 312–317",
         _assert_in("pilot-O_time-None"),
@@ -895,14 +1036,16 @@ MUTANTS: tuple[Mutant, ...] = (
         (_P_MAIN_SEED,),
         "§C: 本走の r は SPECS の main_r0 から (main_calls の r の範囲の検査が拒む)",
         Witness(
-            item="v2", exc="ValueError", text="main r0 differs from the registered value"
+            item="v2",
+            exc="ValueError",
+            text="main r0 differs from the registered value",
         ),
     ),
     _m(
         "p17 本走の r の範囲の検査を外す",
         "plan",
-        "    if problems:\n        raise ValueError(\"; \".join(problems))\n",
-        "    if False:\n        raise ValueError(\"; \".join(problems))\n",
+        '    if problems:\n        raise ValueError("; ".join(problems))\n',
+        '    if False:\n        raise ValueError("; ".join(problems))\n',
         (_P_MAIN_REJECT,),
         "§C: 本走の r の範囲は機械検査を通る",
         _raised(),
@@ -982,16 +1125,16 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p27 G の masked の状態の検査を本登録の r で回さない",
         "plan",
-        "    out[\"masked_states\"] = g_masked_states(masked_r) if masked_r else []\n",
-        "    out[\"masked_states\"] = []\n",
+        '    out["masked_states"] = g_masked_states(masked_r) if masked_r else []\n',
+        '    out["masked_states"] = []\n',
         (_P_MASKED_R24,),
         "H3: r 固定の masked の検査は本登録の r の列で書き直す",
     ),
     _m(
         "p28 O_time の M0 の状態の検査を回さない",
         "plan",
-        "    out[\"m0_states\"] = o_m0_states(units) if units else []\n",
-        "    out[\"m0_states\"] = []\n",
+        '    out["m0_states"] = o_m0_states(units) if units else []\n',
+        '    out["m0_states"] = []\n',
         (_P_M0_R312,),
         "H3: r 固定の M0 の検査は本登録の r の列で書き直す",
     ),
@@ -1022,8 +1165,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "p32 本走の r の範囲を pilot の規則で",
         "plan",
-        "        rep[f\"{stage}:r_range\"] = st.check_r_range(spec, rs, main=stage == \"main\")\n",
-        "        rep[f\"{stage}:r_range\"] = st.check_r_range(spec, rs, main=False)\n",
+        '        rep[f"{stage}:r_range"] = st.check_r_range(spec, rs, main=stage == "main")\n',
+        '        rep[f"{stage}:r_range"] = st.check_r_range(spec, rs, main=False)\n',
         (_P_CHECKS,),
         "§C: 本走の r の範囲の検査",
         _assert_in("v2-8"),
@@ -1032,8 +1175,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "u01 v2・v3 の単位の順を k 外・probe 内に",
         "units",
-        "            for qi in range(len(v2bat.lever_probes()))\n            for k in range(_k_count(battery))\n        ]\n    if battery == \"G\":",
-        "            for k in range(_k_count(battery))\n            for qi in range(len(v2bat.lever_probes()))\n        ]\n    if battery == \"G\":",
+        '            for qi in range(len(v2bat.lever_probes()))\n            for k in range(_k_count(battery))\n        ]\n    if battery == "G":',
+        '            for k in range(_k_count(battery))\n            for qi in range(len(v2bat.lever_probes()))\n        ]\n    if battery == "G":',
         (_U_CELL,),
         "H2: 単位の順 = strata の順 (probe 外・k 内)",
         _assert_in("v2"),
@@ -1085,16 +1228,16 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "u08 v2 の ⊥ の arm から C0 を外す",
         "units",
-        "    \"v2\": v2bat.ALL_ARMS,\n",
-        "    \"v2\": v2bat.LEVER_ARMS,\n",
+        '    "v2": v2bat.ALL_ARMS,\n',
+        '    "v2": v2bat.LEVER_ARMS,\n',
         (_U_BOT,),
         "H4: v2 の parse の規則は C0 を含む 5 本",
     ),
     _m(
         "u09 通信の欠測を ⊥ に数える",
         "units",
-        "            row[\"missing\"] += 1\n",
-        "            row[\"bot\"] += 1\n",
+        '            row["missing"] += 1\n',
+        '            row["bot"] += 1\n',
         (_U_SIX,),
         "§B: 6 分類 (⊥ と通信の欠測を分ける)",
     ),
@@ -1118,7 +1261,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r01 重複した key を見ない",
         "records",
-        "            out.append(f\"{name}: duplicate key {key}\")\n",
+        '            out.append(f"{name}: duplicate key {key}")\n',
         "            pass\n",
         (_R_STRUCT,),
         "H1: 重複は STOP (records)",
@@ -1127,7 +1270,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r02 範囲外の key を見ない",
         "records",
-        "            out.append(f\"{name}: key outside the registered grid {key}\")\n",
+        '            out.append(f"{name}: key outside the registered grid {key}")\n',
         "            pass\n",
         (_R_STRUCT,),
         "H1: 範囲外は STOP (records)",
@@ -1145,7 +1288,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r04 seed を見ない",
         "records",
-        "        if obj[\"seed\"] != exp.seed:\n",
+        '        if obj["seed"] != exp.seed:\n',
         "        if False:\n",
         (_R_STRUCT,),
         "H1: seed は凍結の expected_sample",
@@ -1154,7 +1297,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r05 prompt の sha を見ない",
         "records",
-        "        if obj[\"prompt_sha256\"] != exp.prompt_sha256:\n",
+        '        if obj["prompt_sha256"] != exp.prompt_sha256:\n',
         "        if False:\n",
         (_R_STRUCT,),
         "H1: prompt の sha は凍結の renderer",
@@ -1163,7 +1306,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r06 応答の model を見ない",
         "records",
-        "            \"response_model\": sr.model,\n",
+        '            "response_model": sr.model,\n',
         "",
         (_R_STRUCT,),
         "H1: 応答の model を採用 attempt に結ぶ",
@@ -1181,7 +1324,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r08 目的を見ない",
         "records",
-        "        if obj[\"purpose\"] != exp.purpose:\n",
+        '        if obj["purpose"] != exp.purpose:\n',
         "        if False:\n",
         (_R_STRUCT,),
         "H1: 目的は登録の grid の目的",
@@ -1190,7 +1333,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r09 records の sha を状態表と照合しない",
         "records",
-        "    if _sha(rec_bytes) != entry.get(\"records_sha256\"):\n",
+        '    if _sha(rec_bytes) != entry.get("records_sha256"):\n',
         "    if False:\n",
         (_R_SHA,),
         "H6: records の sha を状態表に結ぶ",
@@ -1198,7 +1341,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r10 meta の sha を状態表と照合しない",
         "records",
-        "    if _sha(meta_bytes) != entry.get(\"meta_sha256\"):\n",
+        '    if _sha(meta_bytes) != entry.get("meta_sha256"):\n',
         "    if False:\n",
         (_R_META_SHA,),
         "H6: meta の sha を状態表に結ぶ",
@@ -1222,7 +1365,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r13 meta の template と sha の一致を見ない",
         "records",
-        "    elif _sha(template.encode(\"utf-8\")) != meta.get(\"template_sha256\"):\n",
+        '    elif _sha(template.encode("utf-8")) != meta.get("template_sha256"):\n',
         "    elif False:\n",
         (_R_TEMPLATE_SHA,),
         "DD-2: template の全文と sha が一致",
@@ -1230,7 +1373,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r14 区切りの digest を照合しない",
         "records",
-        "        if entry.get(\"segment_digest\") != dig or entry.get(\"n_calls\") != len(calls):\n",
+        '        if entry.get("segment_digest") != dig or entry.get("n_calls") != len(calls):\n',
         "        if False:\n",
         (_R_SEG_DIGEST,),
         "DD-7: 区切りの digest を独立に再計算して照合",
@@ -1238,7 +1381,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r15 plan digest を照合しない",
         "records",
-        "    if table.get(\"plan_digest\") != plan_digest(digests):\n",
+        '    if table.get("plan_digest") != plan_digest(digests):\n',
         "    if False:\n",
         (_R_TAMPER,),
         "DD-7: plan digest を独立に再計算して照合",
@@ -1246,7 +1389,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r16 区切りの順を照合しない",
         "records",
-        "    if table.get(\"order\") != names:\n",
+        '    if table.get("order") != names:\n',
         "    if False:\n",
         (_R_TAMPER,),
         "§H: 状態表の区切りの順",
@@ -1262,7 +1405,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r18 採用 attempt が最後の attempt かを見ない",
         "records",
-        "    if entry.get(\"attempts_run\") != attempt:\n",
+        '    if entry.get("attempts_run") != attempt:\n',
         "    if False:\n",
         (_R_LAST,),
         "H6: 読み手は採用 attempt (= 最後の attempt) だけを読む",
@@ -1270,7 +1413,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r19 completed でない区切りの採用 attempt を見ない",
         "records",
-        "            if entry.get(\"adopted_attempt\") is not None:\n",
+        '            if entry.get("adopted_attempt") is not None:\n',
         "            if False:\n",
         (_R_ADOPTED_NC,),
         "H6: completed でない区切りに採用 attempt は無い",
@@ -1294,7 +1437,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r22 n_sends の範囲を見ない",
         "records",
-        "        if not 1 <= obj[\"n_sends\"] <= MAX_SENDS:\n",
+        '        if not 1 <= obj["n_sends"] <= MAX_SENDS:\n',
         "        if False:\n",
         (_R_N_SENDS,),
         "§H: n_sends ∈ [1, 4]",
@@ -1302,7 +1445,7 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "r23 状態表の Ollama の版を models.json と照合しない",
         "records",
-        "    if table.get(\"expected_ollama_version\") != reference.get(\"ollama_version\"):\n",
+        '    if table.get("expected_ollama_version") != reference.get("ollama_version"):\n',
         "    if False:\n",
         (_R_OLLAMA,),
         "§A.1: 状態表の版 = models.json の版",
@@ -1346,16 +1489,16 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g01 m0_check を辞書の真偽で読む",
         "pilot_gate",
-        "    passed = res[\"passed\"] is True\n",
+        '    passed = res["passed"] is True\n',
         "    passed = bool(res)\n",
         (_G_REASONS,),
-        "H4: lookup = m0_check(...)[\"passed\"] (辞書を真偽にしない)",
+        'H4: lookup = m0_check(...)["passed"] (辞書を真偽にしない)',
     ),
     _m(
         "g02 M0 の区切りが無いモデルを不合格にする",
         "pilot_gate",
-        "        return None, {\"status\": M_LOOKUP_NOT_COMPUTED, \"reason\": f\"O_time: {sr.status}\"}\n",
-        "        return False, {\"status\": M_LOOKUP_NOT_COMPUTED, \"reason\": f\"O_time: {sr.status}\"}\n",
+        '        return None, {"status": M_LOOKUP_NOT_COMPUTED, "reason": f"O_time: {sr.status}"}\n',
+        '        return False, {"status": M_LOOKUP_NOT_COMPUTED, "reason": f"O_time: {sr.status}"}\n',
         (_G_REASONS,),
         "H4: M0 の欠測 (not_computed) と M0 の不合格 (lookup 不成立) を分ける",
     ),
@@ -1370,8 +1513,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g04 M0 の行の写しで r を付け替えない",
         "pilot_gate",
-        "    x = opg.cell_scores(rd.o_samples(rows, O_AUX_SHIFT), \"m0\")[0]\n",
-        "    x = opg.cell_scores(rd.o_samples(rows), \"m0\")[0]\n",
+        '    x = opg.cell_scores(rd.o_samples(rows, O_AUX_SHIFT), "m0")[0]\n',
+        '    x = opg.cell_scores(rd.o_samples(rows), "m0")[0]\n',
         (_G_E2E,),
         "H3: 凍結の集計は r を [300, 306) に付け替えた写しで",
         _INDEX,
@@ -1379,8 +1522,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g05 v3 の L arm を 3 本",
         "pilot_gate",
-        "        control, n_c = un.bot_counts(\"v3\", choices, rs, arms=v3bat.CONTROL_ARMS)\n",
-        "        control, n_c = un.bot_counts(\"v3\", choices, rs, arms=v3bat.CONTROL_ARMS[:3])\n",
+        '        control, n_c = un.bot_counts("v3", choices, rs, arms=v3bat.CONTROL_ARMS)\n',
+        '        control, n_c = un.bot_counts("v3", choices, rs, arms=v3bat.CONTROL_ARMS[:3])\n',
         (_G_E2E, _G_REASONS),
         "H4: v3 の L arm は 4 本 (本数を検査する)",
         Witness(exc="ValueError", text="v3 control arms differ from the registered 4"),
@@ -1421,8 +1564,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g10 O_time の masked の写しで r を付け替えない",
         "pilot_gate",
-        "        _, nb, _ = opg.cell_scores(rd.o_samples(masked, O_AUX_SHIFT), \"masked\")\n",
-        "        _, nb, _ = opg.cell_scores(rd.o_samples(masked), \"masked\")\n",
+        '        _, nb, _ = opg.cell_scores(rd.o_samples(masked, O_AUX_SHIFT), "masked")\n',
+        '        _, nb, _ = opg.cell_scores(rd.o_samples(masked), "masked")\n',
         (_G_E2E,),
         "H3: 凍結の集計は r を付け替えた写しで",
         _INDEX,
@@ -1454,8 +1597,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g14 INVALID を計算できたに数える",
         "pilot_gate",
-        "            models[m][\"status\"] not in (M_NOT_COMPUTED, M_INVALID) for m in rd.MODELS\n",
-        "            models[m][\"status\"] not in (M_NOT_COMPUTED,) for m in rd.MODELS\n",
+        '            models[m]["status"] not in (M_NOT_COMPUTED, M_INVALID) for m in rd.MODELS\n',
+        '            models[m]["status"] not in (M_NOT_COMPUTED,) for m in rd.MODELS\n',
         (_G_INVALID,),
         "INVALID のモデルは資格を計算していない",
     ),
@@ -1478,8 +1621,8 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g17 予算の規則を gate に写さない",
         "pilot_gate",
-        "        batteries[b][\"gate\"] = label\n",
-        "        batteries[b][\"gate\"] = st.GATE_GO\n",
+        '        batteries[b]["gate"] = label\n',
+        '        batteries[b]["gate"] = st.GATE_GO\n',
         (_G_BUDGET,),
         "§G-5: GO / HELD_COST = stats.budget",
     ),
@@ -1512,24 +1655,24 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "g21 入場を表の順でなく名前の順に",
         "pilot_gate",
-        "        entrants = [m for m in rd.MODELS if models[m][\"status\"] == M_ENTERED]\n",
-        "        entrants = sorted(m for m in rd.MODELS if models[m][\"status\"] == M_ENTERED)\n",
+        '        entrants = [m for m in rd.MODELS if models[m]["status"] == M_ENTERED]\n',
+        '        entrants = sorted(m for m in rd.MODELS if models[m]["status"] == M_ENTERED)\n',
         (_G_E2E,),
         "H5: 入場は §A.1 の表の順",
     ),
     _m(
         "g22 worst_pair の名前を逆に",
         "pilot_gate",
-        "                \"worst_pair\": [entry[\"entrants\"][a], entry[\"entrants\"][c]],\n",
-        "                \"worst_pair\": [entry[\"entrants\"][c], entry[\"entrants\"][a]],\n",
+        '                "worst_pair": [entry["entrants"][a], entry["entrants"][c]],\n',
+        '                "worst_pair": [entry["entrants"][c], entry["entrants"][a]],\n',
         (_G_WORST,),
         "記述: worst_pair は stats.worst_pair の対",
     ),
     _m(
         "g23 v3 の L arm の ⊥ を記録しない",
         "pilot_gate",
-        "        detail[\"control_counts\"] = list(control)\n",
-        "        detail[\"control_counts\"] = []\n",
+        '        detail["control_counts"] = list(control)\n',
+        '        detail["control_counts"] = []\n',
         (_G_REASONS,),
         "H5: arm 別の整数の ⊥ 数を保存",
     ),
@@ -1702,6 +1845,635 @@ MUTANTS: tuple[Mutant, ...] = (
         (_S_K,),
         "H7: 入場 ≥ 3 の battery だけを判定する",
     ),
+    _m(
+        "g24 worst_pair を stats の対でなく先頭 2 モデルに",
+        "pilot_gate",
+        '                "worst_pair": [entry["entrants"][a], entry["entrants"][c]],\n',
+        '                "worst_pair": [entry["entrants"][0], entry["entrants"][1]],\n',
+        (_G_WORST_IDX,),
+        "記述: worst_pair は stats.worst_pair の対 (B-2: 非対称な対で pin)",
+    ),
+    # ---------------------------------------------------------------- scorer
+    _m(
+        "c01 gate の schema を見ない",
+        "scorer",
+        '    if gate.get("schema") != GATE_SCHEMA or gate.get("status") != "OK":\n',
+        '    if gate.get("status") != "OK":\n',
+        (_C_GATE,),
+        "H5: OK の pilot gate だけを読む",
+        _raised("<lambda>2"),
+    ),
+    _m(
+        "c02 gate の models.json の sha を見ない",
+        "scorer",
+        '        or inputs.get("models_json_sha256") != models_json_sha256\n',
+        "        or False\n",
+        (_C_GATE,),
+        "DD-10: gate の models.json と使う models.json の一致",
+        _raised("<lambda>4"),
+    ),
+    _m(
+        "c03 gate の battery の集合を見ない",
+        "scorer",
+        "    if not isinstance(batteries, dict) or set(batteries) != set(st.BATTERIES):\n",
+        "    if not isinstance(batteries, dict):\n",
+        (_C_GATE,),
+        "H5: 登録の 4 battery",
+        Witness(item="<lambda>13", exc="KeyError"),
+    ),
+    _m(
+        "c04 入場を models の status と照合しない",
+        "scorer",
+        '        if ent != entered or not _int_eq(entry.get("n_entered"), len(entered)):\n',
+        '        if not _int_eq(entry.get("n_entered"), len(entered)):\n',
+        (_C_GATE,),
+        "H5・DD-12 H1: 入場 = models の status が entered のモデル (§A.1 の順)",
+        _raised("<lambda>5"),
+    ),
+    _m(
+        "c05 n_entered を見ない",
+        "scorer",
+        '        if ent != entered or not _int_eq(entry.get("n_entered"), len(entered)):\n',
+        "        if ent != entered:\n",
+        (_C_GATE,),
+        "H5: n_entered = 入場の数",
+        _raised("<lambda>6"),
+    ),
+    _m(
+        "c06 R が候補かを見ない",
+        "scorer",
+        "                or r not in st.r_candidates(st.SPECS[b])\n",
+        "                or False\n",
+        (_C_GATE,),
+        "H5: R ∈ r_candidates",
+        _raised("<lambda>9"),
+    ),
+    _m(
+        "c07 R の型を見ない",
+        "scorer",
+        "                or type(r) is not int\n",
+        "                or False\n",
+        (_C_GATE,),
+        "H5: R は整数 (8.0 を通さない)",
+        _raised("<lambda>8"),
+    ),
+    _m(
+        "c08 STOP_POWER に R があっても通す",
+        "scorer",
+        '            if not qualified or r is not None:\n                raise GateError(f"{b}: STOP_POWER',
+        '            if not qualified:\n                raise GateError(f"{b}: STOP_POWER',
+        (_C_GATE,),
+        "H5: STOP_POWER は R を持たない",
+        _raised("<lambda>7"),
+    ),
+    _m(
+        "c09 envelope の分子の型を見ない",
+        "scorer",
+        '                or type(env.get("numerator")) is not int\n',
+        "                or False\n",
+        (_C_GATE,),
+        "H5: envelope は整数の分数",
+        Witness(item="<lambda>11", exc="TypeError"),
+    ),
+    _m(
+        "c10 envelope の分母 0 を通す",
+        "scorer",
+        '                or env["denominator"] <= 0\n',
+        '                or env["denominator"] < 0\n',
+        (_C_GATE,),
+        "H5: envelope の分母は正",
+        Witness(item="<lambda>12", exc="ZeroDivisionError"),
+    ),
+    _m(
+        "c11 gate の ΣM を見ない",
+        "scorer",
+        '    if not _int_eq(gate.get("K"), k_tests) or not _int_eq(gate.get("sum_M"), sum_m):\n',
+        '    if not _int_eq(gate.get("K"), k_tests):\n',
+        (_C_GATE,),
+        "H5: ΣM を入場数から再計算して照合",
+        _raised("<lambda>1"),
+    ),
+    _m(
+        "c12 gate の K を見ない",
+        "scorer",
+        '    if not _int_eq(gate.get("K"), k_tests) or ',
+        "    if ",
+        (_C_GATE,),
+        "H5: K を入場数から再計算して照合",
+        _raised("<lambda>0"),
+    ),
+    _m(
+        "c13 ΣM に資格不足の battery も数える",
+        "scorer",
+        "    sum_m = sum(n for n in n_entered.values() if n >= st.MIN_ENTRANTS)\n",
+        "    sum_m = sum(n_entered.values())\n",
+        (_C_GATE_NQ,),
+        "§D: ΣM は入場 ≥ 3 の battery の和",
+        Witness(exc="GateError"),
+    ),
+    _m(
+        "c14 予算の規則を照合しない",
+        "scorer",
+        "    if st.budget(r_sel) != {b: labels[b] for b in r_sel}:\n",
+        "    if False:\n",
+        (_C_GATE,),
+        "H5: GO / HELD_COST は予算の規則の再計算",
+        _raised("<lambda>10"),
+    ),
+    _m(
+        "c15 GO の無い gate を通す",
+        "scorer",
+        '    if not r_go:\n        raise GateError("no GO battery")\n',
+        '    if False:\n        raise GateError("no GO battery")\n',
+        (_C_GATE,),
+        "本走は GO の battery を回す",
+        _raised("<lambda>15"),
+    ),
+    _m(
+        "c16 判定の K・ΣM を報告集合から計算し直す",
+        "scorer",
+        "        gate.k_tests,\n        gate.sum_m,\n        halves,\n        cell_counts=c_arr,\n",
+        "        st.n_tests({battery: len(report)}),\n        len(report),\n        halves,\n        cell_counts=c_arr,\n",
+        (_C_DECIDE_ARGS,),
+        "§D・§F: K・ΣM は gate の値 (本走で外したモデルの分を減らさない)",
+        # stats.decide_battery が K・ΣM と入場数の整合を検査して止める
+        Witness(exc="ValueError", text="K・ΣM が入場集合の本数と整合しない"),
+    ),
+    _m(
+        "c17 判定の n_entered を報告集合の数に",
+        "scorer",
+        "        not_computed=no_records and not all_invalid,\n        n_entered=len(entrants),\n",
+        "        not_computed=no_records and not all_invalid,\n        n_entered=len(report),\n",
+        (_C_DROPPED,),
+        "§F: 入場の一部を外した否定は NEGATIVE_SUBSET",
+    ),
+    _m(
+        "c18 半分のラベルを全部 0 に",
+        "scorer",
+        "    halves = st.half_labels(spec, r_list)\n",
+        "    halves = np.zeros(n_units, dtype=int)\n",
+        (_C_DECIDE_ARGS,),
+        "§F: 半分は位置の 1 巡の block の偶奇 (stats.half_labels)",
+        # 片方の半分が空になり、半分の点推定が空の平均の警告 (pytest の設定で error) で止まる
+        Witness(exc="RuntimeWarning", text="Mean of empty slice"),
+    ),
+    _m(
+        "c19 envelope を gate でなく固定の 1/20 に",
+        "scorer",
+        "        env = gate.envelopes[(battery, m)]\n",
+        "        env = Fraction(1, 20)\n",
+        (_C_ENV_GATE,),
+        "§F-3: envelope は gate の整数の分数",
+    ),
+    _m(
+        "c20 envelope の超過で外さない",
+        "scorer",
+        "        if st.envelope_exceeded(bots, n_arm, env):\n",
+        "        if False:\n",
+        (_C_ENV_BOUND,),
+        "§F-3: ⊥ が envelope を超えたモデルを外す",
+        _assert_in("25-True"),
+    ),
+    _m(
+        "c21 meta の違反を INVALID でなく not_computed に",
+        "scorer",
+        "        if sr.status in (rd.R_INVALID_META, rd.R_INVALID_VERSION):\n            excluded.append(",
+        "        if False:\n            excluded.append(",
+        (_C_INV_META,),
+        "§F: 外す理由は INVALID → not_computed → envelope の順",
+    ),
+    _m(
+        "c22 全モデルの meta の違反を INVALID にしない",
+        "scorer",
+        "    all_invalid = all(s in (rd.R_INVALID_META, rd.R_INVALID_VERSION) for s in statuses)\n",
+        "    all_invalid = False\n",
+        (_C_ALL_INV,),
+        "§F-1: 全モデル INVALID = battery INVALID",
+    ),
+    _m(
+        "c23 記録の無い battery を not_computed にしない",
+        "scorer",
+        "        not_computed=no_records and not all_invalid,\n",
+        "        not_computed=False,\n",
+        (_C_NOT_COMP,),
+        "§F: 記録のあるモデルが無い = not_computed",
+    ),
+    _m(
+        "c24 区切りの外の違反を battery に割り当てない",
+        "scorer",
+        "        if not own or any(n in names for n in own):\n",
+        "        if any(n in names for n in own):\n",
+        (_C_RUN_VIOL,),
+        "DD-10: 区切りの外 (状態表・plan digest) の違反は全 battery",
+    ),
+    _m(
+        "c25 他の battery の区切りの違反も拾う",
+        "scorer",
+        "        if not own or any(n in names for n in own):\n",
+        "        if True:\n",
+        (_C_REC_VIOL,),
+        "DD-10: 区切りの違反はその battery だけを INVALID にする",
+    ),
+    _m(
+        "c26 fixture を名指しに条件付きで併記する",
+        "scorer",
+        '                "fixture_pairs": fx_pairs,\n',
+        '                "fixture_pairs": [] if (a, b) in sens else fx_pairs,\n',
+        (_C_FX_PAIRS,),
+        "§J: 名指した対に常に併記する",
+    ),
+    _m(
+        "c27 fixture の再計算と比べない",
+        "scorer",
+        '        if fxm.compute_text(gate_path).encode("utf-8") != fx_bytes:\n',
+        "        if False:\n",
+        (_C_FX_MISMATCH,),
+        "§J・§F-1: fixture の byte が違えば全 battery INVALID",
+    ),
+    _m(
+        "c28 fixture の file が無くても通す",
+        "scorer",
+        '        global_invalid.append("fixture_diffs_main.json is missing")\n',
+        "        pass\n",
+        (_C_FX_MISMATCH,),
+        "§J: fixture が無ければ全 battery INVALID",
+    ),
+    _m(
+        "c29 全体の違反を battery に渡さない",
+        "scorer",
+        "            batteries[b] = score_battery(b, run, gate, fixture.get(b), global_invalid)\n",
+        "            batteries[b] = score_battery(b, run, gate, fixture.get(b), [])\n",
+        (_C_FX_MISMATCH,),
+        "§F-1: fixture の照合の違反は全 battery",
+    ),
+    _m(
+        "c30 記述の対の水準を α/(2K) に",
+        "scorer",
+        "    level = st.ALPHA / gate.k_tests  #",
+        "    level = st.ALPHA / (2 * gate.k_tests)  #",
+        (_C_LEVELS,),
+        "DD-10: 記述の対の下限は判定と同じ水準 α/K",
+    ),
+    _m(
+        "c31 モデルの C の区間の水準を α/ΣM に",
+        "scorer",
+        "    level_c = st.ALPHA / (2 * gate.sum_m)\n",
+        "    level_c = st.ALPHA / gate.sum_m\n",
+        (_C_LEVELS,),
+        "§M: モデルの C の両側区間は α/(2ΣM)",
+    ),
+    _m(
+        "c32 2 回計算の比較を外す",
+        "scorer",
+        "    if texts[0] != texts[1]:\n",
+        "    if False:\n",
+        (_C_NONDET,),
+        "DD-10: 2 回計算して byte が違えば書かない",
+        _raised(),
+    ),
+    _m(
+        "c33 verdict.json を上書きする",
+        "scorer",
+        '        with out.open("xb") as fh:\n',
+        '        with out.open("wb") as fh:\n',
+        (_C_OUTPUT,),
+        "DD-10: 出力は上書きしない",
+        _raised(),
+    ),
+    _m(
+        "c34 --check が byte を比べない",
+        "scorer",
+        '            same = args.out.read_bytes() == body.encode("utf-8")\n',
+        "            same = True\n",
+        (_C_OUTPUT,),
+        "DD-10: --check は byte 比較",
+    ),
+    _m(
+        "c35 判定が出ても終わりの文を書く",
+        "scorer",
+        '            "line_end": None if established else LINE_END_TEXT,\n',
+        '            "line_end": None,\n',
+        (_C_EQUAL,),
+        "§M: 確立した battery が無ければ終わりの文",
+    ),
+    _m(
+        "c36 qwen3 の大きさの予測の向きを逆に",
+        "scorer",
+        "            agree = rank[a] > rank[b]\n",
+        "            agree = rank[a] < rank[b]\n",
+        (_C_QWEN,),
+        "§M: qwen3 は大きいほど C が高いという予測",
+    ),
+    _m(
+        "c37 gate の status を見ない",
+        "scorer",
+        '    if gate.get("schema") != GATE_SCHEMA or gate.get("status") != "OK":\n',
+        '    if gate.get("schema") != GATE_SCHEMA:\n',
+        (_C_GATE,),
+        "H5: OK の pilot gate だけを読む (STOP_RECORDS を通さない)",
+        _raised("<lambda>3"),
+    ),
+    _m(
+        "c38 入場 3 未満の battery の GO を通す",
+        "scorer",
+        "                not qualified\n                or type(r) is not int\n",
+        "                type(r) is not int\n",
+        (_C_GATE,),
+        "H7: GO・HELD_COST は入場 ≥ 3 の battery だけ (code-reviewer MEDIUM)",
+        _raised("<lambda>16"),
+    ),
+    _m(
+        "c39 入場 3 以上の battery の NOT_QUALIFIED を通す",
+        "scorer",
+        "            if qualified or r is not None:\n",
+        "            if r is not None:\n",
+        (_C_GATE,),
+        "H7: 入場 ≥ 3 の battery を資格不足と書かせない (code-reviewer MEDIUM)",
+        _raised("<lambda>17"),
+    ),
+    _m(
+        "c40 run 全体の invalid_version を battery INVALID にしない",
+        "scorer",
+        "    all_invalid = all(s in (rd.R_INVALID_META, rd.R_INVALID_VERSION) for s in statuses)\n",
+        "    all_invalid = all(s in (rd.R_INVALID_META,) for s in statuses)\n",
+        (_C_INV_VERSION,),
+        "§A.1・§F-1: 版を混ぜた run は INVALID (not_computed でない、code-reviewer MEDIUM)",
+    ),
+    _m(
+        "c41 invalid_version のモデルを not_computed で外す",
+        "scorer",
+        "        if sr.status in (rd.R_INVALID_META, rd.R_INVALID_VERSION):\n",
+        "        if sr.status in (rd.R_INVALID_META,):\n",
+        (_C_INV_VERSION,),
+        "§F: invalid_version で外すモデルの理由は INVALID",
+    ),
+    _m(
+        "c42 名指しの対の感度を常に満たすと書く",
+        "scorer",
+        '                "sensitivity_ok": (a, b) in sens,\n',
+        '                "sensitivity_ok": True,\n',
+        (_C_INSENSITIVE,),
+        "§M: 感度は decide_battery の sensitivity_ok (code-reviewer MEDIUM)",
+    ),
+    _m(
+        "c43 感度の無い対を「得点差まで」と書かない",
+        "scorer",
+        '            if not p["sensitivity_ok"] or battery == "v3":\n',
+        '            if battery == "v3":\n',
+        (_C_INSENSITIVE,),
+        "§M: 感度を満たさない対は得点差までに固定する",
+    ),
+    _m(
+        "c44 名指しの対の向きを逆に",
+        "scorer",
+        '                "pair": [report[a], report[b]],\n                "lower_bound": _f(\n',
+        '                "pair": [report[b], report[a]],\n                "lower_bound": _f(\n',
+        (_C_GRADED,),
+        "§M: 名指しは高い方 > 低い方",
+    ),
+    _m(
+        "c45 qwen3 の大きさの順の判定を逆に",
+        "scorer",
+        '        order = "一致" if cs == sorted(cs) else "不一致"\n',
+        '        order = "一致" if cs == sorted(cs, reverse=True) else "不一致"\n',
+        (_C_QWEN,),
+        "§M: 大きさの順に C が増えれば一致",
+    ),
+    _m(
+        "c46 envelope を ⊥ の数からの復元と照合しない",
+        "scorer",
+        "            if envelopes[(b, m)] != want_env:\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: envelope = parse_rule(保存の ⊥ の数) の 2 つ目",
+        _raised("<lambda>19"),
+    ),
+    _m(
+        "c47 ⊥ の数の型を見ない",
+        "scorer",
+        "            if not all(type(k) is int for k in counts):\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: ⊥ の数は整数 (浮動小数は parse_rule の int() で黙って丸まる)",
+        _raised("<lambda>26"),
+    ),
+    _m(
+        "c52 ⊥ の数が list かを見ない",
+        "scorer",
+        "            if not isinstance(counts, list):\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: ⊥ の数は arm ごとの list",
+        Witness(item="<lambda>25", exc="TypeError", text="has no len"),
+    ),
+    _m(
+        "c53 ⊥ の数の arm の数を見ない",
+        "scorer",
+        "            if len(counts) != st.N_ARMS[b]:\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: ⊥ の数は登録の arm の数 (stats.qualify と同じ)",
+        _raised("<lambda>24"),
+    ),
+    _m(
+        "c54 bot_n が正の整数かを見ない",
+        "scorer",
+        "            if type(n_bot) is not int or n_bot <= 0:\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: bot_n は正の整数",
+        Witness(item="<lambda>21", exc="TypeError", text="Rational"),
+    ),
+    _m(
+        "c55 ⊥ の数の範囲 [0, bot_n] を見ない",
+        "scorer",
+        "            if not all(0 <= k <= n_bot for k in counts):\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: ⊥ の数は [0, bot_n] (負の数は envelope の負の分数と整合してしまう)",
+        _raised("<lambda>27"),
+    ),
+    _m(
+        "c56 入場モデルの parse の規則を見ない",
+        "scorer",
+        "            if not parse_ok:\n",
+        "            if False:\n",
+        (_C_GATE,),
+        "DD-12 H1: entered は parse の規則を通る (stats.qualify)",
+        _raised("<lambda>28"),
+    ),
+    _m(
+        "c48 models が object かを見ない",
+        "scorer",
+        '        if not isinstance(models, dict):\n            raise GateError(f"{b}: models is not an object")\n',
+        '        if False:\n            raise GateError(f"{b}: models is not an object")\n',
+        (_C_GATE,),
+        "DD-12 H1: 入場の照合は models の object を読む",
+        Witness(item="<lambda>23", exc="AttributeError", text="has no attribute 'get'"),
+    ),
+    _m(
+        "c49 名指しの対を報告集合でなく入場の添字で書く",
+        "scorer",
+        '            {\n                "pair": [report[a], report[b]],\n                "lower_bound"',
+        '            {\n                "pair": [gate.entrants[battery][a], gate.entrants[battery][b]],\n                "lower_bound"',
+        (_C_EXCL_META,),
+        "DD-12 M2: 名指しは報告集合 (除外の後) の添字",
+    ),
+    _m(
+        "c50 併記を近傍の方策との対だけにする",
+        "scorer",
+        '                "fixture_pairs": fx_pairs,\n',
+        '                "fixture_pairs": [q for q in fx_pairs if "nearest" in q["low"]],\n',
+        (_C_FX_FILE,),
+        "§J・DD-12 M3: fixture の対の全部を併記する",
+    ),
+    _m(
+        "c51 O_time の 6 分類を書き方で分けない",
+        "scorer",
+        "        arm, enc = cell.key[0], cell.key[1]\n",
+        '        arm, enc = cell.key[0], "asc"\n',
+        (_C_ENCODING,),
+        "§B・DD-12 M4: O_time の 6 分類は (arm, 書き方) ごと",
+    ),
+    # ---------------------------------------------------------------- fixtures
+    _m(
+        "f01 v3 の by_score の同点を後ろの選択肢に",
+        "fixtures",
+        "        best = max(range(len(opts)), key=lambda i: (score(rows, p, opts[i]), -i))\n",
+        "        best = max(range(len(opts)), key=lambda i: (score(rows, p, opts[i]), i))\n",
+        (_F_PORTED,),
+        "DD-10: 原本 by_score の同点は表示順",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f02 近傍の signature の切り方を変える",
+        "fixtures",
+        "    labels = [x.action for x in _succ(rows) if x.signature[1:] == p.signature[1:]]\n",
+        "    labels = [x.action for x in _succ(rows) if x.signature[:2] == p.signature[:2]]\n",
+        (_F_PORTED,),
+        "DD-10: 近傍は weather を無視し時刻・同伴が一致",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f03 陽性対照の weather の欄を取り違える",
+        "fixtures",
+        "    labels = [x.action for x in _succ(rows) if x.signature[0] == p.signature[0]]\n",
+        "    labels = [x.action for x in _succ(rows) if x.signature[1] == p.signature[1]]\n",
+        (_F_PORTED,),
+        "DD-10: 陽性対照は weather の一致",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f04 v3 の priming の同点を後ろに",
+        "fixtures",
+        "    return max(opts, key=lambda o: (labels.count(o), -opts.index(o)))\n",
+        "    return max(opts, key=lambda o: (labels.count(o), opts.index(o)))\n",
+        (_F_PORTED,),
+        "DD-10: 原本 priming の同点は表示順",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f06 隣の行の範囲の端を落とす",
+        "fixtures",
+        "            if x.success and 0 <= i + offset < len(rows)\n",
+        "            if x.success and 0 < i + offset < len(rows)\n",
+        (_F_PORTED,),
+        "DD-10: 原本 _adjacent の範囲",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f07 hash 方策の byte を取り違える",
+        "fixtures",
+        "        return opts[h[0] % len(opts)]\n",
+        "        return opts[h[1] % len(opts)]\n",
+        (_F_PORTED,),
+        "DD-10: 原本 _hash_policy",
+        _assert_in("v3"),
+    ),
+    _m(
+        "f08 v2 の uniform_null から r を外す",
+        "fixtures",
+        "    return _opts(r, p)[(k + r) % 4]\n",
+        "    return _opts(r, p)[k % 4]\n",
+        (_F_PORTED,),
+        "DD-10: 原本 uniform_null",
+        _assert_in("v2"),
+    ),
+    _m(
+        "f09 v2 の recency を最初のエントリに",
+        "fixtures",
+        "    return v2bat.state_entries(arm, v2bat.layout(r))[-1][1]\n",
+        "    return v2bat.state_entries(arm, v2bat.layout(r))[0][1]\n",
+        (_F_PORTED,),
+        "DD-10: 原本 recency (最後のエントリ)",
+        _assert_in("v2"),
+    ),
+    _m(
+        "f10 label_prior の昇順・降順を入れ替える",
+        "fixtures",
+        '    rank = sorted(V2_ACTIONS, reverse=order == "desc")\n',
+        '    rank = sorted(V2_ACTIONS, reverse=order == "asc")\n',
+        (_F_LABEL_PRIOR,),
+        "DD-10: label_prior[asc] は語彙の昇順で最上位",
+    ),
+    _m(
+        "f11 陽性対照も nuisance の対に入れる",
+        "fixtures",
+        "        if not p.positive_control:\n            nuisance[p.name] = c\n",
+        "        if True:\n            nuisance[p.name] = c\n",
+        (_F_REAL,),
+        "§J: 陽性対照を除く方策の対",
+    ),
+    _m(
+        "f12 Δ_min ちょうどを超えたと数える",
+        "fixtures",
+        '        if abs(q["diff"]) > st.DELTA_MIN + 10.0**-ROUND:\n',
+        '        if abs(q["diff"]) > st.DELTA_MIN - 10.0**-ROUND:\n',
+        (_F_PAIRS,),
+        "§J: |ΔC| > Δ_min (ちょうどは超えない)",
+    ),
+    _m(
+        "f13 対の差の符号を逆に",
+        "fixtures",
+        '    return [\n        {"a": a, "b": b, "diff": round(cs[a] - cs[b], ROUND)}\n',
+        '    return [\n        {"a": a, "b": b, "diff": round(cs[b] - cs[a], ROUND)}\n',
+        (_F_PAIRS,),
+        "diff = C_a − C_b",
+    ),
+    _m(
+        "f14 R の無い battery も計算する",
+        "fixtures",
+        '        if r is None:\n            batteries[b] = {\n                "status": NOT_SELECTED,\n',
+        '        if False:\n            batteries[b] = {\n                "status": NOT_SELECTED,\n',
+        (_F_REAL,),
+        "DD-10: gate が R を選んでいない battery は not_selected",
+        # DD-12 H3: R = None が main_r_list に届いた TypeError だけを数える (別の setup の TypeError でない)
+        Witness(when="setup", exc="TypeError", text="NoneType", via="main_r_list"),
+    ),
+    _m(
+        "f15 本走の r を 0 起点に",
+        "fixtures",
+        "    r0 = st.SPECS[battery].main_r0\n",
+        "    r0 = 0\n",
+        (_F_REAL,),
+        "§J: 段 2 の本走の r の上で計算する",
+    ),
+    _m(
+        "f16 fixture_diffs_main.json を上書きする",
+        "fixtures",
+        '        with args.out.open("xb") as fh:\n',
+        '        with args.out.open("wb") as fh:\n',
+        (_F_CLI,),
+        "DD-10: 出力は上書きしない",
+    ),
+    _m(
+        "f17 --check が byte を比べない",
+        "fixtures",
+        '        same = args.out.read_bytes() == body.encode("utf-8")\n',
+        "        same = True\n",
+        (_F_CLI,),
+        "DD-10: --check は byte 比較",
+    ),
 )
 
 # ---------------------------------------------------------------- meta-test
@@ -1726,10 +2498,18 @@ META_CASES: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
     (
         "gate.json の契約 read_gate の検査を素通りに潰す",
         "driver",
-        '    """gate.json の契約 (H5) を検査して読む。K・ΣM・予算の判定は入場数と R から再計算して照合する."""\n',
-        '    """gate.json の契約 (H5) を検査して読む。K・ΣM・予算の判定は入場数と R から再計算して照合する."""\n'
+        "def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> MainGate:\n",
+        "def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> MainGate:\n"
         "    return MainGate({}, {}, 0, 0)\n",
         (_G_READ_GATE, _D_GATE_R),
+    ),
+    (
+        "scorer の gate.json の照合 read_gate を素通りに潰す",
+        "scorer",
+        "def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> GateRead:\n",
+        "def read_gate(gate: Mapping[str, Any], models_json_sha256: str) -> GateRead:\n"
+        "    return GateRead({}, {}, {}, {}, 0, 0)\n",
+        (_C_GATE,),
     ),
 )
 
@@ -1770,8 +2550,11 @@ def _chain(exc: BaseException) -> list[dict[str, object]]:
     return out
 
 
-def _assert_stmt(exc: BaseException) -> bool:
-    """先頭の例外が witness の test ファイルの ``assert`` 文 (pytest が書き換えたもの) から出た AssertionError か."""
+def _assert_stmt(exc: BaseException, function: str) -> bool:
+    """先頭の例外が witness の test ファイルの ``assert`` 文 (pytest が書き換えたもの) から出た AssertionError か.
+
+    最後のフレームの関数名が test の関数 (``function``) と一致することも求める (B-2: test の helper の assert は数えない)。
+    """
     if not isinstance(exc, AssertionError):
         return False
     frames = traceback.extract_tb(exc.__traceback__)
@@ -1779,8 +2562,10 @@ def _assert_stmt(exc: BaseException) -> bool:
         return False
     last = frames[-1]
     line = (last.line or "").lstrip()
-    return pathlib.PurePath(last.filename).name in _TEST_FILE_NAMES and bool(
-        _ASSERT_WORD.match(line)
+    return (
+        pathlib.PurePath(last.filename).name in _TEST_FILE_NAMES
+        and last.name == function
+        and bool(_ASSERT_WORD.match(line))
     )
 
 
@@ -1791,14 +2576,14 @@ def pytest_exception_interact(node: object, call: object) -> None:
     if not out or excinfo is None:
         return
     exc = excinfo.value
+    function = getattr(node, "originalname", None) or getattr(node, "name", "")
     _append(
         out,
         {
-            "function": getattr(node, "originalname", None)
-            or getattr(node, "name", ""),
+            "function": function,
             "param": getattr(getattr(node, "callspec", None), "id", None),
             "when": getattr(call, "when", None),
-            "assert_stmt": _assert_stmt(exc),
+            "assert_stmt": _assert_stmt(exc, str(function)),
             "chain": _chain(exc),
         },
     )
@@ -1999,12 +2784,19 @@ def redact(text: str) -> str:
 
 
 def _summary(record: dict[str, Any], link: dict[str, Any]) -> dict[str, object]:
+    """照合に使った証拠 (DD-12 H4: 証明書の読み手が登録の条件と ``failed`` への所属を検査し直せる形).
+
+    ``assert_stmt`` は記録の判定、``frames`` は照合した例外の (ファイル名, 関数名) の列 (``via`` の照合に使う)。
+    要約の文は先頭 300 字 (登録の ``text`` はどれも先頭にある)。
+    """
     return {
         "function": record.get("function"),
         "param": record.get("param"),
         "when": record.get("when"),
+        "assert_stmt": record.get("assert_stmt") is True,
         "type": link.get("type"),
         "text": redact(str(link.get("text", "")))[:300],
+        "frames": [list(f) for f in link.get("frames") or ()],
     }
 
 
@@ -2117,9 +2909,7 @@ def anchor_problems(sources: dict[str, str]) -> list[str]:
 
 def _sources(root: pathlib.Path = _REPO_ROOT) -> dict[str, str]:
     """対象の文 (bytes をそのまま decode。``read_text`` は CRLF を LF に変えて worker の置換と食い違う)."""
-    return {
-        k: (root / rel).read_bytes().decode("utf-8") for k, rel in _TARGETS.items()
-    }
+    return {k: (root / rel).read_bytes().decode("utf-8") for k, rel in _TARGETS.items()}
 
 
 def crlf_files(root: pathlib.Path = _REPO_ROOT) -> list[str]:
@@ -2135,12 +2925,16 @@ def _copy_tree() -> pathlib.Path:
     (tmp / "tests").mkdir()
     for name in ("__init__.py", "conftest.py"):
         shutil.copy2(_REPO_ROOT / "tests" / name, tmp / "tests" / name)
-    for rel in (_TEST_DIR, pathlib.PurePath(_STATS_TEST).parent.as_posix()):
+    dirs = {_TEST_DIR} | {pathlib.PurePath(t).parent.as_posix() for t in _WITNESS_EXTRA}
+    for rel in sorted(dirs):
         shutil.copytree(_REPO_ROOT / rel, tmp / rel, ignore=skip)
     for rel in (_EXP_REL, _EXP_STAGE1):
         shutil.copytree(
             _REPO_ROOT / rel, tmp / rel, ignore=shutil.ignore_patterns("pilot", "main")
         )
+    gate = pathlib.PurePath(_EXP_REL, _PILOT_GATE_REL).as_posix()
+    (tmp / gate).parent.mkdir(parents=True)
+    shutil.copy2(_REPO_ROOT / gate, tmp / gate)
     shutil.copy2(_REPO_ROOT / "pyproject.toml", tmp / "pyproject.toml")
     return tmp
 
@@ -2150,12 +2944,13 @@ def _sha(path: pathlib.Path) -> str:
 
 
 def pinned_files() -> list[str]:
-    """写しの一致を見るファイル: 6 対象・witness の test (と dir の全 .py)・harness."""
+    """写しの一致を見るファイル: 8 対象・witness の test (と dir の全 .py)・原本の test・pilot の gate.json・harness."""
     tests = sorted(
         p.relative_to(_REPO_ROOT).as_posix()
         for p in (_REPO_ROOT / _TEST_DIR).glob("*.py")
     )
-    return [*_TARGETS.values(), *tests, _STATS_TEST, _HARNESS_REL]
+    gate = pathlib.PurePath(_EXP_REL, _PILOT_GATE_REL).as_posix()
+    return [*_TARGETS.values(), *tests, *_WITNESS_EXTRA, gate, _HARNESS_REL]
 
 
 class WorkerError(RuntimeError):
@@ -2304,7 +3099,9 @@ def _worker(
                 except KeyError:
                     if not discover:
                         raise
-                    files = _witness_test_files(tmp)  # 開発用: まだ無い test は全ファイルで探す
+                    files = _witness_test_files(
+                        tmp
+                    )  # 開発用: まだ無い test は全ファイルで探す
                 code, failed, collect, records = _run_tests(env, files, tmp)
             except subprocess.TimeoutExpired:
                 code, failed, collect, records = -1, set(), False, []
@@ -2337,9 +3134,7 @@ def run_mutants(
     n = max(1, min(workers, len(mutants)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=n) as pool:
         futures = [
-            pool.submit(
-                _worker, env, todo, originals, want, rows, discover=discover
-            )
+            pool.submit(_worker, env, todo, originals, want, rows, discover=discover)
             for _ in range(n)
         ]
         errors = [f.exception() for f in futures]
@@ -2368,9 +3163,12 @@ def certificate(
             target["tests/" + pathlib.PurePath(rel).name] = sha
     return {
         "version": _VERSION,
-        "scope": "pilot が実行・判定に使う code (DD-6)。scorer・fixtures は本走前の版で加える",
+        "scope": "本走が実行・判定に使う code の全体 (DD-6・DD-11)。pilot 前の版 (pre_pilot) は git の履歴",
         "target_sha256": target,
-        "witness_tests_sha256": {_STATS_TEST: want[_STATS_TEST]},
+        "witness_tests_sha256": {rel: want[rel] for rel in _WITNESS_EXTRA},
+        "inputs_sha256": {
+            (g := pathlib.PurePath(_EXP_REL, _PILOT_GATE_REL).as_posix()): want[g]
+        },
         "targets": dict(_TARGETS),
         "meta_test": meta,
         "control_file_sets": controls,
@@ -2382,10 +3180,14 @@ def certificate(
 def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=pathlib.Path, default=None)
-    ap.add_argument("--only", default=None, help="label の接頭辞 (カンマ区切り、開発用)")
+    ap.add_argument(
+        "--only", default=None, help="label の接頭辞 (カンマ区切り、開発用)"
+    )
     ap.add_argument("--anchors", action="store_true", help="置換前文字列の検査だけ")
     ap.add_argument(
-        "--discover", action="store_true", help="失敗の記録を出す (開発用、証明書は書かない)"
+        "--discover",
+        action="store_true",
+        help="失敗の記録を出す (開発用、証明書は書かない)",
     )
     ap.add_argument("--workers", type=int, default=4, help="複製ツリーの数")
     args = ap.parse_args(argv)
@@ -2422,9 +3224,7 @@ def main(argv: list[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
         print(f"ERROR: {exc}")
         return 2
 
-    restored = all(
-        _sha(_REPO_ROOT / rel) == want[rel] for rel in _TARGETS.values()
-    )
+    restored = all(_sha(_REPO_ROOT / rel) == want[rel] for rel in _TARGETS.values())
     unchanged = all(_sha(_REPO_ROOT / rel) == sha for rel, sha in want.items())
     survived = [r for r in rows if r["status"] == "SURVIVED"]
     wrong = [r for r in rows if r["status"] not in ("KILLED", "SURVIVED")]

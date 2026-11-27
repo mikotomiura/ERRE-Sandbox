@@ -1,9 +1,11 @@
-"""判別性 gate 段 2 の pilot 前の certification の証明書の読み手 (Codex r1 H7、DD-6).
+"""判別性 gate 段 2 の本走前の certification の証明書の読み手 (Codex r1 H7、DD-11).
 
 証明書 = ``experiments/20261126-benchmark-stage2-driver/results/driver_mutation.json``
 (``scripts/benchmark_stage2_driver_mutation_check.py --out`` が、全 KILLED・meta-test
-成立・原状復帰のときだけ書く)。対象・test・harness の sha、全変異の label・期待 test・
-witness・判定、meta-test を、現在のファイルと harness の登録に照合する。
+成立・原状復帰のときだけ書く。pilot 前の版 pre_pilot を本走前の版 pre_main で
+上書きした、DD-11)。8 対象・test・harness・原本の test・pilot の gate.json の sha、
+全変異の label・期待 test・witness・判定、meta-test を、現在のファイルと harness の
+登録に照合する。
 
 本 file は変異の run では回さない (証明書と現在のファイルの一致は、変異中は必ず崩れて
 生き残りを覆う)。harness の判定器の負例 (``test_judge_*``) も本 file が pin する。
@@ -34,8 +36,9 @@ def cert() -> dict[str, Any]:
     return json.loads(CERT.read_text(encoding="utf-8"))
 
 
-def test_certificate_is_the_pre_pilot_version(cert: dict[str, Any]) -> None:
-    assert cert["version"] == "pre_pilot"
+def test_certificate_is_the_pre_main_version(cert: dict[str, Any]) -> None:
+    assert cert["version"] == "pre_main"
+    assert set(mc._TARGETS) >= {"fixtures", "scorer"}
     assert cert["targets"] == mc._TARGETS
     assert cert["all_killed"] is True
 
@@ -48,7 +51,52 @@ def test_certificate_binds_the_current_files(cert: dict[str, Any]) -> None:
     for path in sorted((REPO / mc._TEST_DIR).glob("*.py")):
         want["tests/" + path.name] = _sha(path.relative_to(REPO).as_posix())
     assert cert["target_sha256"] == want
-    assert cert["witness_tests_sha256"] == {mc._STATS_TEST: _sha(mc._STATS_TEST)}
+    assert cert["witness_tests_sha256"] == {rel: _sha(rel) for rel in mc._WITNESS_EXTRA}
+    gate = f"{mc._EXP_REL}/{mc._PILOT_GATE_REL}"
+    assert cert["inputs_sha256"] == {gate: _sha(gate)}
+
+
+def evidence_problems(row: dict[str, Any], mut: mc.Mutant) -> list[str]:  # noqa: C901
+    """証明書の 1 行の証拠が KILLED と登録に整合しない点.
+
+    DD-12 H4: 判定器の判定を読み手が検査し直す。
+    """
+    out: list[str] = []
+    w = mut.witness
+    if row.get("status") != "KILLED":
+        out.append("status is not KILLED")
+    seen = row.get("witnessed_by")
+    if not isinstance(seen, dict):
+        return [*out, "no witnessed_by"]
+    if seen.get("function") not in mut.expect:
+        out.append("witness function is not an expected test")
+    if seen.get("function") not in (row.get("failed") or []):
+        out.append("witness function is not in failed")
+    if seen.get("when") != w.when:
+        out.append("when differs")
+    if w.item is not None and seen.get("param") != w.item:
+        out.append("param differs from the registered item")
+    if w.item is None and not w.assert_stmt and seen.get("param") is not None:
+        out.append("a parametrized record for a witness without item")
+    kind = str(seen.get("type", "")).split(".")[-1]
+    if w.assert_stmt and (
+        seen.get("assert_stmt") is not True or kind != "AssertionError"
+    ):
+        out.append("not an assert statement of the test")
+    if w.exc is not None and kind != w.exc:
+        out.append("exception type differs")
+    # 要約の文は先頭 300 字 (登録の文はどれも先頭にある)
+    if w.text is not None and w.text not in str(seen.get("text", "")):
+        out.append("text differs")
+    frames = seen.get("frames")
+    if not isinstance(frames, list):
+        out.append("no frames")
+    elif w.via is not None and not any(
+        isinstance(f, list) and f[:1] and f[0] in mc._TARGET_FILES and f[1:2] == [w.via]
+        for f in frames
+    ):
+        out.append("no frame of the registered via")
+    return out
 
 
 def test_certificate_lists_every_registered_mutant_as_killed(
@@ -57,22 +105,39 @@ def test_certificate_lists_every_registered_mutant_as_killed(
     rows = cert["mutants"]
     assert [r["label"] for r in rows] == [m.label for m in mc.MUTANTS]
     for row, mut in zip(rows, mc.MUTANTS, strict=True):
-        assert row["status"] == "KILLED", row["label"]
         assert row["target"] == mc._TARGETS[mut.target]
         assert row["expected_any_of"] == sorted(mut.expect)
         assert row["expected_witness"] == mut.witness.as_dict()
         assert row["why"] == mut.why
-        seen = row["witnessed_by"]
-        assert seen is not None, row["label"]
-        assert seen["function"] in mut.expect
-        assert seen["when"] == mut.witness.when
-        if mut.witness.item is not None:
-            assert seen["param"] == mut.witness.item
-        # 照合した例外の型・文も登録を満たす (要約の文は先頭 300 字)
-        if mut.witness.exc is not None:
-            assert str(seen["type"]).split(".")[-1] == mut.witness.exc
-        if mut.witness.text is not None:
-            assert mut.witness.text in str(seen["text"])
+        assert evidence_problems(row, mut) == [], row["label"]
+
+
+def test_evidence_reader_rejects_contradicting_rows(cert: dict[str, Any]) -> None:
+    """KILLED の行の証拠を崩すと読み手が拒む.
+
+    Codex r2 H4 の例: g24 の failed を空・型を ValueError に。
+    """
+    by_label = {m.label.split()[0]: m for m in mc.MUTANTS}
+    rows = {r["label"].split()[0]: r for r in cert["mutants"]}
+
+    def broken(label: str, **kw: Any) -> list[str]:
+        row = json.loads(json.dumps(rows[label]))
+        for k, v in kw.items():
+            if k == "failed":
+                row["failed"] = v
+            else:
+                row["witnessed_by"][k] = v
+        return evidence_problems(row, by_label[label])
+
+    assert broken("g24", failed=[]) == ["witness function is not in failed"]
+    assert broken("g24", type="builtins.ValueError") == [
+        "not an assert statement of the test"
+    ]
+    assert broken("g24", assert_stmt=False) == ["not an assert statement of the test"]
+    assert broken("f14", frames=[]) == ["no frame of the registered via"]
+    assert broken("c46", param="<lambda>18") == [
+        "param differs from the registered item"
+    ]
 
 
 def test_certificate_controls_cover_every_file_set(cert: dict[str, Any]) -> None:
@@ -174,6 +239,41 @@ def test_judge_matches_item_type_and_text_on_one_exception() -> None:
     assert mc.witnessed(bare, expect, [setup]) is None
 
 
+def test_judge_setup_type_error_needs_the_registered_frame() -> None:
+    """DD-12 H3: f14 は R = None が main_r_list に届いた TypeError だけを数える."""
+    mut = next(m for m in mc.MUTANTS if m.label.startswith("f14 "))
+    fn = next(iter(mut.expect))
+
+    def setup(text: str, frames: list[list[str]]) -> dict[str, Any]:
+        return {
+            "function": fn,
+            "param": None,
+            "when": "setup",
+            "assert_stmt": False,
+            "chain": [{"type": "builtins.TypeError", "text": text, "frames": frames}],
+        }
+
+    right = setup(
+        "unsupported operand type(s) for +: 'int' and 'NoneType'",
+        [
+            ["test_fixtures.py", "real_diffs"],
+            ["benchmark_stage2_fixtures.py", "main_r_list"],
+        ],
+    )
+    assert mc.witnessed(mut.witness, mut.expect, [right]) is not None
+    # 別の setup の TypeError (方策の計算の中) は WRONG_REASON
+    other = setup(
+        "'NoneType' object is not subscriptable",
+        [
+            ["test_fixtures.py", "real_diffs"],
+            ["benchmark_stage2_fixtures.py", "battery_table"],
+        ],
+    )
+    assert mc.witnessed(mut.witness, mut.expect, [other]) is None
+    rec = [other, _finish()]
+    assert mc.status_of(mut, 1, {fn}, rec, collect=False) == "WRONG_REASON"
+
+
 def test_judge_assert_statement_must_come_from_a_witness_test_file(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -187,10 +287,15 @@ def test_judge_assert_statement_must_come_from_a_witness_test_file(
             return exc
         raise AssertionError  # pragma: no cover
 
-    assert mc._assert_stmt(raise_from("test_driver.py", "assert 1 == 2"))
-    assert not mc._assert_stmt(raise_from("other.py", "assert 1 == 2"))
-    assert not mc._assert_stmt(raise_from("test_units.py", "raise AssertionError"))
-    assert not mc._assert_stmt(ValueError("x"))
+    top = "<module>"  # exec した文の最後のフレームの関数名
+    assert mc._assert_stmt(raise_from("test_driver.py", "assert 1 == 2"), top)
+    assert not mc._assert_stmt(raise_from("other.py", "assert 1 == 2"), top)
+    assert not mc._assert_stmt(raise_from("test_units.py", "raise AssertionError"), top)
+    assert not mc._assert_stmt(ValueError("x"), top)
+    # B-2: 期待 test でない関数 (test の helper) の assert は数えない
+    assert not mc._assert_stmt(
+        raise_from("test_driver.py", "assert 1 == 2"), "test_something"
+    )
 
 
 def test_redact_removes_local_paths_and_addresses() -> None:

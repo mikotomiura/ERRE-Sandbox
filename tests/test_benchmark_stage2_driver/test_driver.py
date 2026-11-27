@@ -494,25 +494,26 @@ def _min_gate(go: dict[str, int], stop: Sequence[str] = ()) -> dict[str, Any]:
     GO・STOP_POWER の battery は 3 モデルが入場、他は NOT_QUALIFIED。
     """
     ents = list(pl.MODELS[:3])
-    env = {"numerator": 1, "denominator": 20}
+    env = {"numerator": 1, "denominator": 20}  # ⊥ 0 の pilot の envelope
     batteries: dict[str, Any] = {}
     for b in st.BATTERIES:
-        if b in go or b in stop:
-            batteries[b] = {
-                "entrants": ents,
-                "n_entered": 3,
-                "gate": st.GATE_GO if b in go else st.GATE_STOP_POWER,
-                "R": go.get(b),
-                "models": {m: {"envelope": env} for m in ents},
-            }
-        else:
-            batteries[b] = {
-                "entrants": [],
-                "n_entered": 0,
-                "gate": st.VERDICT_NOT_QUALIFIED,
-                "R": None,
-                "models": {},
-            }
+        on = b in go or b in stop
+        models = {
+            m: {"status": st.ENTERED, "envelope": env}
+            | {"bot_counts": [0] * st.N_ARMS[b], "bot_n": 720}
+            if on and m in ents
+            else {"status": "not_computed"}
+            for m in pl.MODELS
+        }
+        batteries[b] = {
+            "entrants": ents if on else [],
+            "n_entered": 3 if on else 0,
+            "gate": (st.GATE_GO if b in go else st.GATE_STOP_POWER)
+            if on
+            else st.VERDICT_NOT_QUALIFIED,
+            "R": go.get(b),
+            "models": models,
+        }
     n = len(go) + len(stop)
     return {
         "schema": dr.GATE_SCHEMA,
@@ -520,7 +521,12 @@ def _min_gate(go: dict[str, int], stop: Sequence[str] = ()) -> dict[str, Any]:
         "K": 6 * n,
         "sum_M": 3 * n,
         "batteries": batteries,
+        "inputs": {"models_json_sha256": MODELS_SHA},
     }
+
+
+# 本走が使う models.json の sha (plan_for の既定の path と同じ file)
+MODELS_SHA = dr.sha256_bytes(dr.MODELS_JSON.read_bytes())
 
 
 def test_main_plan_from_gate_file(tmp_path: pathlib.Path) -> None:
@@ -588,7 +594,7 @@ def test_run_stage_rejects_foreign_segments(tmp_path: pathlib.Path) -> None:
 
 def test_main_r_from_gate() -> None:
     gate = _min_gate({"v3": 8}, stop=("G",))
-    assert dr.main_r_from_gate(gate) == {"v3": 8}
+    assert dr.main_r_from_gate(gate, MODELS_SHA) == {"v3": 8}
 
     def bad(f: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
         g = json.loads(json.dumps(gate))
@@ -602,9 +608,10 @@ def test_main_r_from_gate() -> None:
         bad(lambda g: g["batteries"]["v3"].__setitem__("R", True)),  # noqa: FBT003
         bad(lambda g: g["batteries"].__setitem__("x", g["batteries"].pop("v2"))),
         bad(lambda g: g["batteries"]["G"].__setitem__("R", 6)),
+        bad(lambda g: g["inputs"].__setitem__("models_json_sha256", "other")),
     ):
         with pytest.raises(dr.PreflightError):
-            dr.main_r_from_gate(g)
+            dr.main_r_from_gate(g, MODELS_SHA)
 
 
 def test_main_requires_gate() -> None:

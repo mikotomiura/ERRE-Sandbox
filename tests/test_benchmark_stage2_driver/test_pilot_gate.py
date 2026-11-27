@@ -552,7 +552,7 @@ def test_stop_records_gate_has_no_decisions(one_run: pathlib.Path) -> None:
     assert gate["status"] == pg.STATUS_STOP_RECORDS
     assert "batteries" not in gate
     with pytest.raises(dr.PreflightError):
-        dr.read_gate(gate)
+        dr.read_gate(gate, "ref")
 
 
 # ------------------------------------------------------------ pilot gate: 全 6 モデル
@@ -596,7 +596,7 @@ def test_end_to_end_gate_with_the_frozen_selection(
             assert entry["models"][m]["bot_counts"] == [0] * st.N_ARMS[b]
     labels = st.budget({b: e["R"] for b, e in gate["batteries"].items()})
     assert {b: e["gate"] for b, e in gate["batteries"].items()} == labels
-    mg = dr.read_gate(gate)
+    mg = dr.read_gate(gate, _sha(ref.read_bytes()))
     assert mg.k_tests == gate["K"]
     assert set(mg.r_by_battery) == {b for b, v in labels.items() if v == st.GATE_GO}
     with pytest.raises(FileExistsError):
@@ -720,7 +720,7 @@ def test_not_qualified_and_not_computed_batteries(tmp_path: pathlib.Path) -> Non
     # K と ΣM は入場 ≥ 3 の battery だけ (STOP_POWER・HELD_COST は含む)
     assert gate["K"] == 2 * 6 * 5
     assert gate["sum_M"] == 12
-    dr.read_gate(gate)
+    dr.read_gate(gate, "ref")
 
 
 def test_stop_power_keeps_k_and_records_the_largest_candidate(
@@ -750,7 +750,7 @@ def test_stop_power_keeps_k_and_records_the_largest_candidate(
     assert gate["sum_M"] == 24
     assert seen["G"] == (st.r_candidates(st.SPECS["G"])[-1], 120, (6, 16 * 12))
     assert g["spike_negative_all"] == {"R": 36, "p": 0.25}
-    mg = dr.read_gate(gate)
+    mg = dr.read_gate(gate, "ref")
     assert "G" not in mg.r_by_battery
     assert mg.entrants["G"] == tuple(pl.MODELS)
 
@@ -794,9 +794,9 @@ def _bad(gate: dict[str, Any], f: Callable[[dict[str, Any]], None]) -> dict[str,
 def test_read_gate_rejects_contract_violations(
     good_gate: dict[str, Any], mutate: Callable[[dict[str, Any]], None]
 ) -> None:
-    dr.read_gate(good_gate)
+    dr.read_gate(good_gate, "ref")
     with pytest.raises(dr.PreflightError):
-        dr.read_gate(_bad(good_gate, mutate))
+        dr.read_gate(_bad(good_gate, mutate), "ref")
 
 
 def test_main_plan_runs_only_entrants(
@@ -808,12 +808,21 @@ def test_main_plan_runs_only_entrants(
     o = g["batteries"]["O_time"]
     o["entrants"] = list(pl.MODELS[:4])
     o["n_entered"] = 4
+    for m in pl.MODELS[4:]:  # 入場は models の status と照合される (DD-12 H1)
+        o["models"][m]["status"] = pg.M_NOT_COMPUTED
     g["K"] = 3 * 30 + 12
     g["sum_M"] = 22
     path = tmp_path / "gate.json"
     path.write_text(json.dumps(g), encoding="utf-8")
-    segs = dr.plan_for(pl.STAGE_MAIN, path)
-    go = dr.read_gate(g).r_by_battery
+    models = tmp_path / "models.json"
+    models.write_bytes(b"{}")
+    with pytest.raises(dr.PreflightError, match="models_json_sha256"):
+        dr.plan_for(pl.STAGE_MAIN, path, models)  # gate の sha "ref" と違う models.json
+    g["inputs"]["models_json_sha256"] = dr.sha256_bytes(models.read_bytes())
+    path.write_text(json.dumps(g), encoding="utf-8")
+    segs = dr.plan_for(pl.STAGE_MAIN, path, models)
+    g["inputs"]["models_json_sha256"] = "ref"
+    go = dr.read_gate(g, "ref").r_by_battery
     assert {s.battery for s in segs} == set(go)
     if "O_time" in go:
         assert [s.model for s in segs if s.battery == "O_time"] == list(pl.MODELS[:4])
@@ -981,6 +990,20 @@ def test_worst_pair_names_the_stats_pair(six_model_run: pathlib.Path) -> None:
         a, c = st.worst_pair(units)
         assert a < c
         assert entry["worst_pair"] == [ents[a], ents[c]]
+
+
+def test_worst_pair_is_written_from_the_stats_indices(
+    six_model_run: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B-2: 同点の合成記録では (0, 1) と区別できない.
+
+    stats の対を非対称な (2, 4) に差し替えて見る。
+    """
+    monkeypatch.setattr(st, "worst_pair", lambda _units: (2, 4))
+    gate = _gate(six_model_run)
+    for entry in gate["batteries"].values():
+        ents = entry["entrants"]
+        assert entry["worst_pair"] == [ents[2], ents[4]]
 
 
 def test_budget_labels_reach_the_gate(six_model_run: pathlib.Path) -> None:
