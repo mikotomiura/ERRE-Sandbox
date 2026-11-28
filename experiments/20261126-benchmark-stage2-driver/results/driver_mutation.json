@@ -2,24 +2,27 @@
   "version": "pre_main",
   "scope": "本走が実行・判定に使う code の全体 (DD-6・DD-11)。pilot 前の版 (pre_pilot) は git の履歴",
   "target_sha256": {
-    "benchmark_stage2_driver.py": "3791284f226c7e887bc278c7c2fe16207c7f846f0c95221cbd8a6633ff0e2fc0",
+    "benchmark_stage2_driver.py": "f64866ea8107e5777ad7e3e9f6f823190de807c72dac91db2d6f33c7e94da335",
     "benchmark_stage2_plan.py": "9edcbd6ee97550b236ad44fbcb40cce72ef2565313c198dbea20d89b8bccd69d",
     "benchmark_stage2_units.py": "d281c20346cfa599c287ce350b2cde49556fcbfa5e989692765e8ccbfc5d3ea1",
     "benchmark_stage2_records.py": "4838fc9745458379c435402fedb1f42e9141d7834c45e6b773036fce63eec2f9",
     "benchmark_stage2_pilot_gate.py": "96c43605a7b9c383c275c766042f21eef4aef4ba3402d7afae215b40ac9f7699",
     "benchmark_stage2_stats.py": "2bb7766ec45b36fb519af12d4a32d7ac3921b3e93011f3f1e9017041d68402b1",
     "benchmark_stage2_fixtures.py": "adf1b9787af8369b41ab87869967507433f5788d882c6332906ede085561074f",
-    "benchmark_stage2_scorer.py": "79bb474b7f151217fa3da78b54669257080f50a1608a27f326edbbba5544ca62",
-    "benchmark_stage2_driver_mutation_check.py": "18d0539aa99a75fdb14c6042dbd85c2098c7a94597036c7b5e36575c676dd6f0",
+    "benchmark_stage2_scorer.py": "66fde09e64c9d52b6bb6d2e717351fa7e0670b61bdc08a62672c76d8c07b96fc",
+    "benchmark_stage2_manifest_main.py": "984fa51583b074e1baf5932a9ef161b73cd711d7d25aec09aebbb7156a97815a",
+    "benchmark_stage2_driver_mutation_check.py": "95f395615c35ef48bd1a0fe630d2ece54194d5d948a642b4654badba26b247c3",
     "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "tests/conftest.py": "6ffaefb3244cfe04163c9cce75bf2f3eb59f55dc3d9bbcfe248bbb49cb86a71f",
-    "tests/test_certificate.py": "10bf585770573f2bd9ff8203cb2930418bb52f41bb9336946d7e19ba7264455a",
-    "tests/test_driver.py": "ce8184186ecd9dfb087b1e72d38781af637fa955d553b1c13844fec4b61a544a",
-    "tests/test_driver_contract.py": "67887966aa358372ac062e5582dbc849cbc51f1db77eced0e04e337002c75131",
+    "tests/main_tree.py": "fa5c671a40e73a64a0a1323e53ad01052e5e78e68bbaed0ccff9f50644105cc5",
+    "tests/test_certificate.py": "2b55eabe31cccfd4428b7314dc41569243d8a55054969e7ace77ff8fa0162f11",
+    "tests/test_driver.py": "5eda7196bdbefd796dfcb3d0e9cbb1d628e066428d2518189611ea7536846a15",
+    "tests/test_driver_contract.py": "19441a4256bbe482133c36fb38bd353645cde02aa6e23afde66a4b2968ac5b41",
     "tests/test_fixtures.py": "262e8071ca3ade70db590f9d49f0e070b6e211dc9b14ec91b1035a4e8d94c06a",
-    "tests/test_pilot_gate.py": "557a0ec18a8ca3314116bc30aeedbe2566469838a6cbc59911dfa2898daa95a1",
+    "tests/test_manifest_main.py": "af522abe85ca2cb054c94d85c822a1f8a24e43b73c495b16abad3ceb647051de",
+    "tests/test_pilot_gate.py": "d09e56e2b504916e503fafdcbf789c0db8f32a896d88c54b3ac6e60f84280db9",
     "tests/test_plan.py": "7cc1fbd5c665660ee333d320fba5f9f105df86601f15cc1b72a7de91af80855b",
-    "tests/test_scorer.py": "a2297480621b4885707a72d63351836bb9b4f60ee2b1e4ddfabbdc71fe40a08e",
+    "tests/test_scorer.py": "cf14efc9eda09957d10237c604b89a20f18f97e9700e14a81cf106bce5e86589",
     "tests/test_stats_contract.py": "0bf1d57845cadd41b7ed9fdbcf0eec35f0ef55babeef0327414236e8cee5c22d",
     "tests/test_units.py": "a57e69f13606165fe4c919a31f82ed749cf4522fb87dbf81139bf42df08f83bb"
   },
@@ -39,7 +42,8 @@
     "pilot_gate": "scripts/benchmark_stage2_pilot_gate.py",
     "stats": "scripts/benchmark_stage2_stats.py",
     "fixtures": "scripts/benchmark_stage2_fixtures.py",
-    "scorer": "scripts/benchmark_stage2_scorer.py"
+    "scorer": "scripts/benchmark_stage2_scorer.py",
+    "manifest_main": "scripts/benchmark_stage2_manifest_main.py"
   },
   "meta_test": [
     {
@@ -141,12 +145,22 @@
         "test_read_gate_rejects_contract_violations"
       ],
       "failed": [
+        "test_driver_checks_the_gate_before_the_manifest",
+        "test_driver_plan_for_requires_the_manifest",
         "test_driver_refuses_every_gate_the_scorer_refuses",
         "test_end_to_end_gate_with_the_frozen_selection",
+        "test_freeze_checks_external_modules_against_their_chain_seals",
+        "test_freeze_records_the_recomputed_sketch",
+        "test_freeze_refuses_a_failed_battery_check",
+        "test_freeze_refuses_a_stage1_manifest_other_than_the_pilot_commit",
+        "test_freeze_refuses_an_external_module_without_a_seal",
+        "test_freeze_refuses_to_write",
+        "test_freeze_writes_once_and_verifies",
         "test_main_plan_from_gate_file",
         "test_main_plan_runs_only_entrants",
         "test_main_r_from_gate",
         "test_plan_for_refuses_a_model_outside_the_entrants",
+        "test_plan_for_uses_the_bytes_it_checked",
         "test_read_gate_refuses_an_r_without_three_entrants",
         "test_read_gate_refuses_an_unregistered_battery",
         "test_read_gate_rejects_contract_violations",
@@ -215,6 +229,9 @@
     ],
     [
       "tests/test_benchmark_stage2_driver/test_fixtures.py"
+    ],
+    [
+      "tests/test_benchmark_stage2_driver/test_manifest_main.py"
     ],
     [
       "tests/test_benchmark_stage2_driver/test_pilot_gate.py"
@@ -3664,7 +3681,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 'a601f2c27822...8908c198906ae' == 'bcbd73d364b5...653aa2b2ad24f'\n  \n  - bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f\n  + a601f2c27822ca132aed51485136e0e1521448dd24ff246e6e68908c198906ae",
+        "text": "assert '6b6de818aafa...73eb8da342969' == 'bcbd73d364b5...653aa2b2ad24f'\n  \n  - bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f\n  + 6b6de818aafadefe2816053a4130f5f78e2856114e67b08c95d73eb8da342969",
         "frames": [
           [
             "runner.py",
@@ -3786,7 +3803,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 'bcbd73d364b5...653aa2b2ad24f' == '86a2c0922c5c...e7f558f3b4039'\n  \n  - 86a2c0922c5cf525e319e5e1f36c8131806973849e251e5aacbe7f558f3b4039\n  + bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f",
+        "text": "assert 'bcbd73d364b5...653aa2b2ad24f' == '822e8bfcec17...11c8138f0c6f2'\n  \n  - 822e8bfcec179adcec8901392a75665002fcb3f41a1bb919e5211c8138f0c6f2\n  + bcbd73d364b52223405734cee036d8b0419a0d9395210132ce3653aa2b2ad24f",
         "frames": [
           [
             "runner.py",
@@ -6534,7 +6551,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--stage', 'pilot', '--run-dir', '<tmp>\\\\pytest-of-<user>\\\\pytest-732\\\\test_main_exit_codes0'])\n +    where <function main at 0x?> = dr.main\n +  and   3 = dr.EXIT_INCOMPLETE",
+        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--stage', 'pilot', '--run-dir', '<tmp>\\\\pytest-of-<user>\\\\pytest-1017\\\\test_main_exit_codes0'])\n +    where <function main at 0x?> = dr.main\n +  and   3 = dr.EXIT_INCOMPLETE",
         "frames": [
           [
             "runner.py",
@@ -13525,7 +13542,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '6c46ddf03d67965a171ab12bde38c643a95388780d1b4f7ac1b39a3d33aebe51'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'f76b6c2ba2df78c67a218e8acffd02cfe8d5326b31aec5718ad198dc237ab103'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -13648,7 +13665,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'cf82108bc08457c6879e82b85bf017836a777a25dbd67a4cb70d4d3b96ec0819'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '0eb4b5eb7dfd58e52fbdea307df254cb5268ffb5ae1acd8425b3436cc7d64422'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -13771,7 +13788,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '6d1b71d7097e451298560745d0d174124f9c9063cac59494a95de448579f118d'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '50a1e2ec25eef9a299279b0d266387d7a9685c95a3334f76b0224a4df8bfd6b7'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -13895,7 +13912,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '8807b951c1f9e8324614bc6ea250e35f3a3e39568bb7a43fad057dc5edeec7a2'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '42533a456f57287f8cd0c80d1fa4f2a5ca720b8a826c43dcbfdcee978be48347'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -14018,7 +14035,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'b2d256924eafdd047cca1ae1a86352c27d5f15d2c1cdbc96c11e4157592fd7e0'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '17bdf86594600d682632d99b497d501dba74b0b52b1279ba0b5da5903d9217ed'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -14141,7 +14158,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '2b852bfd010766d30449fa2019a9ad47129a8802c8e7b9c6c989ac4cbbec301e'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'a1d595e481d6fa925773ec2e8036aa4493d8d4f31dfcaa624bc079fb571dd530'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -14387,7 +14404,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '6e3b61513a040e73898a246aa4e55535f173f160d7ae3b271719f8538d7bf6ca'}}}).stop",
+        "text": "assert False\n +  where False = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'b019d55f0629d7511a4d31e052a8658f4b21b372c62d3e46b553fa05b317ab72'}}}).stop",
         "frames": [
           [
             "runner.py",
@@ -14753,7 +14770,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 'pilot/O_time/qwen3:8b: meta attempt differs' in []\n +  where [] = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': 'a0d88336cd4e37d6282b6b3ded3c88838711e0b426df92f5ca546c0",
+        "text": "assert 'pilot/O_time/qwen3:8b: meta attempt differs' in []\n +  where [] = RunRead(stage='pilot', segments={'pilot/v2/qwen3:8b': SegmentRead(stage='pilot', battery='v2', model='qwen3:8b', statu...7e5f656c1d6c99a07f5d666eabae86a', 'meta_sha256': '7df93da14b62425f358cc5aa7b34f2a1be2c5b8ebb0d2429d7ef052",
         "frames": [
           [
             "runner.py",
@@ -19006,7 +19023,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert {'G': 'GO', '...', 'v3': 'GO'} == {'G': 'GO', '...: 'HELD_COST'}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'O_time': 'GO'} != {'O_time': 'HELD_COST'}\n  {'v3': 'GO'} != {'v3': 'HELD_COST'}\n  {'v2': 'GO'} != {'v2': 'HELD_COST'}\n  Use -v to get more diff",
+        "text": "assert {'G': 'GO', '...', 'v3': 'GO'} == {'G': 'GO', '...: 'HELD_COST'}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'O_time': 'GO'} != {'O_time': 'HELD_COST'}\n  {'v2': 'GO'} != {'v2': 'HELD_COST'}\n  {'v3': 'GO'} != {'v3': 'HELD_COST'}\n  Use -v to get more diff",
         "frames": [
           [
             "runner.py",
@@ -26099,128 +26116,6 @@
       }
     },
     {
-      "label": "c28 fixture の file が無くても通す",
-      "target": "scripts/benchmark_stage2_scorer.py",
-      "status": "KILLED",
-      "expected_any_of": [
-        "test_fixture_mismatch_makes_every_battery_invalid"
-      ],
-      "expected_witness": {
-        "when": "call",
-        "assert_stmt": true
-      },
-      "why": "§J: fixture が無ければ全 battery INVALID",
-      "failed": [
-        "test_fixture_mismatch_makes_every_battery_invalid"
-      ],
-      "witnessed_by": {
-        "function": "test_fixture_mismatch_makes_every_battery_invalid",
-        "param": null,
-        "when": "call",
-        "assert_stmt": true,
-        "type": "builtins.AssertionError",
-        "text": "assert False\n +  where False = all(<generator object test_fixture_mismatch_makes_every_battery_invalid.<locals>.<genexpr> at 0x?>)",
-        "frames": [
-          [
-            "runner.py",
-            "from_call"
-          ],
-          [
-            "runner.py",
-            "<lambda>"
-          ],
-          [
-            "_hooks.py",
-            "__call__"
-          ],
-          [
-            "_manager.py",
-            "_hookexec"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "logging.py",
-            "pytest_runtest_call"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "capture.py",
-            "pytest_runtest_call"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "skipping.py",
-            "pytest_runtest_call"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "runner.py",
-            "pytest_runtest_call"
-          ],
-          [
-            "python.py",
-            "runtest"
-          ],
-          [
-            "_hooks.py",
-            "__call__"
-          ],
-          [
-            "_manager.py",
-            "_hookexec"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "_callers.py",
-            "run_old_style_hookwrapper"
-          ],
-          [
-            "_result.py",
-            "get_result"
-          ],
-          [
-            "_callers.py",
-            "run_old_style_hookwrapper"
-          ],
-          [
-            "_callers.py",
-            "_multicall"
-          ],
-          [
-            "python.py",
-            "pytest_pyfunc_call"
-          ],
-          [
-            "test_scorer.py",
-            "test_fixture_mismatch_makes_every_battery_invalid"
-          ]
-        ]
-      }
-    },
-    {
       "label": "c29 全体の違反を battery に渡さない",
       "target": "scripts/benchmark_stage2_scorer.py",
       "status": "KILLED",
@@ -26871,7 +26766,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--run-dir', '<tmp>\\\\pytest-of-<user>\\\\pytest-835\\\\graded0', '--out', '<home>'<tmp>\\\\pytest-of-<user>\\\\pytest-835\\\\test_output_is_written_once_an0\\\\gate.json', ...])\n +    where <function main at 0x?> = sc.main",
+        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--run-dir', '<tmp>\\\\pytest-of-<user>\\\\pytest-1119\\\\graded0', '--out', '<home>\\\\pytest-of-<user>\\\\pytest-1119\\\\test_output_is_written_once_an0\\\\gate.json', ...])\n +    where <function main at 0x?> = sc.main",
         "frames": [
           [
             "runner.py",
@@ -28126,7 +28021,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert {('gemma2:9b'...q4_K_M'), ...} == {('gemma2:9b'...q4_K_M'), ...}\n  \n  Extra items in the left set:\n  ('llama3.1:8b', 'qwen3:8b')\n  ('qwen3:8b', 'qwen3:4b-q4_K_M')\n  ('qwen3:14b', 'qwen3:4b-q4_K_M')\n  ('qwen3:14b', 'qwen3:1.7b')\n  ('llama3.1:8b', 'qwen3:4b-q4_K_M')...\n  \n  ...Full output trunc",
+        "text": "assert {('gemma2:9b'...q4_K_M'), ...} == {('gemma2:9b'...q4_K_M'), ...}\n  \n  Extra items in the left set:\n  ('llama3.1:8b', 'qwen3:1.7b')\n  ('llama3.1:8b', 'qwen3:8b')\n  ('qwen3:8b', 'qwen3:4b-q4_K_M')\n  ('qwen3:14b', 'gemma2:9b')\n  ('llama3.1:8b', 'qwen3:4b-q4_K_M')...\n  \n  ...Full output truncated",
         "frames": [
           [
             "runner.py",
@@ -29438,7 +29333,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert {('llama3.1:8...en3:8b'), ...} == {('gemma2:9b'...q4_K_M'), ...}\n  \n  Extra items in the left set:\n  ('qwen3:4b-q4_K_M', 'qwen3:8b')\n  ('qwen3:8b', 'qwen3:14b')\n  ('llama3.1:8b', 'qwen3:14b')\n  ('qwen3:1.7b', 'qwen3:8b')\n  ('llama3.1:8b', 'qwen3:8b')...\n  \n  ...Full output truncated (7 lines ",
+        "text": "assert {('llama3.1:8...en3:8b'), ...} == {('gemma2:9b'...q4_K_M'), ...}\n  \n  Extra items in the left set:\n  ('qwen3:8b', 'qwen3:14b')\n  ('qwen3:4b-q4_K_M', 'qwen3:8b')\n  ('llama3.1:8b', 'qwen3:8b')\n  ('llama3.1:8b', 'qwen3:14b')\n  ('qwen3:1.7b', 'qwen3:8b')...\n  \n  ...Full output truncated (7 lines ",
         "frames": [
           [
             "runner.py",
@@ -29682,7 +29577,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert {'AB|asc', 'B...sc', 'DC|asc'} == {'AB|ago', 'A...'CD|asc', ...}\n  \n  Extra items in the right set:\n  'DC|ago'\n  'AB|ago'\n  'CD|ago'\n  'BA|ago'\n  Use -v to get more diff",
+        "text": "assert {'AB|asc', 'B...sc', 'DC|asc'} == {'AB|ago', 'A...'CD|asc', ...}\n  \n  Extra items in the right set:\n  'CD|ago'\n  'AB|ago'\n  'DC|ago'\n  'BA|ago'\n  Use -v to get more diff",
         "frames": [
           [
             "runner.py",
@@ -31587,7 +31482,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 0 == 2\n +  where 0 = <function main at 0x?>(['--out', '<tmp>\\\\pytest-of-<user>\\\\pytest-872\\\\test_cli_writes_once_and_check0\\\\fdm.json'])\n +    where <function main at 0x?> = fxm.main",
+        "text": "assert 0 == 2\n +  where 0 = <function main at 0x?>(['--out', '<tmp>\\\\pytest-of-<user>\\\\pytest-1157\\\\test_cli_writes_once_and_check0\\\\fdm.json'])\n +    where <function main at 0x?> = fxm.main",
         "frames": [
           [
             "runner.py",
@@ -31709,7 +31604,7 @@
         "when": "call",
         "assert_stmt": true,
         "type": "builtins.AssertionError",
-        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--out', '<tmp>\\\\pytest-of-<user>\\\\pytest-873\\\\test_cli_writes_once_and_check0\\\\fdm.json', '--check'])\n +    where <function main at 0x?> = fxm.main",
+        "text": "assert 0 == 3\n +  where 0 = <function main at 0x?>(['--out', '<tmp>\\\\pytest-of-<user>\\\\pytest-1158\\\\test_cli_writes_once_and_check0\\\\fdm.json', '--check'])\n +    where <function main at 0x?> = fxm.main",
         "frames": [
           [
             "runner.py",
@@ -31806,6 +31701,7148 @@
           [
             "test_fixtures.py",
             "test_cli_writes_once_and_checks"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m01 stage が main かを見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_1_stage_must_be_main"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 1 の stage",
+      "failed": [
+        "test_1_stage_must_be_main"
+      ],
+      "witnessed_by": {
+        "function": "test_1_stage_must_be_main",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['manifest_ma... is not main']\n  \n  Right contains one more item: 'manifest_main: stage is not main'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_1_stage_must_be_main"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m02 prereg の status が FROZEN かを見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_1_prereg_status_must_be_frozen"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 1 の status",
+      "failed": [
+        "test_1_prereg_status_must_be_frozen",
+        "test_freeze_refuses_to_write"
+      ],
+      "witnessed_by": {
+        "function": "test_1_prereg_status_must_be_frozen",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['prereg: sta...s not FROZEN']\n  \n  Right contains one more item: 'prereg: status is not FROZEN'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_1_prereg_status_must_be_frozen"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m03 prereg の全体の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_1_prereg_sha_is_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 1 の prereg の sha",
+      "failed": [
+        "test_1_prereg_sha_is_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_1_prereg_sha_is_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['prereg: sha...m the record']\n  \n  Right contains one more item: 'prereg: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_1_prereg_sha_is_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m04 第 1 段の manifest.json の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_2_stage1_manifest_sha_is_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 2 の manifest.json の sha",
+      "failed": [
+        "test_2_stage1_manifest_sha_is_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_2_stage1_manifest_sha_is_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['manifest_ma...(char 1807))'] == ['manifest.js...m the record']\n  \n  At index 0 diff: 'manifest_main: malformed input (JSONDecodeError: Extra data: line 22 column 1 (char 1807))' != 'manifest.json: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_2_stage1_manifest_sha_is_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m05 第 1 段の file の集合を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_2_stage1_file_set_is_checked"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 2 の集合",
+      "failed": [
+        "test_2_stage1_file_set_is_checked"
+      ],
+      "witnessed_by": {
+        "function": "test_2_stage1_file_set_is_checked",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['experiments...anifest.json'] == ['manifest.js...anifest.json']\n  \n  At index 0 diff: 'experiments/20261126-benchmark-stage2-discriminability/run.sh: sha256 differs from manifest.json' != 'manifest.json: the frozen file set differs'\n  Right contains one more item: 'experiments/20261126-bench",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_2_stage1_file_set_is_checked"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m06 第 1 段の file の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_2_stage1_files_are_checked"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 2 の各 file の sha",
+      "failed": [
+        "test_2_stage1_file_set_is_checked",
+        "test_2_stage1_files_are_checked"
+      ],
+      "witnessed_by": {
+        "function": "test_2_stage1_files_are_checked",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['experiments...anifest.json']\n  \n  Right contains one more item: 'experiments/20261126-benchmark-stage2-discriminability/run.sh: sha256 differs from manifest.json'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_2_stage1_files_are_checked"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m07 prereg の本文を第 1 段と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_2_prereg_body_must_match_stage1"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 2 の本文 (status 行だけが変わる)",
+      "failed": [
+        "test_2_prereg_body_must_match_stage1"
+      ],
+      "witnessed_by": {
+        "function": "test_2_prereg_body_must_match_stage1",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['prereg: bod... may change)']\n  \n  Right contains one more item: 'prereg: body differs from manifest.json (only the status line may change)'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_2_prereg_body_must_match_stage1"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m08 models.json を第 1 段の封印と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_5_models_must_be_the_stage1_models"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 5 の第 1 段との結び (Codex r1 H4)",
+      "failed": [
+        "test_5_models_must_be_the_stage1_models",
+        "test_5_models_sha_is_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_5_models_must_be_the_stage1_models",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['models.json...anifest.json']\n  \n  Right contains one more item: 'models.json: sha256 differs from manifest.json'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_5_models_must_be_the_stage1_models"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m09 見取り図の結論を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_2_stage1_sketch_conclusion_is_checked"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 2 の見取り図の結論",
+      "failed": [
+        "test_2_stage1_sketch_conclusion_is_checked"
+      ],
+      "witnessed_by": {
+        "function": "test_2_stage1_sketch_conclusion_is_checked",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['fixture_dif...frozen table']\n  \n  Right contains one more item: 'fixture_diffs: G source differs from the frozen table'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_2_stage1_sketch_conclusion_is_checked"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m10 all_killed の申告を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "killed",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の all_killed",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "killed",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...t all killed']\n  \n  Right contains one more item: 'certificate: not all killed'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m11 変異の行が空でも通す",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "no_rows",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 は行を数え直す (CR-M1)",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "no_rows",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate... mutant rows']\n  \n  Right contains one more item: 'certificate: no mutant rows'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m12 KILLED でない行を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "survived_row",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の各行の状態",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "survived_row",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...s not KILLED']\n  \n  Right contains one more item: 'certificate: a mutant row is not KILLED'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m13 変異の無い対象を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "uncovered_target",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の対象ごとの変異",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "uncovered_target",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...as no mutant']\n  \n  Right contains one more item: 'certificate: a target has no mutant'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m14 meta-test を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "no_meta",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の meta-test (prereg §J)",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "no_meta",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...did not hold']\n  \n  Right contains one more item: 'certificate: the meta-test did not hold'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m15 証明書が無くても通す",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_missing"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の欠け",
+      "failed": [
+        "test_3_certificate_missing"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_missing",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['certificate...m the record'] == ['certificate: missing']\n  \n  At index 0 diff: 'certificate: sha256 differs from the record' != 'certificate: missing'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_missing"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m16 証明書の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_sha_is_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の証明書の sha",
+      "failed": [
+        "test_3_certificate_sha_is_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_sha_is_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['manifest_ma...(char 4397))'] == ['certificate...m the record']\n  \n  At index 0 diff: 'manifest_main: malformed input (JSONDecodeError: Extra data: line 103 column 1 (char 4397))' != 'certificate: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_sha_is_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m17 証明書の version を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "version",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の version",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "version",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...not pre_main']\n  \n  Right contains one more item: 'certificate: version is not pre_main'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m18 証明書の対象を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "targets",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の対象 (manifest_main を含む)",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "targets",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...be a target)']\n  \n  Right contains one more item: 'certificate: targets differ (manifest_main must be a target)'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m19 target_sha256 の集合を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_a_new_test_file_is_outside_the_certificate"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の束縛の集合 (test dir の全 .py)",
+      "failed": [
+        "test_3_a_new_test_file_is_outside_the_certificate",
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_a_new_test_file_is_outside_the_certificate",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...ent file set']\n  \n  Right contains one more item: 'certificate: target_sha256 covers a different file set'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_a_new_test_file_is_outside_the_certificate"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m20 対象の sha を現在と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_binds_current_files"
+      ],
+      "expected_witness": {
+        "item": "target",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の各対象の sha",
+      "failed": [
+        "test_3_certificate_binds_current_files",
+        "test_driver_plan_for_requires_the_manifest",
+        "test_none_is_never_a_match"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_binds_current_files",
+        "param": "target",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...current file']\n  \n  Right contains one more item: 'certificate: benchmark_stage2_units.py differs from the current file'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_binds_current_files"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m21 witness の test の集合を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "witness",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の witness の集合",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "witness",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...ent file set']\n  \n  Right contains one more item: 'certificate: witness_tests_sha256 covers a different file set'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m22 witness の test の sha を照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_binds_current_files"
+      ],
+      "expected_witness": {
+        "item": "witness",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の witness の sha",
+      "failed": [
+        "test_3_certificate_binds_current_files"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_binds_current_files",
+        "param": "witness",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...current file']\n  \n  Right contains one more item: 'certificate: tests/test_skill_lever/test_scorer.py differs from the current file'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_binds_current_files"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m23 証明書の入力の集合を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_3_certificate_fields"
+      ],
+      "expected_witness": {
+        "item": "inputs",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3 の入力の集合",
+      "failed": [
+        "test_3_certificate_fields"
+      ],
+      "witnessed_by": {
+        "function": "test_3_certificate_fields",
+        "param": "inputs",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...ent file set']\n  \n  Right contains one more item: 'certificate: inputs_sha256 covers a different file set'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_3_certificate_fields"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m24 証明書の gate を root の gate と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_4_gate_must_be_the_certified_input"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 3・4 の root の gate",
+      "failed": [
+        "test_4_gate_must_be_the_certified_input"
+      ],
+      "witnessed_by": {
+        "function": "test_4_gate_must_be_the_certified_input",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...nt gate.json']\n  \n  Right contains one more item: 'certificate: inputs_sha256 differs from the current gate.json'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_4_gate_must_be_the_certified_input"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m25 渡した gate を証明書の gate と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_4_passed_gate_must_be_the_certified_gate"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 4 (Codex r1 H1)",
+      "failed": [
+        "test_4_gate_bytes_are_bound",
+        "test_4_passed_gate_must_be_the_certified_gate"
+      ],
+      "witnessed_by": {
+        "function": "test_4_passed_gate_must_be_the_certified_gate",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['gate.json: ...rtified gate']\n  \n  Right contains one more item: 'gate.json: the passed gate differs from the certified gate'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_4_passed_gate_must_be_the_certified_gate"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m26 渡した gate を記録と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_4_gate_bytes_are_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 4 の記録",
+      "failed": [
+        "test_4_gate_bytes_are_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_4_gate_bytes_are_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['gate.json: ...rtified gate'] == ['gate.json: ...m the record']\n  \n  Right contains one more item: 'gate.json: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_4_gate_bytes_are_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m27 渡した models の sha を記録と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_5_models_sha_is_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 5 の記録",
+      "failed": [
+        "test_5_models_sha_is_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_5_models_sha_is_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['models.json...anifest.json'] == ['models.json...m the record']\n  \n  Right contains one more item: 'models.json: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_5_models_sha_is_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m28 fixture を渡されないとき root の fixture を読まない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tree_passes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 6 (driver は root の fixture を照合する)",
+      "failed": [
+        "test_1_prereg_sha_is_bound",
+        "test_1_prereg_status_must_be_frozen",
+        "test_1_stage_must_be_main",
+        "test_2_prereg_body_must_match_stage1",
+        "test_2_stage1_file_set_is_checked",
+        "test_2_stage1_files_are_checked",
+        "test_2_stage1_manifest_sha_is_bound",
+        "test_2_stage1_sketch_conclusion_is_checked",
+        "test_3_a_new_test_file_is_outside_the_certificate",
+        "test_3_certificate_binds_current_files",
+        "test_3_certificate_fields",
+        "test_3_certificate_missing",
+        "test_3_certificate_sha_is_bound",
+        "test_4_gate_bytes_are_bound",
+        "test_4_gate_must_be_the_certified_input",
+        "test_4_passed_gate_must_be_the_certified_gate",
+        "test_5_models_must_be_the_stage1_models",
+        "test_5_models_sha_is_bound",
+        "test_6_fixture_bytes_are_bound",
+        "test_7_sketch_must_be_the_recomputed_one",
+        "test_8_battery_checks",
+        "test_8_battery_checks_missing",
+        "test_8_check_names_are_registered",
+        "test_9_external_modules_are_bound",
+        "test_9_external_set_follows_the_import_closure",
+        "test_driver_plan_for_requires_the_manifest",
+        "test_driver_recomputes_battery_checks",
+        "test_freeze_records_the_recomputed_sketch",
+        "test_freeze_verify_recomputes_battery_checks",
+        "test_freeze_writes_once_and_verifies",
+        "test_malformed_battery_entry_is_a_violation",
+        "test_none_is_never_a_match",
+        "test_plan_for_uses_the_bytes_it_checked",
+        "test_tree_passes"
+      ],
+      "witnessed_by": {
+        "function": "test_tree_passes",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['fixture_dif...son: missing'] == []\n  \n  Left contains one more item: 'fixture_diffs_main.json: missing'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_tree_passes"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m29 fixture の欠けを見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_6_fixture_bytes_are_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 6 の欠け",
+      "failed": [
+        "test_6_fixture_bytes_are_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_6_fixture_bytes_are_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['fixture_dif...son: missing']\n  \n  Right contains one more item: 'fixture_diffs_main.json: missing'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_6_fixture_bytes_are_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m30 fixture の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_6_fixture_bytes_are_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 6 の sha",
+      "failed": [
+        "test_6_fixture_bytes_are_bound",
+        "test_scorer_checks_the_fixture_it_read"
+      ],
+      "witnessed_by": {
+        "function": "test_6_fixture_bytes_are_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['fixture_dif...m the record']\n  \n  Right contains one more item: 'fixture_diffs_main.json: sha256 differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_6_fixture_bytes_are_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m31 見取り図の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_7_sketch_must_be_the_recomputed_one"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 7",
+      "failed": [
+        "test_7_sketch_must_be_the_recomputed_one",
+        "test_freeze_records_the_recomputed_sketch"
+      ],
+      "witnessed_by": {
+        "function": "test_7_sketch_must_be_the_recomputed_one",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['sketch.json...puted sketch']\n  \n  Right contains one more item: 'sketch.json: sha256 differs from the recomputed sketch'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_7_sketch_must_be_the_recomputed_one"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m32 battery_checks の欠けを見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_8_battery_checks_missing"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の欠け",
+      "failed": [
+        "test_8_battery_checks_missing",
+        "test_malformed_battery_entry_is_a_violation"
+      ],
+      "witnessed_by": {
+        "function": "test_8_battery_checks_missing",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [\"manifest_ma...ute 'items')\"] == ['battery_che...or malformed']\n  \n  At index 0 diff: \"manifest_main: malformed input (AttributeError: 'NoneType' object has no attribute 'items')\" != 'battery_checks: missing or malformed'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_8_battery_checks_missing"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m33 battery の R を gate と照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_8_battery_checks"
+      ],
+      "expected_witness": {
+        "item": "R",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の R",
+      "failed": [
+        "test_8_battery_checks"
+      ],
+      "witnessed_by": {
+        "function": "test_8_battery_checks",
+        "param": "R",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['battery_che... of the gate']\n  \n  Right contains one more item: 'battery_checks: R differs from the GO batteries of the gate'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_8_battery_checks"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m34 checks が object でなくても通す",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_8_battery_checks"
+      ],
+      "expected_witness": {
+        "item": "none",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の checks の型",
+      "failed": [
+        "test_8_battery_checks"
+      ],
+      "witnessed_by": {
+        "function": "test_8_battery_checks",
+        "param": "none",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['battery_che...as no checks']\n  \n  Right contains one more item: 'battery_checks: O_time has no checks'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_8_battery_checks"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m35 checks の項目の名前を照合しない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_8_check_names_are_registered"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の名前 (Codex r1 H6)",
+      "failed": [
+        "test_8_battery_checks",
+        "test_8_check_names_are_registered"
+      ],
+      "witnessed_by": {
+        "function": "test_8_check_names_are_registered",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['battery_che...registration']\n  \n  Right contains one more item: 'battery_checks: O_time check names differ from the registration'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_8_check_names_are_registered"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m36 失敗した check を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_8_battery_checks"
+      ],
+      "expected_witness": {
+        "item": "failed",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の全項目が空",
+      "failed": [
+        "test_8_battery_checks"
+      ],
+      "witnessed_by": {
+        "function": "test_8_battery_checks",
+        "param": "failed",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['battery_che...failed check']\n  \n  Right contains one more item: 'battery_checks: O_time has a failed check'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_8_battery_checks"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m37 段 2 の外の module の集合を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_9_external_set_follows_the_import_closure"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 9 の集合",
+      "failed": [
+        "test_9_external_set_follows_the_import_closure"
+      ],
+      "witnessed_by": {
+        "function": "test_9_external_set_follows_the_import_closure",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['external mo...m the record'] == ['external mo...port closure']\n  \n  At index 0 diff: 'external modules: scripts/stage_b_scorer.py differs from the record' != 'external modules: the set differs from the import closure'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_9_external_set_follows_the_import_closure"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m38 段 2 の外の module の sha を見ない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_9_external_modules_are_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 9 の sha (Codex r1 H3)",
+      "failed": [
+        "test_9_external_modules_are_bound"
+      ],
+      "witnessed_by": {
+        "function": "test_9_external_modules_are_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['external mo...m the record']\n  \n  Right contains one more item: 'external modules: scripts/o_time_probe_scorer.py differs from the record'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_9_external_modules_are_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m39 import の閉包が from scripts import を数えない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_9_external_modules_are_bound"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 9 の閉包 (AST)",
+      "failed": [
+        "test_9_external_modules_are_bound",
+        "test_9_external_set_follows_the_import_closure",
+        "test_freeze_checks_external_modules_against_their_chain_seals",
+        "test_freeze_refuses_an_external_module_without_a_seal"
+      ],
+      "witnessed_by": {
+        "function": "test_9_external_modules_are_bound",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert 'scripts/o_time_probe_scorer.py' in []\n +  where [] = <function external_modules at 0x?>(WindowsPath('<tmp>/pytest-of-<user>/pytest-1196/test_9_external_modules_are_bo0<home>'))\n +    where <function external_modules at 0x?> = mm.external_modules",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_9_external_modules_are_bound"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m40 片方が None の比較を一致に数える",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_none_is_never_a_match"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): None・null は一致に数えない (CR-L)",
+      "failed": [
+        "test_none_is_never_a_match"
+      ],
+      "witnessed_by": {
+        "function": "test_none_is_never_a_match",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [] == ['certificate...current file']\n  \n  Right contains one more item: 'certificate: benchmark_stage2_units.py differs from the current file'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_none_is_never_a_match"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m41 型の崩れを違反の文にしない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_malformed_stage1_manifest_is_a_violation"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "JSONDecodeError",
+        "text": "Expecting",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 壊れた入力は違反の文 (Codex r1 M1)",
+      "failed": [
+        "test_malformed_stage1_manifest_is_a_violation"
+      ],
+      "witnessed_by": {
+        "function": "test_malformed_stage1_manifest_is_a_violation",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "json.decoder.JSONDecodeError",
+        "text": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_malformed_stage1_manifest_is_a_violation"
+          ],
+          [
+            "test_manifest_main.py",
+            "found"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "violations"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "check"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "_check"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "_stage1_violations"
+          ],
+          [
+            "__init__.py",
+            "loads"
+          ],
+          [
+            "decoder.py",
+            "decode"
+          ],
+          [
+            "decoder.py",
+            "raw_decode"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m42 読めない記録を ManifestError にしない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_broken_manifest_is_a_violation"
+      ],
+      "expected_witness": {
+        "item": "truncated",
+        "when": "call",
+        "exc": "JSONDecodeError",
+        "text": "Expecting",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 読めない記録 (Codex r1 M1)",
+      "failed": [
+        "test_broken_manifest_is_a_violation"
+      ],
+      "witnessed_by": {
+        "function": "test_broken_manifest_is_a_violation",
+        "param": "truncated",
+        "when": "call",
+        "assert_stmt": false,
+        "type": "json.decoder.JSONDecodeError",
+        "text": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_broken_manifest_is_a_violation"
+          ],
+          [
+            "test_manifest_main.py",
+            "found"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "violations"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "load"
+          ],
+          [
+            "__init__.py",
+            "loads"
+          ],
+          [
+            "decoder.py",
+            "decode"
+          ],
+          [
+            "decoder.py",
+            "raw_decode"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m43 object でない記録を拒まない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_broken_manifest_is_a_violation"
+      ],
+      "expected_witness": {
+        "item": "not_object",
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 記録は object",
+      "failed": [
+        "test_broken_manifest_is_a_violation"
+      ],
+      "witnessed_by": {
+        "function": "test_broken_manifest_is_a_violation",
+        "param": "not_object",
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert [\"manifest_ma...ibute 'get')\"] == ['manifest_ma...ot an object']\n  \n  At index 0 diff: \"manifest_main: malformed input (AttributeError: 'list' object has no attribute 'get')\" != 'manifest_main.json: not an object'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_broken_manifest_is_a_violation"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m44 require が違反で止めない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_plan_for_requires_the_manifest"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "main_plan is called before the manifest check",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 入口は違反で止まる",
+      "failed": [
+        "test_driver_plan_for_requires_the_manifest",
+        "test_malformed_stage1_manifest_is_a_violation",
+        "test_scorer_checks_the_fixture_it_read"
+      ],
+      "witnessed_by": {
+        "function": "test_driver_plan_for_requires_the_manifest",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.AssertionError",
+        "text": "main_plan is called before the manifest check",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_driver_plan_for_requires_the_manifest"
+          ],
+          [
+            "benchmark_stage2_driver.py",
+            "plan_for"
+          ],
+          [
+            "test_manifest_main.py",
+            "no_plan"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m45 require が記録の欠けで止めない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_missing_manifest_is_refused"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "Regex pattern did not match",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 記録が無ければ止まる",
+      "failed": [
+        "test_driver_plan_for_requires_the_manifest",
+        "test_missing_manifest_is_refused",
+        "test_scorer_refuses_without_the_manifest"
+      ],
+      "witnessed_by": {
+        "function": "test_missing_manifest_is_refused",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.AssertionError",
+        "text": "Regex pattern did not match.\n Regex: 'missing'\n Input: \"manifest_main: malformed input (AttributeError: 'NoneType' object has no attribute 'get')\"",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_missing_manifest_is_refused"
+          ],
+          [
+            "raises.py",
+            "__exit__"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m46 GO でない battery も R に数える",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tree_passes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の R は GO の battery だけ",
+      "failed": [
+        "test_1_prereg_sha_is_bound",
+        "test_1_prereg_status_must_be_frozen",
+        "test_1_stage_must_be_main",
+        "test_2_prereg_body_must_match_stage1",
+        "test_2_stage1_file_set_is_checked",
+        "test_2_stage1_files_are_checked",
+        "test_2_stage1_manifest_sha_is_bound",
+        "test_2_stage1_sketch_conclusion_is_checked",
+        "test_3_a_new_test_file_is_outside_the_certificate",
+        "test_3_certificate_binds_current_files",
+        "test_3_certificate_fields",
+        "test_3_certificate_missing",
+        "test_3_certificate_sha_is_bound",
+        "test_4_gate_bytes_are_bound",
+        "test_4_gate_must_be_the_certified_input",
+        "test_4_passed_gate_must_be_the_certified_gate",
+        "test_5_models_must_be_the_stage1_models",
+        "test_5_models_sha_is_bound",
+        "test_6_fixture_bytes_are_bound",
+        "test_7_sketch_must_be_the_recomputed_one",
+        "test_8_battery_checks",
+        "test_8_check_names_are_registered",
+        "test_9_external_modules_are_bound",
+        "test_9_external_set_follows_the_import_closure",
+        "test_driver_plan_for_requires_the_manifest",
+        "test_driver_recomputes_battery_checks",
+        "test_freeze_checks_external_modules_against_their_chain_seals",
+        "test_freeze_records_the_recomputed_sketch",
+        "test_freeze_refuses_a_failed_battery_check",
+        "test_freeze_refuses_a_stage1_manifest_other_than_the_pilot_commit",
+        "test_freeze_refuses_an_external_module_without_a_seal",
+        "test_freeze_refuses_to_write",
+        "test_freeze_verify_recomputes_battery_checks",
+        "test_freeze_writes_once_and_verifies",
+        "test_none_is_never_a_match",
+        "test_plan_for_uses_the_bytes_it_checked",
+        "test_tree_passes"
+      ],
+      "witnessed_by": {
+        "function": "test_tree_passes",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['battery_che...registration'] == []\n  \n  Left contains 3 more items, first extra item: 'battery_checks: G check names differ from the registration'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_tree_passes"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "m47 G・O_time の pilot_aux の項目を数えない",
+      "target": "scripts/benchmark_stage2_manifest_main.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_tree_passes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (第 2 段の封印): 検査 8 の項目の名前 (pilot_aux)",
+      "failed": [
+        "test_1_prereg_sha_is_bound",
+        "test_1_prereg_status_must_be_frozen",
+        "test_1_stage_must_be_main",
+        "test_2_prereg_body_must_match_stage1",
+        "test_2_stage1_file_set_is_checked",
+        "test_2_stage1_files_are_checked",
+        "test_2_stage1_manifest_sha_is_bound",
+        "test_2_stage1_sketch_conclusion_is_checked",
+        "test_3_a_new_test_file_is_outside_the_certificate",
+        "test_3_certificate_binds_current_files",
+        "test_3_certificate_fields",
+        "test_3_certificate_missing",
+        "test_3_certificate_sha_is_bound",
+        "test_4_gate_bytes_are_bound",
+        "test_4_gate_must_be_the_certified_input",
+        "test_4_passed_gate_must_be_the_certified_gate",
+        "test_5_models_must_be_the_stage1_models",
+        "test_5_models_sha_is_bound",
+        "test_6_fixture_bytes_are_bound",
+        "test_7_sketch_must_be_the_recomputed_one",
+        "test_8_battery_checks",
+        "test_9_external_modules_are_bound",
+        "test_9_external_set_follows_the_import_closure",
+        "test_driver_plan_for_requires_the_manifest",
+        "test_driver_recomputes_battery_checks",
+        "test_freeze_records_the_recomputed_sketch",
+        "test_freeze_verify_recomputes_battery_checks",
+        "test_freeze_writes_once_and_verifies",
+        "test_none_is_never_a_match",
+        "test_plan_for_uses_the_bytes_it_checked",
+        "test_tree_passes"
+      ],
+      "witnessed_by": {
+        "function": "test_tree_passes",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert ['battery_che...registration'] == []\n  \n  Left contains one more item: 'battery_checks: O_time check names differ from the registration'\n  Use -v to get more diff",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_tree_passes"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "d64 plan_for が封印を照合しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_plan_for_requires_the_manifest"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "main_plan is called before the manifest check",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (送信前の照合): 本走の枝は main_plan の前に照合する",
+      "failed": [
+        "test_driver_plan_for_requires_the_manifest"
+      ],
+      "witnessed_by": {
+        "function": "test_driver_plan_for_requires_the_manifest",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.AssertionError",
+        "text": "main_plan is called before the manifest check",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_driver_plan_for_requires_the_manifest"
+          ],
+          [
+            "benchmark_stage2_driver.py",
+            "plan_for"
+          ],
+          [
+            "test_manifest_main.py",
+            "no_plan"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "d65 plan_for が battery_checks を計算し直さない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_recomputes_battery_checks"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (送信前の照合): 記録を読むだけでなく実 R で再計算する",
+      "failed": [
+        "test_driver_recomputes_battery_checks"
+      ],
+      "witnessed_by": {
+        "function": "test_driver_recomputes_battery_checks",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_driver.PreflightError'>",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_driver_recomputes_battery_checks"
+          ],
+          [
+            "raises.py",
+            "__exit__"
+          ],
+          [
+            "outcomes.py",
+            "fail"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "d66 plan_for が渡した models の bytes を使わない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_plan_for_uses_the_bytes_it_checked"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "FileNotFoundError",
+        "text": "no_such_models",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (送信前の照合): 照合した bytes = 送信に使う bytes (Codex r1 H4)",
+      "failed": [
+        "test_plan_for_uses_the_bytes_it_checked"
+      ],
+      "witnessed_by": {
+        "function": "test_plan_for_uses_the_bytes_it_checked",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.FileNotFoundError",
+        "text": "[Errno 2] No such file or directory: '<tmp>\\\\pytest-of-<user>\\\\pytest-1207\\\\test_plan_for_uses_the_bytes_i0\\\\root\\\\no_such_models.json'",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_plan_for_uses_the_bytes_it_checked"
+          ],
+          [
+            "benchmark_stage2_driver.py",
+            "plan_for"
+          ],
+          [
+            "pathlib.py",
+            "read_bytes"
+          ],
+          [
+            "pathlib.py",
+            "open"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "d67 CLI が送信の参照を models.json から読み直す",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "assert_stmt": true
+      },
+      "why": "DD-12 H2 (送信前の照合): 照合した bytes を送信の参照に (Codex r1 H4)",
+      "failed": [
+        "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+      ],
+      "witnessed_by": {
+        "function": "test_driver_main_checks_and_sends_with_the_same_models_bytes",
+        "param": null,
+        "when": "call",
+        "assert_stmt": true,
+        "type": "builtins.AssertionError",
+        "text": "assert None == {'models': {'gemma2:9b': {'default_parameters': 'stop                           \"<start_of_turn>\"\\nstop               ...b31c972991882db3cf4d192569092138a7d29e973cd9debe8', 'parameter_size': '14.8B', ...}, ...}, 'ollama_version': '0.32.12'}\n +  where {'models': {'gemma2:9b': {'default",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "d68 CLI が models.json を読めないとき拒否しない",
+      "target": "scripts/benchmark_stage2_driver.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "FileNotFoundError",
+        "text": "missing.json",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (送信前の照合): 読めない models.json は exit 2 (CR-L)",
+      "failed": [
+        "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+      ],
+      "witnessed_by": {
+        "function": "test_driver_main_checks_and_sends_with_the_same_models_bytes",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.FileNotFoundError",
+        "text": "[Errno 2] No such file or directory: '<tmp>\\\\pytest-of-<user>\\\\pytest-1209\\\\test_driver_main_checks_and_se0\\\\missing.json'",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_driver_main_checks_and_sends_with_the_same_models_bytes"
+          ],
+          [
+            "benchmark_stage2_driver.py",
+            "main"
+          ],
+          [
+            "pathlib.py",
+            "read_bytes"
+          ],
+          [
+            "pathlib.py",
+            "open"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "c57 compute_verdict が封印を照合しない",
+      "target": "scripts/benchmark_stage2_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_scorer_refuses_without_the_manifest"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "records are read before the manifest check",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (判定前の照合): 記録を読む前に照合する",
+      "failed": [
+        "test_scorer_checks_the_fixture_it_read",
+        "test_scorer_refuses_without_the_manifest"
+      ],
+      "witnessed_by": {
+        "function": "test_scorer_refuses_without_the_manifest",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.AssertionError",
+        "text": "records are read before the manifest check",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_scorer_refuses_without_the_manifest"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "compute_verdict"
+          ],
+          [
+            "test_manifest_main.py",
+            "no_read"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "c58 compute_verdict が読んだ fixture を照合に渡さない",
+      "target": "scripts/benchmark_stage2_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_scorer_checks_the_fixture_it_read"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "Failed",
+        "text": "DID NOT RAISE",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (判定前の照合): 判定に使う fixture の bytes を照合する",
+      "failed": [
+        "test_scorer_checks_the_fixture_it_read"
+      ],
+      "witnessed_by": {
+        "function": "test_scorer_checks_the_fixture_it_read",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.Failed",
+        "text": "DID NOT RAISE <class 'scripts.benchmark_stage2_manifest_main.ManifestError'>",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_scorer_checks_the_fixture_it_read"
+          ],
+          [
+            "raises.py",
+            "__exit__"
+          ],
+          [
+            "outcomes.py",
+            "fail"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "c59 CLI が照合の失敗を exit 2 にしない",
+      "target": "scripts/benchmark_stage2_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_scorer_refuses_without_the_manifest"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "ManifestError",
+        "text": "manifest_main.json: missing",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (判定前の照合): CLI は refused: manifest_main で exit 2",
+      "failed": [
+        "test_scorer_refuses_without_the_manifest"
+      ],
+      "witnessed_by": {
+        "function": "test_scorer_refuses_without_the_manifest",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "scripts.benchmark_stage2_manifest_main.ManifestError",
+        "text": "manifest_main.json: missing",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_manifest_main.py",
+            "test_scorer_refuses_without_the_manifest"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "main"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "run_scorer"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "compute_twice"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "<listcomp>"
+          ],
+          [
+            "benchmark_stage2_scorer.py",
+            "compute_verdict"
+          ],
+          [
+            "benchmark_stage2_manifest_main.py",
+            "require"
+          ]
+        ]
+      }
+    },
+    {
+      "label": "c60 読めない fixture で判定に進む",
+      "target": "scripts/benchmark_stage2_scorer.py",
+      "status": "KILLED",
+      "expected_any_of": [
+        "test_fixture_mismatch_makes_every_battery_invalid"
+      ],
+      "expected_witness": {
+        "when": "call",
+        "exc": "AssertionError",
+        "text": "Regex pattern did not match",
+        "assert_stmt": false
+      },
+      "why": "DD-12 H2 (判定前の照合): 読めない fixture は判定しない (DF-6 の改め)",
+      "failed": [
+        "test_fixture_mismatch_makes_every_battery_invalid"
+      ],
+      "witnessed_by": {
+        "function": "test_fixture_mismatch_makes_every_battery_invalid",
+        "param": null,
+        "when": "call",
+        "assert_stmt": false,
+        "type": "builtins.AssertionError",
+        "text": "Regex pattern did not match.\n Regex: 'cannot read'\n Input: 'fixture_diffs_main.json: sha256 differs from the record'",
+        "frames": [
+          [
+            "runner.py",
+            "from_call"
+          ],
+          [
+            "runner.py",
+            "<lambda>"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "logging.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "capture.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "skipping.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "runner.py",
+            "pytest_runtest_call"
+          ],
+          [
+            "python.py",
+            "runtest"
+          ],
+          [
+            "_hooks.py",
+            "__call__"
+          ],
+          [
+            "_manager.py",
+            "_hookexec"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_result.py",
+            "get_result"
+          ],
+          [
+            "_callers.py",
+            "run_old_style_hookwrapper"
+          ],
+          [
+            "_callers.py",
+            "_multicall"
+          ],
+          [
+            "python.py",
+            "pytest_pyfunc_call"
+          ],
+          [
+            "test_scorer.py",
+            "test_fixture_mismatch_makes_every_battery_invalid"
+          ],
+          [
+            "raises.py",
+            "__exit__"
           ]
         ]
       }

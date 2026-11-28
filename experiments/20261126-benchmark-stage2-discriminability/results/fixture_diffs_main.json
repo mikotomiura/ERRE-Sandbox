@@ -1,0 +1,3046 @@
+{
+  "batteries": {
+    "G": {
+      "gate": "STOP_POWER",
+      "status": "not_selected"
+    },
+    "O_time": {
+      "R": 138,
+      "gate": "GO",
+      "max_abs_C_nuisance": 0.0,
+      "n_policies": 32,
+      "nuisance_pairs": [
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "bigger_digit_if_later[third]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "digit_is_1",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "digit_is_2",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "digit_max",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "digit_min",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[first]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "digit_is_1",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "digit_is_2",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "digit_max",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "digit_min",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "bigger_digit_if_later[third]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "digit_is_2",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "digit_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "digit_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_1",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "digit_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "digit_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_is_2",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "digit_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_max",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "digit_plus_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_min",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "digit_plus_position",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "label_alpha[max]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "first_row",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "label_alpha[min]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[max]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "label_position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "label_alpha[min]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "label_position",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "majority_tag_first3",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "last_row",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "match_first",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "majority_tag_first3",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "match_last",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "match_first",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "minority_tag_tail5",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "match_last",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "most_frequent[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "minority_tag_tail5",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "most_frequent[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[first]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "neighbor_copy",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "most_frequent[last]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "option_first",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "neighbor_copy",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "option_last",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "option_first",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "row_count_position",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "option_last",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "same_tag_as_first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "row_count_position",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "same_tag_as_last_row",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_first_row",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_last_row",
+          "b": "tag_length[first]",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_last_row",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_last_row",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_last_row",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "same_tag_as_last_row",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[first]",
+          "b": "tag_length[last]",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[first]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[first]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[first]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[last]",
+          "b": "tag_lex_max",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[last]",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_length[last]",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_lex_max",
+          "b": "tag_lex_min",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_lex_max",
+          "b": "third_option",
+          "diff": 0.0
+        },
+        {
+          "a": "tag_lex_min",
+          "b": "third_option",
+          "diff": 0.0
+        }
+      ],
+      "nuisance_pairs_over_delta_min": [],
+      "policies": {
+        "bigger_digit_if_later[first]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "bigger_digit_if_later[third]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "digit_is_1": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "digit_is_2": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "digit_max": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "digit_min": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "digit_plus_position": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "first_row": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "follow_newer": {
+          "C": 1.0,
+          "positive_control": true,
+          "registered": "positive_control"
+        },
+        "follow_older": {
+          "C": -1.0,
+          "positive_control": true,
+          "registered": "positive_control"
+        },
+        "label_alpha[max]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "label_alpha[min]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "label_position": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "last_row": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "majority_tag_first3": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_relative"
+        },
+        "match_first": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "match_last": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "minority_tag_tail5": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_relative"
+        },
+        "most_frequent[first]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "most_frequent[last]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "neighbor_copy": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "newer_in_asc_only": {
+          "C": 0.5,
+          "positive_control": true,
+          "registered": "positive_control"
+        },
+        "option_first": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "option_last": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "row_count_position": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        },
+        "same_tag_as_first_row": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_relative"
+        },
+        "same_tag_as_last_row": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_relative"
+        },
+        "tag_length[first]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "tag_length[last]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "tag_lex_max": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "tag_lex_min": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_literal"
+        },
+        "third_option": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "tag_blind"
+        }
+      },
+      "r_list": [
+        324,
+        462
+      ],
+      "status": "computed"
+    },
+    "v2": {
+      "R": 32,
+      "gate": "GO",
+      "max_abs_C_nuisance": 0.0,
+      "n_policies": 7,
+      "nuisance_pairs": [
+        {
+          "a": "label_prior[asc]",
+          "b": "label_prior[desc]",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[asc]",
+          "b": "position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[asc]",
+          "b": "priming",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[asc]",
+          "b": "recency_last_entry",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[asc]",
+          "b": "uniform_null",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[desc]",
+          "b": "position",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[desc]",
+          "b": "priming",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[desc]",
+          "b": "recency_last_entry",
+          "diff": 0.0
+        },
+        {
+          "a": "label_prior[desc]",
+          "b": "uniform_null",
+          "diff": 0.0
+        },
+        {
+          "a": "position",
+          "b": "priming",
+          "diff": 0.0
+        },
+        {
+          "a": "position",
+          "b": "recency_last_entry",
+          "diff": 0.0
+        },
+        {
+          "a": "position",
+          "b": "uniform_null",
+          "diff": 0.0
+        },
+        {
+          "a": "priming",
+          "b": "recency_last_entry",
+          "diff": 0.0
+        },
+        {
+          "a": "priming",
+          "b": "uniform_null",
+          "diff": 0.0
+        },
+        {
+          "a": "recency_last_entry",
+          "b": "uniform_null",
+          "diff": 0.0
+        }
+      ],
+      "nuisance_pairs_over_delta_min": [],
+      "policies": {
+        "label_prior[asc]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "label_prior"
+        },
+        "label_prior[desc]": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "label_prior"
+        },
+        "position": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "position"
+        },
+        "positive_control_rule_lookup": {
+          "C": 1.0,
+          "positive_control": true,
+          "registered": "positive_control_rule_lookup"
+        },
+        "priming": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "priming"
+        },
+        "recency_last_entry": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "recency_last_entry"
+        },
+        "uniform_null": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "uniform_null"
+        }
+      },
+      "r_list": [
+        2000,
+        2032
+      ],
+      "status": "computed"
+    },
+    "v3": {
+      "R": 80,
+      "gate": "GO",
+      "max_abs_C_nuisance": 1.0,
+      "n_policies": 16,
+      "nuisance_pairs": [
+        {
+          "a": "after_success",
+          "b": "before_success",
+          "diff": -0.119791666667
+        },
+        {
+          "a": "after_success",
+          "b": "fewest_failures",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "first_success",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "last_success",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "nearest_neighbor_ignoring_weather",
+          "diff": 0.944270833333
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/first_row",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/hash_a",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/hash_b",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/hash_c",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/position",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/priming",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "outcome_blind/recency",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "success_count",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "after_success",
+          "b": "success_rate",
+          "diff": -0.055729166667
+        },
+        {
+          "a": "before_success",
+          "b": "fewest_failures",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "first_success",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "last_success",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "nearest_neighbor_ignoring_weather",
+          "diff": 1.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/first_row",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/hash_a",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/position",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/priming",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "outcome_blind/recency",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "success_count",
+          "diff": 0.0640625
+        },
+        {
+          "a": "before_success",
+          "b": "success_rate",
+          "diff": 0.0640625
+        },
+        {
+          "a": "fewest_failures",
+          "b": "first_success",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "last_success",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "nearest_neighbor_ignoring_weather",
+          "diff": 1.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/hash_a",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "fewest_failures",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "last_success",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "nearest_neighbor_ignoring_weather",
+          "diff": 1.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/hash_a",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "first_success",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "nearest_neighbor_ignoring_weather",
+          "diff": 1.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/first_row",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/hash_a",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "last_success",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/first_row",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/hash_a",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/hash_b",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/hash_c",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/position",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/priming",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "outcome_blind/recency",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "success_count",
+          "diff": -1.0
+        },
+        {
+          "a": "nearest_neighbor_ignoring_weather",
+          "b": "success_rate",
+          "diff": -1.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/hash_a",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/first_row",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "outcome_blind/hash_b",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_a",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "outcome_blind/hash_c",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_b",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_c",
+          "b": "outcome_blind/position",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_c",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_c",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_c",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/hash_c",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/position",
+          "b": "outcome_blind/priming",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/position",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/position",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/position",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/priming",
+          "b": "outcome_blind/recency",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/priming",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/priming",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/recency",
+          "b": "success_count",
+          "diff": 0.0
+        },
+        {
+          "a": "outcome_blind/recency",
+          "b": "success_rate",
+          "diff": 0.0
+        },
+        {
+          "a": "success_count",
+          "b": "success_rate",
+          "diff": 0.0
+        }
+      ],
+      "nuisance_pairs_over_delta_min": [
+        {
+          "diff": 1.0640625,
+          "high": "before_success",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "fewest_failures",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "first_success",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "last_success",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/first_row",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/hash_a",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/hash_b",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/hash_c",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/position",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/priming",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "outcome_blind/recency",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "success_count",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 1.0,
+          "high": "success_rate",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 0.944270833333,
+          "high": "after_success",
+          "low": "nearest_neighbor_ignoring_weather"
+        },
+        {
+          "diff": 0.119791666667,
+          "high": "before_success",
+          "low": "after_success"
+        }
+      ],
+      "policies": {
+        "after_success": {
+          "C": -0.055729166667,
+          "positive_control": false,
+          "registered": "row_after_success"
+        },
+        "before_success": {
+          "C": 0.0640625,
+          "positive_control": false,
+          "registered": "row_before_success"
+        },
+        "fewest_failures": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "most_success_label"
+        },
+        "first_success": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "first_or_last_success_row"
+        },
+        "last_success": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "first_or_last_success_row"
+        },
+        "nearest_neighbor_ignoring_weather": {
+          "C": -1.0,
+          "positive_control": false,
+          "registered": "nearest_neighbor_ignoring_weather"
+        },
+        "outcome_blind/first_row": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/hash_a": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/hash_b": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/hash_c": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/position": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/priming": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "outcome_blind/recency": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "outcome_blind"
+        },
+        "positive_control_weather_match": {
+          "C": 1.0,
+          "positive_control": true,
+          "registered": "positive_control_weather_match"
+        },
+        "success_count": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "most_success_label"
+        },
+        "success_rate": {
+          "C": 0.0,
+          "positive_control": false,
+          "registered": "most_success_label"
+        }
+      },
+      "r_list": [
+        3000,
+        3080
+      ],
+      "status": "computed"
+    }
+  },
+  "delta_min": 0.1,
+  "inputs": {
+    "frozen_fixture_sha256": {
+      "G": "d6cdad2002869e6177f7df31b63aba2aa66e96682a3cc1edbecfd0fe8f810ea6",
+      "O_time": "99d266093dbf91e2d28814dba9dc8e42a2e3519078c6e336769ba42a6563f9d8"
+    },
+    "gate_json_sha256": "e83b8bdf84acdda31c7555a1b426e4a59e5d80f56e3daf6bc41ca506eedeeeac"
+  },
+  "schema": "benchmark_stage2_fixture_diffs_main/1"
+}
