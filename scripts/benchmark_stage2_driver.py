@@ -31,6 +31,7 @@ from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Final, TextIO
 
 import httpx
+from scripts import benchmark_stage2_manifest_main as mm
 from scripts import benchmark_stage2_plan as pl
 from scripts import benchmark_stage2_stats as st
 
@@ -1017,18 +1018,38 @@ def main_r_from_gate(
 
 
 def plan_for(
-    stage: str, gate_path: pathlib.Path | None, models_path: pathlib.Path = MODELS_JSON
+    stage: str,
+    gate_path: pathlib.Path | None,
+    models_path: pathlib.Path = MODELS_JSON,
+    *,
+    root: pathlib.Path = _REPO_ROOT,
+    models_bytes: bytes | None = None,
 ) -> tuple[pl.Segment, ...]:
-    """区切りの plan。本走は gate.json を、本走が照合に使う models.json の sha と結んで読む."""
+    """区切りの plan。本走は gate.json を、本走が照合に使う models.json の sha と結んで読む.
+
+    本走は送信の前に第 2 段の封印 ``manifest_main.json`` を照合し (DD-12 H2)、実 R の
+    ``battery_checks`` を計算し直して記録と一致することを要求する。``models_bytes`` を渡すと
+    ``models_path`` を読まずにその bytes を照合する (CLI は送信にも同じ bytes を使う)。
+    """
     if stage == pl.STAGE_PILOT:
         return pl.pilot_plan()
     if gate_path is None:
         msg = "--stage main requires --gate"
         raise PreflightError(msg)
-    gate = read_gate(
-        json.loads(gate_path.read_text(encoding="utf-8")),
-        sha256_bytes(models_path.read_bytes()),
-    )
+    gate_bytes = gate_path.read_bytes()
+    if models_bytes is None:
+        models_bytes = models_path.read_bytes()
+    models_sha = sha256_bytes(models_bytes)
+    gate = read_gate(json.loads(gate_bytes.decode("utf-8")), models_sha)
+    try:
+        rec = mm.require(root, gate_bytes=gate_bytes, models_sha=models_sha)
+    except mm.ManifestError as exc:
+        msg = f"manifest_main: {exc}"
+        raise PreflightError(msg) from exc
+    recorded = {b: e["checks"] for b, e in rec["battery_checks"].items()}
+    if {b: pl.battery_checks(b, r) for b, r in gate.r_by_battery.items()} != recorded:
+        msg = "manifest_main: battery_checks differ from the recomputation"
+        raise PreflightError(msg)
     segs = pl.main_plan(gate.r_by_battery, gate.entrants)
     # 報告集合 ⊆ 入場集合: 本走は pilot の入場モデルだけを回す
     if any(s.model not in gate.entrants[s.battery] for s in segs):
@@ -1045,9 +1066,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gate", type=pathlib.Path, default=None)
     args = ap.parse_args(argv)
     try:
-        segments = plan_for(args.stage, args.gate)
+        # models.json は 1 回だけ読み、照合 (plan_for) と送信時の参照 (run_stage) に同じ bytes を使う
+        try:
+            models_bytes = MODELS_JSON.read_bytes()
+        except OSError as exc:
+            msg = f"models.json: {exc}"
+            raise PreflightError(msg) from exc
+        segments = plan_for(args.stage, args.gate, models_bytes=models_bytes)
         table = asyncio.run(
-            run_stage(args.stage, args.run_dir, segments, endpoint=args.endpoint)
+            run_stage(
+                args.stage,
+                args.run_dir,
+                segments,
+                endpoint=args.endpoint,
+                reference=json.loads(models_bytes.decode("utf-8")),
+            )
         )
     except PreflightError as exc:
         print(f"[driver] refused: {exc}", file=sys.stderr)  # noqa: T201

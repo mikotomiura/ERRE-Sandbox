@@ -2,7 +2,8 @@
 """判別性 gate 段 2 の本走前の certification — 対象の行を壊すと、意図した test が意図した理由で落ちるか.
 
 対象 (DD-6・DD-11: 本走が実行・判定に使う code の全体) =
-``scripts/benchmark_stage2_{driver,plan,units,records,pilot_gate,stats,fixtures,scorer}.py``。
+``scripts/benchmark_stage2_{driver,plan,units,records,pilot_gate,stats,fixtures,scorer,manifest_main}.py``
+(第 2 段の凍結で、本走の入口の照合 manifest_main を足した)。
 witness の test = ``tests/test_benchmark_stage2_driver/`` (証明書の読み手 ``test_certificate.py`` を除く) と、凍結の
 ``tests/test_benchmark_stage2/test_stats.py`` (stats の変異の一部)。``test_fixtures.py`` が原本として import する
 凍結の test 2 つと pilot の ``gate.json`` も sha で束ねる。段 3.5 の pilot 前の版 (pre_pilot) は同じ path に
@@ -53,6 +54,9 @@ witness の test = ``tests/test_benchmark_stage2_driver/`` (証明書の読み�
   足した閾値ちょうどの差でだけ違う (閾値の向きは f12 が pin)。fixtures の ``fewest_failures`` の符号を落とす:
   v3 の状態では各セルで全選択肢の失敗の数が等しく (r ∈ [0, 40) ∪ [3000, 3080) の 2,880 セルで確認)、方策は常に
   同点 → 表示順になるので、符号に依らず同じ label (原本も同じ)。
+* (第 2 段の凍結、DD-12 H2) c28 (fixture が無ければ全 battery INVALID) は消した: 読めない fixture は判定の前に
+  拒む (変異 c60) ので、その経路が無い。scorer の CLI が照合の root を ``_REPO_ROOT`` で渡す行を外す変異は、
+  既定の引数が同じ ``_REPO_ROOT`` なので本番では等価 (test が module の root を差し替えるときだけ違う)。
 * (段 5b、DD-12) scorer の envelope の負の分子の検査は消した: ⊥ の数を [0, bot_n] に限る検査 (c55) の下では
   復元した envelope は 1/20 以上なので、負の分子は復元との一致 (c46) で拒まれる (負例 20)。⊥ の数が負なら
   envelope も負の分数で整合してしまう (負例 27) ので、負の分子を拒むのは範囲の検査 c55 の役目。
@@ -100,6 +104,7 @@ _TARGETS: dict[str, str] = {
     "stats": "scripts/benchmark_stage2_stats.py",
     "fixtures": "scripts/benchmark_stage2_fixtures.py",
     "scorer": "scripts/benchmark_stage2_scorer.py",
+    "manifest_main": "scripts/benchmark_stage2_manifest_main.py",
 }
 _TARGET_FILES = frozenset(pathlib.PurePath(p).name for p in _TARGETS.values())
 _HARNESS_REL = "scripts/benchmark_stage2_driver_mutation_check.py"
@@ -2085,18 +2090,10 @@ MUTANTS: tuple[Mutant, ...] = (
     _m(
         "c27 fixture の再計算と比べない",
         "scorer",
-        '        if fxm.compute_text(gate_path).encode("utf-8") != fx_bytes:\n',
-        "        if False:\n",
+        '    if fxm.compute_text(gate_path).encode("utf-8") != fx_bytes:\n',
+        "    if False:\n",
         (_C_FX_MISMATCH,),
         "§J・§F-1: fixture の byte が違えば全 battery INVALID",
-    ),
-    _m(
-        "c28 fixture の file が無くても通す",
-        "scorer",
-        '        global_invalid.append("fixture_diffs_main.json is missing")\n',
-        "        pass\n",
-        (_C_FX_MISMATCH,),
-        "§J: fixture が無ければ全 battery INVALID",
     ),
     _m(
         "c29 全体の違反を battery に渡さない",
@@ -2473,6 +2470,517 @@ MUTANTS: tuple[Mutant, ...] = (
         "        same = True\n",
         (_F_CLI,),
         "DD-10: --check は byte 比較",
+    ),
+    # ---------------------------------------------------------------- 第 2 段の封印 (DD-12 H2)
+    _m(
+        "m01 stage が main かを見ない",
+        "manifest_main",
+        '        out.append("manifest_main: stage is not main")\n',
+        "        pass\n",
+        ("test_1_stage_must_be_main",),
+        "DD-12 H2 (第 2 段の封印): 検査 1 の stage",
+        _ASSERTED,
+    ),
+    _m(
+        "m02 prereg の status が FROZEN かを見ない",
+        "manifest_main",
+        '        out.append("prereg: status is not FROZEN")\n',
+        "        pass\n",
+        ("test_1_prereg_status_must_be_frozen",),
+        "DD-12 H2 (第 2 段の封印): 検査 1 の status",
+        _ASSERTED,
+    ),
+    _m(
+        "m03 prereg の全体の sha を見ない",
+        "manifest_main",
+        '        out.append("prereg: sha256 differs from the record")\n',
+        "        pass\n",
+        ("test_1_prereg_sha_is_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 1 の prereg の sha",
+        _ASSERTED,
+    ),
+    _m(
+        "m04 第 1 段の manifest.json の sha を見ない",
+        "manifest_main",
+        '        return ["manifest.json: sha256 differs from the record"]\n',
+        "        pass\n",
+        ("test_2_stage1_manifest_sha_is_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 2 の manifest.json の sha",
+        _ASSERTED,
+    ),
+    _m(
+        "m05 第 1 段の file の集合を見ない",
+        "manifest_main",
+        '        out.append("manifest.json: the frozen file set differs")\n',
+        "        pass\n",
+        ("test_2_stage1_file_set_is_checked",),
+        "DD-12 H2 (第 2 段の封印): 検査 2 の集合",
+        _ASSERTED,
+    ),
+    _m(
+        "m06 第 1 段の file の sha を見ない",
+        "manifest_main",
+        "        if not _same(_sha_file(root, f), files.get(f))\n",
+        "        if False\n",
+        ("test_2_stage1_files_are_checked",),
+        "DD-12 H2 (第 2 段の封印): 検査 2 の各 file の sha",
+        _ASSERTED,
+    ),
+    _m(
+        "m07 prereg の本文を第 1 段と照合しない",
+        "manifest_main",
+        '    if not _same(stage1.get("prereg_body_sha256"), man.prereg_body_sha256(text)):\n',
+        "    if False:\n",
+        ("test_2_prereg_body_must_match_stage1",),
+        "DD-12 H2 (第 2 段の封印): 検査 2 の本文 (status 行だけが変わる)",
+        _ASSERTED,
+    ),
+    _m(
+        "m08 models.json を第 1 段の封印と照合しない",
+        "manifest_main",
+        '        out.append("models.json: sha256 differs from manifest.json")\n',
+        "        pass\n",
+        ("test_5_models_must_be_the_stage1_models",),
+        "DD-12 H2 (第 2 段の封印): 検査 5 の第 1 段との結び (Codex r1 H4)",
+        _ASSERTED,
+    ),
+    _m(
+        "m09 見取り図の結論を見ない",
+        "manifest_main",
+        "    if not out:\n        out.extend(man.sketch_violations(root))\n",
+        "    if False:\n        out.extend(man.sketch_violations(root))\n",
+        ("test_2_stage1_sketch_conclusion_is_checked",),
+        "DD-12 H2 (第 2 段の封印): 検査 2 の見取り図の結論",
+        _ASSERTED,
+    ),
+    _m(
+        "m10 all_killed の申告を見ない",
+        "manifest_main",
+        '        out.append("certificate: not all killed")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の all_killed",
+        Witness(item="killed", assert_stmt=True),
+    ),
+    _m(
+        "m11 変異の行が空でも通す",
+        "manifest_main",
+        '        return [*out, "certificate: no mutant rows"]\n',
+        "        return out\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 は行を数え直す (CR-M1)",
+        Witness(item="no_rows", assert_stmt=True),
+    ),
+    _m(
+        "m12 KILLED でない行を見ない",
+        "manifest_main",
+        '        out.append("certificate: a mutant row is not KILLED")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の各行の状態",
+        Witness(item="survived_row", assert_stmt=True),
+    ),
+    _m(
+        "m13 変異の無い対象を見ない",
+        "manifest_main",
+        '        out.append("certificate: a target has no mutant")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の対象ごとの変異",
+        Witness(item="uncovered_target", assert_stmt=True),
+    ),
+    _m(
+        "m14 meta-test を見ない",
+        "manifest_main",
+        '        out.append("certificate: the meta-test did not hold")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の meta-test (prereg §J)",
+        Witness(item="no_meta", assert_stmt=True),
+    ),
+    _m(
+        "m15 証明書が無くても通す",
+        "manifest_main",
+        '        return ["certificate: missing"]\n',
+        "        pass\n",
+        ("test_3_certificate_missing",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の欠け",
+        _ASSERTED,
+    ),
+    _m(
+        "m16 証明書の sha を見ない",
+        "manifest_main",
+        '        return ["certificate: sha256 differs from the record"]\n',
+        "        pass\n",
+        ("test_3_certificate_sha_is_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の証明書の sha",
+        _ASSERTED,
+    ),
+    _m(
+        "m17 証明書の version を見ない",
+        "manifest_main",
+        '        out.append("certificate: version is not pre_main")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の version",
+        Witness(item="version", assert_stmt=True),
+    ),
+    _m(
+        "m18 証明書の対象を見ない",
+        "manifest_main",
+        '        out.append("certificate: targets differ (manifest_main must be a target)")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の対象 (manifest_main を含む)",
+        Witness(item="targets", assert_stmt=True),
+    ),
+    _m(
+        "m19 target_sha256 の集合を見ない",
+        "manifest_main",
+        '        out.append("certificate: target_sha256 covers a different file set")\n',
+        "        pass\n",
+        ("test_3_a_new_test_file_is_outside_the_certificate",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の束縛の集合 (test dir の全 .py)",
+        _ASSERTED,
+    ),
+    _m(
+        "m20 対象の sha を現在と照合しない",
+        "manifest_main",
+        "            if not _same(got.get(k), want[k])\n",
+        "            if False\n",
+        ("test_3_certificate_binds_current_files",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の各対象の sha",
+        Witness(item="target", assert_stmt=True),
+    ),
+    _m(
+        "m21 witness の test の集合を見ない",
+        "manifest_main",
+        '        out.append("certificate: witness_tests_sha256 covers a different file set")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の witness の集合",
+        Witness(item="witness", assert_stmt=True),
+    ),
+    _m(
+        "m22 witness の test の sha を照合しない",
+        "manifest_main",
+        "            if not _same(wit.get(rel), _sha_file(root, rel))\n",
+        "            if False\n",
+        ("test_3_certificate_binds_current_files",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の witness の sha",
+        Witness(item="witness", assert_stmt=True),
+    ),
+    _m(
+        "m23 証明書の入力の集合を見ない",
+        "manifest_main",
+        '        out.append("certificate: inputs_sha256 covers a different file set")\n',
+        "        pass\n",
+        ("test_3_certificate_fields",),
+        "DD-12 H2 (第 2 段の封印): 検査 3 の入力の集合",
+        Witness(item="inputs", assert_stmt=True),
+    ),
+    _m(
+        "m24 証明書の gate を root の gate と照合しない",
+        "manifest_main",
+        '        out.append("certificate: inputs_sha256 differs from the current gate.json")\n',
+        "        pass\n",
+        ("test_4_gate_must_be_the_certified_input",),
+        "DD-12 H2 (第 2 段の封印): 検査 3・4 の root の gate",
+        _ASSERTED,
+    ),
+    _m(
+        "m25 渡した gate を証明書の gate と照合しない",
+        "manifest_main",
+        '        out.append("gate.json: the passed gate differs from the certified gate")\n',
+        "        pass\n",
+        ("test_4_passed_gate_must_be_the_certified_gate",),
+        "DD-12 H2 (第 2 段の封印): 検査 4 (Codex r1 H1)",
+        _ASSERTED,
+    ),
+    _m(
+        "m26 渡した gate を記録と照合しない",
+        "manifest_main",
+        '        out.append("gate.json: sha256 differs from the record")\n',
+        "        pass\n",
+        ("test_4_gate_bytes_are_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 4 の記録",
+        _ASSERTED,
+    ),
+    _m(
+        "m27 渡した models の sha を記録と照合しない",
+        "manifest_main",
+        '        out.append("models.json: sha256 differs from the record")\n',
+        "        pass\n",
+        ("test_5_models_sha_is_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 5 の記録",
+        _ASSERTED,
+    ),
+    _m(
+        "m28 fixture を渡されないとき root の fixture を読まない",
+        "manifest_main",
+        "    if fixture_bytes is None:\n        p = root / FIXTURE_MAIN\n",
+        "    if False:\n        p = root / FIXTURE_MAIN\n",
+        ("test_tree_passes",),
+        "DD-12 H2 (第 2 段の封印): 検査 6 (driver は root の fixture を照合する)",
+        _ASSERTED,
+    ),
+    _m(
+        "m29 fixture の欠けを見ない",
+        "manifest_main",
+        '        out.append("fixture_diffs_main.json: missing")\n',
+        "        pass\n",
+        ("test_6_fixture_bytes_are_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 6 の欠け",
+        _ASSERTED,
+    ),
+    _m(
+        "m30 fixture の sha を見ない",
+        "manifest_main",
+        '        out.append("fixture_diffs_main.json: sha256 differs from the record")\n',
+        "        pass\n",
+        ("test_6_fixture_bytes_are_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 6 の sha",
+        _ASSERTED,
+    ),
+    _m(
+        "m31 見取り図の sha を見ない",
+        "manifest_main",
+        '        out.append("sketch.json: sha256 differs from the recomputed sketch")\n',
+        "        pass\n",
+        ("test_7_sketch_must_be_the_recomputed_one",),
+        "DD-12 H2 (第 2 段の封印): 検査 7",
+        _ASSERTED,
+    ),
+    _m(
+        "m32 battery_checks の欠けを見ない",
+        "manifest_main",
+        '        return ["battery_checks: missing or malformed"]\n',
+        "        pass\n",
+        ("test_8_battery_checks_missing",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の欠け",
+        _ASSERTED,
+    ),
+    _m(
+        "m33 battery の R を gate と照合しない",
+        "manifest_main",
+        '        out.append("battery_checks: R differs from the GO batteries of the gate")\n',
+        "        pass\n",
+        ("test_8_battery_checks",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の R",
+        Witness(item="R", assert_stmt=True),
+    ),
+    _m(
+        "m34 checks が object でなくても通す",
+        "manifest_main",
+        '            out.append(f"battery_checks: {b} has no checks")\n',
+        "            pass\n",
+        ("test_8_battery_checks",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の checks の型",
+        Witness(item="none", assert_stmt=True),
+    ),
+    _m(
+        "m35 checks の項目の名前を照合しない",
+        "manifest_main",
+        '            out.append(f"battery_checks: {b} check names differ from the registration")\n',
+        "            pass\n",
+        ("test_8_check_names_are_registered",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の名前 (Codex r1 H6)",
+        _ASSERTED,
+    ),
+    _m(
+        "m36 失敗した check を見ない",
+        "manifest_main",
+        '            out.append(f"battery_checks: {b} has a failed check")\n',
+        "            pass\n",
+        ("test_8_battery_checks",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の全項目が空",
+        Witness(item="failed", assert_stmt=True),
+    ),
+    _m(
+        "m37 段 2 の外の module の集合を見ない",
+        "manifest_main",
+        '        return ["external modules: the set differs from the import closure"]\n',
+        "        pass\n",
+        ("test_9_external_set_follows_the_import_closure",),
+        "DD-12 H2 (第 2 段の封印): 検査 9 の集合",
+        _ASSERTED,
+    ),
+    _m(
+        "m38 段 2 の外の module の sha を見ない",
+        "manifest_main",
+        "        if not _same(ext.get(rel), _sha_file(root, rel))\n",
+        "        if False\n",
+        ("test_9_external_modules_are_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 9 の sha (Codex r1 H3)",
+        _ASSERTED,
+    ),
+    _m(
+        "m39 import の閉包が from scripts import を数えない",
+        "manifest_main",
+        '            out.update(f"scripts/{a.name}.py" for a in node.names)\n',
+        "            pass\n",
+        ("test_9_external_modules_are_bound",),
+        "DD-12 H2 (第 2 段の封印): 検査 9 の閉包 (AST)",
+        _ASSERTED,
+    ),
+    _m(
+        "m40 片方が None の比較を一致に数える",
+        "manifest_main",
+        "    return want is not None and got is not None and want == got\n",
+        "    return want == got\n",
+        ("test_none_is_never_a_match",),
+        "DD-12 H2 (第 2 段の封印): None・null は一致に数えない (CR-L)",
+        _ASSERTED,
+    ),
+    _m(
+        "m41 型の崩れを違反の文にしない",
+        "manifest_main",
+        "    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:\n",
+        "    except KeyError as exc:\n",
+        ("test_malformed_stage1_manifest_is_a_violation",),
+        "DD-12 H2 (第 2 段の封印): 壊れた入力は違反の文 (Codex r1 M1)",
+        Witness(exc="JSONDecodeError", text="Expecting"),
+    ),
+    _m(
+        "m42 読めない記録を ManifestError にしない",
+        "manifest_main",
+        '    except (OSError, ValueError) as exc:\n        msg = f"manifest_main.json: unreadable',
+        '    except OSError as exc:\n        msg = f"manifest_main.json: unreadable',
+        ("test_broken_manifest_is_a_violation",),
+        "DD-12 H2 (第 2 段の封印): 読めない記録 (Codex r1 M1)",
+        Witness(item="truncated", exc="JSONDecodeError", text="Expecting"),
+    ),
+    _m(
+        "m43 object でない記録を拒まない",
+        "manifest_main",
+        '    if not isinstance(obj, dict):\n        msg = "manifest_main.json: not an object"\n',
+        '    if False:\n        msg = "manifest_main.json: not an object"\n',
+        ("test_broken_manifest_is_a_violation",),
+        "DD-12 H2 (第 2 段の封印): 記録は object",
+        Witness(item="not_object", assert_stmt=True),
+    ),
+    _m(
+        "m44 require が違反で止めない",
+        "manifest_main",
+        '    if errs:\n        raise ManifestError("; ".join(errs))\n',
+        '    if False:\n        raise ManifestError("; ".join(errs))\n',
+        ("test_driver_plan_for_requires_the_manifest",),
+        "DD-12 H2 (第 2 段の封印): 入口は違反で止まる",
+        Witness(
+            exc="AssertionError", text="main_plan is called before the manifest check"
+        ),
+    ),
+    _m(
+        "m45 require が記録の欠けで止めない",
+        "manifest_main",
+        '    if rec is None:\n        msg = "manifest_main.json: missing"\n        raise ManifestError(msg)\n    errs = check(',
+        '    if False:\n        msg = "manifest_main.json: missing"\n        raise ManifestError(msg)\n    errs = check(',
+        ("test_missing_manifest_is_refused",),
+        "DD-12 H2 (第 2 段の封印): 記録が無ければ止まる",
+        Witness(exc="AssertionError", text="Regex pattern did not match"),
+    ),
+    _m(
+        "m46 GO でない battery も R に数える",
+        "manifest_main",
+        '        b: e["R"] for b, e in gate["batteries"].items() if e.get("gate") == st.GATE_GO\n',
+        '        b: e["R"] for b, e in gate["batteries"].items() if True\n',
+        ("test_tree_passes",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の R は GO の battery だけ",
+        _ASSERTED,
+    ),
+    _m(
+        "m47 G・O_time の pilot_aux の項目を数えない",
+        "manifest_main",
+        "    if battery in _AUX_BATTERIES:\n",
+        "    if False:\n",
+        ("test_tree_passes",),
+        "DD-12 H2 (第 2 段の封印): 検査 8 の項目の名前 (pilot_aux)",
+        _ASSERTED,
+    ),
+    _m(
+        "d64 plan_for が封印を照合しない",
+        "driver",
+        "        rec = mm.require(root, gate_bytes=gate_bytes, models_sha=models_sha)\n",
+        "        rec = mm.load(root) or {}\n",
+        ("test_driver_plan_for_requires_the_manifest",),
+        "DD-12 H2 (送信前の照合): 本走の枝は main_plan の前に照合する",
+        Witness(
+            exc="AssertionError", text="main_plan is called before the manifest check"
+        ),
+    ),
+    _m(
+        "d65 plan_for が battery_checks を計算し直さない",
+        "driver",
+        "    if {b: pl.battery_checks(b, r) for b, r in gate.r_by_battery.items()} != recorded:\n",
+        "    if False:\n",
+        ("test_driver_recomputes_battery_checks",),
+        "DD-12 H2 (送信前の照合): 記録を読むだけでなく実 R で再計算する",
+        _raised(),
+    ),
+    _m(
+        "d66 plan_for が渡した models の bytes を使わない",
+        "driver",
+        "    if models_bytes is None:\n        models_bytes = models_path.read_bytes()\n",
+        "    if True:\n        models_bytes = models_path.read_bytes()\n",
+        ("test_plan_for_uses_the_bytes_it_checked",),
+        "DD-12 H2 (送信前の照合): 照合した bytes = 送信に使う bytes (Codex r1 H4)",
+        Witness(exc="FileNotFoundError", text="no_such_models"),
+    ),
+    _m(
+        "d67 CLI が送信の参照を models.json から読み直す",
+        "driver",
+        '                reference=json.loads(models_bytes.decode("utf-8")),\n',
+        "                reference=None,\n",
+        ("test_driver_main_checks_and_sends_with_the_same_models_bytes",),
+        "DD-12 H2 (送信前の照合): 照合した bytes を送信の参照に (Codex r1 H4)",
+        _ASSERTED,
+    ),
+    _m(
+        "d68 CLI が models.json を読めないとき拒否しない",
+        "driver",
+        '            msg = f"models.json: {exc}"\n            raise PreflightError(msg) from exc\n',
+        '            msg = f"models.json: {exc}"\n            raise\n',
+        ("test_driver_main_checks_and_sends_with_the_same_models_bytes",),
+        "DD-12 H2 (送信前の照合): 読めない models.json は exit 2 (CR-L)",
+        Witness(exc="FileNotFoundError", text="missing.json"),
+    ),
+    _m(
+        "c57 compute_verdict が封印を照合しない",
+        "scorer",
+        "    mm.require(root, gate_bytes=gate_bytes, models_sha=ref_sha, fixture_bytes=fx_bytes)\n",
+        "    pass\n",
+        ("test_scorer_refuses_without_the_manifest",),
+        "DD-12 H2 (判定前の照合): 記録を読む前に照合する",
+        Witness(
+            exc="AssertionError", text="records are read before the manifest check"
+        ),
+    ),
+    _m(
+        "c58 compute_verdict が読んだ fixture を照合に渡さない",
+        "scorer",
+        "fixture_bytes=fx_bytes)\n",
+        "fixture_bytes=None)\n",
+        ("test_scorer_checks_the_fixture_it_read",),
+        "DD-12 H2 (判定前の照合): 判定に使う fixture の bytes を照合する",
+        _raised(),
+    ),
+    _m(
+        "c59 CLI が照合の失敗を exit 2 にしない",
+        "scorer",
+        "    except mm.ManifestError as exc:\n",
+        "    except KeyError as exc:\n",
+        ("test_scorer_refuses_without_the_manifest",),
+        "DD-12 H2 (判定前の照合): CLI は refused: manifest_main で exit 2",
+        Witness(exc="ManifestError", text="manifest_main.json: missing"),
+    ),
+    _m(
+        "c60 読めない fixture で判定に進む",
+        "scorer",
+        "        raise mm.ManifestError(msg) from exc\n",
+        '        fx_bytes = b""\n',
+        ("test_fixture_mismatch_makes_every_battery_invalid",),
+        "DD-12 H2 (判定前の照合): 読めない fixture は判定しない (DF-6 の改め)",
+        Witness(exc="AssertionError", text="Regex pattern did not match"),
     ),
 )
 
@@ -2935,8 +3443,30 @@ def _copy_tree() -> pathlib.Path:
     gate = pathlib.PurePath(_EXP_REL, _PILOT_GATE_REL).as_posix()
     (tmp / gate).parent.mkdir(parents=True)
     shutil.copy2(_REPO_ROOT / gate, tmp / gate)
+    # 第 2 段の封印の test の一時 root が写すもの (main_tree): 凍結の fixture 表・既存の chain の封印
+    for rel in _stage2_freeze_inputs():
+        if not (tmp / rel).exists():
+            (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(_REPO_ROOT / rel, tmp / rel)
     shutil.copy2(_REPO_ROOT / "pyproject.toml", tmp / "pyproject.toml")
     return tmp
+
+
+def _stage2_freeze_inputs() -> list[str]:
+    """第 2 段の封印の test が読む repo のファイル (scripts・test dir・実験 dir の外のもの)."""
+    fx = json.loads(
+        (_REPO_ROOT / _EXP_REL / "results" / "fixture_diffs.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    tables = [
+        r["source"]["path"] for r in fx["batteries"].values() if "sha256" in r["source"]
+    ]
+    seals = [
+        p.relative_to(_REPO_ROOT).as_posix()
+        for p in _REPO_ROOT.glob("experiments/*/manifest*.json")
+    ]
+    return sorted({*tables, *seals})
 
 
 def _sha(path: pathlib.Path) -> str:

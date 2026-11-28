@@ -14,6 +14,8 @@ from scripts import benchmark_stage2_driver as dr
 from scripts import benchmark_stage2_plan as pl
 from scripts import benchmark_stage2_stats as st
 
+from tests.test_benchmark_stage2_driver.main_tree import build_tree
+
 if TYPE_CHECKING:
     import pathlib
     from collections.abc import Callable, Sequence
@@ -529,10 +531,24 @@ def _min_gate(go: dict[str, int], stop: Sequence[str] = ()) -> dict[str, Any]:
 MODELS_SHA = dr.sha256_bytes(dr.MODELS_JSON.read_bytes())
 
 
+def main_root(
+    tmp_path: pathlib.Path,
+    gate: pathlib.Path,
+    models: pathlib.Path = dr.MODELS_JSON,
+) -> pathlib.Path:
+    """この gate・models.json で第 2 段の封印 (manifest_main.json) が通る root."""
+    return build_tree(
+        tmp_path / "root",
+        gate_bytes=gate.read_bytes(),
+        models_bytes=models.read_bytes(),
+    )
+
+
 def test_main_plan_from_gate_file(tmp_path: pathlib.Path) -> None:
     gate = tmp_path / "gate.json"
     gate.write_text(json.dumps(_min_gate({"O_time": 6})), encoding="utf-8")
-    segs = dr.plan_for(pl.STAGE_MAIN, gate)
+    root = main_root(tmp_path, gate)
+    segs = dr.plan_for(pl.STAGE_MAIN, gate, root=root)
     assert [s.model for s in segs] == list(pl.MODELS[:3])  # 入場モデルだけ
     assert {s.battery for s in segs} == {"O_time"}
     assert all(s.stage == pl.STAGE_MAIN for s in segs)

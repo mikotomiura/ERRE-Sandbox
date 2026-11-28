@@ -24,6 +24,7 @@ from tests.test_benchmark_stage2_driver.test_driver import (
     _run,
     _segs,
     _status,
+    main_root,
 )
 
 if TYPE_CHECKING:
@@ -179,18 +180,19 @@ def test_plan_for_refuses_a_model_outside_the_entrants(
 ) -> None:
     gate = tmp_path / "gate.json"
     gate.write_text(json.dumps(_min_gate({"O_time": 6})), encoding="utf-8")
+    root = main_root(tmp_path, gate)
     real = pl.main_plan
     # 入場集合を無視する plan (全 6 モデル) を渡しても、driver が本走の前に拒む
     monkeypatch.setattr(pl, "main_plan", lambda r, _models=None: real(r))
     with pytest.raises(dr.PreflightError, match="outside the pilot entrants"):
-        dr.plan_for(pl.STAGE_MAIN, gate)
+        dr.plan_for(pl.STAGE_MAIN, gate, root=root)
 
 
 def test_main_exit_codes(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     args = ["--stage", pl.STAGE_PILOT, "--run-dir", str(tmp_path)]
-    monkeypatch.setattr(dr, "plan_for", lambda _stage, _gate: ())
+    monkeypatch.setattr(dr, "plan_for", lambda _stage, _gate, **_k: ())
 
     def fake_run(statuses: Sequence[str]) -> Callable[..., Any]:
         async def run(*_a: object, **_k: object) -> dict[str, Any]:
@@ -203,7 +205,7 @@ def test_main_exit_codes(
     monkeypatch.setattr(dr, "run_stage", fake_run([dr.S_COMPLETED, dr.S_TRANSPORT]))
     assert dr.main(args) == dr.EXIT_INCOMPLETE
 
-    def refuse(_stage: str, _gate: object) -> tuple[pl.Segment, ...]:
+    def refuse(_stage: str, _gate: object, **_k: object) -> tuple[pl.Segment, ...]:
         msg = "no gate"
         raise dr.PreflightError(msg)
 

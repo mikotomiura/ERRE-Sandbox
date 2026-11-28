@@ -19,7 +19,14 @@ import pathlib
 from typing import Any
 
 import pytest
+from scripts import benchmark_stage2_driver as dr
 from scripts import benchmark_stage2_driver_mutation_check as mc
+from scripts import benchmark_stage2_fixtures as fxm
+from scripts import benchmark_stage2_freeze as fz
+from scripts import benchmark_stage2_manifest as man
+from scripts import benchmark_stage2_manifest_main as mm
+from scripts import benchmark_stage2_plan as pl
+from scripts import benchmark_stage2_scorer as sc
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 CERT = (
@@ -166,6 +173,88 @@ def test_pinned_files_are_lf() -> None:
 
 def test_every_target_has_mutants() -> None:
     assert {m.target for m in mc.MUTANTS} == set(mc._TARGETS)
+
+
+# ------------------------------------------------------------ 第 2 段の封印 (実 repo)
+
+
+def test_manifest_main_mirrors_the_harness() -> None:
+    """封印の照合が写した証明書の範囲は harness の登録と同じ.
+
+    照合の module は harness を import しない (scorer が import するため)。
+    """
+    assert mm.CERT_TARGETS == mc._TARGETS
+    assert mm.CERT_HARNESS == mc._HARNESS_REL
+    assert mm.CERT_TEST_DIR == mc._TEST_DIR
+    assert mm.CERT_WITNESS_EXTRA == mc._WITNESS_EXTRA
+    assert f"{mc._EXP_REL}/{mc._PILOT_GATE_REL}" == mm.GATE
+    assert mm.CERT_VERSION == mc._VERSION
+    assert REPO / mm.CERT == CERT
+
+
+def test_real_manifest_main_verifies() -> None:
+    """``--verify`` (封印の照合 + battery_checks の再計算) が実 repo で通る."""
+    assert fz.verify(REPO) == []
+    assert fz.main(["--verify"]) == 0
+
+
+def test_real_main_plan_passes_the_entry_check() -> None:
+    """driver の本走の入口 (送信前の照合) が実の gate で通る (送信はしない)."""
+    segs = dr.plan_for(pl.STAGE_MAIN, REPO / mm.GATE)
+    assert {s.battery for s in segs} == set(mm.go_r((REPO / mm.GATE).read_bytes()))
+
+
+def test_real_fixture_diffs_main_is_the_recomputation() -> None:
+    body = fxm.compute_text(REPO / mm.GATE).encode("utf-8")
+    assert (REPO / mm.FIXTURE_MAIN).read_bytes() == body
+
+
+@pytest.mark.parametrize("battery", ["v2", "v3", "G", "O_time"])
+def test_check_names_mirror_the_plan(battery: str) -> None:
+    """照合が写した battery_checks の項目の名前は plan の出力と同じ (R に依らない)."""
+    rs = {"v2": (8, 32), "v3": (8, 80), "G": (6, 36), "O_time": (6, 138)}[battery]
+    for r in rs:
+        assert set(pl.battery_checks(battery, r)) == mm.check_keys(battery)
+
+
+def test_pilot_manifest_constant_is_the_current_stage1_manifest() -> None:
+    """書き手の定数 (pilot の凍結の commit b626962 の版) = 現在の manifest.json."""
+    assert _sha(man.MANIFEST) == fz.MANIFEST_PILOT_SHA256
+
+
+def test_real_external_modules_match_their_chain_seals() -> None:
+    assert mm.external_modules(REPO)
+    assert fz.external_seal_problems(REPO) == []
+
+
+def test_real_scorer_passes_the_entry_check(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """scorer の入口 (判定前の照合) が実 repo で通り、記録の読みに届く."""
+
+    class Reached(Exception):  # noqa: N818 — 届いた印
+        pass
+
+    def reached(*_a: object, **_k: object) -> object:
+        raise Reached
+
+    monkeypatch.setattr(sc.rd, "read_run", reached)
+    with pytest.raises(Reached):
+        sc.compute_verdict(
+            tmp_path, REPO / mm.GATE, REPO / mm.MODELS, REPO / mm.FIXTURE_MAIN
+        )
+
+
+def test_stage1_verify_fails_only_on_the_status_after_the_freeze() -> None:
+    """第 1 段の ``--verify --stage pilot`` は FROZEN の後は status で落ちる.
+
+    設計どおり (prereg は status 行だけが変わる。全体の sha は変わる)。
+    """
+    stage1 = json.loads((REPO / man.MANIFEST).read_text(encoding="utf-8"))
+    assert man.violations(REPO, stage1) == [
+        "prereg: status is not PILOT-FROZEN",
+        "prereg: sha256 differs",
+    ]
 
 
 # ------------------------------------------------------------ 判定器の負例
