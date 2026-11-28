@@ -31,6 +31,8 @@ from scripts import o_time_probe_scorer as osc
 from scripts import skill_experience_battery as v3bat
 from scripts import skill_lever_battery as v2bat
 
+from tests.test_benchmark_stage2_driver.main_tree import build_tree
+
 if TYPE_CHECKING:
     import pathlib
     from collections.abc import Callable, Mapping, Sequence
@@ -820,7 +822,12 @@ def test_main_plan_runs_only_entrants(
         dr.plan_for(pl.STAGE_MAIN, path, models)  # gate の sha "ref" と違う models.json
     g["inputs"]["models_json_sha256"] = dr.sha256_bytes(models.read_bytes())
     path.write_text(json.dumps(g), encoding="utf-8")
-    segs = dr.plan_for(pl.STAGE_MAIN, path, models)
+    root = build_tree(
+        tmp_path / "root",
+        gate_bytes=path.read_bytes(),
+        models_bytes=models.read_bytes(),
+    )
+    segs = dr.plan_for(pl.STAGE_MAIN, path, models, root=root)
     g["inputs"]["models_json_sha256"] = "ref"
     go = dr.read_gate(g, "ref").r_by_battery
     assert {s.battery for s in segs} == set(go)

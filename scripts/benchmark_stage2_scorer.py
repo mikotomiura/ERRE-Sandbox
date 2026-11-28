@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 from scripts import benchmark_stage2_fixtures as fxm
+from scripts import benchmark_stage2_manifest_main as mm
 from scripts import benchmark_stage2_records as rd
 from scripts import benchmark_stage2_stats as st
 from scripts import benchmark_stage2_units as un
@@ -617,10 +618,19 @@ def compute_verdict(
     gate_path: pathlib.Path,
     models_json: pathlib.Path,
     fixture_path: pathlib.Path,
+    *,
+    root: pathlib.Path = _REPO_ROOT,
 ) -> dict[str, Any]:
     reference, ref_sha = rd.load_reference(models_json)
     gate_bytes = gate_path.read_bytes()
     gate = read_gate(json.loads(gate_bytes.decode("utf-8")), ref_sha)
+    try:
+        fx_bytes = fixture_path.read_bytes()
+    except OSError as exc:
+        msg = f"fixture_diffs_main.json: cannot read {fixture_path.name}"
+        raise mm.ManifestError(msg) from exc
+    # 判定の前に第 2 段の封印を照合する (DD-12 H2)。通らなければ判定しない (CLI は exit 2)
+    mm.require(root, gate_bytes=gate_bytes, models_sha=ref_sha, fixture_bytes=fx_bytes)
     run = rd.read_run(
         run_dir,
         rd.STAGE_MAIN,
@@ -630,18 +640,10 @@ def compute_verdict(
     )
     global_invalid: list[str] = []
     fixture: dict[str, Any] = {}
-    try:
-        fx_bytes = fixture_path.read_bytes()
-    except OSError:
-        fx_bytes = None
-        global_invalid.append("fixture_diffs_main.json is missing")
-    if fx_bytes is not None:
-        if fxm.compute_text(gate_path).encode("utf-8") != fx_bytes:
-            global_invalid.append(
-                "fixture_diffs_main.json differs from the recomputation"
-            )
-        else:
-            fixture = json.loads(fx_bytes.decode("utf-8"))["batteries"]
+    if fxm.compute_text(gate_path).encode("utf-8") != fx_bytes:
+        global_invalid.append("fixture_diffs_main.json differs from the recomputation")
+    else:
+        fixture = json.loads(fx_bytes.decode("utf-8"))["batteries"]
     batteries: dict[str, Any] = {}
     for b in st.BATTERIES:
         if b in gate.r_go:
@@ -659,7 +661,7 @@ def compute_verdict(
     inputs = {
         "models_json_sha256": ref_sha,
         "gate_json_sha256": _sha(gate_bytes),
-        "fixture_diffs_main_sha256": None if fx_bytes is None else _sha(fx_bytes),
+        "fixture_diffs_main_sha256": _sha(fx_bytes),
         **run.inputs,
     }
     return _jsonable(  # type: ignore[return-value]
@@ -694,9 +696,13 @@ def compute_twice(
     gate_path: pathlib.Path,
     models_json: pathlib.Path,
     fixture_path: pathlib.Path,
+    *,
+    root: pathlib.Path = _REPO_ROOT,
 ) -> str:
     texts = [
-        verdict_text(compute_verdict(run_dir, gate_path, models_json, fixture_path))
+        verdict_text(
+            compute_verdict(run_dir, gate_path, models_json, fixture_path, root=root)
+        )
         for _ in range(2)
     ]
     if texts[0] != texts[1]:
@@ -712,8 +718,9 @@ def run_scorer(
     gate_path: pathlib.Path = GATE_JSON,
     models_json: pathlib.Path = MODELS_JSON,
     fixture_path: pathlib.Path = FIXTURE_JSON,
+    root: pathlib.Path = _REPO_ROOT,
 ) -> str:
-    body = compute_twice(run_dir, gate_path, models_json, fixture_path)
+    body = compute_twice(run_dir, gate_path, models_json, fixture_path, root=root)
     out.parent.mkdir(parents=True, exist_ok=True)
     try:  # 排他的作成 (存在の確認と書き込みの間に別のプロセスが書く競合を残さない、DD-12 L1)
         with out.open("xb") as fh:
@@ -738,7 +745,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.check:
             body = compute_twice(
-                args.run_dir, args.gate, args.models_json, args.fixtures
+                args.run_dir,
+                args.gate,
+                args.models_json,
+                args.fixtures,
+                root=_REPO_ROOT,
             )
             same = args.out.read_bytes() == body.encode("utf-8")
             print("[scorer] " + ("MATCH" if same else "DIFFERS"))  # noqa: T201
@@ -749,9 +760,13 @@ def main(argv: list[str] | None = None) -> int:
             gate_path=args.gate,
             models_json=args.models_json,
             fixture_path=args.fixtures,
+            root=_REPO_ROOT,  # 照合の root は実行中の module の repo に固定 (CLI で変えない)
         )
     except GateError as exc:
         print(f"[scorer] refused: gate.json: {exc}", file=sys.stderr)  # noqa: T201
+        return 2
+    except mm.ManifestError as exc:
+        print(f"[scorer] refused: manifest_main: {exc}", file=sys.stderr)  # noqa: T201
         return 2
     obj = json.loads(body)
     print(  # noqa: T201

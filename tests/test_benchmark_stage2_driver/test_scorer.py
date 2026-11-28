@@ -20,6 +20,7 @@ import numpy as np
 import pytest
 from scripts import benchmark_stage2_driver as dr
 from scripts import benchmark_stage2_fixtures as fxm
+from scripts import benchmark_stage2_manifest_main as mm
 from scripts import benchmark_stage2_pilot_gate as pg
 from scripts import benchmark_stage2_plan as pl
 from scripts import benchmark_stage2_records as rd
@@ -27,6 +28,7 @@ from scripts import benchmark_stage2_scorer as sc
 from scripts import benchmark_stage2_stats as st
 from scripts import skill_lever_battery as v2bat
 
+from tests.test_benchmark_stage2_driver.main_tree import build_tree
 from tests.test_benchmark_stage2_driver.test_pilot_gate import (
     _ACTIONS,
     _LEVER,
@@ -106,7 +108,18 @@ def write_inputs(tmp: pathlib.Path, gate: Mapping[str, Any]) -> dict[str, pathli
     paths["gate"].write_text(pg.gate_text(gate), encoding="utf-8")
     paths["models"].write_bytes(_ref_bytes())
     paths["fixtures"].write_bytes(fxm.compute_text(paths["gate"]).encode("utf-8"))
+    # 第 2 段の封印 (manifest_main.json) がこの gate・models・fixture で通る root
+    paths["root"] = tree_for(tmp / "root", paths)
     return paths
+
+
+def tree_for(root: pathlib.Path, paths: Mapping[str, pathlib.Path]) -> pathlib.Path:
+    return build_tree(
+        root,
+        gate_bytes=paths["gate"].read_bytes(),
+        models_bytes=paths["models"].read_bytes(),
+        fixture_bytes=paths["fixtures"].read_bytes(),
+    )
 
 
 def write_main(
@@ -166,7 +179,13 @@ def score(
 ) -> dict[str, Any]:
     paths = write_inputs(tmp, gate or make_gate())
     return json.loads(
-        sc.compute_twice(run_dir, paths["gate"], paths["models"], paths["fixtures"])
+        sc.compute_twice(
+            run_dir,
+            paths["gate"],
+            paths["models"],
+            paths["fixtures"],
+            root=paths["root"],
+        )
     )
 
 
@@ -546,16 +565,21 @@ def test_fixture_mismatch_makes_every_battery_invalid(
 ) -> None:
     paths = write_inputs(tmp_path, make_gate())
     paths["fixtures"].write_bytes(paths["fixtures"].read_bytes() + b" ")
+    # 封印が記録した fixture でも、再計算と違えば判定は INVALID (封印の照合とは別の検査)
+    root = tree_for(tmp_path / "root2", paths)
     out = json.loads(
-        sc.compute_twice(graded_run, paths["gate"], paths["models"], paths["fixtures"])
+        sc.compute_twice(
+            graded_run, paths["gate"], paths["models"], paths["fixtures"], root=root
+        )
     )
     for b in R_MAIN:
         assert out["batteries"][b]["verdict"] == st.VERDICT_INVALID
+    # 読めない fixture は判定しない (DF-6 の改め: 封印の照合で拒む)
     paths["fixtures"].unlink()
-    out = json.loads(
-        sc.compute_twice(graded_run, paths["gate"], paths["models"], paths["fixtures"])
-    )
-    assert all(out["batteries"][b]["verdict"] == st.VERDICT_INVALID for b in R_MAIN)
+    with pytest.raises(mm.ManifestError, match="cannot read"):
+        sc.compute_twice(
+            graded_run, paths["gate"], paths["models"], paths["fixtures"], root=root
+        )
 
 
 # ------------------------------------------------------------ gate の契約
@@ -699,7 +723,7 @@ def test_gate_schema_matches_the_pilot_gate() -> None:
 
 
 def test_output_is_written_once_and_checked(
-    graded_run: pathlib.Path, tmp_path: pathlib.Path
+    graded_run: pathlib.Path, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     paths = write_inputs(tmp_path, make_gate())
     out = tmp_path / "main" / "verdict.json"
@@ -709,6 +733,7 @@ def test_output_is_written_once_and_checked(
         gate_path=paths["gate"],
         models_json=paths["models"],
         fixture_path=paths["fixtures"],
+        root=paths["root"],
     )
     assert out.read_bytes() == body.encode("utf-8")
     with pytest.raises(FileExistsError):
@@ -718,6 +743,7 @@ def test_output_is_written_once_and_checked(
             gate_path=paths["gate"],
             models_json=paths["models"],
             fixture_path=paths["fixtures"],
+            root=paths["root"],
         )
     args = [
         "--run-dir",
@@ -731,13 +757,18 @@ def test_output_is_written_once_and_checked(
         "--fixtures",
         str(paths["fixtures"]),
     ]
+    # CLI の照合の root は module の repo に固定 (test は差し替える)
+    monkeypatch.setattr(sc, "_REPO_ROOT", paths["root"])
     assert sc.main([*args, "--check"]) == 0
     out.write_bytes(body.encode("utf-8").replace(b"ESTABLISHED", b"INCONCLUSIVE", 1))
     assert sc.main([*args, "--check"]) == 3
 
 
-def test_refused_gate_exits_2(graded_run: pathlib.Path, tmp_path: pathlib.Path) -> None:
+def test_refused_gate_exits_2(
+    graded_run: pathlib.Path, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     paths = write_inputs(tmp_path, _bad(make_gate(), GATE_MUTATIONS[0]))
+    monkeypatch.setattr(sc, "_REPO_ROOT", paths["root"])
     rc = sc.main(
         [
             "--run-dir",
@@ -763,14 +794,20 @@ def test_nondeterminism_is_caught(
     calls = iter(range(10))
     real = sc.compute_verdict
 
-    def flaky(*a: Any) -> dict[str, Any]:
-        out = real(*a)
+    def flaky(*a: Any, **k: Any) -> dict[str, Any]:
+        out = real(*a, **k)
         out["K"] = next(calls)
         return out
 
     monkeypatch.setattr(sc, "compute_verdict", flaky)
     with pytest.raises(sc.NotDeterministicError):
-        sc.compute_twice(graded_run, paths["gate"], paths["models"], paths["fixtures"])
+        sc.compute_twice(
+            graded_run,
+            paths["gate"],
+            paths["models"],
+            paths["fixtures"],
+            root=paths["root"],
+        )
 
 
 def test_model_interval_and_q_r(graded_verdict: dict[str, Any]) -> None:
@@ -896,7 +933,32 @@ def _imports(mod: Any) -> set[str]:
     return names
 
 
-@pytest.mark.parametrize("mod", [sc, fxm, rd], ids=["scorer", "fixtures", "records"])
+def test_scorer_import_closure_excludes_plan_driver_and_writers() -> None:
+    """DD-1: scorer から import で届く module の全体に plan・driver・書き手が無い.
+
+    直接の import だけでなく閉包を見る (Codex r1 M2: 書き手を経由する回帰)。
+    """
+    root = pathlib.Path(sc.__file__).resolve().parents[1]
+    closure = mm.import_closure(root, ("scripts/benchmark_stage2_scorer.py",))
+    assert "scripts/benchmark_stage2_manifest_main.py" in closure
+    banned = {
+        "scripts/benchmark_stage2_plan.py",
+        "scripts/benchmark_stage2_driver.py",
+        "scripts/benchmark_stage2_freeze.py",
+        "scripts/benchmark_stage2_driver_mutation_check.py",
+    }
+    assert not closure & banned
+    # 書き手を経由する import は閉包が拾う (負例)
+    via_writer = mm.import_closure(root, ("scripts/benchmark_stage2_freeze.py",))
+    assert {
+        "scripts/benchmark_stage2_plan.py",
+        "scripts/benchmark_stage2_driver.py",
+    } <= (via_writer)
+
+
+@pytest.mark.parametrize(
+    "mod", [sc, fxm, rd, mm], ids=["scorer", "fixtures", "records", "manifest_main"]
+)
 def test_scorer_does_not_import_plan_or_driver(mod: Any) -> None:
     """DD-1: scorer とそれが import する段 2 の module は plan・driver を import しない.
 
